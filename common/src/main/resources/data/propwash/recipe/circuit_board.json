@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": "minecraft:copper_nugget",
+    "R": "minecraft:redstone",
+    "G": "minecraft:glass_pane"
+  },
+  "pattern": [
+    "NRN",
+    "GGG"
+  ],
+  "result": {
+    "id": "propwash:circuit_board",
+    "count": 2
+  }
+}

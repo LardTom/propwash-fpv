@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_frame",
+  "key": {
+    "K": "minecraft:dried_kelp",
+    "N": "minecraft:iron_nugget"
+  },
+  "pattern": [
+    "K K",
+    " N ",
+    "K K"
+  ],
+  "result": {
+    "id": "propwash:whoop_65"
+  }
+}

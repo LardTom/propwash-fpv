@@ -1,0 +1,76 @@
+plugins {
+    id 'multiloader-common'
+}
+
+configurations {
+    commonJava {
+        canBeResolved = true
+    }
+    commonDevtestJava {
+        canBeResolved = true
+    }
+    commonResources {
+        canBeResolved = true
+    }
+    commonDevtestResources {
+        canBeResolved = true
+    }
+}
+
+// Selbsttest, Rauchtests und Bildschirmfoto-Rundgang liegen im Quell-Set devtest (common/src/devtest) und kommen nie ins
+// Release-Jar; nur die Selbsttest-/Rauchtest-Runs laden sie (siehe fabric/build.gradle, neoforge/build.gradle).
+sourceSets {
+    devtest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+dependencies {
+    compileOnly(project(':common')) {
+        def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+        attributes {
+            attribute(loaderAttribute, 'common')
+        }
+    }
+    commonJava(project(path: ':common', configuration: 'commonJava'))
+    commonDevtestJava(project(path: ':common', configuration: 'commonDevtestJava'))
+    commonResources(project(path: ':common', configuration: 'commonResources'))
+    commonDevtestResources(project(path: ':common', configuration: 'commonDevtestResources'))
+}
+
+tasks.named('compileJava', JavaCompile) {
+    dependsOn(configurations.commonJava)
+    source(configurations.commonJava)
+}
+
+tasks.named('compileDevtestJava', JavaCompile) {
+    dependsOn(configurations.commonDevtestJava)
+    source(configurations.commonDevtestJava)
+}
+
+tasks.named('check') {
+    dependsOn('compileDevtestJava')
+}
+
+processResources {
+    dependsOn(configurations.commonResources)
+    from(configurations.commonResources)
+}
+
+tasks.named('processDevtestResources', ProcessResources) {
+    dependsOn(configurations.commonDevtestResources)
+    from(configurations.commonDevtestResources)
+}
+
+tasks.named('javadoc', Javadoc).configure {
+    dependsOn(configurations.commonJava)
+    source(configurations.commonJava)
+}
+
+tasks.named('sourcesJar', Jar) {
+    dependsOn(configurations.commonJava)
+    from(configurations.commonJava)
+    dependsOn(configurations.commonResources)
+    from(configurations.commonResources)
+}

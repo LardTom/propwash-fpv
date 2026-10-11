@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "mass_g": 3.2,
+  "mount": "propwash:whoop_aio",
+  "esc_continuous_a": 5.0,
+  "cells": [1, 2],
+  "all_in_one": true,
+  "sort": 0
+}

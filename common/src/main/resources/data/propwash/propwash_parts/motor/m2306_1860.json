@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "mass_g": 31.0,
+  "stator": "2306.5",
+  "kv": 1860,
+  "mount": "propwash:m22",
+  "max_current_a": 42.0,
+  "resistance_ohm": 0.06,
+  "cells": [6, 6],
+  "sort": 4,
+  "visual": {"accent": "#d83a5c"}
+}

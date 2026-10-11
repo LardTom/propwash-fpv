@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "mass_g": 560.0,
+  "creative": false,
+  "cells": 8,
+  "capacity_mah": 4500,
+  "cell_resistance_ohm": 0.014,
+  "c_rating": 12,
+  "chemistry": "propwash:lion",
+  "pack_mm": [140.0, 45.0, 70.0],
+  "connector": "XT60",
+  "visual": {"accent": "#1a8f8b"}
+}

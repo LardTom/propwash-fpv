@@ -1,0 +1,79 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 50
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:digital_hd",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2306_1860",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:b6s_1300",
+          "weight": 6,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:battery_charge": 0.4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:b6s_4000_lion",
+          "weight": 6,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:battery_charge": 0.4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:race_5",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:goggles_digital",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:long_range_7",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2807_1300",
+          "weight": 5,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:action_cam_heavy",
+          "weight": 4
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

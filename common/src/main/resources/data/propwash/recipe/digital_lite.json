@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_video",
+  "key": {
+    "T": "minecraft:tinted_glass",
+    "A": "minecraft:lightning_rod",
+    "H": "propwash:hd_chip",
+    "B": "propwash:circuit_board"
+  },
+  "pattern": [
+    "TA",
+    "HB"
+  ],
+  "result": {
+    "id": "propwash:digital_lite"
+  }
+}

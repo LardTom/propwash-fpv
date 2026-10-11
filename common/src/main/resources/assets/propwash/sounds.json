@@ -1,0 +1,79 @@
+{
+  "drone.motor": {
+    "subtitle": "subtitles.propwash.drone.motor",
+    "sounds": [
+      { "name": "propwash:audio/silence", "stream": true }
+    ]
+  },
+  "drone.motor_pilot": {
+    "sounds": [
+      { "name": "propwash:audio/silence", "stream": true }
+    ]
+  },
+  "drone.motor_sample": {
+    "subtitle": "subtitles.propwash.drone.motor",
+    "sounds": [
+      { "name": "propwash:audio/motor_loop" }
+    ]
+  },
+  "drone.locator": {
+    "subtitle": "subtitles.propwash.drone.locator",
+    "sounds": [
+      { "name": "propwash:audio/locator", "attenuation_distance": 64 }
+    ]
+  },
+  "drone.crash": {
+    "subtitle": "subtitles.propwash.drone.crash",
+    "sounds": [
+      { "name": "propwash:audio/crash", "preload": true }
+    ]
+  },
+  "beep.arm": {
+    "subtitle": "subtitles.propwash.beep.arm",
+    "sounds": [
+      { "name": "propwash:audio/beep_arm", "preload": true }
+    ]
+  },
+  "beep.disarm": {
+    "subtitle": "subtitles.propwash.beep.disarm",
+    "sounds": [
+      { "name": "propwash:audio/beep_disarm", "preload": true }
+    ]
+  },
+  "beep.low_battery": {
+    "subtitle": "subtitles.propwash.beep.low_battery",
+    "sounds": [
+      { "name": "propwash:audio/beep_low_battery", "preload": true }
+    ]
+  },
+  "beep.gate": {
+    "subtitle": "subtitles.propwash.beep.gate",
+    "sounds": [
+      { "name": "propwash:audio/beep_gate", "preload": true }
+    ]
+  },
+  "beep.lap": {
+    "subtitle": "subtitles.propwash.beep.lap",
+    "sounds": [
+      { "name": "propwash:audio/beep_lap", "preload": true }
+    ]
+  },
+  "beep.countdown": {
+    "subtitle": "subtitles.propwash.beep.countdown",
+    "sounds": [
+      { "name": "propwash:audio/beep_countdown", "preload": true }
+    ]
+  },
+  "beep.go": {
+    "subtitle": "subtitles.propwash.beep.go",
+    "sounds": [
+      { "name": "propwash:audio/beep_go", "preload": true }
+    ]
+  },
+  "beep.finish": {
+    "subtitle": "subtitles.propwash.beep.finish",
+    "sounds": [
+      { "name": "propwash:audio/beep_finish", "preload": true }
+    ]
+  }
+}

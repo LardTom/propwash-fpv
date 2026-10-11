@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_stack",
+  "key": {
+    "B": "propwash:circuit_board",
+    "R": "minecraft:redstone",
+    "C": "minecraft:copper_ingot",
+    "G": "minecraft:gold_ingot"
+  },
+  "pattern": [
+    "BRB",
+    "CGC",
+    "BRB"
+  ],
+  "result": {
+    "id": "propwash:stack_30"
+  }
+}

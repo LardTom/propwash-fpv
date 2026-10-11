@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_frame",
+  "key": {
+    "C": "propwash:carbon_plate",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "C C",
+    "CIC",
+    "C C"
+  ],
+  "result": {
+    "id": "propwash:freestyle_5"
+  }
+}

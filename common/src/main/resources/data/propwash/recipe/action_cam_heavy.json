@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_accessory",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "T": "minecraft:tinted_glass",
+    "L": "propwash:lipo_cell",
+    "H": "propwash:hd_chip",
+    "B": "propwash:circuit_board"
+  },
+  "pattern": [
+    "ITI",
+    "LHL",
+    "IBI"
+  ],
+  "result": {
+    "id": "propwash:action_cam_heavy"
+  }
+}

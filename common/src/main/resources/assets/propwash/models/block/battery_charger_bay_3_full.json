@@ -1,0 +1,98 @@
+{
+  "textures": {
+    "particle": "propwash:block/battery_charger_side",
+    "led": "propwash:block/battery_charger_front_done",
+    "pack": "propwash:block/battery_charger_pack"
+  },
+  "elements": [
+    {
+      "name": "led_3",
+      "from": [
+        2.75,
+        4.0,
+        1.4
+      ],
+      "to": [
+        4.25,
+        5.0,
+        1.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#led",
+          "uv": [
+            0.0,
+            0.0,
+            1.5,
+            1.0
+          ]
+        }
+      },
+      "light_emission": 12
+    },
+    {
+      "name": "pack_3",
+      "from": [
+        2.5,
+        5.0,
+        6.0
+      ],
+      "to": [
+        4.5,
+        9.5,
+        10.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#pack",
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            4.0
+          ]
+        },
+        "north": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 3
+        },
+        "south": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 3
+        },
+        "east": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 3
+        },
+        "west": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 3
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "textures": {
+    "particle": "propwash:block/battery_charger_side",
+    "led": "propwash:block/battery_charger_front_idle",
+    "pack": "propwash:block/battery_charger_pack"
+  },
+  "elements": [
+    {
+      "name": "led_3",
+      "from": [
+        2.75,
+        4.0,
+        1.4
+      ],
+      "to": [
+        4.25,
+        5.0,
+        1.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#led",
+          "uv": [
+            0.0,
+            0.0,
+            1.5,
+            1.0
+          ]
+        }
+      }
+    }
+  ]
+}

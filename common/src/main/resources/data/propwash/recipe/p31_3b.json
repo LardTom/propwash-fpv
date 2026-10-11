@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_prop",
+  "key": {
+    "K": "minecraft:dried_kelp",
+    "N": "minecraft:iron_nugget"
+  },
+  "pattern": [
+    "K K",
+    " N "
+  ],
+  "result": {
+    "id": "propwash:p31_3b",
+    "count": 4
+  }
+}

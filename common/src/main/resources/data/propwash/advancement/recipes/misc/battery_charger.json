@@ -1,0 +1,144 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_iron_ingot": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:iron_ingot"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_glass_pane": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:glass_pane"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_copper_ingot": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:copper_ingot"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_circuit_board": {
+      "conditions": {
+        "items": [
+          {
+            "items": "propwash:circuit_board"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_smooth_stone_slab": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:smooth_stone_slab"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_propwash_item": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "propwash:action_cam_flashback",
+              "propwash:action_cam_heavy",
+              "propwash:action_cam_light",
+              "propwash:aio_20",
+              "propwash:aio_whoop",
+              "propwash:analog_nano",
+              "propwash:analog_race",
+              "propwash:b1s_300_hv",
+              "propwash:b4s_650",
+              "propwash:b6s_1100",
+              "propwash:b6s_1300",
+              "propwash:b6s_4000_lion",
+              "propwash:battery_charger",
+              "propwash:carbon_plate",
+              "propwash:cinewhoop_3",
+              "propwash:circuit_board",
+              "propwash:copper_coil",
+              "propwash:course_tool",
+              "propwash:creative_fc",
+              "propwash:digital_hd",
+              "propwash:digital_lite",
+              "propwash:dive_cube",
+              "propwash:drone",
+              "propwash:drone_workbench",
+              "propwash:freeform_gate",
+              "propwash:freestyle_5",
+              "propwash:gate_large",
+              "propwash:gate_medium",
+              "propwash:gate_pole",
+              "propwash:gate_small",
+              "propwash:goggles_analog",
+              "propwash:goggles_creative",
+              "propwash:goggles_digital",
+              "propwash:gripper",
+              "propwash:hd_chip",
+              "propwash:led_strip",
+              "propwash:lipo_cell",
+              "propwash:long_range_7",
+              "propwash:m0802_22000",
+              "propwash:m1404_4600",
+              "propwash:m2004_3000",
+              "propwash:m2207_1750",
+              "propwash:m2306_1860",
+              "propwash:m2807_1300",
+              "propwash:p31_3b",
+              "propwash:p31_4b",
+              "propwash:p3_3b",
+              "propwash:p51_3b",
+              "propwash:p7_2b",
+              "propwash:race_5",
+              "propwash:race_flag",
+              "propwash:remote",
+              "propwash:signal_repeater",
+              "propwash:slalom_pole",
+              "propwash:stack_30",
+              "propwash:whoop_65"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "propwash:battery_charger"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_iron_ingot",
+      "has_glass_pane",
+      "has_copper_ingot",
+      "has_circuit_board",
+      "has_smooth_stone_slab",
+      "has_propwash_item"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "propwash:battery_charger"
+    ]
+  }
+}

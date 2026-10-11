@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "mass_g": 24.0,
+  "creative": false,
+  "mount": "propwash:s30",
+  "esc_continuous_a": 65.0,
+  "cells": [3, 8],
+  "visual": {"accent": "#3a3d44"}
+}

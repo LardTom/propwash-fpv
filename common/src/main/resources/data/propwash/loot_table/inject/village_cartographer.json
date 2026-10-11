@@ -1,0 +1,60 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 60
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:analog_nano",
+          "weight": 12
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:circuit_board",
+          "weight": 10,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 2
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:carbon_plate",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 2
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:analog_race",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:goggles_analog",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:action_cam_light",
+          "weight": 3
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+* text eol=lf
+*.bat text eol=crlf
+*.patch text eol=lf
+*.java text eol=lf
+*.gradle text eol=crlf
+*.png binary
+*.gif binary
+*.exe binary
+*.dll binary
+*.jar binary
+*.lzma binary
+*.zip binary
+*.pyd binary
+*.cfg text eol=lf
+*.jks binary
+*.ogg binary
+# Generiert von :common:mergeLang aus common/src/lang/<modul>/ — Merge-Konflikte nicht von Hand lösen (docs/FOUNDATION.md §10)
+common/src/main/resources/assets/propwash/lang/*.json linguist-generated=true
+# Tages-Changelog: jedes Modul ergänzt nur eigene Zeilen, Konflikte automatisch mit beiden Seiten lösen (docs/FOUNDATION.md §10)
+changelogs/*.md merge=union

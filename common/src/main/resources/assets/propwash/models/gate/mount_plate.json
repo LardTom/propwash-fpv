@@ -1,0 +1,197 @@
+{
+  "textures": {
+    "frame": "propwash:item/gate/frame",
+    "particle": "propwash:item/gate/frame"
+  },
+  "elements": [
+    {
+      "name": "plate",
+      "from": [
+        6.0,
+        0.0,
+        4.0
+      ],
+      "to": [
+        10.0,
+        1.0,
+        12.0
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0.0,
+            4.0,
+            1.5,
+            8.0
+          ],
+          "texture": "#frame"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            4.0,
+            1.5,
+            8.0
+          ],
+          "texture": "#frame"
+        },
+        "north": {
+          "uv": [
+            2.0,
+            4.0,
+            3.5,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            2.0,
+            4.0,
+            3.5,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            4.0,
+            4.0,
+            8.0,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            4.0,
+            4.0,
+            8.0,
+            4.5
+          ],
+          "texture": "#frame"
+        }
+      }
+    },
+    {
+      "name": "bolt_near",
+      "from": [
+        7.5,
+        1.0,
+        4.5
+      ],
+      "to": [
+        8.5,
+        1.5,
+        5.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "up": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        }
+      }
+    },
+    {
+      "name": "bolt_far",
+      "from": [
+        7.5,
+        1.0,
+        10.5
+      ],
+      "to": [
+        8.5,
+        1.5,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "up": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
+}

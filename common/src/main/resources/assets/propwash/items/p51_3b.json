@@ -1,0 +1,74 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": "none",
+        "model": {
+          "type": "minecraft:select",
+          "property": "minecraft:custom_model_data",
+          "index": 0,
+          "cases": [
+            {
+              "when": "ccw",
+              "model": {
+                "type": "minecraft:model",
+                "model": "propwash:part/prop/p51_3b_ccw"
+              }
+            },
+            {
+              "when": "blur",
+              "model": {
+                "type": "minecraft:model",
+                "model": "propwash:part/prop/p51_3b_blur"
+              }
+            },
+            {
+              "when": "ccw_blur",
+              "model": {
+                "type": "minecraft:model",
+                "model": "propwash:part/prop/p51_3b_blur"
+              }
+            }
+          ],
+          "fallback": {
+            "type": "minecraft:model",
+            "model": "propwash:part/prop/p51_3b"
+          }
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:range_dispatch",
+      "property": "propwash:prop_damage",
+      "entries": [
+        {
+          "threshold": 1.0,
+          "model": {
+            "type": "minecraft:model",
+            "model": "propwash:part/prop/p51_3b_worn"
+          }
+        },
+        {
+          "threshold": 2.0,
+          "model": {
+            "type": "minecraft:model",
+            "model": "propwash:part/prop/p51_3b_damaged"
+          }
+        },
+        {
+          "threshold": 3.0,
+          "model": {
+            "type": "minecraft:model",
+            "model": "propwash:part/prop/p51_3b_broken"
+          }
+        }
+      ],
+      "fallback": {
+        "type": "minecraft:model",
+        "model": "propwash:part/prop/p51_3b"
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_goggles",
+  "key": {
+    "L": "minecraft:leather",
+    "H": "propwash:hd_chip",
+    "T": "minecraft:tinted_glass",
+    "G": "minecraft:gold_ingot"
+  },
+  "pattern": [
+    "LHL",
+    "TGT"
+  ],
+  "result": {
+    "id": "propwash:goggles_digital"
+  }
+}

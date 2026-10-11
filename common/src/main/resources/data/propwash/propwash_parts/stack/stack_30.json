@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "mass_g": 18.0,
+  "mount": "propwash:s30",
+  "esc_continuous_a": 55.0,
+  "cells": [3, 6],
+  "all_in_one": false,
+  "sort": 2
+}

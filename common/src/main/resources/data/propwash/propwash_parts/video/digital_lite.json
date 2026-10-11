@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "mass_g": 8.5,
+  "link": "digital",
+  "latency_ms": 26,
+  "range_blocks": 300,
+  "image_quality": 0.85,
+  "camera_width_mm": 14.0,
+  "camera_fov_deg": 104.0,
+  "power_w": 5.5,
+  "sort": 2
+}

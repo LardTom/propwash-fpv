@@ -1,0 +1,15 @@
+{
+  "block.propwash.signal_repeater": "Signal-Repeater",
+  "gamerule.propwash.signal_repeaters": "Signal-Repeater je Verbindung",
+  "gamerule.propwash.signal_repeaters.description": "Wie viele Signal-Repeater Bild und Funk zwischen Pilot und Drohne hintereinander weiterreichen dürfen (höchstens 4). Jeder Repeater reicht 128 Blöcke weit, das Signal läuft durch Wände und Decken wie sonst auch; Runden über Repeater zählen für Bestenlisten. 0 = Repeater aus.",
+  "gamerule.propwash.signal_repeaters.value.0": "Aus",
+  "propwash.help.signal_repeater.fits": "Analog- und Digitalvideo, jede Funke",
+  "propwash.help.signal_repeater.summary": "Reicht Bild und Funk weiter, 128 Blöcke",
+  "propwash.help.signal_repeater.use.1": "An Boden, Wand oder Decke setzen.",
+  "propwash.help.signal_repeater.use.2": "Ketten bis zu 4 Repeatern (Welt-Regel).",
+  "propwash.help.signal_repeater.use.3": "OSD „RPT“: genutzte Repeater, Signal je Strecke.",
+  "propwash.help.signal_repeater.use.4": "Runden über Repeater zählen ganz normal.",
+  "propwash.help.signal_repeater.what.1": "Für große Bauten: Beton und Decken schlucken",
+  "propwash.help.signal_repeater.what.2": "das Video. Ein Repeater am Treppenhaus",
+  "propwash.help.signal_repeater.what.3": "bringt das Bild in die nächste Etage."
+}

@@ -1,0 +1,45 @@
+rates|rate|raten|drehrate|drehraten|empfindlichkeit|sensitivity|turn speed|rotation speed|degrees per second
+expo|exponential|exponentiell|expo kurve|expo curve
+super rate|superrate
+rc rate|rcrate
+deadband|dead band|deadzone|dead zone|totzone|tote zone|totband
+pid|gains|tuning|regler|regelung
+filter|filters|lpf|lowpass|low pass|tiefpass|rauschen|noise|gyro filter
+throttle|gas|gaskurve|throttle curve|schub
+idle|leerlauf|motor idle
+airmode|air mode
+angle mode|horizon|selbstnivellierung|self level|level mode
+fov|field of view|sichtfeld|blickwinkel
+camera|kamera|uptilt|camera angle|kamerawinkel|tilt|neigung
+volume|lautstärke|sound|ton|audio|geräusch|geräusche
+osd|on screen display|overlay|anzeige|hud
+key|keys|keybinding|key binding|keybind|taste|tasten|tastenbelegung|binding|belegung|hotkey|shortcut|kürzel
+world rule|world rules|gamerule|gamerules|game rule|welt regel|welt regeln|spielregel|spielregeln|server rule
+rescue|gps rescue|return to home|rth|heimflug|rettung|failsafe
+battery|akku|lipo|voltage|spannung
+led|leds|light|licht|beleuchtung|headlight|scheinwerfer
+color|colour|farbe|lackierung|paint
+drone name|craft name|drohnenname|name der drohne
+arm|arming|scharf|scharfschalten|arm angle|small angle|scharf winkel
+video|vtx|video link|videoverbindung|videokanal|video channel|frequenz|frequency
+latency|delay|verzögerung|latenz
+radio|transmitter|controller|gamepad|joystick|funke|fernsteuerung|sender
+mode|modes|modi|flight mode|flugmodus|flugmodi|switch|schalter
+calibration|calibrate|kalibrierung|kalibrieren|wizard|assistent|setup|einrichtung|einrichten
+tricks|trick|freestyle|stunts
+speed|geschwindigkeit|tempo|units|einheit|einheiten|km h|mph
+recording|record|aufnahme|aufnehmen|action cam|actioncam
+spectate|spectator|zuschauen|zuschauer
+3d mode|3d modus|reverse|umkehren|turtle
+preset|presets|voreinstellung|voreinstellungen|vorlage|vorlagen|profile|profil|template|templates
+reset|defaults|default|standard|standardwerte|zurücksetzen
+altitude hold|alt hold|höhe halten|höhe|position hold|poshold|position halten|hold
+gravity|schwerkraft
+gate|gates|tor|tore
+race|racing|rennen|lap|runde|runden|leaderboard|bestenliste
+guide|flugschule|tutorial|lesson|lektion|lektionen|training|flugtraining
+image format|aspect ratio|seitenverhältnis|bildformat|widescreen
+damage|schaden|crash|absturz|verschleiß|wear
+wind|böen|gusts|turbulence|turbulenz
+trail|trails|drone trails|drohnen trails|spur|spuren|schweif|leuchtspur|kondensstreifen|streak|tracer|smoke trail
+mouse|maus|mausflug|maussteuerung|mouse control|mouse flight|aim|zielen|dpi|mausrad|mouse wheel|scroll wheel|cursor|mauszeiger

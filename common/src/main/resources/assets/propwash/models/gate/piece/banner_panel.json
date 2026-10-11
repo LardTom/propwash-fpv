@@ -1,0 +1,59 @@
+{
+  "textures": {
+    "banner": "propwash:item/gate/banner",
+    "particle": "propwash:item/gate/banner"
+  },
+  "elements": [
+    {
+      "name": "banner_panel_0",
+      "from": [
+        8.0,
+        0.0,
+        7.5
+      ],
+      "to": [
+        16.0,
+        8.0,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            8.0
+          ],
+          "texture": "#banner"
+        },
+        "south": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            8.0
+          ],
+          "texture": "#banner"
+        },
+        "up": {
+          "uv": [
+            0.0,
+            8.0,
+            8.0,
+            9.0
+          ],
+          "texture": "#banner"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            8.0,
+            8.0,
+            9.0
+          ],
+          "texture": "#banner"
+        }
+      }
+    }
+  ]
+}

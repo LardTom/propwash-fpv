@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "Q": "minecraft:quartz",
+    "A": "minecraft:amethyst_shard",
+    "G": "minecraft:gold_nugget",
+    "B": "propwash:circuit_board"
+  },
+  "pattern": [
+    "QAQ",
+    "GBG"
+  ],
+  "result": {
+    "id": "propwash:hd_chip"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "mass_g": 118.0,
+  "role": "freestyle",
+  "shape": "deadcat",
+  "wheelbase_mm": 230,
+  "max_prop_mm": 130,
+  "motor_mounts": ["propwash:m22"],
+  "stack_mounts": ["propwash:s30"],
+  "accessory_mounts": ["top", "bottom"],
+  "arms": {
+    "front_left": {"pos": [-105.0, 0.0, -30.0], "spin": "cw"},
+    "front_right": {"pos": [105.0, 0.0, -30.0], "spin": "ccw"},
+    "rear_left": {"pos": [-80.0, 0.0, 90.0], "spin": "ccw"},
+    "rear_right": {"pos": [80.0, 0.0, 90.0], "spin": "cw"}
+  },
+  "battery": {"on_top": true, "plate_mm": 30.0},
+  "electronics_mm": 12.0,
+  "camera": {"pos": [0.0, 16.0, -92.0], "tilt_deg": 30.0},
+  "aero": {"frontal_area_m2": 0.012, "drag_coefficient": 0.9},
+  "battery_fit": {"cells": [4, 6], "max_mass_g": 260.0, "preferred_min_cells": 6, "preferred_min_capacity_mah": 0},
+  "visual": {"accent": "#2f7de0"}
+}

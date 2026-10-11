@@ -1,0 +1,77 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 70
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:copper_coil",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 2,
+              "max": 4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:circuit_board",
+          "weight": 6,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 3
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:lipo_cell",
+          "weight": 6,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 3
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2207_1750",
+          "weight": 4,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:aio_20",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:analog_race",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:led_strip",
+          "weight": 2
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

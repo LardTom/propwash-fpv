@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_video",
+  "key": {
+    "T": "minecraft:tinted_glass",
+    "A": "minecraft:lightning_rod",
+    "G": "minecraft:gold_ingot",
+    "H": "propwash:hd_chip",
+    "E": "minecraft:echo_shard"
+  },
+  "pattern": [
+    "TAT",
+    "GHG",
+    " E "
+  ],
+  "result": {
+    "id": "propwash:digital_hd"
+  }
+}

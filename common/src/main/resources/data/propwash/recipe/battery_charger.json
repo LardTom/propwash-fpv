@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass_pane",
+    "C": "minecraft:copper_ingot",
+    "B": "propwash:circuit_board",
+    "S": "minecraft:smooth_stone_slab"
+  },
+  "pattern": [
+    "IGI",
+    "CBC",
+    "SSS"
+  ],
+  "result": {
+    "id": "propwash:battery_charger"
+  }
+}

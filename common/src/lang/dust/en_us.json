@@ -1,0 +1,8 @@
+{
+  "propwash.dust.section": "Propwash dust",
+  "propwash.dust.enabled": "Stir up dust",
+  "propwash.dust.enabled.tip": "Subtle dust under the rotors when a drone flies close to the ground, a faint spray over water. Follows Minecraft's Particles setting and is off at Minimal.",
+  "propwash.dust.intensity": "Dust amount: %s",
+  "propwash.dust.intensity.tip": "How much dust the rotors stir up. The cap on simultaneous particles always stays active.",
+  "propwash.dust.percent": "%s%%"
+}

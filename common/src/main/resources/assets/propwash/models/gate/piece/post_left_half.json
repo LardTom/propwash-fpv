@@ -1,0 +1,59 @@
+{
+  "textures": {
+    "frame": "propwash:item/gate/frame",
+    "particle": "propwash:item/gate/frame"
+  },
+  "elements": [
+    {
+      "name": "post_left_0_half",
+      "from": [
+        8.25,
+        0.0,
+        6.0
+      ],
+      "to": [
+        12.0,
+        4.0,
+        10.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            4.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            4.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            2.0
+          ],
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
+}

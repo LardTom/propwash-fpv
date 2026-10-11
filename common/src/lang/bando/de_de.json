@@ -1,0 +1,18 @@
+{
+  "propwash.guide.scene.bandos.callout.chest": "Gebrauchte Props, Motoren, Zellen",
+  "propwash.guide.scene.bandos.callout.gap": "Zwischen den Trägern hindurch",
+  "propwash.guide.scene.bandos.callout.locate": "/locate structure #propwash:bandos",
+  "propwash.guide.scene.bandos.callout.roof": "Raus durchs Dachloch",
+  "propwash.guide.scene.bandos.callout.ruin": "Jeder Bando ist anders gebaut",
+  "propwash.guide.scene.bandos.callout.window": "Fenster und Tore",
+  "propwash.guide.scene.bandos.description": "Verlassene Bauwerke zum Freestyle-Fliegen finden",
+  "propwash.guide.scene.bandos.step.chest.text": "Manche Bandos verstecken eine Truhe mit Propwash-Teilen, oft gebraucht – manchmal oben auf einem Laufsteg oder Dachboden.",
+  "propwash.guide.scene.bandos.step.chest.title": "Ab und zu eine Truhe",
+  "propwash.guide.scene.bandos.step.find.text": "Bandos sind verlassene Bauwerke: Scheunen, Fabriken, Wassertürme, Stege oder Bohrinseln. Sie sind selten, passen zum Biom und sind nie gleich.",
+  "propwash.guide.scene.bandos.step.find.title": "Bandos in der Welt",
+  "propwash.guide.scene.bandos.step.fly.text": "Tore, Fenster, Dachlöcher, Laufstege und Lücken zwischen Trägern laden zum Durchfliegen ein – ideal für Gaps und Power Loops.",
+  "propwash.guide.scene.bandos.step.fly.title": "Durch Lücken fliegen",
+  "propwash.guide.scene.bandos.step.locate.text": "Mit Cheats zeigt /locate structure #propwash:bandos den nächsten Bando. Es gibt sie nur, wenn die Welt Bauwerke erzeugt.",
+  "propwash.guide.scene.bandos.step.locate.title": "Gezielt suchen",
+  "propwash.guide.scene.bandos.title": "Bandos: verlassene Spots"
+}

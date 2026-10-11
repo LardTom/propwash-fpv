@@ -1,0 +1,68 @@
+{
+  "placement": {
+    "type": "propwash:world_course",
+    "avoid": [
+      {
+        "other_set": "minecraft:woodland_mansions",
+        "chunk_count": 6
+      },
+      {
+        "other_set": "minecraft:ocean_monuments",
+        "chunk_count": 4
+      },
+      {
+        "other_set": "minecraft:desert_pyramids",
+        "chunk_count": 2
+      },
+      {
+        "other_set": "minecraft:jungle_temples",
+        "chunk_count": 2
+      },
+      {
+        "other_set": "minecraft:igloos",
+        "chunk_count": 2
+      },
+      {
+        "other_set": "minecraft:swamp_huts",
+        "chunk_count": 2
+      },
+      {
+        "other_set": "propwash:world_courses",
+        "chunk_count": 4
+      }
+    ],
+    "salt": 1964823117,
+    "separation": 16,
+    "spacing": 44
+  },
+  "structures": [
+    {
+      "structure": "propwash:bando/field",
+      "weight": 1
+    },
+    {
+      "structure": "propwash:bando/desert",
+      "weight": 1
+    },
+    {
+      "structure": "propwash:bando/snow",
+      "weight": 1
+    },
+    {
+      "structure": "propwash:bando/jungle",
+      "weight": 1
+    },
+    {
+      "structure": "propwash:bando/coast",
+      "weight": 1
+    },
+    {
+      "structure": "propwash:bando/mountain",
+      "weight": 1
+    },
+    {
+      "structure": "propwash:bando/swamp",
+      "weight": 1
+    }
+  ]
+}

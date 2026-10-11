@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "mass_g": 6.0,
+  "mount": "propwash:s20",
+  "esc_continuous_a": 60.0,
+  "cells": [1, 12],
+  "all_in_one": true,
+  "board_size_mm": 24.0,
+  "rarity": "epic",
+  "recycle": "none",
+  "sort": 9,
+  "visual": {"accent": "#c040ff"}
+}

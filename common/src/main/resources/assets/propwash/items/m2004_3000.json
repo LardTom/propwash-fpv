@@ -1,0 +1,43 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": "none",
+        "model": {
+          "type": "minecraft:model",
+          "model": "propwash:part/motor/m2004_3000"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "propwash:part/motor/m2004_3000",
+      "transformation": {
+        "left_rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "right_rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.276,
+          1.276,
+          1.276
+        ],
+        "translation": [
+          -0.138,
+          -0.138,
+          -0.138
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 60
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:circuit_board",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 2
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:lipo_cell",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 2
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:copper_coil",
+          "weight": 6,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 2
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:b1s_300_hv",
+          "weight": 4,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:battery_charge": 0.4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:b4s_650",
+          "weight": 3,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:battery_charge": 0.4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:analog_race",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2207_1750",
+          "weight": 3,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:drone",
+          "weight": 2,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:drone_build": {
+                "frame": "whoop_65",
+                "stack": "aio_whoop",
+                "motor": "m0802_22000",
+                "prop": "p31_4b",
+                "video": "analog_nano",
+                "battery": "b1s_300_hv"
+              },
+              "propwash:battery_charge": 0.4,
+              "minecraft:item_name": {
+                "translate": "propwash.content.preset.whoop"
+              }
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:goggles_analog",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:led_strip",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:remote",
+          "weight": 1
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

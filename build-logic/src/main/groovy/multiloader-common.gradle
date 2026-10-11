@@ -1,0 +1,148 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+base {
+    archivesName = "${mod_id}-${project.name}-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// Optionale Integration LambDynamicLights (compat.lambdynamiclights): nur die API zum Kompilieren, kein Laufzeit-Bestandteil.
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Gegy (LambDynamicLights)'
+                url = uri('https://maven.gegy.dev/releases/')
+            }
+        }
+        filter {
+            includeGroup('dev.lambdaurora.lambdynamiclights')
+        }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly("dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:${lambdynamiclights_version}") {
+        transitive = false
+    }
+    compileOnly("dev.yumi.commons:yumi-commons-event:${yumi_commons_version}") {
+        transitive = false
+    }
+}
+
+// Javadoc: UTF-8 (Umlaute) und kein Doclint, damit fehlende @param/@return-Angaben den Build nicht brechen.
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+tasks.withType(Jar).configureEach {
+    from(rootProject.files('LICENSE', 'LICENSE-MIT', 'NOTICE')) {
+        rename { "${it}_${mod_name}" }
+    }
+}
+
+jar {
+
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_name,
+                'Specification-Vendor'  : mod_author,
+                'Specification-Version' : project.jar.archiveVersion,
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': project.jar.archiveVersion,
+                'Implementation-Vendor' : mod_author,
+                'Built-On-Minecraft'    : minecraft_version
+        ])
+    }
+}
+
+processResources {
+    var expandProps = [
+            'version'                      : version,
+            'group'                        : project.group, //Else we target the task's group.
+            'minecraft_version'            : minecraft_version,
+            'minecraft_version_range'      : minecraft_version_range,
+            'fabric_version'               : fabric_version,
+            'fabric_loader_version'        : fabric_loader_version,
+            'mod_name'                     : mod_name,
+            'mod_author'                   : mod_author,
+            'mod_id'                       : mod_id,
+            'license'                      : license,
+            'description'                  : project.description,
+            'neoforge_version'             : neoforge_version,
+            'neoforge_loader_version_range': neoforge_loader_version_range,
+            'credits'                      : credits,
+            'homepage_url'                 : homepage_url,
+            'java_version'                 : java_version
+    ]
+
+    var jsonExpandProps = expandProps.collectEntries {
+        key, value -> [(key): value instanceof String ? value.replace('\n', '\\\\n') : value]
+    }
+
+    filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml']) {
+        expand expandProps
+    }
+
+    filesMatching(['pack.mcmeta', 'fabric.mod.json', '*.mixins.json']) {
+        expand jsonExpandProps
+    }
+
+    inputs.properties(expandProps)
+}
+
+// Maven-Veröffentlichung für Addon-Entwicklung (Parts-API): ./gradlew publishToMavenLocal legt common, fabric und neoforge
+// samt Quellen- und Javadoc-Jar unter de.lardtom:propwash-<modul>-<mc>:<version> in ~/.m2 ab (docs/api/addon-guide.md).
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            groupId = maven_group
+            artifactId = base.archivesName.get()
+            version = project.version
+            from components.java
+            pom {
+                name = "${mod_name} (${project.name})"
+                description = "Propwash FPV (${project.name}) for Minecraft ${minecraft_version}, with the public Parts API for add-ons"
+                url = homepage_url
+                licenses {
+                    license {
+                        name = 'PolyForm Shield License 1.0.0 with additional permissions'
+                        url = 'https://polyformproject.org/licenses/shield/1.0.0'
+                        comments = 'Core of the mod, see LICENSE in the jar'
+                    }
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/license/mit'
+                        comments = 'Add-on API (de.lardtom.propwash.api), example add-on and documentation, see LICENSE-MIT in the jar'
+                    }
+                }
+                developers {
+                    developer {
+                        id = mod_author
+                        name = mod_author
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        if (System.getenv('local_maven_url')) {
+            maven {
+                url System.getenv('local_maven_url')
+            }
+        }
+    }
+}

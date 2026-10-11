@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "de.lardtom.propwash.mixin.ui",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "client": [
+    "client.AbstractSliderButtonMixin",
+    "client.ButtonPlainMixin",
+    "client.CheckboxMixin",
+    "client.CycleButtonMixin",
+    "client.EditBoxMixin",
+    "client.FullTextSearchTreeMixin",
+    "client.GuiGraphicsExtractorMixin",
+    "client.HudMixin",
+    "client.MouseHandlerMixin",
+    "client.TooltipRenderUtilMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

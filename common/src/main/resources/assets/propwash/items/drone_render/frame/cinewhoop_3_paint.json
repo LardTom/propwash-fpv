@@ -1,0 +1,28 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:part/frame/cinewhoop_3_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 2237737
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 2631722
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 2,
+        "default": 2206882
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 3,
+        "default": 1749668
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "mass_g": 78.0,
+  "cells": 4,
+  "capacity_mah": 650,
+  "cell_resistance_ohm": 0.01,
+  "c_rating": 95,
+  "chemistry": "propwash:lipo",
+  "sort": 1,
+  "visual": {"accent": "#f07c1e"}
+}

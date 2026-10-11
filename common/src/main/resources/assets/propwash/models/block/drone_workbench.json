@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "propwash:block/drone_workbench_front",
+    "down": "propwash:block/drone_workbench_bottom",
+    "up": "propwash:block/drone_workbench_top",
+    "north": "propwash:block/drone_workbench_front",
+    "south": "propwash:block/drone_workbench_front",
+    "east": "propwash:block/drone_workbench_side",
+    "west": "propwash:block/drone_workbench_side"
+  }
+}

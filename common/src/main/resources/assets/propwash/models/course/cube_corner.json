@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "pole": "propwash:item/course/pole",
+    "particle": "propwash:item/course/pole"
+  },
+  "elements": [
+    {
+      "name": "corner",
+      "from": [
+        6.75,
+        -1.25,
+        6.75
+      ],
+      "to": [
+        9.25,
+        1.25,
+        9.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12.0,
+            12.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#pole"
+        },
+        "south": {
+          "uv": [
+            12.0,
+            12.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#pole"
+        },
+        "east": {
+          "uv": [
+            12.0,
+            12.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#pole"
+        },
+        "west": {
+          "uv": [
+            12.0,
+            12.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#pole"
+        },
+        "up": {
+          "uv": [
+            12.0,
+            12.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#pole"
+        },
+        "down": {
+          "uv": [
+            12.0,
+            12.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#pole"
+        }
+      }
+    }
+  ]
+}

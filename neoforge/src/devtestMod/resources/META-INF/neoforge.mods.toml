@@ -1,0 +1,13 @@
+modLoader = "javafml"
+loaderVersion = "*"
+license = "LicenseRef-PolyForm-Shield-1.0.0"
+
+[[mods]]
+modId = "propwash_devtest"
+version = "1.0.0"
+displayName = "Propwash Dev Tests"
+authors = "lardtom"
+description = '''Meldet die Mixins des Quell-Sets devtest für Selbsttest und Rauchtest an. Nie im Release-Jar.'''
+
+[[mixins]]
+config = "propwash.dev.mixins.json"

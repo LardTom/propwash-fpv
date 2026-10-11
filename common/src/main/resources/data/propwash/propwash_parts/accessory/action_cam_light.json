@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "mass_g": 42.0,
+  "slot": "top",
+  "size_mm": [46.0, 30.0, 26.0],
+  "flight_battery_w": 4.0,
+  "frontal_area_m2": 0.0014,
+  "lens": {"x_mm": 0.0, "length_mm": 7.0},
+  "action_cam": {
+    "max_height": 1080,
+    "max_fps": 60,
+    "stabilization": false,
+    "horizon_levelling": false,
+    "own_battery_wh": 0.0,
+    "record_w": 4.0,
+    "max_record_w": 4.0,
+    "fov_deg": 150.0,
+    "image_quality": 0.8,
+    "low_light_noise": 0.55,
+    "sensor_in": "1/2.8"
+  },
+  "sort": 1
+}

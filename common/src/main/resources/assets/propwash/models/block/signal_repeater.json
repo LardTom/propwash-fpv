@@ -1,0 +1,168 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "propwash:block/signal_repeater_body_side",
+    "base": "propwash:block/signal_repeater_base",
+    "body_side": "propwash:block/signal_repeater_body_side",
+    "body_top": "propwash:block/signal_repeater_body_top",
+    "antenna": "propwash:block/signal_repeater_antenna",
+    "led": "propwash:block/signal_repeater_led"
+  },
+  "elements": [
+    {
+      "name": "base",
+      "from": [
+        3.0,
+        0.0,
+        4.0
+      ],
+      "to": [
+        13.0,
+        1.0,
+        12.0
+      ],
+      "faces": {
+        "down": {
+          "texture": "#base",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#base"
+        },
+        "north": {
+          "texture": "#base"
+        },
+        "south": {
+          "texture": "#base"
+        },
+        "east": {
+          "texture": "#base"
+        },
+        "west": {
+          "texture": "#base"
+        }
+      }
+    },
+    {
+      "name": "housing",
+      "from": [
+        4.0,
+        1.0,
+        5.0
+      ],
+      "to": [
+        12.0,
+        3.5,
+        11.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#body_top"
+        },
+        "north": {
+          "texture": "#body_side"
+        },
+        "south": {
+          "texture": "#body_side"
+        },
+        "east": {
+          "texture": "#body_side"
+        },
+        "west": {
+          "texture": "#body_side"
+        }
+      }
+    },
+    {
+      "name": "antenna_0",
+      "from": [
+        5.0,
+        3.5,
+        7.5
+      ],
+      "to": [
+        6.0,
+        8.0,
+        8.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#antenna"
+        },
+        "north": {
+          "texture": "#antenna"
+        },
+        "south": {
+          "texture": "#antenna"
+        },
+        "east": {
+          "texture": "#antenna"
+        },
+        "west": {
+          "texture": "#antenna"
+        }
+      }
+    },
+    {
+      "name": "antenna_1",
+      "from": [
+        10.0,
+        3.5,
+        7.5
+      ],
+      "to": [
+        11.0,
+        8.0,
+        8.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#antenna"
+        },
+        "north": {
+          "texture": "#antenna"
+        },
+        "south": {
+          "texture": "#antenna"
+        },
+        "east": {
+          "texture": "#antenna"
+        },
+        "west": {
+          "texture": "#antenna"
+        }
+      }
+    },
+    {
+      "name": "led",
+      "from": [
+        7.25,
+        3.5,
+        9.25
+      ],
+      "to": [
+        8.75,
+        3.6,
+        10.25
+      ],
+      "faces": {
+        "up": {
+          "texture": "#led"
+        },
+        "north": {
+          "texture": "#led"
+        },
+        "south": {
+          "texture": "#led"
+        },
+        "east": {
+          "texture": "#led"
+        },
+        "west": {
+          "texture": "#led"
+        }
+      },
+      "light_emission": 12
+    }
+  ]
+}

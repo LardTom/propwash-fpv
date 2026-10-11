@@ -1,0 +1,18 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:part/motor/m2807_1300_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16758821
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 2829360
+      }
+    ]
+  }
+}

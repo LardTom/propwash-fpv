@@ -1,0 +1,38 @@
+{
+  "type": "propwash:bando",
+  "biomes": "#propwash:has_structure/bando/coast",
+  "spawn_overrides": {},
+  "step": "surface_structures",
+  "terrain_adaptation": "none",
+  "family": "coast",
+  "avoid_overlap": [
+    {
+      "other_set": "minecraft:ruined_portals",
+      "reach": 16
+    },
+    {
+      "other_set": "minecraft:shipwrecks",
+      "reach": 32
+    },
+    {
+      "other_set": "minecraft:ocean_ruins",
+      "reach": 32
+    },
+    {
+      "other_set": "minecraft:trail_ruins",
+      "reach": 48
+    },
+    {
+      "other_set": "minecraft:abandoned_camp",
+      "reach": 32
+    },
+    {
+      "other_set": "minecraft:villages",
+      "reach": 96
+    },
+    {
+      "other_set": "minecraft:pillager_outposts",
+      "reach": 96
+    }
+  ]
+}

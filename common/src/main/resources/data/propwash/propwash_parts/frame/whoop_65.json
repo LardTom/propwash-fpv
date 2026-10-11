@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "mass_g": 4.0,
+  "role": "whoop",
+  "shape": "true_x",
+  "wheelbase_mm": 65,
+  "max_prop_mm": 31,
+  "motor_mounts": ["propwash:m08"],
+  "stack_mounts": ["propwash:whoop_aio"],
+  "accessory_mounts": ["bottom"],
+  "battery": {"on_top": false, "plate_mm": -3.0},
+  "electronics_mm": 4.0,
+  "camera": {"pos": [0.0, 16.0, -20.0], "tilt_deg": 12.0},
+  "accessory_anchors": {
+    "bottom": {"pos": [0.0, 0.5, -25.6], "tilt_deg": 90.0, "length_mm": 10.0}
+  },
+  "aero": {"frontal_area_m2": 0.0035, "drag_coefficient": 1.1, "top_area_m2": 0.0041},
+  "duct": {},
+  "impact_tolerance": 14.0,
+  "battery_fit": {"cells": [1, 1], "max_mass_g": 10.0, "preferred_min_cells": 1, "preferred_min_capacity_mah": 0},
+  "sort": 0,
+  "recycle": "none"
+}

@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "mass_g": 1450.0,
+  "role": "x_class",
+  "shape": "true_x",
+  "wheelbase_mm": 820,
+  "props_mm": [250, 330],
+  "motor_mounts": ["propwash_rendertest:m42"],
+  "stack_mounts": ["propwash:s30"],
+  "accessory_mounts": ["top", "bottom"],
+  "camera": {"tilt_deg": 15.0},
+  "aero": {"frontal_area_m2": 0.08, "drag_coefficient": 1.0},
+  "impact_tolerance": 6.0,
+  "battery_fit": {"cells": [6, 8], "max_mass_g": 2500.0, "preferred_min_cells": 8, "preferred_min_capacity_mah": 4000},
+  "visual": {"accent": "#f2702a"}
+}

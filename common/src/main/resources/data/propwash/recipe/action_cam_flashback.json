@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_accessory",
+  "key": {
+    "K": "minecraft:clock",
+    "G": "minecraft:glass_pane",
+    "H": "propwash:hd_chip",
+    "C": "minecraft:copper_ingot",
+    "B": "propwash:circuit_board"
+  },
+  "pattern": [
+    " K ",
+    "GHG",
+    "CBC"
+  ],
+  "result": {
+    "id": "propwash:action_cam_flashback"
+  }
+}

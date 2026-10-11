@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "propwash_course",
+  "key": {
+    "B": "minecraft:iron_bars",
+    "G": "minecraft:glowstone_dust"
+  },
+  "pattern": [
+    "BGB",
+    "B B",
+    "BBB"
+  ],
+  "result": {
+    "id": "propwash:dive_cube"
+  }
+}

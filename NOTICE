@@ -1,0 +1,26 @@
+Propwash FPV
+Copyright (c) 2026 lardtom
+
+Required Notice: Copyright (c) 2026 lardtom
+
+Propwash FPV is licensed in two parts:
+
+- Core (everything not listed in LICENSE-MIT): PolyForm Shield License 1.0.0 with additional permissions (modpacks,
+  exit clause), see LICENSE.
+- Add-on API (package de.lardtom.propwash.api), example add-on and documentation: MIT License, see LICENSE-MIT.
+
+These terms apply from version 0.5.0 on. Propwash FPV 0.4.0 and older versions stay "All Rights Reserved".
+
+If you pass on any part of Propwash FPV, for example in a modpack, pass on LICENSE, LICENSE-MIT and this NOTICE with
+it (or their web addresses), including the "Required Notice" line above.
+
+
+Third-party material in the source repository
+
+- Gradle Wrapper (gradlew, gradlew.bat, gradle/wrapper/): Copyright the original authors, Apache License 2.0
+  (https://www.apache.org/licenses/LICENSE-2.0). Not part of the release files.
+- The Gradle setup started from the MultiLoader Template (https://github.com/jaredlll08/MultiLoader-Template),
+  CC0 1.0.
+
+
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.

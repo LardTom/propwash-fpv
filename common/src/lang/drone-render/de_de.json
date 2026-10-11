@@ -1,0 +1,19 @@
+{
+  "propwash.drone_render.tab": "Darstellung",
+  "propwash.drone_render.visual_scale": "Drohnengröße: %s",
+  "propwash.drone_render.size_notice.title": "Drohnen jetzt in echter Größe",
+  "propwash.drone_render.size_notice.message": "Drohnen erscheinen jetzt in echter Größe (1,0× statt 1,75×), so wirkt ihr Tempo echt. Zurückstellen: Konfigurator → Darstellung → Drohnengröße.",
+  "propwash.drone_render.prop_blur": "Unschärfe ab Gas: %s",
+  "propwash.drone_render.render_distance": "Sichtweite: %s",
+  "propwash.drone_render.arm_leds": "Arm-LEDs",
+  "propwash.drone_render.shadow": "Schatten",
+  "propwash.drone_render.shadow.tip": "Schatten der Drohnen am Boden. Mit einem Shaderpack zeichnet das Pack die Schatten, im FPV-Flug dann auch den der eigenen Drohne. Aus: keine Drohnen-Schatten, auch nicht mit Shaderpack.",
+  "propwash.drone_render.section": "Drohne in der Welt",
+  "propwash.drone_render.percent": "%s %%",
+  "propwash.drone_render.section.preview": "Vorschau",
+  "propwash.drone_render.section.fpv": "FPV-Bild",
+  "propwash.drone_render.fpv_props": "Props im FPV-Bild",
+  "propwash.drone_render.fpv_props.tip": "Zeigt die eigenen Props im Kamerabild genau dort, wo sie bei dieser Kameraposition, diesem Uptilt und diesem Sichtfeld wirklich zu sehen wären: beim 5-Zöller mit steilem Uptilt die Spitzen am Rand, beim Deadcat gar nicht. Nur Darstellung, kein Einfluss auf das Flugmodell.",
+  "propwash.drone_render.fpv_ducts": "Ducts im FPV-Bild",
+  "propwash.drone_render.fpv_ducts.tip": "Zeigt die Ducts des eigenen Whoops oder Cinewhoops im Kamerabild genau dort, wo sie bei dieser Kameraposition, diesem Uptilt und diesem Sichtfeld wirklich zu sehen wären – die vorderen Ducts in den unteren Ecken, weil die Kamera wie bei echten darüber sitzt. Nur Darstellung, kein Einfluss auf das Flugmodell."
+}

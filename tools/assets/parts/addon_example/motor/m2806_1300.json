@@ -1,0 +1,2 @@
+{"format": 1, "mass_g": 52.0, "stator": "2806.5", "kv": 1300, "mount": "propwash:m28", "max_current_a": 48.0,
+ "resistance_ohm": 0.062, "cells": [6, 8], "thermal": {"derate_start_c": 135.0, "max_temp_c": 155.0}, "visual": {"accent": "#3a7bd5"}}

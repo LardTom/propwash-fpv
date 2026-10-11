@@ -1,0 +1,23 @@
+{
+  "gamerule.propwash.drone_hits_entities": "Drohnen treffen Lebewesen",
+  "gamerule.propwash.drone_hits_entities.description": "Fliegende Drohnen prallen an Tieren, Monstern und Spielern ab und verletzen sie je nach Wucht (Masse × Tempo, höchstens 5 Herzen). Spieler nur mit PvP. Aus: Drohnen fliegen durch Lebewesen hindurch.",
+  "death.attack.propwash.drone_strike": "%1$s wurde von der Drohne von %2$s getroffen",
+  "death.attack.propwash.drone_strike.item": "%1$s wurde von der Drohne von %2$s getroffen (%3$s)",
+  "death.attack.propwash.drone_strike.player": "%1$s wurde auf der Flucht vor %2$s von einer Drohne getroffen",
+  "key.propwash.drone_cargo_drop": "Greifer öffnen (Fracht abwerfen)",
+  "propwash.interact.cargo.picked": "Greifer: +%1$s × %2$s · %3$s / %4$s g",
+  "propwash.interact.cargo.full": "Greifer voll · %1$s / %2$s g",
+  "propwash.interact.cargo.released": "Greifer geöffnet: %s Items abgeworfen",
+  "propwash.interact.cargo.released_crash": "Absturz! Der Greifer hat %s Items verloren",
+  "propwash.interact.cargo.released_landed": "Entschärft: Greifer offen, %s Items abgesetzt",
+  "propwash.interact.cargo.empty": "Der Greifer ist leer",
+  "propwash.interact.cargo.no_gripper": "An dieser Drohne ist kein Greifer",
+  "gamerule.propwash.drones_break_blocks": "Drohnen zerbrechen Blöcke",
+  "gamerule.propwash.drones_break_blocks.description": "Schnelle Drohnen zerbrechen Glas, Glasscheiben und verzierte Töpfe (Block-Tag propwash:drone_breakable), wenn die Wucht des Aufpralls (Masse × Tempo²) reicht, und fliegen langsamer weiter. Ein Whoop prallt ab, ein 5-Zoll durchschlägt eine Scheibe ab etwa 42 km/h. Zählt wie Abbauen durch den Piloten: Spawn-Schutz, Abenteuermodus und Schutz-Mods gelten, Glas lässt nichts fallen. Aus: Blöcke bleiben immer ganz.",
+  "gamerule.propwash.break_impact_scale": "Wucht beim Durchbruch",
+  "gamerule.propwash.break_impact_scale.description": "Wie deutlich eine Drohne spürt, dass sie Glas durchschlägt, in Prozent: Tempoverlust durch mitgerissene Scherben, ein Stoß, der sie aus der Lage kippt (stärker, wenn sie schief oder nur mit einer Seite trifft), und Scherben in den vorderen Props. 100 ist realistisch, 0 lässt nur die Bruchenergie übrig. Wirkt nur mit „Drohnen zerbrechen Blöcke“; ob ein Block bricht und wann die Drohne abstürzt, bleibt gleich.",
+  "gamerule.propwash.break_impact_scale.value.0": "Kein Stoß",
+  "propwash.interact.break.denied.protected": "Hier zerbricht deine Drohne nichts – der Bereich ist geschützt",
+  "propwash.interact.break.denied.game_mode": "In diesem Spielmodus zerbricht deine Drohne nichts",
+  "propwash.interact.break.denied.course": "Der Rahmen eines Freiform-Gates zerbricht nicht"
+}

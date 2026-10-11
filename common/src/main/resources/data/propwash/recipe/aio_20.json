@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_stack",
+  "key": {
+    "R": "minecraft:redstone",
+    "B": "propwash:circuit_board",
+    "C": "minecraft:copper_ingot"
+  },
+  "pattern": [
+    "RBR",
+    "CBC"
+  ],
+  "result": {
+    "id": "propwash:aio_20"
+  }
+}

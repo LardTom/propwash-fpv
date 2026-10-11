@@ -1,0 +1,19 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": "none",
+        "model": {
+          "type": "minecraft:model",
+          "model": "propwash:part/frame/whoop_65"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "propwash:part/frame/whoop_65"
+    }
+  }
+}

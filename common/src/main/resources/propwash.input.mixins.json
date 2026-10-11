@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "de.lardtom.propwash.mixin.input",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "client": [
+    "client.KeyMappingMixin",
+    "client.SDLEventHandlerMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

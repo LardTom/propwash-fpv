@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_frame",
+  "key": {
+    "C": "propwash:carbon_plate",
+    "G": "minecraft:gold_nugget",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "C C",
+    "GIG",
+    "C C"
+  ],
+  "result": {
+    "id": "propwash:race_5"
+  }
+}

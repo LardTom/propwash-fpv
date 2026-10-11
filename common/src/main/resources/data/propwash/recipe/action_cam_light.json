@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_accessory",
+  "key": {
+    "C": "minecraft:copper_ingot",
+    "G": "minecraft:glass_pane",
+    "B": "propwash:circuit_board",
+    "H": "propwash:hd_chip"
+  },
+  "pattern": [
+    "CGC",
+    "BHB"
+  ],
+  "result": {
+    "id": "propwash:action_cam_light"
+  }
+}

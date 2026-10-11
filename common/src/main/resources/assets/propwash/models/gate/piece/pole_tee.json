@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "frame": "propwash:item/gate/frame",
+    "particle": "propwash:item/gate/frame"
+  },
+  "elements": [
+    {
+      "name": "tee",
+      "from": [
+        5.25,
+        -4.25,
+        5.25
+      ],
+      "to": [
+        10.75,
+        0.25,
+        10.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            10.0,
+            0.0,
+            12.5,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            10.0,
+            0.0,
+            12.5,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            10.0,
+            0.0,
+            12.5,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            10.0,
+            0.0,
+            12.5,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "up": {
+          "uv": [
+            12.5,
+            0.0,
+            15.0,
+            2.5
+          ],
+          "texture": "#frame"
+        },
+        "down": {
+          "uv": [
+            12.5,
+            0.0,
+            15.0,
+            2.5
+          ],
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
+}

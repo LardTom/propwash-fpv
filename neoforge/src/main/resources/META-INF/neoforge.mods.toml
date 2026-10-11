@@ -1,0 +1,58 @@
+modLoader = "javafml"
+loaderVersion = "${neoforge_loader_version_range}"
+license = "${license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${version}"
+displayName = "${mod_name}"
+displayURL = "${homepage_url}"
+iconFile = "assets/${mod_id}/icon.png"
+credits = "${credits}"
+authors = "${mod_author}"
+description = '''${description}'''
+
+[modproperties."${mod_id}"."yumi:entrypoints"]
+"lambdynlights:initializer" = "de.lardtom.propwash.compat.lambdynamiclights.PropwashDynamicLights"
+
+[[accessTransformers]]
+file = "META-INF/accesstransformer.cfg"
+
+[[mixins]]
+config = "${mod_id}.core.mixins.json"
+[[mixins]]
+config = "${mod_id}.drone.mixins.json"
+[[mixins]]
+config = "${mod_id}.race.mixins.json"
+[[mixins]]
+config = "${mod_id}.server.mixins.json"
+[[mixins]]
+config = "${mod_id}.input.mixins.json"
+[[mixins]]
+config = "${mod_id}.video.mixins.json"
+[[mixins]]
+config = "${mod_id}.audio.mixins.json"
+[[mixins]]
+config = "${mod_id}.guide.mixins.json"
+[[mixins]]
+config = "${mod_id}.ui.mixins.json"
+[[mixins]]
+config = "${mod_id}.content.mixins.json"
+[[mixins]]
+config = "${mod_id}.join.mixins.json"
+[[mixins]]
+config = "${mod_id}.bando.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neoforge_version},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"

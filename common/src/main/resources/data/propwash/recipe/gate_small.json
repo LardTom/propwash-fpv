@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "propwash_gate",
+  "key": {
+    "W": "#minecraft:wool",
+    "T": "minecraft:redstone_torch",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    "WTW",
+    "S S",
+    "S S"
+  ],
+  "result": {
+    "id": "propwash:gate_small"
+  }
+}

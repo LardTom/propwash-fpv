@@ -1,0 +1,92 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 65
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:carbon_plate",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 3
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:p51_3b",
+          "weight": 5,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 4
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2207_1750",
+          "weight": 5,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:analog_race",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:freestyle_5",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:remote",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:goggles_analog",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:drone",
+          "weight": 3,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:drone_build": {
+                "frame": "whoop_65",
+                "stack": "aio_whoop",
+                "motor": "m0802_22000",
+                "prop": "p31_4b",
+                "video": "analog_nano",
+                "battery": "b1s_300_hv"
+              },
+              "propwash:battery_charge": 0.4,
+              "minecraft:item_name": {
+                "translate": "propwash.content.preset.whoop"
+              }
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:action_cam_light",
+          "weight": 2
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

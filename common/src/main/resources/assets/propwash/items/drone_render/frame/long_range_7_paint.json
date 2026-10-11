@@ -1,0 +1,23 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:part/frame/long_range_7_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 2237737
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 16741932
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 2,
+        "default": 16159009
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+    "schemaVersion": 1,
+    "id": "propwash_devtest",
+    "version": "1.0.0",
+    "name": "Propwash Dev Tests",
+    "description": "Meldet die Mixins des Quell-Sets devtest für Selbsttest und Rauchtest an. Nie im Release-Jar.",
+    "authors": [
+        "lardtom"
+    ],
+    "license": "LicenseRef-PolyForm-Shield-1.0.0",
+    "environment": "client",
+    "mixins": [
+        "propwash.dev.mixins.json"
+    ]
+}

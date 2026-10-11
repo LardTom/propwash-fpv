@@ -1,0 +1,139 @@
+{
+  "channels": {
+    "frame": 200,
+    "tpu": 242,
+    "motor": 208,
+    "prop": 224,
+    "stack": 200,
+    "battery": 200,
+    "camera": 232,
+    "antenna": 230,
+    "accessory": 200
+  },
+  "slots": [
+    "frame",
+    "tpu",
+    "motors",
+    "prop_fl",
+    "prop_fr",
+    "prop_rl",
+    "prop_rr",
+    "stack",
+    "battery",
+    "camera",
+    "antenna",
+    "accessories"
+  ],
+  "models": {
+    "battery/b8s_4500_lion": [
+      {
+        "channel": "battery",
+        "base": "#1a8f8b"
+      }
+    ],
+    "frame/deadcat_5": [
+      {
+        "channel": "frame",
+        "base": "#1b1d20"
+      },
+      {
+        "channel": "tpu",
+        "base": "#2f7de0"
+      }
+    ],
+    "motor/m2806_1300": [
+      {
+        "channel": "motor",
+        "base": "#3a7bd5"
+      },
+      {
+        "channel": "motor",
+        "base": "#232427"
+      }
+    ],
+    "motor/m4214_400": [
+      {
+        "channel": "motor",
+        "base": "#c83a5c"
+      },
+      {
+        "channel": "motor",
+        "base": "#232427"
+      }
+    ],
+    "prop/p13_2b_carbon": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_blur": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_broken": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_broken_ccw": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_ccw": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_damaged": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_damaged_ccw": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_worn": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "prop/p13_2b_carbon_worn_ccw": [
+      {
+        "channel": "prop",
+        "base": "#2b2c31"
+      }
+    ],
+    "stack/stack_30_8s": [
+      {
+        "channel": "stack",
+        "base": "#141619"
+      }
+    ],
+    "video/hd_pro": [
+      {
+        "channel": "camera",
+        "base": "#3a3e44"
+      },
+      {
+        "channel": "camera",
+        "base": "#1d1e21"
+      },
+      {
+        "channel": "antenna",
+        "base": "#c0392b"
+      }
+    ]
+  }
+}

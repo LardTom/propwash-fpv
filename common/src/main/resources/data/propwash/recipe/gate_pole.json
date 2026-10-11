@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "propwash_gate",
+  "key": {
+    "G": "minecraft:glowstone_dust",
+    "B": "minecraft:iron_bars"
+  },
+  "pattern": [
+    "G",
+    "B",
+    "B"
+  ],
+  "result": {
+    "id": "propwash:gate_pole",
+    "count": 2
+  }
+}

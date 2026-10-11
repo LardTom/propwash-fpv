@@ -1,0 +1,23 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:part/video/digital_hd_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 4211787
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 2105636
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 2,
+        "default": 13975344
+      }
+    ]
+  }
+}

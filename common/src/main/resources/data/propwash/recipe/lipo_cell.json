@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "K": "minecraft:dried_kelp",
+    "N": "minecraft:copper_nugget",
+    "R": "minecraft:redstone",
+    "L": "minecraft:lapis_lazuli"
+  },
+  "pattern": [
+    "KNK",
+    "RLR"
+  ],
+  "result": {
+    "id": "propwash:lipo_cell",
+    "count": 2
+  }
+}

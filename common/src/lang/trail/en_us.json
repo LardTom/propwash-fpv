@@ -1,0 +1,13 @@
+{
+  "gamerule.propwash.drone_trails": "Drone trails",
+  "gamerule.propwash.drone_trails.description": "On: every flying drone draws a thin, fading trail in its own color (LED strip or paint) – so you can see other pilots even in the FPV view. Landed and disarmed drones draw no trail. Every player can turn the trails off for themselves in the Display tab. Does not change the physics.",
+  "key.propwash.drone_trails": "Toggle drone trails",
+  "propwash.trails.enabled": "Show drone trails",
+  "propwash.trails.enabled.tip": "A thin, fading trail behind every flying drone, 1–2 seconds long – the faster, the longer. In the FPV view you see the trails of others; your own drone shows its trail only in line of sight and third person. Also applies to action cam recordings.",
+  "propwash.trails.rule_off": "Off in this world – world rule “Drone trails”",
+  "propwash.trails.rule_off.tip": "The world rule “Drone trails” is off. The host or operators turn it on in the World rules tab; after that you decide here whether you see the trails.",
+  "propwash.trails.section": "Drone trails",
+  "propwash.trails.toast.off": "Drone trails off",
+  "propwash.trails.toast.on": "Drone trails on",
+  "propwash.trails.toast.rule_off": "Drone trails are off in this world (world rule)"
+}

@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "group": "propwash_video",
+  "ingredients": [
+    "propwash:circuit_board",
+    "minecraft:glass_pane",
+    "minecraft:copper_nugget"
+  ],
+  "result": {
+    "id": "propwash:analog_nano"
+  }
+}

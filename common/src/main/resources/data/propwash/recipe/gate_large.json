@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "propwash_gate",
+  "key": {
+    "W": "#minecraft:wool",
+    "G": "minecraft:glowstone_dust",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "GWG",
+    "I I",
+    "I I"
+  ],
+  "result": {
+    "id": "propwash:gate_large"
+  }
+}

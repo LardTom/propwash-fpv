@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_battery",
+  "key": {
+    "L": "propwash:lipo_cell",
+    "G": "minecraft:gold_ingot",
+    "S": "minecraft:glowstone_dust"
+  },
+  "pattern": [
+    "LLL",
+    "LLL",
+    "GSG"
+  ],
+  "result": {
+    "id": "propwash:b6s_1300"
+  }
+}

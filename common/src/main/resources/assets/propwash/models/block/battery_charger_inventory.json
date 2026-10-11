@@ -1,0 +1,630 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "propwash:block/battery_charger_side",
+    "top": "propwash:block/battery_charger_top",
+    "side": "propwash:block/battery_charger_side",
+    "bottom": "propwash:block/battery_charger_bottom",
+    "front": "propwash:block/battery_charger_front_charging",
+    "pack": "propwash:block/battery_charger_pack",
+    "led_empty": "propwash:block/battery_charger_front_idle",
+    "led_charging": "propwash:block/battery_charger_front_charging",
+    "led_full": "propwash:block/battery_charger_front_done"
+  },
+  "elements": [
+    {
+      "name": "housing",
+      "from": [
+        1.0,
+        0.0,
+        2.0
+      ],
+      "to": [
+        15.0,
+        5.0,
+        14.0
+      ],
+      "faces": {
+        "down": {
+          "texture": "#bottom",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#top"
+        },
+        "north": {
+          "texture": "#front"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "lid_front",
+      "from": [
+        1.0,
+        5.0,
+        2.0
+      ],
+      "to": [
+        15.0,
+        8.0,
+        5.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#top"
+        },
+        "north": {
+          "texture": "#front"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "south": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "name": "lid_back",
+      "from": [
+        1.0,
+        5.0,
+        10.5
+      ],
+      "to": [
+        15.0,
+        8.0,
+        14.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#top"
+        },
+        "south": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "north": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "name": "lid_rib_0",
+      "from": [
+        1.0,
+        5.0,
+        5.5
+      ],
+      "to": [
+        2.25,
+        8.0,
+        10.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#top"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "east": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "name": "lid_rib_1",
+      "from": [
+        4.75,
+        5.0,
+        5.5
+      ],
+      "to": [
+        5.25,
+        8.0,
+        10.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#top"
+        },
+        "west": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        },
+        "east": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "name": "lid_rib_2",
+      "from": [
+        7.75,
+        5.0,
+        5.5
+      ],
+      "to": [
+        8.25,
+        8.0,
+        10.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#top"
+        },
+        "west": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        },
+        "east": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "name": "lid_rib_3",
+      "from": [
+        10.75,
+        5.0,
+        5.5
+      ],
+      "to": [
+        11.25,
+        8.0,
+        10.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#top"
+        },
+        "west": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        },
+        "east": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        }
+      }
+    },
+    {
+      "name": "lid_rib_4",
+      "from": [
+        13.75,
+        5.0,
+        5.5
+      ],
+      "to": [
+        15.0,
+        8.0,
+        10.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#top"
+        },
+        "west": {
+          "texture": "#top",
+          "uv": [
+            15.0,
+            0.0,
+            16.0,
+            1.5
+          ]
+        },
+        "east": {
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "front_plate",
+      "from": [
+        1.5,
+        1.0,
+        1.5
+      ],
+      "to": [
+        14.5,
+        6.0,
+        2.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#front"
+        },
+        "east": {
+          "texture": "#side"
+        },
+        "west": {
+          "texture": "#side"
+        },
+        "up": {
+          "texture": "#top"
+        },
+        "down": {
+          "texture": "#bottom"
+        }
+      }
+    },
+    {
+      "name": "display",
+      "from": [
+        2.0,
+        1.5,
+        1.4
+      ],
+      "to": [
+        7.0,
+        3.0,
+        1.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#front"
+        }
+      },
+      "light_emission": 12
+    },
+    {
+      "name": "led_0",
+      "from": [
+        11.75,
+        4.0,
+        1.4
+      ],
+      "to": [
+        13.25,
+        5.0,
+        1.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#led_full",
+          "uv": [
+            0.0,
+            0.0,
+            1.5,
+            1.0
+          ]
+        }
+      },
+      "light_emission": 12
+    },
+    {
+      "name": "pack_0",
+      "from": [
+        11.5,
+        5.0,
+        6.0
+      ],
+      "to": [
+        13.5,
+        9.5,
+        10.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#pack",
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            4.0
+          ]
+        },
+        "north": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 0
+        },
+        "south": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 0
+        },
+        "east": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 0
+        }
+      }
+    },
+    {
+      "name": "led_1",
+      "from": [
+        8.75,
+        4.0,
+        1.4
+      ],
+      "to": [
+        10.25,
+        5.0,
+        1.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#led_charging",
+          "uv": [
+            0.0,
+            0.0,
+            1.5,
+            1.0
+          ]
+        }
+      },
+      "light_emission": 12
+    },
+    {
+      "name": "pack_1",
+      "from": [
+        8.5,
+        5.0,
+        6.0
+      ],
+      "to": [
+        10.5,
+        9.5,
+        10.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#pack",
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            4.0
+          ]
+        },
+        "north": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 1
+        },
+        "south": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 1
+        },
+        "east": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 1
+        },
+        "west": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 1
+        }
+      }
+    },
+    {
+      "name": "led_2",
+      "from": [
+        5.75,
+        4.0,
+        1.4
+      ],
+      "to": [
+        7.25,
+        5.0,
+        1.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#led_charging",
+          "uv": [
+            0.0,
+            0.0,
+            1.5,
+            1.0
+          ]
+        }
+      },
+      "light_emission": 12
+    },
+    {
+      "name": "pack_2",
+      "from": [
+        5.5,
+        5.0,
+        6.0
+      ],
+      "to": [
+        7.5,
+        9.5,
+        10.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#pack",
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            4.0
+          ]
+        },
+        "north": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 2
+        },
+        "south": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.5
+          ],
+          "tintindex": 2
+        },
+        "east": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 2
+        },
+        "west": {
+          "texture": "#pack",
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            4.5
+          ],
+          "tintindex": 2
+        }
+      }
+    },
+    {
+      "name": "led_3",
+      "from": [
+        2.75,
+        4.0,
+        1.4
+      ],
+      "to": [
+        4.25,
+        5.0,
+        1.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#led_empty",
+          "uv": [
+            0.0,
+            0.0,
+            1.5,
+            1.0
+          ]
+        }
+      }
+    }
+  ]
+}

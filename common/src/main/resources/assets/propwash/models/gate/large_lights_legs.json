@@ -1,0 +1,2032 @@
+{
+  "textures": {
+    "lights": "propwash:item/gate/lights",
+    "particle": "propwash:item/gate/lights"
+  },
+  "elements": [
+    {
+      "name": "led_left_front_0",
+      "from": [
+        -15.0,
+        4.0,
+        10.0
+      ],
+      "to": [
+        -13.0,
+        12.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_front_1",
+      "from": [
+        -15.0,
+        12.0,
+        10.0
+      ],
+      "to": [
+        -13.0,
+        20.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_front_2",
+      "from": [
+        -15.0,
+        20.0,
+        10.0
+      ],
+      "to": [
+        -13.0,
+        28.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_back_0",
+      "from": [
+        -15.0,
+        4.0,
+        5.75
+      ],
+      "to": [
+        -13.0,
+        12.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_back_1",
+      "from": [
+        -15.0,
+        12.0,
+        5.75
+      ],
+      "to": [
+        -13.0,
+        20.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_back_2",
+      "from": [
+        -15.0,
+        20.0,
+        5.75
+      ],
+      "to": [
+        -13.0,
+        28.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_inner_0",
+      "from": [
+        -12.0,
+        4.0,
+        7.0
+      ],
+      "to": [
+        -11.75,
+        12.0,
+        9.0
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_inner_1",
+      "from": [
+        -12.0,
+        12.0,
+        7.0
+      ],
+      "to": [
+        -11.75,
+        20.0,
+        9.0
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_inner_2",
+      "from": [
+        -12.0,
+        20.0,
+        7.0
+      ],
+      "to": [
+        -11.75,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_outer_0",
+      "from": [
+        -16.0,
+        4.0,
+        7.0
+      ],
+      "to": [
+        -15.75,
+        12.0,
+        9.0
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_outer_1",
+      "from": [
+        -16.0,
+        12.0,
+        7.0
+      ],
+      "to": [
+        -15.75,
+        20.0,
+        9.0
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_left_outer_2",
+      "from": [
+        -16.0,
+        20.0,
+        7.0
+      ],
+      "to": [
+        -15.75,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_front_0",
+      "from": [
+        29.0,
+        4.0,
+        10.0
+      ],
+      "to": [
+        31.0,
+        12.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_front_1",
+      "from": [
+        29.0,
+        12.0,
+        10.0
+      ],
+      "to": [
+        31.0,
+        20.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_front_2",
+      "from": [
+        29.0,
+        20.0,
+        10.0
+      ],
+      "to": [
+        31.0,
+        28.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_back_0",
+      "from": [
+        29.0,
+        4.0,
+        5.75
+      ],
+      "to": [
+        31.0,
+        12.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_back_1",
+      "from": [
+        29.0,
+        12.0,
+        5.75
+      ],
+      "to": [
+        31.0,
+        20.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_back_2",
+      "from": [
+        29.0,
+        20.0,
+        5.75
+      ],
+      "to": [
+        31.0,
+        28.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "east": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_inner_0",
+      "from": [
+        27.75,
+        4.0,
+        7.0
+      ],
+      "to": [
+        28.0,
+        12.0,
+        9.0
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_inner_1",
+      "from": [
+        27.75,
+        12.0,
+        7.0
+      ],
+      "to": [
+        28.0,
+        20.0,
+        9.0
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_inner_2",
+      "from": [
+        27.75,
+        20.0,
+        7.0
+      ],
+      "to": [
+        28.0,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_outer_0",
+      "from": [
+        31.75,
+        4.0,
+        7.0
+      ],
+      "to": [
+        32.0,
+        12.0,
+        9.0
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_outer_1",
+      "from": [
+        31.75,
+        12.0,
+        7.0
+      ],
+      "to": [
+        32.0,
+        20.0,
+        9.0
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_right_outer_2",
+      "from": [
+        31.75,
+        20.0,
+        7.0
+      ],
+      "to": [
+        32.0,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            1.0,
+            8.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_front_0",
+      "from": [
+        -12.0,
+        29.0,
+        10.0
+      ],
+      "to": [
+        -4.0,
+        31.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_front_1",
+      "from": [
+        -4.0,
+        29.0,
+        10.0
+      ],
+      "to": [
+        4.0,
+        31.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_front_2",
+      "from": [
+        4.0,
+        29.0,
+        10.0
+      ],
+      "to": [
+        12.0,
+        31.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_front_3",
+      "from": [
+        12.0,
+        29.0,
+        10.0
+      ],
+      "to": [
+        20.0,
+        31.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_front_4",
+      "from": [
+        20.0,
+        29.0,
+        10.0
+      ],
+      "to": [
+        28.0,
+        31.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_back_0",
+      "from": [
+        -12.0,
+        29.0,
+        5.75
+      ],
+      "to": [
+        -4.0,
+        31.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_back_1",
+      "from": [
+        -4.0,
+        29.0,
+        5.75
+      ],
+      "to": [
+        4.0,
+        31.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_back_2",
+      "from": [
+        4.0,
+        29.0,
+        5.75
+      ],
+      "to": [
+        12.0,
+        31.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_back_3",
+      "from": [
+        12.0,
+        29.0,
+        5.75
+      ],
+      "to": [
+        20.0,
+        31.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_back_4",
+      "from": [
+        20.0,
+        29.0,
+        5.75
+      ],
+      "to": [
+        28.0,
+        31.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_inner_0",
+      "from": [
+        -12.0,
+        27.75,
+        7.0
+      ],
+      "to": [
+        -4.0,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_inner_1",
+      "from": [
+        -4.0,
+        27.75,
+        7.0
+      ],
+      "to": [
+        4.0,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_inner_2",
+      "from": [
+        4.0,
+        27.75,
+        7.0
+      ],
+      "to": [
+        12.0,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_inner_3",
+      "from": [
+        12.0,
+        27.75,
+        7.0
+      ],
+      "to": [
+        20.0,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_inner_4",
+      "from": [
+        20.0,
+        27.75,
+        7.0
+      ],
+      "to": [
+        28.0,
+        28.0,
+        9.0
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_outer_0",
+      "from": [
+        -12.0,
+        31.75,
+        7.0
+      ],
+      "to": [
+        -4.0,
+        32,
+        9.0
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_outer_1",
+      "from": [
+        -4.0,
+        31.75,
+        7.0
+      ],
+      "to": [
+        4.0,
+        32,
+        9.0
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_outer_2",
+      "from": [
+        4.0,
+        31.75,
+        7.0
+      ],
+      "to": [
+        12.0,
+        32,
+        9.0
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_outer_3",
+      "from": [
+        12.0,
+        31.75,
+        7.0
+      ],
+      "to": [
+        20.0,
+        32,
+        9.0
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_top_outer_4",
+      "from": [
+        20.0,
+        31.75,
+        7.0
+      ],
+      "to": [
+        28.0,
+        32,
+        9.0
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            2.0,
+            0.0,
+            10.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "north": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            0.0,
+            10.0,
+            1.0,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    }
+  ]
+}

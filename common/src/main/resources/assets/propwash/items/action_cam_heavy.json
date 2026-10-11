@@ -1,0 +1,19 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": "none",
+        "model": {
+          "type": "minecraft:model",
+          "model": "propwash:part/accessory/action_cam_heavy"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "propwash:part/accessory/action_cam_heavy"
+    }
+  }
+}

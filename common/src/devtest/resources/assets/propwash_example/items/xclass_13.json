@@ -1,0 +1,67 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": "fixed",
+        "model": {
+          "type": "minecraft:special",
+          "base": "propwash:item/part_wall",
+          "model": {
+            "type": "propwash:part",
+            "wall": true
+          }
+        }
+      },
+      {
+        "when": "ground",
+        "model": {
+          "type": "minecraft:special",
+          "base": "propwash:item/part_base/frame",
+          "model": {
+            "type": "propwash:part",
+            "ground": true
+          }
+        }
+      },
+      {
+        "when": [
+          "on_shelf",
+          "head"
+        ],
+        "model": {
+          "type": "minecraft:special",
+          "base": "propwash:item/part_base/frame",
+          "model": {
+            "type": "propwash:part",
+            "box": true
+          }
+        }
+      },
+      {
+        "when": [
+          "thirdperson_righthand",
+          "thirdperson_lefthand",
+          "firstperson_righthand",
+          "firstperson_lefthand"
+        ],
+        "model": {
+          "type": "minecraft:special",
+          "base": "propwash:item/part_base/frame",
+          "model": {
+            "type": "propwash:part",
+            "hand": true
+          }
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:special",
+      "base": "propwash:item/part_base/frame",
+      "model": {
+        "type": "propwash:part"
+      }
+    }
+  }
+}

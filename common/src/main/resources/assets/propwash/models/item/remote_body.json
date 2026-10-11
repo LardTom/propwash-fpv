@@ -1,0 +1,816 @@
+{
+  "texture_size": [
+    64,
+    64
+  ],
+  "textures": {
+    "remote": "propwash:item/remote",
+    "particle": "propwash:item/remote"
+  },
+  "elements": [
+    {
+      "name": "housing",
+      "from": [
+        1.5,
+        3.0,
+        7.0
+      ],
+      "to": [
+        14.5,
+        10.0,
+        10.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            6.5,
+            3.5
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            6.5,
+            0.0,
+            13.0,
+            3.5
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            7.0,
+            3.5,
+            8.5,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            8.5,
+            3.5,
+            10.0,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "up": {
+          "uv": [
+            9.5,
+            7.0,
+            16.0,
+            8.5
+          ],
+          "texture": "#remote"
+        },
+        "down": {
+          "uv": [
+            3.0,
+            7.0,
+            9.5,
+            8.5
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "grip_left",
+      "from": [
+        1.5,
+        0.5,
+        7.0
+      ],
+      "to": [
+        5.0,
+        3.0,
+        10.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            3.5,
+            9.25,
+            5.25,
+            10.5
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            5.25,
+            9.25,
+            7.0,
+            10.5
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            10.5,
+            9.25,
+            12.0,
+            10.5
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            12.0,
+            9.25,
+            13.5,
+            10.5
+          ],
+          "texture": "#remote"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            9.25,
+            1.75,
+            10.75
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "grip_right",
+      "from": [
+        11.0,
+        0.5,
+        7.0
+      ],
+      "to": [
+        14.5,
+        3.0,
+        10.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            7.0,
+            9.25,
+            8.75,
+            10.5
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            8.75,
+            9.25,
+            10.5,
+            10.5
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            13.5,
+            9.25,
+            15.0,
+            10.5
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            10.75,
+            1.5,
+            12.0
+          ],
+          "texture": "#remote"
+        },
+        "down": {
+          "uv": [
+            1.75,
+            9.25,
+            3.5,
+            10.75
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "display",
+      "from": [
+        6.0,
+        6.5,
+        10.0
+      ],
+      "to": [
+        10.0,
+        9.5,
+        10.1
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            11.0,
+            3.5,
+            15.0,
+            6.5
+          ],
+          "texture": "#remote"
+        }
+      },
+      "light_emission": 6
+    },
+    {
+      "name": "gimbal_plate_left",
+      "from": [
+        2.25,
+        4.75,
+        10.0
+      ],
+      "to": [
+        5.75,
+        8.25,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            3.5,
+            3.5,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            10.0,
+            3.5,
+            10.25,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            10.25,
+            3.5,
+            10.5,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "up": {
+          "uv": [
+            9.5,
+            12.5,
+            13.0,
+            12.75
+          ],
+          "texture": "#remote"
+        },
+        "down": {
+          "uv": [
+            6.0,
+            12.5,
+            9.5,
+            12.75
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "gimbal_plate_right",
+      "from": [
+        10.25,
+        4.75,
+        10.0
+      ],
+      "to": [
+        13.75,
+        8.25,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            3.5,
+            3.5,
+            7.0,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            10.5,
+            3.5,
+            10.75,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            10.75,
+            3.5,
+            11.0,
+            7.0
+          ],
+          "texture": "#remote"
+        },
+        "up": {
+          "uv": [
+            3.5,
+            13.0,
+            7.0,
+            13.25
+          ],
+          "texture": "#remote"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            13.0,
+            3.5,
+            13.25
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "handle_left",
+      "from": [
+        5.0,
+        10.0,
+        8.0
+      ],
+      "to": [
+        5.5,
+        11.5,
+        9.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            14.5,
+            10.75,
+            14.75,
+            11.5
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            14.75,
+            10.75,
+            15.0,
+            11.5
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            12.5,
+            10.75,
+            13.0,
+            11.5
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            13.0,
+            10.75,
+            13.5,
+            11.5
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "handle_right",
+      "from": [
+        10.5,
+        10.0,
+        8.0
+      ],
+      "to": [
+        11.0,
+        11.5,
+        9.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            15.0,
+            10.75,
+            15.25,
+            11.5
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            15.25,
+            10.75,
+            15.5,
+            11.5
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            13.5,
+            10.75,
+            14.0,
+            11.5
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            14.0,
+            10.75,
+            14.5,
+            11.5
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "handle_bar",
+      "from": [
+        5.0,
+        11.5,
+        8.0
+      ],
+      "to": [
+        11.0,
+        12.0,
+        9.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            7.0,
+            13.0,
+            10.0,
+            13.25
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            10.0,
+            13.0,
+            13.0,
+            13.25
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            13.0,
+            13.0,
+            13.5,
+            13.25
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            13.5,
+            13.0,
+            14.0,
+            13.25
+          ],
+          "texture": "#remote"
+        },
+        "up": {
+          "uv": [
+            3.0,
+            12.0,
+            6.0,
+            12.5
+          ],
+          "texture": "#remote"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            12.0,
+            3.0,
+            12.5
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "antenna_joint",
+      "from": [
+        12.75,
+        10.0,
+        7.75
+      ],
+      "to": [
+        13.75,
+        11.0,
+        8.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            12.5,
+            0.5,
+            13.0
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            0.5,
+            12.5,
+            1.0,
+            13.0
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            15.5,
+            12.0,
+            16.0,
+            12.5
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            1.5,
+            12.5,
+            2.0,
+            13.0
+          ],
+          "texture": "#remote"
+        },
+        "up": {
+          "uv": [
+            1.0,
+            12.5,
+            1.5,
+            13.0
+          ],
+          "texture": "#remote"
+        }
+      }
+    },
+    {
+      "name": "antenna",
+      "from": [
+        12.875,
+        11.0,
+        7.875
+      ],
+      "to": [
+        13.625,
+        15.0,
+        8.625
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1.5,
+            7.0,
+            2.0,
+            9.0
+          ],
+          "texture": "#remote"
+        },
+        "south": {
+          "uv": [
+            2.0,
+            7.0,
+            2.5,
+            9.0
+          ],
+          "texture": "#remote"
+        },
+        "east": {
+          "uv": [
+            1.0,
+            7.0,
+            1.5,
+            9.0
+          ],
+          "texture": "#remote"
+        },
+        "west": {
+          "uv": [
+            2.5,
+            7.0,
+            3.0,
+            9.0
+          ],
+          "texture": "#remote"
+        },
+        "up": {
+          "uv": [
+            15.0,
+            12.0,
+            15.5,
+            12.5
+          ],
+          "texture": "#remote"
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "body",
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "color": 0,
+      "children": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    }
+  ],
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        22,
+        0,
+        0
+      ],
+      "translation": [
+        -2.9,
+        3,
+        1.7
+      ],
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        22,
+        0,
+        0
+      ],
+      "translation": [
+        -2.9,
+        3,
+        1.7
+      ],
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        -34,
+        -26,
+        0
+      ],
+      "translation": [
+        -2.5,
+        4.0,
+        -2
+      ],
+      "scale": [
+        0.36,
+        0.36,
+        0.36
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        -34,
+        26,
+        0
+      ],
+      "translation": [
+        2.5,
+        4.0,
+        -2
+      ],
+      "scale": [
+        0.36,
+        0.36,
+        0.36
+      ]
+    },
+    "gui": {
+      "rotation": [
+        22,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        0.25,
+        0
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        1.5,
+        0
+      ],
+      "scale": [
+        0.24,
+        0.24,
+        0.24
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ]
+    },
+    "on_shelf": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.8,
+        0.8,
+        0.8
+      ]
+    },
+    "head": {
+      "rotation": [
+        -78,
+        180,
+        0
+      ],
+      "translation": [
+        0,
+        5.25,
+        0.5
+      ],
+      "scale": [
+        0.4,
+        0.4,
+        0.4
+      ]
+    }
+  }
+}

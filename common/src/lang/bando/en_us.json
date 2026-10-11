@@ -1,0 +1,18 @@
+{
+  "propwash.guide.scene.bandos.callout.chest": "Used props, motors, cells",
+  "propwash.guide.scene.bandos.callout.gap": "Between the beams",
+  "propwash.guide.scene.bandos.callout.locate": "/locate structure #propwash:bandos",
+  "propwash.guide.scene.bandos.callout.roof": "Out through the roof",
+  "propwash.guide.scene.bandos.callout.ruin": "Every bando is built differently",
+  "propwash.guide.scene.bandos.callout.window": "Windows and doors",
+  "propwash.guide.scene.bandos.description": "Find abandoned buildings to fly freestyle in",
+  "propwash.guide.scene.bandos.step.chest.text": "Some bandos hide a chest with Propwash parts, often used – sometimes up on a catwalk or in a hayloft.",
+  "propwash.guide.scene.bandos.step.chest.title": "Now and then a chest",
+  "propwash.guide.scene.bandos.step.find.text": "Bandos are abandoned buildings: barns, factories, water towers, piers or oil rigs. They are rare, match their biome and are never the same.",
+  "propwash.guide.scene.bandos.step.find.title": "Bandos in the world",
+  "propwash.guide.scene.bandos.step.fly.text": "Doors, windows, holes in the roof, catwalks and gaps between beams are made for flying through – perfect for gaps and power loops.",
+  "propwash.guide.scene.bandos.step.fly.title": "Fly through the gaps",
+  "propwash.guide.scene.bandos.step.locate.text": "With cheats, /locate structure #propwash:bandos shows the nearest bando. They only exist when the world generates structures.",
+  "propwash.guide.scene.bandos.step.locate.title": "Search on purpose",
+  "propwash.guide.scene.bandos.title": "Bandos: abandoned spots"
+}

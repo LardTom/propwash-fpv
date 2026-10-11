@@ -1,0 +1,184 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.fabricmc.fabric-loom'
+}
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'TerraformersMC'
+                url = uri('https://maven.terraformersmc.com/releases/')
+            }
+        }
+        filter {
+            includeGroup('com.terraformersmc')
+        }
+    }
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${minecraft_version}")
+    implementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
+    compileOnly("com.terraformersmc:modmenu:${modmenu_version}") {
+        transitive = false
+    }
+}
+
+// Mixins des Quell-Sets devtest (common/src/devtest/…/mixin/dev) brauchen eine Mod, die ihre Mixin-Config beim Start
+// anmeldet. Die Hilfs-Mod propwash_devtest tut genau das: fabric.mod.json aus src/devtestMod, propwash.dev.mixins.json
+// aus common/src/devtestMod. Sie hängt allein an den Läufen mit dem Quell-Set devtest; runClient, runServer und das
+// Release-Jar kennen sie nicht.
+sourceSets {
+    devtestMod {
+        resources.srcDir project(':common').file('src/devtestMod/resources')
+    }
+    devtest {
+        runtimeClasspath += sourceSets.devtestMod.output
+    }
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.devtest
+        }
+        "${mod_id}_devtest" {
+            sourceSet sourceSets.devtestMod
+        }
+    }
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir(rootProject.propwashRunDirs.client)
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir(rootProject.propwashRunDirs.server)
+        }
+        // Selbsttest: legt eine Flachwelt an, führt alle SelfTest-Schritte aus und beendet das Spiel (:fabric:runClientSelftest).
+        clientSelftest {
+            client()
+            source(sourceSets.devtest)
+            setConfigName('Fabric Client Selftest')
+            ideConfigGenerated(true)
+            runDir(rootProject.propwashRunDirs.selftest)
+            property('propwash.selftest', 'true')
+            if (project.hasProperty('propwashScreenshots')) {
+                property('propwash.screenshots', rootProject.file('docs/screenshots').absolutePath)
+            }
+            rootProject.propwashSelftestProperties.each { key, value -> property(key, value) }
+            rootProject.propwashTestWindowEnv.each { key, value -> environmentVariable(key, value) }
+        }
+        // Start-Rauchtest: normaler Client ohne Selbsttest-Modus; Welt anlegen, betreten, verlassen, beenden (:fabric:runClientSmoke).
+        clientSmoke {
+            client()
+            source(sourceSets.devtest)
+            setConfigName('Fabric Client Smoke')
+            ideConfigGenerated(true)
+            runDir(rootProject.propwashRunDirs.smoke)
+            property('propwash.smoketest', 'true')
+            rootProject.propwashTestWindowEnv.each { key, value -> environmentVariable(key, value) }
+        }
+        // Server-Rauchtest: dedizierter Server ohne GUI, 100 Ticks nach dem Start mit einer Drohne, dann Ende (:fabric:runServerSmoke).
+        serverSmoke {
+            server()
+            source(sourceSets.devtest)
+            setConfigName('Fabric Server Smoke')
+            ideConfigGenerated(true)
+            runDir(rootProject.propwashRunDirs.serverSmoke)
+            property('propwash.serversmoke', 'true')
+        }
+    }
+}
+
+// Test-Instanzen immer stumm starten (options.txt wird vor jedem Start gepatcht).
+tasks.matching { it.name in ['runClient', 'runServer', 'runClientSelftest', 'runClientSmoke'] }.configureEach {
+    dependsOn(rootProject.tasks.named('prepareRuns'))
+}
+tasks.matching { it.name == 'runServerSmoke' }.configureEach {
+    dependsOn(rootProject.tasks.named('prepareServerSmoke'))
+}
+
+// Dev-Spieler mit Skin (propwashDevPlayer im Wurzel-Build): runClient immer, Selbst- und Rauchtest nur mit -PpropwashDevName.
+[runClient: rootProject.propwashRunDirs.client, runClientSelftest: rootProject.propwashRunDirs.selftest,
+ runClientSmoke: rootProject.propwashRunDirs.smoke].each { taskName, dir ->
+    tasks.matching { it.name == taskName }.configureEach { task ->
+        task.doFirst { rootProject.propwashDevPlayer(task, file(dir), taskName == 'runClient', []) }
+    }
+}
+
+// devtest hat keine Ressourcen; ohne den leeren Ordner meldet Fabric Loader "Class path entries reference missing files".
+tasks.matching { it.name in ['runClientSelftest', 'runClientSmoke', 'runServerSmoke'] }.configureEach {
+    doFirst {
+        sourceSets.devtest.output.resourcesDir.mkdirs()
+        sourceSets.devtestMod.output.classesDirs.each { it.mkdirs() }
+    }
+}
+
+// Selbsttest-/Rauchtest-Ergebnis auswerten: der Client schreibt PASS/FAIL nach propwash-selftest-result.txt.
+[runClientSelftest: [dir: rootProject.propwashRunDirs.selftest, label: 'Selbsttest (Fabric)'],
+ runClientSmoke   : [dir: rootProject.propwashRunDirs.smoke, label: 'Rauchtest (Fabric)'],
+ runServerSmoke   : [dir: rootProject.propwashRunDirs.serverSmoke, label: 'Server-Rauchtest (Fabric)', scanLog: true]].each { taskName, cfg ->
+    tasks.matching { it.name == taskName }.configureEach { task ->
+        def resultFile = file("${cfg.dir}/propwash-selftest-result.txt")
+        task.group = 'propwash'
+        task.doFirst { resultFile.delete() }
+        task.doLast {
+            if (!resultFile.exists()) {
+                throw new GradleException("${cfg.label}: keine Ergebnisdatei – Spiel abgestürzt oder vorzeitig beendet?")
+            }
+            def result = resultFile.getText('UTF-8').trim()
+            if (!result.startsWith('PASS')) {
+                throw new GradleException("${cfg.label} fehlgeschlagen: ${result}")
+            }
+            if (cfg.scanLog) {
+                def logFile = file("${cfg.dir}/logs/latest.log")
+                if (!logFile.exists()) {
+                    throw new GradleException("${cfg.label}: kein logs/latest.log")
+                }
+                def bad = logFile.readLines('UTF-8').findAll { line ->
+                    line =~ /\/(ERROR|FATAL)\]/ || line.contains('MixinApplyError') || line.contains('InvalidMixinException') ||
+                            line.contains('InvalidInjectionException') || line.contains('Mixin apply failed')
+                }
+                if (!bad.isEmpty()) {
+                    throw new GradleException("${cfg.label}: ${bad.size()} Fehlerzeilen im Log, erste: ${bad.first()}")
+                }
+            }
+            logger.lifecycle("${cfg.label}: ${result}")
+            def steps = file("${cfg.dir}/propwash-selftest-steps.md")
+            if (taskName == 'runClientSelftest' && rootProject.propwashSelftestProperties.containsKey('propwash.selftest.list') && steps.exists()) {
+                logger.lifecycle(steps.getText('UTF-8').split('\n## ')[0].trim())
+                logger.lifecycle("Alle Schritte in Reihenfolge: ${rootProject.relativePath(steps)}")
+            }
+        }
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'fabric')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'fabric')
+            }
+        }
+    }
+}

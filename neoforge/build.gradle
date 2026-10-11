@@ -1,0 +1,160 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.neoforged.moddev'
+}
+
+// Mixins des Quell-Sets devtest (common/src/devtest/…/mixin/dev) brauchen eine Mod, die ihre Mixin-Config beim Start
+// anmeldet. Die Hilfs-Mod propwash_devtest tut genau das: neoforge.mods.toml aus src/devtestMod,
+// propwash.dev.mixins.json aus common/src/devtestMod. Nur die beiden Client-Testläufe laden sie (loadedMods), alle
+// anderen Runs und das Release-Jar kennen sie nicht.
+sourceSets {
+    devtestMod {
+        resources.srcDir project(':common').file('src/devtestMod/resources')
+    }
+    devtest {
+        runtimeClasspath += sourceSets.devtestMod.output
+    }
+}
+
+neoForge {
+    version = neoforge_version
+    // Automatically enable neoforge AccessTransformers if the file exists
+    def at = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformers.from(at.absolutePath)
+    }
+    runs {
+        configureEach {
+            ideName = "NeoForge ${it.name.capitalize()} (${project.path})" // Unify the run config names with fabric
+        }
+        client {
+            client()
+            gameDirectory = this.mkdir(this.file(rootProject.propwashRunDirs.client))
+        }
+        // Selbsttest: legt eine Flachwelt an, führt alle SelfTest-Schritte aus und beendet das Spiel (:neoforge:runClientSelftest).
+        clientSelftest {
+            client()
+            sourceSet = sourceSets.devtest
+            gameDirectory = this.mkdir(this.file(rootProject.propwashRunDirs.selftest))
+            systemProperty('propwash.selftest', 'true')
+            rootProject.propwashSelftestProperties.each { key, value -> systemProperty(key, value) }
+            rootProject.propwashTestWindowEnv.each { key, value -> environment(key, value) }
+        }
+        // Start-Rauchtest: normaler Client ohne Selbsttest-Modus; Welt anlegen, betreten, verlassen, beenden (:neoforge:runClientSmoke).
+        clientSmoke {
+            client()
+            sourceSet = sourceSets.devtest
+            gameDirectory = this.mkdir(this.file(rootProject.propwashRunDirs.smoke))
+            systemProperty('propwash.smoketest', 'true')
+            rootProject.propwashTestWindowEnv.each { key, value -> environment(key, value) }
+        }
+        // Server-Rauchtest: dedizierter Server ohne GUI, 100 Ticks nach dem Start mit einer Drohne, dann Ende (:neoforge:runServerSmoke).
+        serverSmoke {
+            server()
+            sourceSet = sourceSets.devtest
+            gameDirectory = this.mkdir(this.file(rootProject.propwashRunDirs.serverSmoke))
+            systemProperty('propwash.serversmoke', 'true')
+            programArgument('--nogui')
+        }
+        data {
+            clientData()
+            gameDirectory = this.mkdir(this.file('runs/data'))
+            // DataGen can be run by - "./gradlew :neoforge:runData" in Terminal.
+            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+        server {
+            server()
+            this.file(rootProject.propwashRunDirs.server).createParentDirectories()
+            gameDirectory = this.mkdir(this.file(rootProject.propwashRunDirs.server))
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.devtest
+        }
+        "${mod_id}_devtest" {
+            sourceSet sourceSets.devtestMod
+        }
+    }
+    runs.configureEach { run ->
+        run.loadedMods = run.name in ['clientSelftest', 'clientSmoke'] ? [mods."${mod_id}", mods."${mod_id}_devtest"] : [mods."${mod_id}"]
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+// Test-Instanzen immer stumm starten (options.txt wird vor jedem Start gepatcht).
+tasks.matching { it.name in ['runClient', 'runServer', 'runClientSelftest', 'runClientSmoke'] }.configureEach {
+    dependsOn(rootProject.tasks.named('prepareRuns'))
+}
+tasks.matching { it.name == 'runServerSmoke' }.configureEach {
+    dependsOn(rootProject.tasks.named('prepareServerSmoke'))
+}
+
+// Dev-Spieler mit Skin (propwashDevPlayer im Wurzel-Build): runClient immer, Selbst- und Rauchtest nur mit -PpropwashDevName.
+[runClient: rootProject.propwashRunDirs.client, runClientSelftest: rootProject.propwashRunDirs.selftest,
+ runClientSmoke: rootProject.propwashRunDirs.smoke].each { taskName, dir ->
+    tasks.matching { it.name == taskName }.configureEach { task ->
+        task.doFirst { rootProject.propwashDevPlayer(task, file(dir), taskName == 'runClient', ['--accessToken', '0']) }
+    }
+}
+
+// Selbsttest-/Rauchtest-Ergebnis auswerten: der Client schreibt PASS/FAIL nach propwash-selftest-result.txt.
+[runClientSelftest: [dir: rootProject.propwashRunDirs.selftest, label: 'Selbsttest (NeoForge)'],
+ runClientSmoke   : [dir: rootProject.propwashRunDirs.smoke, label: 'Rauchtest (NeoForge)'],
+ runServerSmoke   : [dir: rootProject.propwashRunDirs.serverSmoke, label: 'Server-Rauchtest (NeoForge)', scanLog: true]].each { taskName, cfg ->
+    tasks.matching { it.name == taskName }.configureEach { task ->
+        def resultFile = file("${cfg.dir}/propwash-selftest-result.txt")
+        task.group = 'propwash'
+        task.doFirst { resultFile.delete() }
+        task.doLast {
+            if (!resultFile.exists()) {
+                throw new GradleException("${cfg.label}: keine Ergebnisdatei – Spiel abgestürzt oder vorzeitig beendet?")
+            }
+            def result = resultFile.getText('UTF-8').trim()
+            if (!result.startsWith('PASS')) {
+                throw new GradleException("${cfg.label} fehlgeschlagen: ${result}")
+            }
+            if (cfg.scanLog) {
+                def logFile = file("${cfg.dir}/logs/latest.log")
+                if (!logFile.exists()) {
+                    throw new GradleException("${cfg.label}: kein logs/latest.log")
+                }
+                def bad = logFile.readLines('UTF-8').findAll { line ->
+                    line =~ /\/(ERROR|FATAL)\]/ || line.contains('MixinApplyError') || line.contains('InvalidMixinException') ||
+                            line.contains('InvalidInjectionException') || line.contains('Mixin apply failed')
+                }
+                if (!bad.isEmpty()) {
+                    throw new GradleException("${cfg.label}: ${bad.size()} Fehlerzeilen im Log, erste: ${bad.first()}")
+                }
+            }
+            logger.lifecycle("${cfg.label}: ${result}")
+            def steps = file("${cfg.dir}/propwash-selftest-steps.md")
+            if (taskName == 'runClientSelftest' && rootProject.propwashSelftestProperties.containsKey('propwash.selftest.list') && steps.exists()) {
+                logger.lifecycle(steps.getText('UTF-8').split('\n## ')[0].trim())
+                logger.lifecycle("Alle Schritte in Reihenfolge: ${rootProject.relativePath(steps)}")
+            }
+        }
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'neoforge')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName, it.getTaskName(null, 'jarJar')].each { variant ->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'neoforge')
+            }
+        }
+    }
+}

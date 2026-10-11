@@ -1,0 +1,68 @@
+{
+  "placement": {
+    "type": "propwash:world_course",
+    "avoid": [
+      {
+        "other_set": "minecraft:villages",
+        "chunk_count": 8
+      },
+      {
+        "other_set": "minecraft:pillager_outposts",
+        "chunk_count": 6
+      },
+      {
+        "other_set": "minecraft:woodland_mansions",
+        "chunk_count": 8
+      },
+      {
+        "other_set": "minecraft:desert_pyramids",
+        "chunk_count": 4
+      },
+      {
+        "other_set": "minecraft:jungle_temples",
+        "chunk_count": 4
+      },
+      {
+        "other_set": "minecraft:igloos",
+        "chunk_count": 4
+      },
+      {
+        "other_set": "minecraft:swamp_huts",
+        "chunk_count": 4
+      },
+      {
+        "other_set": "minecraft:abandoned_camp",
+        "chunk_count": 4
+      },
+      {
+        "other_set": "minecraft:ruined_portals",
+        "chunk_count": 3
+      },
+      {
+        "other_set": "minecraft:trail_ruins",
+        "chunk_count": 3
+      }
+    ],
+    "salt": 1734215807,
+    "separation": 10,
+    "spacing": 32
+  },
+  "structures": [
+    {
+      "structure": "propwash:field_slalom",
+      "weight": 4
+    },
+    {
+      "structure": "propwash:canyon_run",
+      "weight": 3
+    },
+    {
+      "structure": "propwash:forest_weave",
+      "weight": 4
+    },
+    {
+      "structure": "propwash:drone_arena",
+      "weight": 1
+    }
+  ]
+}

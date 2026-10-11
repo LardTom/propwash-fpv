@@ -1,0 +1,18 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash_rendertest:part/motor/m4214_400_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16074609
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 2829360
+      }
+    ]
+  }
+}

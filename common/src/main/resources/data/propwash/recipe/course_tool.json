@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "R": "minecraft:redstone",
+    "P": "minecraft:paper",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    "R",
+    "P",
+    "S"
+  ],
+  "result": {
+    "id": "propwash:course_tool"
+  }
+}

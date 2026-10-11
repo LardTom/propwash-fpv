@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_accessory",
+  "key": {
+    "C": "propwash:copper_coil",
+    "N": "minecraft:iron_nugget",
+    "B": "propwash:circuit_board",
+    "H": "minecraft:tripwire_hook"
+  },
+  "pattern": [
+    " C ",
+    "NBN",
+    "H H"
+  ],
+  "result": {
+    "id": "propwash:gripper"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "textures": {
+    "frame": "propwash:item/gate/frame",
+    "particle": "propwash:item/gate/frame"
+  },
+  "elements": [
+    {
+      "name": "strap",
+      "from": [
+        7.5,
+        0.0,
+        7.5
+      ],
+      "to": [
+        8.5,
+        6.5,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.0
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.0
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.0
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            2.0,
+            4.0
+          ],
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
+}

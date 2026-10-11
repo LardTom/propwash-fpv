@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "propwash_course",
+  "key": {
+    "D": "minecraft:red_dye",
+    "S": "minecraft:stick",
+    "N": "minecraft:iron_nugget"
+  },
+  "pattern": [
+    "D",
+    "S",
+    "N"
+  ],
+  "result": {
+    "id": "propwash:slalom_pole",
+    "count": 2
+  }
+}

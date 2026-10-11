@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_frame",
+  "key": {
+    "K": "minecraft:dried_kelp",
+    "C": "propwash:carbon_plate",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "K K",
+    "CIC",
+    "K K"
+  ],
+  "result": {
+    "id": "propwash:cinewhoop_3"
+  }
+}

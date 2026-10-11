@@ -1,0 +1,113 @@
+# Crafting materials (16x16, item atlas): carbon plate, copper coil, circuit board, LiPo cell, HD video chip.
+
+== carbon_plate
+@1 1a1d22
+@2 353c45
+@3 4f5864
+@4 08090b
+@5 8a95a3
+................
+................
+................
+.KKKKKKKKKKKKKK.
+.K553311331133K4
+.K1.21122112.1K4
+.K341122132241K4
+.K311221322112K4
+.K112213221122K4
+.K122132211221K4
+.K3.13221122.1K4
+.K341221122142K4
+.KKKKKKKKKKKKKK4
+.K44444444444444
+................
+................
+
+== copper_coil
+@1 b4532f
+@2 e07a4a
+@3 f7a071
+@4 ffd0b0
+@5 7f3a22
+................
+................
+...KKKKKKKKKK...
+..K4343434343K..
+..K3232323232K..
+..K3232323232K..
+.KK2121212121KK.
+KwK2121212121KwK
+KSK2121212121KSK
+.KK2121212121KK.
+..K2121212121K..
+..K1515151515K..
+..K1515151515K..
+...KKKKKKKKKK...
+................
+................
+
+== circuit_board
+@1 0d3d1f
+@2 1f7a3e
+@3 3fae62
+@A e2b64a
+................
+.KKKKKKKKKKKKKK.
+.K3222222222223K
+.K2AA2222222AA2K
+.K2A222222222A2K
+.K2A22KKKKK22A2K
+.K2AAAKsssK2222K
+.K222AKsWsKAAA2K
+.K222AKsssK22A2K
+.K2R2AKKKKK22A2K
+.K2r22222AAAAA2K
+.K2222A222222A2K
+.K2AA2AAA2AAA22K
+.K1111111111111K
+..KKKKKKKKKKKKKK
+................
+
+== lipo_cell
+@1 3b5a78
+@2 5c86ad
+@3 7aa6cf
+@4 a9cff0
+@5 d9ecff
+......KK..KK....
+.....KwWK.KaAK..
+.....KSwK.KoaK..
+..KKKKKKKKKKKK..
+..K5444444443K..
+..K5433333332K..
+..K5432222212K..
+..K54AAAAAA12K..
+..K54AKKKKA12K..
+..K54AAAAAA12K..
+..K5432222212K..
+..K5432222212K..
+..K5433333312K..
+..K5111111111K..
+..KKKKKKKKKKKK..
+................
+
+== hd_chip
+@1 4a1d7a
+@2 d9a8ff
+@3 f3e3ff
+................
+....A.A.A.A.A...
+...KKKKKKKKKKK..
+..AKcccccccccKA.
+...KcKKKKKKKcK..
+..AKcK3322KKcKA.
+...KcK3P22pKcK..
+..AKcK2PPppKcKA.
+...KcK2Pppp1cK..
+..AKcKKpp11KcKA.
+...KcKKKKKKKcK..
+..AKcccccccccKA.
+...KKKKKKKKKKK..
+....A.A.A.A.A...
+................
+................

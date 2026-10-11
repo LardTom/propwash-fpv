@@ -1,0 +1,119 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 55
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:circuit_board",
+          "weight": 9,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 2,
+              "max": 4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:lipo_cell",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 2,
+              "max": 4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:stack_30",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:b6s_1100",
+          "weight": 4,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:battery_charge": 0.4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:hd_chip",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:digital_lite",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2807_1300",
+          "weight": 3,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:p7_2b",
+          "weight": 3,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 4
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2306_1860",
+          "weight": 2,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:b6s_1300",
+          "weight": 2,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:battery_charge": 0.4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:race_5",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:long_range_7",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:action_cam_heavy",
+          "weight": 2
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

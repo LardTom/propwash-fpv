@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "frame": "propwash:item/gate/frame",
+    "particle": "propwash:item/gate/frame"
+  },
+  "elements": [
+    {
+      "name": "corner_bottom_right",
+      "from": [
+        4.0,
+        0.0,
+        5.5
+      ],
+      "to": [
+        8.0,
+        4.0,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            8.0,
+            0.0,
+            10.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            10.0,
+            0.0,
+            12.5,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            10.0,
+            0.0,
+            12.5,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "up": {
+          "uv": [
+            8.0,
+            2.0,
+            10.0,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "down": {
+          "uv": [
+            8.0,
+            2.0,
+            10.0,
+            4.5
+          ],
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
+}

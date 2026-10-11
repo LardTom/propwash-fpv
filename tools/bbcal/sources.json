@@ -1,0 +1,688 @@
+{
+  "format": 1,
+  "note": "Öffentliche Betaflight-Logs mit bekanntem oder geschätztem Aufbau. Die Logs selbst liegen nur im Cache (.cache/bbcal), nie im Repository.",
+  "logs": [
+    {
+      "id": "meteor75_erpm_fraction",
+      "class": "whoop75",
+      "label": "BetaFPV Meteor75 (1S)",
+      "page": "https://github.com/betaflight/blackbox-log-viewer/pull/625",
+      "url": "https://github.com/betaflight/blackbox-log-viewer/files/11070275/202303251.zip",
+      "member": "202303251800_variable_N_ERPM_FRACTION_18_Zoggbarr.bbl",
+      "index": 3,
+      "sha256": "42bb364f7ec9d9baf471c4dde2203fe29e92217ad8087e091bef036d9f77cf6f",
+      "build": {
+        "text": "BetaFPV Meteor75 (2022): 0802SE 19500 KV, 40-mm-2-Blatt-Props, 1S 450 mAh BT2.0, Analog",
+        "auw_g": 37.0,
+        "auw_tolerance_g": 4.0,
+        "auw_source": "geschätzt: Herstellerangabe 24,98 g ohne Akku + 1S 450 mAh (11,4 g); Bauversion nicht im Log (die Version mit 1102 18000 KV wäre rund 41 g)",
+        "parts": {
+          "frame": "justmoreparts:whoop_75_duct",
+          "stack": "justmoreparts:aio_whoop_1s_6a",
+          "motor": {
+            "base": "justmoreparts:m0802_19000",
+            "set": {
+              "kv": 19500
+            }
+          },
+          "prop": "justmoreparts:p40_20_2b_pc",
+          "video": "justmoreparts:analog_whoop_25mw",
+          "battery": "justmoreparts:b1s_450_hv"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "meteor75_debug1",
+      "class": "whoop75",
+      "label": "BetaFPV Meteor75 (1S)",
+      "page": "https://github.com/betaflight/blackbox-log-viewer/pull/625",
+      "url": "https://github.com/betaflight/blackbox-log-viewer/files/11070275/202303251.zip",
+      "member": "202303251740_variable_N_DEBUG1_Zoggbarr.bbl",
+      "index": 3,
+      "sha256": "42bb364f7ec9d9baf471c4dde2203fe29e92217ad8087e091bef036d9f77cf6f",
+      "build": {
+        "text": "BetaFPV Meteor75 (2022): 0802SE 19500 KV, 40-mm-2-Blatt-Props, 1S 450 mAh BT2.0, Analog",
+        "auw_g": 37.0,
+        "auw_tolerance_g": 4.0,
+        "auw_source": "geschätzt: Herstellerangabe 24,98 g ohne Akku + 1S 450 mAh (11,4 g); Bauversion nicht im Log (die Version mit 1102 18000 KV wäre rund 41 g)",
+        "parts": {
+          "frame": "justmoreparts:whoop_75_duct",
+          "stack": "justmoreparts:aio_whoop_1s_6a",
+          "motor": {
+            "base": "justmoreparts:m0802_19000",
+            "set": {
+              "kv": 19500
+            }
+          },
+          "prop": "justmoreparts:p40_20_2b_pc",
+          "video": "justmoreparts:analog_whoop_25mw",
+          "battery": "justmoreparts:b1s_450_hv"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "meteor75_bumps",
+      "class": "whoop75",
+      "label": "BetaFPV Meteor75 (1S)",
+      "page": "https://github.com/betaflight/betaflight/pull/12937",
+      "url": "https://github.com/betaflight/betaflight/files/12198053/dynamic_gyro_gain_hard_bumps.zip",
+      "member": "dynamic_gyro_conv_linear_009_adj_gyro_gain_hard_bumps.bbl",
+      "index": 2,
+      "sha256": "fdefc8324267a2d6c382e5cdc6ed07c5242b6893fb75474db68b884cc39310e0",
+      "build": {
+        "text": "BetaFPV Meteor75 (2022): 0802SE 19500 KV, 40-mm-2-Blatt-Props, 1S 450 mAh BT2.0, Analog",
+        "auw_g": 37.0,
+        "auw_tolerance_g": 4.0,
+        "auw_source": "geschätzt: Herstellerangabe 24,98 g ohne Akku + 1S 450 mAh (11,4 g); Bauversion nicht im Log (die Version mit 1102 18000 KV wäre rund 41 g)",
+        "parts": {
+          "frame": "justmoreparts:whoop_75_duct",
+          "stack": "justmoreparts:aio_whoop_1s_6a",
+          "motor": {
+            "base": "justmoreparts:m0802_19000",
+            "set": {
+              "kv": 19500
+            }
+          },
+          "prop": "justmoreparts:p40_20_2b_pc",
+          "video": "justmoreparts:analog_whoop_25mw",
+          "battery": "justmoreparts:b1s_450_hv"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "meteor75pro_bf442",
+      "class": "whoop75",
+      "label": "BetaFPV Meteor75 Pro (1S)",
+      "page": "https://github.com/betaflight/betaflight/issues/12961",
+      "url": "https://github.com/betaflight/betaflight/files/12064795/LOGS.of.RPM.on.vs.OFF.zip",
+      "member": "btfl_004-RPM_OFF-BF4.4.2.bbl",
+      "index": 1,
+      "sha256": "7d7f884de91aa2d5b7f175dce9c32f76a4aa0b99a6b29a129d0438ba47a93280",
+      "build": {
+        "text": "BetaFPV Meteor75 Pro: 1102 22000 KV, 45-mm-3-Blatt-Props, 1S 550 mAh, Analog",
+        "auw_g": 45.0,
+        "auw_tolerance_g": 3.0,
+        "auw_source": "Herstellerangabe 31,33 g ohne Akku + 1S 550 mAh (13,9 g)",
+        "parts": {
+          "frame": "justmoreparts:whoop_75_duct",
+          "stack": "justmoreparts:aio_whoop_1s_6a",
+          "motor": {
+            "base": "justmoreparts:m1102_18000",
+            "set": {
+              "kv": 22000
+            }
+          },
+          "prop": "justmoreparts:p45_19_3b_pc",
+          "video": "justmoreparts:analog_whoop_25mw",
+          "battery": "justmoreparts:b1s_550_hv"
+        },
+        "confidence": "hoch"
+      }
+    },
+    {
+      "id": "meteor75pro_bf432",
+      "class": "whoop75",
+      "label": "BetaFPV Meteor75 Pro (1S)",
+      "page": "https://github.com/betaflight/betaflight/issues/12961",
+      "url": "https://github.com/betaflight/betaflight/files/12064795/LOGS.of.RPM.on.vs.OFF.zip",
+      "member": "btfl_005-RPM_OFF-BF4.3.2.bbl",
+      "index": 1,
+      "sha256": "7d7f884de91aa2d5b7f175dce9c32f76a4aa0b99a6b29a129d0438ba47a93280",
+      "build": {
+        "text": "BetaFPV Meteor75 Pro: 1102 22000 KV, 45-mm-3-Blatt-Props, 1S 550 mAh, Analog",
+        "auw_g": 45.0,
+        "auw_tolerance_g": 3.0,
+        "auw_source": "Herstellerangabe 31,33 g ohne Akku + 1S 550 mAh (13,9 g)",
+        "parts": {
+          "frame": "justmoreparts:whoop_75_duct",
+          "stack": "justmoreparts:aio_whoop_1s_6a",
+          "motor": {
+            "base": "justmoreparts:m1102_18000",
+            "set": {
+              "kv": 22000
+            }
+          },
+          "prop": "justmoreparts:p45_19_3b_pc",
+          "video": "justmoreparts:analog_whoop_25mw",
+          "battery": "justmoreparts:b1s_550_hv"
+        },
+        "confidence": "hoch"
+      }
+    },
+    {
+      "id": "meteor65",
+      "class": "whoop65",
+      "label": "BetaFPV Meteor65 (1S)",
+      "page": "https://github.com/betaflight/blackbox-log-viewer/pull/625",
+      "url": "https://github.com/betaflight/blackbox-log-viewer/files/10572044/BTFL_BLACKBOX_LOG_Meteor65_20230201_183226.zip",
+      "member": "BTFL_BLACKBOX_LOG_Meteor65_20230201_183226.BBL",
+      "index": 1,
+      "sha256": "28df682560d0c18fe207edafcc46594f1a5a1aefc019c3b18b40ee7dcc57dcb7",
+      "build": {
+        "text": "BetaFPV Meteor65 (2022): 0702SE II 27000 KV, 31-mm-3-Blatt-Props, 1S 300 mAh",
+        "auw_g": 26.0,
+        "auw_tolerance_g": 3.0,
+        "auw_source": "geschätzt: rund 18 g ohne Akku + 1S 300 mAh",
+        "parts": {
+          "frame": "justmoreparts:whoop_65_lite",
+          "stack": "justmoreparts:aio_whoop_1s_6a",
+          "motor": "justmoreparts:m0702_27000",
+          "prop": "propwash:p31_3b",
+          "video": "justmoreparts:analog_whoop_25mw",
+          "battery": "propwash:b1s_300_hv"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "pavo_pico_timing",
+      "class": "cinewhoop2",
+      "label": "BetaFPV Pavo Pico (2S)",
+      "page": "https://github.com/betaflight/betaflight/pull/13388",
+      "url": "https://github.com/betaflight/betaflight/files/14396762/timing_acc.bbl.txt",
+      "index": 1,
+      "sha256": "2034c727ff265a26e381ab34b3b4f5ad085e78098243235b48fc6b19b5ce310b",
+      "build": {
+        "text": "BetaFPV Pavo Pico (80 mm, Walksnail): 1102 14000 KV, Gemfan 45 mm 3-Blatt, 2S 450 mAh",
+        "auw_g": 77.0,
+        "auw_tolerance_g": 8.0,
+        "auw_source": "geschätzt: O3-Version 71,2 g ohne Akku, mit Walksnail statt O3 rund 52 g + 2S 450 mAh (24,4 g)",
+        "parts": {
+          "frame": "justmoreparts:whoop_85_duct",
+          "stack": "justmoreparts:aio_whoop_2s_12a",
+          "motor": {
+            "base": "justmoreparts:m1102_13500",
+            "set": {
+              "kv": 14000
+            }
+          },
+          "prop": "justmoreparts:p45_19_3b_pc",
+          "video": "justmoreparts:digital_micro",
+          "battery": "justmoreparts:b2s_450_hv"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "pavo_pico_all",
+      "class": "cinewhoop2",
+      "label": "BetaFPV Pavo Pico (2S)",
+      "page": "https://github.com/betaflight/betaflight/pull/13388",
+      "url": "https://github.com/betaflight/betaflight/files/14542581/btfl_all.bbl.txt",
+      "index": 1,
+      "sha256": "3fdb0c68c54f19bb7a5dd19bf8c059aaecacf17ec8adebc014e76bae4c40336a",
+      "build": {
+        "text": "BetaFPV Pavo Pico (80 mm, Walksnail): 1102 14000 KV, Gemfan 45 mm 3-Blatt, 2S 450 mAh",
+        "auw_g": 77.0,
+        "auw_tolerance_g": 8.0,
+        "auw_source": "geschätzt: O3-Version 71,2 g ohne Akku, mit Walksnail statt O3 rund 52 g + 2S 450 mAh (24,4 g)",
+        "parts": {
+          "frame": "justmoreparts:whoop_85_duct",
+          "stack": "justmoreparts:aio_whoop_2s_12a",
+          "motor": {
+            "base": "justmoreparts:m1102_13500",
+            "set": {
+              "kv": 14000
+            }
+          },
+          "prop": "justmoreparts:p45_19_3b_pc",
+          "video": "justmoreparts:digital_micro",
+          "battery": "justmoreparts:b2s_450_hv"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "pavo20pro2_b0",
+      "class": "cinewhoop2",
+      "label": "BetaFPV Pavo20 Pro II (3S)",
+      "page": "https://github.com/betaflight/betaflight/pull/15400",
+      "url": "https://github.com/user-attachments/files/30362992/b0.zip",
+      "member": "btfl_002.bbl",
+      "index": 1,
+      "sha256": "1d9343a88e4184bf3c4d62087c951bc91d42b3bb3ffece1f7ade5defcc72a876",
+      "build": {
+        "text": "BetaFPV Pavo20 Pro II (2,2″-Cinewhoop): LAVA 1104 7200 KV, Gemfan 2218 3-Blatt, 3S 550 mAh",
+        "auw_g": 140.0,
+        "auw_tolerance_g": 15.0,
+        "auw_source": "geschätzt: 79 g (O4) bis 108 g (O4 Pro) ohne Akku + LAVA 3S 550 mAh (rund 46 g)",
+        "parts": {
+          "frame": "justmoreparts:cw_25_duct",
+          "stack": "justmoreparts:aio_tp_4s_20a",
+          "motor": {
+            "base": "justmoreparts:m1103_8000",
+            "set": {
+              "kv": 7200,
+              "stator": "1104"
+            }
+          },
+          "prop": {
+            "base": "justmoreparts:p51_20_3b_pc",
+            "set": {
+              "diameter_mm": 56,
+              "pitch_in": 1.8
+            }
+          },
+          "video": "justmoreparts:digital_hd_pro",
+          "battery": {
+            "base": "justmoreparts:b3s_450",
+            "set": {
+              "capacity_mah": 550,
+              "mass_g": 46.0
+            }
+          }
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "pavo20pro2_fullthrottle",
+      "class": "cinewhoop2",
+      "label": "BetaFPV Pavo20 Pro II (3S)",
+      "page": "https://github.com/betaflight/betaflight/pull/15400",
+      "url": "https://github.com/user-attachments/files/30437130/1st_Flights_2.zip",
+      "member": "4th_Flight_FullThrottle_Acro_btfl_005.bbl",
+      "index": 1,
+      "sha256": "69163cd77949ff95790216326c4d7d4cdefe472e9ea2b69534cac91fd79dd76c",
+      "build": {
+        "text": "BetaFPV Pavo20 Pro II (2,2″-Cinewhoop): LAVA 1104 7200 KV, Gemfan 2218 3-Blatt, 3S 550 mAh",
+        "auw_g": 140.0,
+        "auw_tolerance_g": 15.0,
+        "auw_source": "geschätzt: 79 g (O4) bis 108 g (O4 Pro) ohne Akku + LAVA 3S 550 mAh (rund 46 g)",
+        "parts": {
+          "frame": "justmoreparts:cw_25_duct",
+          "stack": "justmoreparts:aio_tp_4s_20a",
+          "motor": {
+            "base": "justmoreparts:m1103_8000",
+            "set": {
+              "kv": 7200,
+              "stator": "1104"
+            }
+          },
+          "prop": {
+            "base": "justmoreparts:p51_20_3b_pc",
+            "set": {
+              "diameter_mm": 56,
+              "pitch_in": 1.8
+            }
+          },
+          "video": "justmoreparts:digital_hd_pro",
+          "battery": {
+            "base": "justmoreparts:b3s_450",
+            "set": {
+              "capacity_mah": 550,
+              "mass_g": 46.0
+            }
+          }
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "firefly25_evening",
+      "class": "toothpick25",
+      "label": "Flywoo Firefly 25 Mini (3S)",
+      "page": "https://github.com/betaflight/betaflight/issues/15809",
+      "url": "https://github.com/user-attachments/files/33129236/firefly25_gps_rescue_logs.zip",
+      "member": "BTFL_BLACKBOX_LOG_FIREFLY25_20261006_224819_FLYWOOF405S_AIO.BBL",
+      "index": 1,
+      "sha256": "fcf63de64f1067031fa88a7f0b294510cb4ca6bedaab89eb40df8bfbfd20dcf5",
+      "build": {
+        "text": "Flywoo Firefly 25 Mini (2,5″) mit GPS: ROBO 1303 6000 KV, Gemfan 2520 3-Blatt, 3S",
+        "auw_g": 183.0,
+        "auw_tolerance_g": 20.0,
+        "auw_source": "geschätzt: BNF 97–110 g ohne Akku + GPS (8 g) + 3S 650 mAh (58 g); Akku im Issue nicht genannt",
+        "parts": {
+          "frame": "justmoreparts:tp_25_x",
+          "stack": "justmoreparts:aio_tp_4s_20a",
+          "motor": {
+            "base": "justmoreparts:m12025_5500",
+            "set": {
+              "kv": 6000,
+              "stator": "1303",
+              "mass_g": 6.1
+            }
+          },
+          "prop": {
+            "base": "justmoreparts:p65_25_3b_pc",
+            "set": {
+              "pitch_in": 2.0
+            }
+          },
+          "video": "justmoreparts:digital_micro",
+          "battery": "justmoreparts:b3s_650"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "firefly25_long",
+      "class": "toothpick25",
+      "label": "Flywoo Firefly 25 Mini (3S)",
+      "page": "https://github.com/betaflight/betaflight/issues/15809",
+      "url": "https://github.com/user-attachments/files/33129236/firefly25_gps_rescue_logs.zip",
+      "member": "BTFL_BLACKBOX_LOG_FIREFLY25_20261006_194824_FLYWOOF405S_AIO.BBL",
+      "index": 2,
+      "sha256": "fcf63de64f1067031fa88a7f0b294510cb4ca6bedaab89eb40df8bfbfd20dcf5",
+      "build": {
+        "text": "Flywoo Firefly 25 Mini (2,5″) mit GPS: ROBO 1303 6000 KV, Gemfan 2520 3-Blatt, 3S",
+        "auw_g": 183.0,
+        "auw_tolerance_g": 20.0,
+        "auw_source": "geschätzt: BNF 97–110 g ohne Akku + GPS (8 g) + 3S 650 mAh (58 g); Akku im Issue nicht genannt",
+        "parts": {
+          "frame": "justmoreparts:tp_25_x",
+          "stack": "justmoreparts:aio_tp_4s_20a",
+          "motor": {
+            "base": "justmoreparts:m12025_5500",
+            "set": {
+              "kv": 6000,
+              "stator": "1303",
+              "mass_g": 6.1
+            }
+          },
+          "prop": {
+            "base": "justmoreparts:p65_25_3b_pc",
+            "set": {
+              "pitch_in": 2.0
+            }
+          },
+          "video": "justmoreparts:digital_micro",
+          "battery": "justmoreparts:b3s_650"
+        },
+        "confidence": "mittel"
+      }
+    },
+    {
+      "id": "geprc_cinewhoop3",
+      "class": "cinewhoop3",
+      "label": "GEPRC-3″-Cinewhoop (4S)",
+      "page": "https://github.com/betaflight/betaflight/issues/14240",
+      "url": "https://github.com/user-attachments/files/18662037/btfl_007.zip",
+      "member": "btfl_007.bbl",
+      "index": 1,
+      "sha256": "f40a6923224d84973f88772b03f39f3700416c8b3ee5cd460bd66dd31f4c4c6d",
+      "build": {
+        "text": "GEPRC-3″-Cinewhoop (Craft „GEPRC Cinequeen“): 1404 3850 KV, 4S, HD",
+        "auw_g": 330.0,
+        "auw_tolerance_g": 50.0,
+        "auw_source": "geschätzt: typischer 3″-Cinewhoop mit HD-System rund 250 g + 4S 850 mAh; im Issue nur Motor und Größe genannt",
+        "parts": {
+          "frame": "propwash:cinewhoop_3",
+          "stack": "propwash:aio_20",
+          "motor": {
+            "base": "propwash:m1404_4600",
+            "set": {
+              "kv": 3850
+            }
+          },
+          "prop": "propwash:p3_3b",
+          "video": "propwash:digital_hd",
+          "battery": "justmoreparts:b4s_850"
+        },
+        "confidence": "niedrig"
+      }
+    },
+    {
+      "id": "nazgul_evoque_f5_a",
+      "class": "freestyle5",
+      "label": "iFlight Nazgul Evoque F5 V2 (6S)",
+      "page": "https://github.com/betaflight/betaflight/issues/12756",
+      "url": "https://github.com/betaflight/betaflight/files/11380795/btfl_003.bbl.zip",
+      "member": "btfl_003.bbl",
+      "index": 3,
+      "sha256": "c163148a3ff5fce1c06248d5790eb9044a21393d5a9a0d01e826a606dd824e9f",
+      "build": {
+        "text": "iFlight Nazgul Evoque F5 V2 6S (Analog, BNF) mit GPS: XING-E Pro 2207 1800 KV, Nazgul-F5-3-Blatt 5,1″, 6S",
+        "auw_g": 630.0,
+        "auw_tolerance_g": 40.0,
+        "auw_source": "Herstellerangabe 419 g ohne Akku + GPS M8Q (10 g) + 6S 1100–1300 mAh (185–215 g)",
+        "parts": {
+          "frame": "propwash:freestyle_5",
+          "stack": "justmoreparts:stack_30_6s_60a",
+          "motor": {
+            "base": "justmoreparts:m2207_1950",
+            "set": {
+              "kv": 1800
+            }
+          },
+          "prop": "justmoreparts:p130_41_3b_soft",
+          "video": "justmoreparts:analog_race_800",
+          "battery": "propwash:b6s_1300"
+        },
+        "confidence": "hoch"
+      }
+    },
+    {
+      "id": "nazgul_evoque_f5_b",
+      "class": "freestyle5",
+      "label": "iFlight Nazgul Evoque F5 V2 (6S)",
+      "page": "https://github.com/betaflight/betaflight/issues/12756",
+      "url": "https://github.com/betaflight/betaflight/files/11380795/btfl_003.bbl.zip",
+      "member": "btfl_003.bbl",
+      "index": 2,
+      "sha256": "c163148a3ff5fce1c06248d5790eb9044a21393d5a9a0d01e826a606dd824e9f",
+      "build": {
+        "text": "iFlight Nazgul Evoque F5 V2 6S (Analog, BNF) mit GPS: XING-E Pro 2207 1800 KV, Nazgul-F5-3-Blatt 5,1″, 6S",
+        "auw_g": 630.0,
+        "auw_tolerance_g": 40.0,
+        "auw_source": "Herstellerangabe 419 g ohne Akku + GPS M8Q (10 g) + 6S 1100–1300 mAh (185–215 g)",
+        "parts": {
+          "frame": "propwash:freestyle_5",
+          "stack": "justmoreparts:stack_30_6s_60a",
+          "motor": {
+            "base": "justmoreparts:m2207_1950",
+            "set": {
+              "kv": 1800
+            }
+          },
+          "prop": "justmoreparts:p130_41_3b_soft",
+          "video": "justmoreparts:analog_race_800",
+          "battery": "propwash:b6s_1300"
+        },
+        "confidence": "hoch"
+      }
+    },
+    {
+      "id": "fifty5_6s",
+      "class": "freestyle5",
+      "label": "5″ FIFTY5-2 (6S, O4)",
+      "page": "https://github.com/betaflight/betaflight/issues/15816",
+      "url": "https://github.com/user-attachments/files/33197469/drone.FIFTY5-2_BBL.zip",
+      "member": "btfl_002.bbl",
+      "index": 1,
+      "sha256": "91fcedbf7831aa490e292f06d8827f3f21f3e5267f24fd2c27b183028fef92a7",
+      "build": {
+        "text": "5″ „FIFTY5-2“ (6S, T-Motor Velox F7 SE + V70A, DJI O4, GPS): Motoren nicht genannt, 2207 1950 KV angenommen, 6S 1300 mAh",
+        "auw_g": 640.0,
+        "auw_tolerance_g": 80.0,
+        "auw_source": "geschätzt: typischer 5″ mit O4 und GPS rund 430 g + 6S 1300 mAh (210 g)",
+        "parts": {
+          "frame": "propwash:freestyle_5",
+          "stack": "justmoreparts:stack_30_6s_60a",
+          "motor": "justmoreparts:m2207_1950",
+          "prop": "justmoreparts:p130_41_3b_soft",
+          "video": "justmoreparts:digital_hd_pro",
+          "battery": "propwash:b6s_1300"
+        },
+        "confidence": "niedrig"
+      }
+    },
+    {
+      "id": "lr5_lion_a",
+      "class": "longrange5",
+      "label": "5″ Long Range Li-Ion (4S)",
+      "page": "https://github.com/betaflight/betaflight/issues/15651",
+      "url": "https://github.com/user-attachments/files/31633246/BTFL_BLACKBOX_LOG_20260831_023912_GEPRCF405.zip",
+      "member": "BTFL_BLACKBOX_LOG_20260831_023912_GEPRCF405.BBL",
+      "index": 18,
+      "sha256": "dc71c8b97bb8f8ad57cc0a64c18d406fb6a6a78bc15df129ae4f76e2034d420a",
+      "build": {
+        "text": "5″ Long Range mit Li-Ion: Emax RS2205 (2300 KV angenommen), GEPRC Taker F405 60A, DJI O4 Pro, GPS, 4S 21700 4000 mAh",
+        "auw_g": 620.0,
+        "auw_tolerance_g": 80.0,
+        "auw_source": "geschätzt: Akku 4S 21700 rund 280 g + Rahmen, Motoren, Stack, O4 Pro, GPS rund 340 g; KV und Rahmen nicht genannt",
+        "parts": {
+          "frame": {
+            "base": "propwash:freestyle_5",
+            "set": {
+              "battery_fit": {
+                "cells": [
+                  4,
+                  6
+                ],
+                "max_mass_g": 320.0,
+                "preferred_min_cells": 4,
+                "preferred_min_capacity_mah": 0
+              }
+            }
+          },
+          "stack": "justmoreparts:stack_30_4s_55a",
+          "motor": {
+            "base": "justmoreparts:m2207_2550",
+            "set": {
+              "kv": 2300,
+              "stator": "2205",
+              "mass_g": 30.0
+            }
+          },
+          "prop": "propwash:p51_3b",
+          "video": "justmoreparts:digital_hd_pro",
+          "battery": {
+            "base": "justmoreparts:b6s_3000_lion",
+            "set": {
+              "cells": 4,
+              "capacity_mah": 4000,
+              "mass_g": 280.0
+            }
+          }
+        },
+        "confidence": "niedrig"
+      }
+    },
+    {
+      "id": "lr5_lion_b",
+      "class": "longrange5",
+      "label": "5″ Long Range Li-Ion (4S)",
+      "page": "https://github.com/betaflight/betaflight/issues/15651",
+      "url": "https://github.com/user-attachments/files/31633246/BTFL_BLACKBOX_LOG_20260831_023912_GEPRCF405.zip",
+      "member": "BTFL_BLACKBOX_LOG_20260831_023912_GEPRCF405.BBL",
+      "index": 13,
+      "sha256": "dc71c8b97bb8f8ad57cc0a64c18d406fb6a6a78bc15df129ae4f76e2034d420a",
+      "build": {
+        "text": "5″ Long Range mit Li-Ion: Emax RS2205 (2300 KV angenommen), GEPRC Taker F405 60A, DJI O4 Pro, GPS, 4S 21700 4000 mAh",
+        "auw_g": 620.0,
+        "auw_tolerance_g": 80.0,
+        "auw_source": "geschätzt: Akku 4S 21700 rund 280 g + Rahmen, Motoren, Stack, O4 Pro, GPS rund 340 g; KV und Rahmen nicht genannt",
+        "parts": {
+          "frame": {
+            "base": "propwash:freestyle_5",
+            "set": {
+              "battery_fit": {
+                "cells": [
+                  4,
+                  6
+                ],
+                "max_mass_g": 320.0,
+                "preferred_min_cells": 4,
+                "preferred_min_capacity_mah": 0
+              }
+            }
+          },
+          "stack": "justmoreparts:stack_30_4s_55a",
+          "motor": {
+            "base": "justmoreparts:m2207_2550",
+            "set": {
+              "kv": 2300,
+              "stator": "2205",
+              "mass_g": 30.0
+            }
+          },
+          "prop": "propwash:p51_3b",
+          "video": "justmoreparts:digital_hd_pro",
+          "battery": {
+            "base": "justmoreparts:b6s_3000_lion",
+            "set": {
+              "cells": 4,
+              "capacity_mah": 4000,
+              "mass_g": 280.0
+            }
+          }
+        },
+        "confidence": "niedrig"
+      }
+    },
+    {
+      "id": "rekon7",
+      "class": "longrange7",
+      "label": "7″ Long Range REKON 7 (6S)",
+      "page": "https://github.com/betaflight/betaflight/issues/14590",
+      "url": "https://github.com/user-attachments/files/21764713/LOG00001.zip",
+      "member": "LOG00001.BFL",
+      "index": 1,
+      "sha256": "fbdbe5c3ef5a0ee0ccd4427a133e37c7c6c061b7f802bdd65284cb2b4116008f",
+      "build": {
+        "text": "7″ Long Range „REKON 7“ (6S, DJI O4): 2806.5 1250 KV, 7″-3-Blatt angenommen, 6S 2200 mAh",
+        "auw_g": 820.0,
+        "auw_tolerance_g": 130.0,
+        "auw_source": "geschätzt: typischer 7″-Long-Range mit 6S 2200 mAh; Motoren, Props und Akku im Issue nicht genannt",
+        "parts": {
+          "frame": "propwash:long_range_7",
+          "stack": "justmoreparts:stack_30_6s_60a",
+          "motor": {
+            "base": "justmoreparts:m28065_1300",
+            "set": {
+              "kv": 1250
+            }
+          },
+          "prop": {
+            "base": "justmoreparts:p178_45_3b_gfn",
+            "set": {
+              "pitch_in": 4.0
+            }
+          },
+          "video": "justmoreparts:digital_hd_pro",
+          "battery": "justmoreparts:b6s_2200"
+        },
+        "confidence": "niedrig"
+      }
+    },
+    {
+      "id": "micoair7",
+      "class": "longrange7",
+      "label": "7″ Long Range MicoAir (6S)",
+      "page": "https://github.com/betaflight/blackbox-log-viewer/issues/922",
+      "url": "https://github.com/user-attachments/files/28440931/30-05-first-long-flight.zip",
+      "member": "30-05-first-long-flight.BFL",
+      "index": 1,
+      "sha256": "88f80331d4fc918934dc8f429a87c0ccb1e5444b438caa51fd8580501f28a2bf",
+      "build": {
+        "text": "7″ Long Range „MicoAir_7inch“ (6S, DJI O4): 2806.5 1250 KV, 7″-3-Blatt angenommen, 6S 2200 mAh",
+        "auw_g": 820.0,
+        "auw_tolerance_g": 130.0,
+        "auw_source": "geschätzt: typischer 7″-Long-Range mit 6S 2200 mAh; Motoren, Props und Akku im Issue nicht genannt",
+        "parts": {
+          "frame": "propwash:long_range_7",
+          "stack": "justmoreparts:stack_30_6s_60a",
+          "motor": {
+            "base": "justmoreparts:m28065_1300",
+            "set": {
+              "kv": 1250
+            }
+          },
+          "prop": {
+            "base": "justmoreparts:p178_45_3b_gfn",
+            "set": {
+              "pitch_in": 4.0
+            }
+          },
+          "video": "justmoreparts:digital_hd_pro",
+          "battery": "justmoreparts:b6s_2200"
+        },
+        "confidence": "niedrig"
+      }
+    }
+  ]
+}

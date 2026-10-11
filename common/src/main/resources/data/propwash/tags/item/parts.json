@@ -1,0 +1,11 @@
+{
+  "values": [
+    "#propwash:parts/frame",
+    "#propwash:parts/stack",
+    "#propwash:parts/motor",
+    "#propwash:parts/prop",
+    "#propwash:parts/video",
+    "#propwash:parts/battery",
+    "#propwash:parts/accessory"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "key.category.propwash.main": "Propwash FPV",
+  "key.propwash.selftest": "Self-test (development)",
+  "propwash.part_category.frame": "Frame",
+  "propwash.part_category.stack": "Flight controller/ESC",
+  "propwash.part_category.motor": "Motors",
+  "propwash.part_category.prop": "Propellers",
+  "propwash.part_category.video": "Video system",
+  "propwash.part_category.battery": "Battery",
+  "propwash.build.issue.motor_mount": "Motors don't fit the frame",
+  "propwash.build.issue.prop_too_large": "Propellers too large for the frame",
+  "propwash.build.issue.stack_mount": "Stack doesn't fit the frame",
+  "propwash.build.issue.motor_overvoltage": "Battery voltage too high for the motors",
+  "propwash.build.issue.motor_undervoltage": "Battery voltage too low for the motors",
+  "propwash.build.issue.stack_voltage": "Battery voltage doesn't match the stack",
+  "propwash.build.issue.esc_undersized": "ESCs too weak for the motors",
+  "propwash.build.issue.battery_weak": "Battery can't deliver enough current",
+  "propwash.network.version_mismatch": "Propwash FPV version mismatch.\nServer: %s (network protocol %s)\nYou: %s (network protocol %s)\nInstall the same Propwash FPV version as the server.",
+  "propwash.network.version_missing": "This server requires Propwash FPV %s (network protocol %s). Install exactly this version.",
+  "propwash.part_category.accessory": "Accessories",
+  "propwash.build.issue.accessory_mount": "Accessory doesn't fit the frame"
+}

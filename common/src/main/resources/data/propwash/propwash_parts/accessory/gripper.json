@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "mass_g": 18.0,
+  "slot": "bottom",
+  "size_mm": [24.0, 20.0, 22.0],
+  "flight_battery_w": 0.3,
+  "frontal_area_m2": 0.0004,
+  "sort": 3
+}

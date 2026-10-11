@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_motor",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "L": "propwash:copper_coil",
+    "Q": "minecraft:quartz"
+  },
+  "pattern": [
+    "ILI",
+    "LQL"
+  ],
+  "result": {
+    "id": "propwash:m2306_1860",
+    "count": 2
+  }
+}

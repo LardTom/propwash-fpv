@@ -1,0 +1,13 @@
+{
+  "gamerule.propwash.drone_trails": "Drohnen-Trails",
+  "gamerule.propwash.drone_trails.description": "An: Hinter jeder fliegenden Drohne zieht eine dünne, verblassende Spur in der Farbe der Drohne (LED-Streifen oder Lackierung) – so sieht man andere Piloten auch im FPV-Bild. Gelandete und entschärfte Drohnen ziehen keine Spur. Jeder Spieler kann die Trails für sich im Tab „Darstellung“ ausschalten. Ändert keine Physik.",
+  "key.propwash.drone_trails": "Drohnen-Trails ein/aus",
+  "propwash.trails.enabled": "Drohnen-Trails zeigen",
+  "propwash.trails.enabled.tip": "Eine dünne, verblassende Spur hinter jeder fliegenden Drohne, 1–2 Sekunden lang, je schneller, desto länger. Im FPV-Bild siehst du die Trails der anderen, deine eigene Drohne zieht ihren Trail nur im Sichtflug und in der dritten Person. Gilt auch für Aufnahmen der Action-Cam.",
+  "propwash.trails.rule_off": "In dieser Welt aus – Welt-Regel „Drohnen-Trails“",
+  "propwash.trails.rule_off.tip": "Die Welt-Regel „Drohnen-Trails“ ist aus. Host oder Operatoren schalten sie im Tab „Welt-Regeln“ ein; danach entscheidest du hier, ob du die Trails siehst.",
+  "propwash.trails.section": "Drohnen-Trails",
+  "propwash.trails.toast.off": "Drohnen-Trails aus",
+  "propwash.trails.toast.on": "Drohnen-Trails an",
+  "propwash.trails.toast.rule_off": "Drohnen-Trails sind in dieser Welt aus (Welt-Regel)"
+}

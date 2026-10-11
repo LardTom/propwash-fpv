@@ -1,0 +1,43 @@
+Propwash FPV: add-on API, example add-on and documentation
+
+From Propwash FPV 0.5.0 on, the MIT License below applies to these paths of the source repository (a path ending
+in "/" includes everything below it) and to the same files inside the release and Maven files built from them:
+
+- common/src/main/java/de/lardtom/propwash/api/
+  (the add-on API: package de.lardtom.propwash.api and all its subpackages)
+- common/src/devtest/java/de/lardtom/propwash/dev/example/
+- common/src/devtest/resources/assets/propwash_example/
+- common/src/devtest/resources/data/propwash_example/
+  (the example add-on)
+- docs/
+  (the documentation, except the pictures in docs/screenshots/ and docs/asset-sheets/, which show the mod's own
+  assets and belong to the core)
+- README.md
+- CHANGELOG.md
+- CONTRIBUTING.md
+
+All other files are licensed under LICENSE (PolyForm Shield License 1.0.0 with additional permissions).
+
+--------------------------------------------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 lardtom
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

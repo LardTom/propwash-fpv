@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_accessory",
+  "key": {
+    "T": "minecraft:redstone_torch",
+    "N": "minecraft:copper_nugget",
+    "B": "propwash:circuit_board"
+  },
+  "pattern": [
+    "TTT",
+    "NBN"
+  ],
+  "result": {
+    "id": "propwash:led_strip"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "mass_g": 7.5,
+  "cells": 1,
+  "capacity_mah": 300,
+  "cell_resistance_ohm": 0.04,
+  "c_rating": 45,
+  "chemistry": "propwash:lihv",
+  "sort": 0,
+  "visual": {"accent": "#6b2fb3"}
+}

@@ -1,0 +1,110 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 80
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:copper_coil",
+          "weight": 8,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 3
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:lipo_cell",
+          "weight": 6,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 2
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:circuit_board",
+          "weight": 5,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": {
+              "type": "minecraft:uniform",
+              "min": 1,
+              "max": 2
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m1404_4600",
+          "weight": 3,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2004_3000",
+          "weight": 2,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:m2207_1750",
+          "weight": 2,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 2
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:b4s_650",
+          "weight": 2,
+          "modifier": {
+            "type": "minecraft:set_components",
+            "components": {
+              "propwash:battery_charge": 0.4
+            }
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:p3_3b",
+          "weight": 2,
+          "modifier": {
+            "type": "minecraft:set_count",
+            "count": 4
+          }
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:whoop_65",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:led_strip",
+          "weight": 3
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

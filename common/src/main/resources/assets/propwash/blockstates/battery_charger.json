@@ -1,0 +1,589 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "facing": "north",
+        "state": "idle"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_idle"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "state": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_charging"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "state": "done"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_done"
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "state": "idle"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_idle",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "state": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_charging",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "state": "done"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_done",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "state": "idle"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_idle",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "state": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_charging",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "state": "done"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_done",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "state": "idle"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_idle",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "state": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_charging",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "state": "done"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_done",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_0": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_empty"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_0": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_charging"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_0": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_full"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_1": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_empty"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_1": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_charging"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_1": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_full"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_2": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_empty"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_2": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_charging"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_2": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_full"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_3": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_empty"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_3": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_charging"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "bay_3": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_full"
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_0": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_empty",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_0": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_charging",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_0": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_full",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_1": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_empty",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_1": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_charging",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_1": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_full",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_2": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_empty",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_2": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_charging",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_2": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_full",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_3": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_empty",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_3": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_charging",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "bay_3": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_full",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_0": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_empty",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_0": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_charging",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_0": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_full",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_1": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_empty",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_1": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_charging",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_1": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_full",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_2": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_empty",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_2": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_charging",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_2": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_full",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_3": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_empty",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_3": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_charging",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "bay_3": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_full",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_0": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_empty",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_0": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_charging",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_0": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_0_full",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_1": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_empty",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_1": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_charging",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_1": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_1_full",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_2": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_empty",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_2": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_charging",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_2": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_2_full",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_3": "empty"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_empty",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_3": "charging"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_charging",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "bay_3": "full"
+      },
+      "apply": {
+        "model": "propwash:block/battery_charger_bay_3_full",
+        "y": 270
+      }
+    }
+  ]
+}

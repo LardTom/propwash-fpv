@@ -1,0 +1,9 @@
+{
+  "values": [
+    "propwash:led_strip",
+    "propwash:action_cam_light",
+    "propwash:action_cam_heavy",
+    "propwash:action_cam_flashback",
+    "propwash:gripper"
+  ]
+}

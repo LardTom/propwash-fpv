@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_radio",
+  "key": {
+    "T": "minecraft:redstone_torch",
+    "L": "minecraft:lever",
+    "G": "minecraft:glass_pane",
+    "I": "minecraft:iron_ingot",
+    "B": "propwash:circuit_board"
+  },
+  "pattern": [
+    " T ",
+    "LGL",
+    "IBI"
+  ],
+  "result": {
+    "id": "propwash:remote"
+  }
+}

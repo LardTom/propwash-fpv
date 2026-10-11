@@ -1,0 +1,42 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea/*
+!.idea/scopes
+
+# gradle
+/build/
+/*/build/
+/build-logic/build/
+.gradle
+
+# other
+eclipse
+run
+runs
+
+runs/
+**/runs/
+*.log
+.ref/
+.classpath/
+logs/
+**/logs/
+
+# Durchlauf-Bilder der Flugschul-Hinweise (Selbsttest, nur zur Durchsicht)
+docs/screenshots/flight_school_labels/
+
+# Cache der Kalibrier-Logs (fremde Blackbox-Logs, nie einchecken)
+.cache/
+docs/screenshots/camera_shake/
+docs/screenshots/glass_feel/

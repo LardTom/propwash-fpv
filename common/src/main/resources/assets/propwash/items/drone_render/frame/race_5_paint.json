@@ -1,0 +1,28 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:part/frame/race_5_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 2237737
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 3310828
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 2,
+        "default": 3175908
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 3,
+        "default": 2631722
+      }
+    ]
+  }
+}

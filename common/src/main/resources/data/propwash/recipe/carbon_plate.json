@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "#minecraft:coals",
+    "S": "minecraft:string"
+  },
+  "pattern": [
+    "CSC",
+    "CSC"
+  ],
+  "result": {
+    "id": "propwash:carbon_plate",
+    "count": 2
+  }
+}

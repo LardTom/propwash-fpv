@@ -1,0 +1,11 @@
+{
+  "type": "propwash:world_course",
+  "biomes": "#propwash:has_structure/field_slalom",
+  "spawn_overrides": {},
+  "step": "surface_structures",
+  "terrain_adaptation": "beard_thin",
+  "template": "propwash:world_course/field_slalom",
+  "biome_templates": [],
+  "max_slope": 10,
+  "chance": 1.0
+}

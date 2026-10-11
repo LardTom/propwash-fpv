@@ -1,0 +1,19 @@
+{
+  "propwash.drone_render.tab": "Display",
+  "propwash.drone_render.visual_scale": "Drone size: %s",
+  "propwash.drone_render.size_notice.title": "Drones now at real size",
+  "propwash.drone_render.size_notice.message": "Drones now show at their real size (1.0× instead of 1.75×), so their speed looks real. To change it back: Configurator → Display → Drone size.",
+  "propwash.drone_render.prop_blur": "Blur from throttle: %s",
+  "propwash.drone_render.render_distance": "View distance: %s",
+  "propwash.drone_render.arm_leds": "Arm LEDs",
+  "propwash.drone_render.shadow": "Shadow",
+  "propwash.drone_render.shadow.tip": "Drone shadows on the ground. With a shader pack the pack draws the shadows, and in FPV flight your own drone casts one too. Off: no drone shadows, not even with a shader pack.",
+  "propwash.drone_render.section": "Drone in the world",
+  "propwash.drone_render.percent": "%s%%",
+  "propwash.drone_render.section.preview": "Preview",
+  "propwash.drone_render.section.fpv": "FPV view",
+  "propwash.drone_render.fpv_props": "Props in FPV view",
+  "propwash.drone_render.fpv_props.tip": "Shows your own props in the camera image exactly where they would be visible for this camera position, uptilt and field of view: the tips at the edge on a 5 inch with steep uptilt, nothing on a deadcat. Display only, no effect on the flight model.",
+  "propwash.drone_render.fpv_ducts": "Ducts in FPV view",
+  "propwash.drone_render.fpv_ducts.tip": "Shows the ducts of your whoop or cinewhoop in the camera image exactly where they would be visible for this camera position, uptilt and field of view – the front ducts in the lower corners, because the camera sits above them like on real ones. Display only, no effect on the flight model."
+}

@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "mass_g": 128.0,
+  "creative": false,
+  "stator": "4214",
+  "kv": 400,
+  "mount": "propwash_example:m42",
+  "max_current_a": 60.0,
+  "resistance_ohm": 0.045,
+  "cells": [6, 12],
+  "thermal": {"derate_start_c": 140.0, "max_temp_c": 160.0},
+  "visual": {"accent": "#c43a31"}
+}

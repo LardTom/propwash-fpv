@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_battery",
+  "key": {
+    "L": "propwash:lipo_cell",
+    "N": "minecraft:copper_nugget",
+    "R": "minecraft:redstone"
+  },
+  "pattern": [
+    "LL",
+    "LL",
+    "NR"
+  ],
+  "result": {
+    "id": "propwash:b4s_650"
+  }
+}

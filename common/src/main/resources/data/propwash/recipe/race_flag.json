@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "propwash_course",
+  "key": {
+    "S": "minecraft:stick",
+    "W": "#minecraft:wool",
+    "N": "minecraft:iron_nugget"
+  },
+  "pattern": [
+    "SW",
+    "SW",
+    "N "
+  ],
+  "result": {
+    "id": "propwash:race_flag"
+  }
+}

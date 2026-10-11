@@ -1,0 +1,32 @@
+# Propwash world palette: one symbol, one RGBA hex colour per line.
+# Pixel-art files in pixel/ use these symbols; a file may add or override
+# symbols with lines of the form "@X RRGGBB[AA]" before its grid.
+. 00000000
+K 0f1114
+k 1b1e23
+c 252a31
+C 2f353d
+g 3b424c
+G 4b535f
+s 606975
+S 7c8692
+w 9ea7b2
+W d4dae1
+H f4f6f8
+A ffbb00
+a d69b00
+o 9a6a00
+N 3ddc84
+n 1f8f55
+R ff5a4f
+r b8322b
+Y 45c9f5
+y 1f86b0
+l 2a5f86
+L 8fd2ff
+b 14314a
+P b45cff
+p 7a2fc2
+M ff58d6
+m b82a98
+X 555555

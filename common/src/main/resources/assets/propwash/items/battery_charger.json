@@ -1,0 +1,24 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:item/battery_charger",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 3108822
+      },
+      {
+        "type": "minecraft:constant",
+        "value": 13906218
+      },
+      {
+        "type": "minecraft:constant",
+        "value": 15760414
+      },
+      {
+        "type": "minecraft:constant",
+        "value": 3108822
+      }
+    ]
+  }
+}

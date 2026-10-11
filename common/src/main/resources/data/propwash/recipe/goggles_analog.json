@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_goggles",
+  "key": {
+    "L": "minecraft:leather",
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass_pane",
+    "B": "propwash:circuit_board"
+  },
+  "pattern": [
+    "LIL",
+    "GBG"
+  ],
+  "result": {
+    "id": "propwash:goggles_analog"
+  }
+}

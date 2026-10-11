@@ -1,0 +1,23 @@
+{
+  "gamerule.propwash.drone_hits_entities": "Drones hit mobs and players",
+  "gamerule.propwash.drone_hits_entities.description": "Flying drones bounce off animals, monsters and players and hurt them by the force of the impact (mass × speed, at most 5 hearts). Players only with PvP. Off: drones fly through living things.",
+  "death.attack.propwash.drone_strike": "%1$s was hit by %2$s's drone",
+  "death.attack.propwash.drone_strike.item": "%1$s was hit by %2$s's drone using %3$s",
+  "death.attack.propwash.drone_strike.player": "%1$s was hit by a drone while trying to escape %2$s",
+  "key.propwash.drone_cargo_drop": "Cargo drop (open gripper)",
+  "propwash.interact.cargo.picked": "Gripper: +%1$s × %2$s · %3$s / %4$s g",
+  "propwash.interact.cargo.full": "Gripper full · %1$s / %2$s g",
+  "propwash.interact.cargo.released": "Gripper opened: dropped %s items",
+  "propwash.interact.cargo.released_crash": "Crash! The gripper lost %s items",
+  "propwash.interact.cargo.released_landed": "Disarmed: gripper open, %s items set down",
+  "propwash.interact.cargo.empty": "The gripper is empty",
+  "propwash.interact.cargo.no_gripper": "This drone has no gripper",
+  "gamerule.propwash.drones_break_blocks": "Drones break blocks",
+  "gamerule.propwash.drones_break_blocks.description": "Fast drones smash glass, glass panes and decorated pots (block tag propwash:drone_breakable) when the impact is strong enough (mass × speed²) and fly on slower. A whoop bounces off, a 5″ goes through a pane from about 42 km/h. Counts as the pilot breaking the block: spawn protection, adventure mode and protection mods apply, glass drops nothing. Off: blocks always stay intact.",
+  "gamerule.propwash.break_impact_scale": "Break-through impact",
+  "gamerule.propwash.break_impact_scale.description": "How clearly a drone feels smashing through glass, in percent: speed lost to the shards it drags along, a kick that knocks it off its attitude (stronger when it hits tilted or with one side only) and shards in the front props. 100 is realistic, 0 leaves only the fracture energy. Only applies with \"Drones break blocks\"; whether a block breaks and when the drone crashes stays the same.",
+  "gamerule.propwash.break_impact_scale.value.0": "No kick",
+  "propwash.interact.break.denied.protected": "Your drone can't break anything here – this area is protected",
+  "propwash.interact.break.denied.game_mode": "Your drone can't break blocks in this game mode",
+  "propwash.interact.break.denied.course": "The frame of a freeform gate doesn't break"
+}

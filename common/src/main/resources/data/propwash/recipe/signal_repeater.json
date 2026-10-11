@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "A": "minecraft:lightning_rod",
+    "L": "propwash:copper_coil",
+    "B": "propwash:circuit_board",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    " A ",
+    "LBL",
+    " I "
+  ],
+  "result": {
+    "id": "propwash:signal_repeater",
+    "count": 2
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_battery",
+  "key": {
+    "L": "propwash:lipo_cell",
+    "A": "minecraft:amethyst_shard",
+    "D": "minecraft:diamond"
+  },
+  "pattern": [
+    "LAL",
+    "LDL",
+    "LAL"
+  ],
+  "result": {
+    "id": "propwash:b6s_4000_lion"
+  }
+}

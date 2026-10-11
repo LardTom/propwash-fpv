@@ -1,0 +1,26 @@
+{
+  "type": "propwash:world_course",
+  "biomes": "#propwash:has_structure/forest_weave",
+  "spawn_overrides": {},
+  "step": "surface_structures",
+  "terrain_adaptation": "beard_thin",
+  "template": "propwash:world_course/forest_weave_oak",
+  "biome_templates": [
+    {
+      "biomes": [
+        "minecraft:birch_forest",
+        "minecraft:old_growth_birch_forest"
+      ],
+      "template": "propwash:world_course/forest_weave_birch"
+    },
+    {
+      "biomes": [
+        "minecraft:taiga",
+        "minecraft:snowy_taiga"
+      ],
+      "template": "propwash:world_course/forest_weave_spruce"
+    }
+  ],
+  "max_slope": 12,
+  "chance": 1.0
+}

@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "group": "propwash_battery",
+  "ingredients": [
+    "propwash:lipo_cell",
+    "minecraft:redstone",
+    "minecraft:copper_nugget"
+  ],
+  "result": {
+    "id": "propwash:b1s_300_hv"
+  }
+}

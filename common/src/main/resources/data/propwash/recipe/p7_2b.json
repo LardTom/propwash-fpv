@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_prop",
+  "key": {
+    "K": "minecraft:dried_kelp",
+    "C": "propwash:carbon_plate"
+  },
+  "pattern": [
+    "K  ",
+    " C ",
+    "  K"
+  ],
+  "result": {
+    "id": "propwash:p7_2b",
+    "count": 4
+  }
+}

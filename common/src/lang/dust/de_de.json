@@ -1,0 +1,8 @@
+{
+  "propwash.dust.section": "Propwash-Staub",
+  "propwash.dust.enabled": "Staub aufwirbeln",
+  "propwash.dust.enabled.tip": "Dezenter Staub unter den Rotoren, wenn eine Drohne dicht über dem Boden fliegt, über Wasser feine Gischt. Folgt der Minecraft-Einstellung „Partikel“ und ist bei „Minimal“ aus.",
+  "propwash.dust.intensity": "Staubmenge: %s",
+  "propwash.dust.intensity.tip": "Wie viel Staub die Rotoren aufwirbeln. Die Obergrenze für gleichzeitige Partikel bleibt immer aktiv.",
+  "propwash.dust.percent": "%s %%"
+}

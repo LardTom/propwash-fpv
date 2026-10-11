@@ -1,0 +1,23 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:part/frame/freestyle_5_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 2237737
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 14759485
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 2,
+        "default": 14432301
+      }
+    ]
+  }
+}

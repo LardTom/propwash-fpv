@@ -1,0 +1,35 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "de.lardtom.propwash.mixin.drone",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "ItemEntityAccessor",
+    "ServerPlayerMixin"
+  ],
+  "client": [
+    "client.AvatarRendererMixin",
+    "client.AvatarRenderStateMixin",
+    "client.CameraMixin",
+    "client.ClientInputAccessor",
+    "client.FirstPersonHandsAndItemsRendererMixin",
+    "client.GameRendererMixin",
+    "client.HumanoidModelMixin",
+    "client.ItemInHandLayerMixin",
+    "client.LevelExtractorMixin",
+    "client.LightmapRenderStateExtractorMixin",
+    "client.LivingEntityMixin",
+    "client.LocalPlayerMixin",
+    "client.MinecraftMixin",
+    "client.MouseHandlerMixin",
+    "client.RenderTypeAccessor",
+    "client.SubmitNodeCollectionMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

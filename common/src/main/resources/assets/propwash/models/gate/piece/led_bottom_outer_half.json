@@ -1,0 +1,100 @@
+{
+  "textures": {
+    "lights": "propwash:item/gate/lights",
+    "particle": "propwash:item/gate/lights"
+  },
+  "elements": [
+    {
+      "name": "led_bottom_front_0_half",
+      "from": [
+        8.0,
+        1.0,
+        10.0
+      ],
+      "to": [
+        12.0,
+        3.0,
+        10.25
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            6.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            0.5,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            0.5,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    },
+    {
+      "name": "led_bottom_back_0_half",
+      "from": [
+        8.0,
+        1.0,
+        5.75
+      ],
+      "to": [
+        12.0,
+        3.0,
+        6.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            6.0,
+            1.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "up": {
+          "uv": [
+            0.0,
+            10.0,
+            0.5,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        },
+        "down": {
+          "uv": [
+            0.0,
+            10.0,
+            0.5,
+            11.0
+          ],
+          "texture": "#lights",
+          "tintindex": 0
+        }
+      },
+      "light_emission": 15
+    }
+  ]
+}

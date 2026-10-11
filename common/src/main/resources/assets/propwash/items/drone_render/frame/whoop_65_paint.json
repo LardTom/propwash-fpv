@@ -1,0 +1,18 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash:part/frame/whoop_65_paint",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 2960947
+      },
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 1,
+        "default": 14759485
+      }
+    ]
+  }
+}

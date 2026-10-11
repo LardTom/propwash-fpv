@@ -1,0 +1,26 @@
+package de.lardtom.propwash.sim;
+
+public enum SimEventType {
+    ARMED,
+    DISARMED,
+    ARM_BLOCKED,
+    CRASH,
+    HARD_IMPACT,
+    BUMP,
+    PROP_STRIKE,
+    LANDED,
+    TAKEOFF,
+    BATTERY_LOW,
+    BATTERY_CRITICAL,
+    PACK_DEPLETED,
+    BROWNOUT,
+    ESC_CURRENT_LIMIT,
+    MOTOR_OVERHEAT,
+    FAILSAFE,
+    AIRMODE_ACTIVE,
+    FRAME_HITCH,
+    SIM_FAULT,
+    MOTOR_DERATE,
+    MOTOR_THERMAL_WEAR,
+    ESC_BURNED
+}

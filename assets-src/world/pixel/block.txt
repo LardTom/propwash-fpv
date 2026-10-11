@@ -1,0 +1,75 @@
+# Drone workbench block faces (16x16, block atlas).
+
+== drone_workbench_top
+@M 213a41
+@T 2f5561
+wwwwwwwwwwwwwwws
+wMMMMMMMMMMMMMMs
+wMTMMMTMMTMMMTMs
+wMMMMMMMMMMMMMMs
+wMMMaAMMMMAaMMMs
+wMMMAKkMMkKAMMMs
+wMTMMkCggCkMMTMs
+wMMMMMgKKgMMMMMs
+wMMMMMgKKgMMMMMs
+wMTMMkCggCkMMTMs
+wMMMAKkMMkKAMMMs
+wMMMaAMMMMAaMMMs
+wMMMMMMMMMMMMMMs
+wMTMMMTMMTMMMTMs
+wMMMMMMMMMMMMMMs
+ssssssssssssssss
+
+== drone_workbench_front
+wwwwwwwwwwwwwwws
+SSSSSSSSSSSSSSSs
+kKKKKKKKKKKKKKKk
+kGGGGGGGGGGGGGck
+kGgggggggggggNck
+kGgggaAAAAagggck
+kGggggggggggggck
+kcccccccccccccck
+kGGGGGGGGGGGGGck
+kGggggggggggggck
+kGgggaAAAAagggck
+kGggggggggggggck
+kcccccccccccccck
+kkkkkkkkkkkkkkkk
+ksKsKsKsKsKsKsKk
+KKKKKKKKKKKKKKKK
+
+== drone_workbench_side
+wwwwwwwwwwwwwwws
+SSSSSSSSSSSSSSSs
+kKKKKKKKKKKKKKKk
+kCCCCCCCCCCCCCCk
+kCkCCkCCkCCkRrCk
+kCCCCCCCCCCCRrCk
+kCaAACCCCCCCRrCk
+kCkCaAKAaCCCwCCk
+kCCCCCCCAAaCwCCk
+kCCCCCCCCCCCwCCk
+kCkCCkCCkCCkwCCk
+kCCCCCCCCCCCWCCk
+kCCCCCCCCCCCCCCk
+kkkkkkkkkkkkkkkk
+ksKsKsKsKsKsKsKk
+KKKKKKKKKKKKKKKK
+
+== drone_workbench_bottom
+kkkkkkkkkkkkkkkk
+kSccccccccccccSk
+kccccccccccccCck
+kcCccccccccccccK
+kccccccccccccccK
+kccccccccccccccK
+kcccccccccCccccK
+kccccccccccccccK
+kccccccccccccccK
+kcccCccccccccccK
+kccccccccccccccK
+kccccccccccccccK
+kccccccccccccCcK
+kccccccccccccccK
+kSccccccccccccSk
+kkkkkkkkkkkkkkkk

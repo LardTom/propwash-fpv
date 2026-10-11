@@ -1,0 +1,30 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "propwash_rendertest:part/frame/xclass_scaled",
+    "transformation": {
+      "left_rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "right_rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        2.5,
+        2.5,
+        2.5
+      ],
+      "translation": [
+        -0.75,
+        -0.75,
+        -0.75
+      ]
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": "fixed",
+        "model": {
+          "type": "minecraft:special",
+          "base": "propwash:item/drone",
+          "model": {
+            "type": "propwash:drone_build",
+            "wall": true
+          }
+        }
+      },
+      {
+        "when": "ground",
+        "model": {
+          "type": "minecraft:special",
+          "base": "propwash:item/drone_ground",
+          "model": {
+            "type": "propwash:drone_build",
+            "ground": true
+          }
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:special",
+      "base": "propwash:item/drone",
+      "model": {
+        "type": "propwash:drone_build"
+      }
+    }
+  }
+}

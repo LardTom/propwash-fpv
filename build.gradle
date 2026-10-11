@@ -1,0 +1,259 @@
+plugins {
+    // see https://maven.fabricmc.net/fabric-loom/fabric-loom.gradle.plugin/maven-metadata.xml for new versions
+    id 'net.fabricmc.fabric-loom' version '1.18.1' apply false
+    // see https://projects.neoforged.net/neoforged/moddevgradle for new versions
+    id 'net.neoforged.moddev' version '2.0.147' apply false
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Stumme Test-Instanzen: prepareRuns schreibt/patcht options.txt in allen Client-Run-Verzeichnissen beider Loader
+// (Master 0.001, alle anderen Kategorien 0, kein Pausieren bei Fokusverlust, kein Barrierefreiheits-Onboarding).
+// Die run*-Tasks beider Loader hängen davon ab (siehe fabric/build.gradle, neoforge/build.gradle).
+// Die Run-Verzeichnisse sind hier zentral definiert und werden von den Loader-Builds benutzt.
+// ---------------------------------------------------------------------------------------------------------------
+ext.propwashRunDirs = [
+        client  : 'runs/client',
+        selftest: 'runs/selftest-client',
+        smoke   : 'runs/smoke-client',
+        server  : 'runs/server',
+        serverSmoke: 'runs/smoke-server',
+]
+
+// ---------------------------------------------------------------------------------------------------------------
+// Selbsttest-Auswahl (docs/testing.md): -PpropwashSelftestOnly=<Namensanfänge, durch Komma getrennt> lässt nur passende
+// Schritte laufen (dazu die mit SelfTest.baseStep/setupStep angemeldeten Rahmen-Schritte, !Präfix schließt aus);
+// -PpropwashSelftestList=true legt keine Welt an, schreibt nur propwash-selftest-steps.md ins Run-Verzeichnis und gibt
+// die Liste aus. -PpropwashBandoSeed=<Seed> erzeugt die Bando-Welten mit einem anderen Seed (Standard 20261003).
+// -PpropwashUiScaleWindows=<Breite>x<Höhe>[@Skala],… prüft mit ui-scale: diese Fenster statt der drei festen (Bildpunkte,
+// Skala ohne Angabe 2; docs/design/ui-scaling.md). -PpropwashUiScaleCases=<Namensanfänge, durch Komma getrennt> prüft
+// dabei nur die Ansichten, deren Name so beginnt (zum Nachstellen; ein Release läuft ohne diese Auswahl).
+// Beide Loader reichen die Werte als System-Properties an runClientSelftest weiter.
+// ---------------------------------------------------------------------------------------------------------------
+ext.propwashSelftestProperties = [:]
+def selftestOnly = findProperty('propwashSelftestOnly')?.toString()?.trim()
+if (selftestOnly) {
+    propwashSelftestProperties['propwash.selftest.only'] = selftestOnly
+}
+def bandoSeed = findProperty('propwashBandoSeed')?.toString()?.trim()
+if (bandoSeed) {
+    propwashSelftestProperties['propwash.selftest.bandoSeed'] = bandoSeed
+}
+def uiScaleWindows = findProperty('propwashUiScaleWindows')?.toString()?.trim()
+if (uiScaleWindows) {
+    propwashSelftestProperties['propwash.selftest.uiScaleWindows'] = uiScaleWindows
+}
+def uiScaleCases = findProperty('propwashUiScaleCases')?.toString()?.trim()
+if (uiScaleCases) {
+    propwashSelftestProperties['propwash.selftest.uiScaleCases'] = uiScaleCases
+}
+def selftestList = findProperty('propwashSelftestList')
+if (selftestList != null && selftestList.toString() != 'false') {
+    propwashSelftestProperties['propwash.selftest.list'] = 'true'
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Ports der Server-Rauchtests: zwei Minecraft-Instanzen dürfen gleichzeitig in verschiedenen Arbeitsbäumen laufen.
+// -PpropwashServerPort=<n> setzt den Port für Fabric (NeoForge n + 1); sonst leitet ihn die Umgebungsvariable
+// PROPWASH_MC_SLOT (1, 2, …) ab: 25600 + 10 × Slot + 1 bzw. + 2; ohne beides 25601 (Fabric) und 25602 (NeoForge).
+// ---------------------------------------------------------------------------------------------------------------
+def serverPortBase = {
+    def explicit = findProperty('propwashServerPort')?.toString()?.trim()
+    if (explicit) {
+        return explicit.toInteger()
+    }
+    def slot = System.getenv('PROPWASH_MC_SLOT')?.trim()
+    return slot != null && slot.isInteger() ? 25601 + 10 * slot.toInteger() : 25601
+}()
+ext.propwashServerPorts = [fabric: serverPortBase, neoforge: serverPortBase + 1]
+
+// ---------------------------------------------------------------------------------------------------------------
+// Testfenster im Hintergrund (docs/testing.md, „Testfenster ohne Mausgriff und Fokus“): Selbsttest- und Rauchtest-Clients
+// öffnen ihr Fenster, ohne den Fokus oder den Platz im Vordergrund zu nehmen. Die SDL-Hinweise kommen als
+// Umgebungsvariablen, damit sie schon vor dem ersten Fenster beider Loader gelten. -PpropwashTestWindowFront=true startet
+// die Fenster wie einen normalen Client im Vordergrund (zum Zuschauen); den Systemzeiger fasst der Testlauf auch dann nicht an.
+// ---------------------------------------------------------------------------------------------------------------
+ext.propwashTestWindowEnv = findProperty('propwashTestWindowFront')?.toString() == 'true' ? [:] :
+        [SDL_MAC_BACKGROUND_APP: '1', SDL_WINDOW_ACTIVATE_WHEN_SHOWN: '0']
+
+// ---------------------------------------------------------------------------------------------------------------
+// Dev-Spieler: runClient beider Loader startet offline als -PpropwashDevName (Standard LardTom) mit der UUID des
+// echten Kontos. Damit holt Vanilla beim Start die signierten Skin-Daten vom Sessionserver und zeigt Skin und Umhang
+// (Einzelspieler; ein Offline-Server verteilt nie Skins). Name → UUID fragt Gradle einmal bei api.mojang.com ab und
+// merkt es sich in propwash-dev-player.properties im Run-Verzeichnis; offline bleibt still der Standard-Skin.
+// Aus: -PpropwashDevName= (leer) oder ein eigenes --username in --args. Läuft schon ein Client mit diesem Namen,
+// behält der nächste seinen Standardnamen (Zwei-Spieler-Test). Selbst- und Rauchtest nur mit -PpropwashDevName=<Name>.
+// NeoForge schaltet ohne --accessToken den offlineDeveloperMode ein und lädt dann kein Profil, daher onlineArgs.
+// ---------------------------------------------------------------------------------------------------------------
+ext.propwashDevPlayer = { JavaExec task, File runDir, boolean byDefault, List<String> onlineArgs ->
+    def requested = findProperty('propwashDevName')
+    String name = (requested != null ? requested.toString() : (byDefault ? 'LardTom' : '')).trim()
+    if (name.isEmpty() || task.args.contains('--username')) {
+        return
+    }
+    def running = java.util.regex.Pattern.compile('(?i)(^|\\s)--username\\s+' + java.util.regex.Pattern.quote(name) + '(\\s|$)')
+    boolean taken = ProcessHandle.allProcesses().anyMatch { ProcessHandle process ->
+        process.info().command().map { String command -> command.endsWith('/java') || command.endsWith('\\java.exe') }.orElse(false) &&
+                process.info().commandLine().map { String line -> running.matcher(line).find() }.orElse(false)
+    }
+    if (taken) {
+        task.logger.lifecycle("Dev-Spieler ${name} läuft schon in einem anderen Client, dieser behält seinen Standardnamen")
+        return
+    }
+    File cache = new File(runDir, 'propwash-dev-player.properties')
+    Properties profile = new Properties()
+    if (cache.isFile()) {
+        cache.withReader('UTF-8') { profile.load(it) }
+    }
+    if (!name.equalsIgnoreCase(profile.getProperty('name', ''))) {
+        profile = new Properties()
+        try {
+            def connection = (HttpURLConnection) URI.create('https://api.mojang.com/users/profiles/minecraft/' + URLEncoder.encode(name, 'UTF-8')).toURL().openConnection()
+            connection.connectTimeout = 3000
+            connection.readTimeout = 3000
+            int status = connection.responseCode
+            if (status == 200) {
+                def json = new groovy.json.JsonSlurper().parse(connection.inputStream)
+                profile.setProperty('name', json.name.toString())
+                profile.setProperty('uuid', json.id.toString())
+            } else if (status == 204 || status == 404) {
+                profile.setProperty('name', name)
+                profile.setProperty('uuid', '')
+            }
+        } catch (IOException ignored) {
+        }
+        if (!profile.isEmpty()) {
+            runDir.mkdirs()
+            cache.setText("name=${profile.getProperty('name')}\nuuid=${profile.getProperty('uuid')}\n", 'UTF-8')
+        }
+    }
+    String player = profile.getProperty('name', name)
+    String uuid = profile.getProperty('uuid', '')
+    task.args('--username', player)
+    if (!uuid.isEmpty()) {
+        task.args(['--uuid', uuid] + onlineArgs)
+    }
+    task.systemProperty('propwash.devplayer', player)
+    task.logger.lifecycle("Dev-Spieler ${player}" + (uuid.isEmpty() ? ' ohne Konto-UUID (Standard-Skin)' : " mit Skin des Kontos ${uuid}"))
+}
+
+// Schlüssel laut net.minecraft.client.Options ("soundCategory_" + SoundSource#getName, 26.3).
+def mutedOptions = [
+        'soundCategory_master'  : '0.001',
+        'soundCategory_music'   : '0.0',
+        'soundCategory_record'  : '0.0',
+        'soundCategory_weather' : '0.0',
+        'soundCategory_block'   : '0.0',
+        'soundCategory_hostile' : '0.0',
+        'soundCategory_neutral' : '0.0',
+        'soundCategory_player'  : '0.0',
+        'soundCategory_ambient' : '0.0',
+        'soundCategory_voice'   : '0.0',
+        'soundCategory_ui'      : '0.0',
+        'pauseOnLostFocus'      : 'false',
+        'onboardAccessibility'  : 'false',
+]
+// Nur für die Selbsttest-Instanzen: kleinere Sichtweite, schnellerer Weltstart, GUI-Skala automatisch (ein abgebrochener
+// Lauf hinterließ sonst die Skala seines letzten Bildschirmfotos).
+def selftestOptions = [
+        'renderDistance'    : '6',
+        'simulationDistance': '5',
+        'guiScale'          : '0',
+]
+// Datenversion von 26.3 (version.json "world_version"), nur für neu angelegte options.txt.
+def optionsDataVersion = '5023'
+
+tasks.register('prepareRuns') {
+    group = 'propwash'
+    description = 'Schreibt stumme options.txt in die Client-Run-Verzeichnisse von Fabric und NeoForge.'
+    def targets = []
+    ['fabric', 'neoforge'].each { loader ->
+        targets << [dir: file("${loader}/${propwashRunDirs.client}"), options: mutedOptions]
+        targets << [dir: file("${loader}/${propwashRunDirs.selftest}"), options: mutedOptions + selftestOptions]
+        targets << [dir: file("${loader}/${propwashRunDirs.smoke}"), options: mutedOptions + selftestOptions]
+    }
+    outputs.upToDateWhen { false }
+    doLast {
+        targets.each { target ->
+            File dir = target.dir
+            Map<String, String> options = target.options
+            dir.mkdirs()
+            File file = new File(dir, 'options.txt')
+            List<String> lines = file.exists() ? file.readLines('UTF-8') : ["version:${optionsDataVersion}".toString()]
+            Set<String> seen = []
+            List<String> patched = lines.collect { line ->
+                int colon = line.indexOf(':')
+                String key = colon > 0 ? line.substring(0, colon) : null
+                if (key != null && options.containsKey(key)) {
+                    seen << key
+                    return "${key}:${options[key]}".toString()
+                }
+                return line
+            }
+            options.each { key, value ->
+                if (!seen.contains(key)) {
+                    patched << "${key}:${value}".toString()
+                }
+            }
+            file.setText(patched.join('\n') + '\n', 'UTF-8')
+            logger.lifecycle("prepareRuns: ${project.relativePath(file)} stumm geschaltet")
+        }
+    }
+}
+
+tasks.register('prepareServerSmoke') {
+    group = 'propwash'
+    description = 'Legt eula.txt und server.properties für den Server-Rauchtest beider Loader an.'
+    def dirs = ['fabric', 'neoforge'].collect { loader ->
+        [dir: file("${loader}/${propwashRunDirs.serverSmoke}"), port: propwashServerPorts[loader], task: ":${loader}:runServerSmoke".toString()]
+    }
+    outputs.upToDateWhen { false }
+    doLast {
+        dirs.each { Map target ->
+            File dir = target.dir
+            int port = target.port
+            if (gradle.taskGraph.allTasks.any { it.path == target.task }) {
+                try {
+                    new ServerSocket(port).close()
+                } catch (IOException e) {
+                    throw new GradleException("Server-Rauchtest: Port ${port} ist belegt (${e.message}); anderen Port mit -PpropwashServerPort=<n> wählen")
+                }
+            }
+            dir.mkdirs()
+            new File(dir, 'eula.txt').setText('eula=true\n', 'UTF-8')
+            new File(dir, 'server.properties').setText([
+                    'online-mode=false',
+                    "server-port=${port}".toString(),
+                    'level-type=minecraft\\:flat',
+                    'generator-settings={"layers"\\:[{"block"\\:"minecraft\\:bedrock","height"\\:1},{"block"\\:"minecraft\\:dirt","height"\\:2},{"block"\\:"minecraft\\:grass_block","height"\\:1}],"biome"\\:"minecraft\\:plains"}',
+                    'generate-structures=false',
+                    'spawn-protection=16',
+                    'view-distance=6',
+                    'simulation-distance=5',
+                    'sync-chunk-writes=false',
+            ].join('\n') + '\n', 'UTF-8')
+            new File(dir, 'world').deleteDir()
+            logger.lifecycle("prepareServerSmoke: ${project.relativePath(dir)} auf Port ${port}")
+        }
+    }
+}
+
+subprojects {
+    // Tests lesen auch Dateien, die keine Task-Eingaben sind (docs, src/lang, Addon-Daten über PROPWASH_CALIBRATION_ADDON):
+    // ein Ergebnis aus dem Build-Cache eines anderen Arbeitsbaums könnte veraltet sein, daher nie aus dem Cache.
+    tasks.withType(Test).configureEach {
+        outputs.cacheIf('Tests laufen immer selbst') { false }
+    }
+    plugins.withId('java') {
+        tasks.register('writeClasspath') {
+            def mainCp = project.sourceSets.main.compileClasspath
+            def testCp = project.sourceSets.test.compileClasspath
+            def outDir = rootProject.file('.classpath')
+            def name = project.name
+            doLast {
+                outDir.mkdirs()
+                new File(outDir, "${name}.txt").text = mainCp.asPath
+                new File(outDir, "${name}-test.txt").text = testCp.asPath
+            }
+        }
+    }
+}

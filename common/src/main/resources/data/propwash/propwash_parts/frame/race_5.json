@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "mass_g": 88.0,
+  "role": "race",
+  "shape": "stretched_x",
+  "wheelbase_mm": 215,
+  "max_prop_mm": 130,
+  "motor_mounts": ["propwash:m22"],
+  "stack_mounts": ["propwash:s30", "propwash:s20"],
+  "accessory_mounts": ["top", "bottom"],
+  "battery": {"on_top": false, "plate_mm": -2.8},
+  "electronics_mm": 10.0,
+  "camera": {"pos": [0.0, 18.7, -51.9], "tilt_deg": 38.0},
+  "accessory_anchors": {
+    "top": {"pos": [0.0, 26.7, -67.0], "tilt_deg": 20.0, "length_mm": 0.0},
+    "bottom": {"pos": [0.0, -2.0, -48.0], "tilt_deg": 30.0, "length_mm": 28.0}
+  },
+  "aero": {"frontal_area_m2": 0.009, "drag_coefficient": 0.75},
+  "impact_tolerance": 7.0,
+  "battery_fit": {"cells": [4, 6], "max_mass_g": 230.0, "preferred_min_cells": 6, "preferred_min_capacity_mah": 0},
+  "sort": 3
+}

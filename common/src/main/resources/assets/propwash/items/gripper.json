@@ -1,0 +1,43 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": "none",
+        "model": {
+          "type": "minecraft:model",
+          "model": "propwash:part/accessory/gripper"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "propwash:part/accessory/gripper",
+      "transformation": {
+        "left_rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "right_rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.233,
+          1.233,
+          1.233
+        ],
+        "translation": [
+          -0.1165,
+          -0.1165,
+          -0.1165
+        ]
+      }
+    }
+  }
+}

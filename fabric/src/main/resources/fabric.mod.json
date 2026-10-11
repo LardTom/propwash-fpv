@@ -1,0 +1,58 @@
+{
+    "schemaVersion": 1,
+    "id": "${mod_id}",
+    "version": "${version}",
+    "name": "${mod_name}",
+    "description": "${description}",
+    "authors": [
+        "${mod_author}"
+    ],
+    "contact": {
+        "homepage": "${homepage_url}"
+    },
+    "license": "${license}",
+    "icon": "assets/${mod_id}/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "de.lardtom.propwash.fabric.PropwashFabric"
+        ],
+        "client": [
+            "de.lardtom.propwash.fabric.client.PropwashFabricClient"
+        ],
+        "modmenu": [
+            "de.lardtom.propwash.compat.modmenu.ModMenuCompat"
+        ],
+        "lambdynlights:initializer": [
+            "de.lardtom.propwash.compat.lambdynamiclights.PropwashDynamicLights"
+        ]
+    },
+    "accessWidener": "${mod_id}.accesswidener",
+    "mixins": [
+        "${mod_id}.core.mixins.json",
+        "${mod_id}.drone.mixins.json",
+        "${mod_id}.race.mixins.json",
+        "${mod_id}.server.mixins.json",
+        "${mod_id}.input.mixins.json",
+        "${mod_id}.video.mixins.json",
+        "${mod_id}.audio.mixins.json",
+        "${mod_id}.guide.mixins.json",
+        "${mod_id}.ui.mixins.json",
+        "${mod_id}.content.mixins.json",
+        "${mod_id}.join.mixins.json",
+        "${mod_id}.bando.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${fabric_loader_version}",
+        "fabric-api": ">=${fabric_version}",
+        "minecraft": "~${minecraft_version}",
+        "java": ">=${java_version}"
+    },
+    "custom": {
+        "modmenu": {
+            "links": {
+                "modmenu.wiki": "https://propwashfpv.com/docs/"
+            }
+        }
+    }
+}

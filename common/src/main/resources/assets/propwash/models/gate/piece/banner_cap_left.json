@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "banner": "propwash:item/gate/banner",
+    "particle": "propwash:item/gate/banner"
+  },
+  "elements": [
+    {
+      "name": "banner_cap_left",
+      "from": [
+        8.0,
+        0.0,
+        7.5
+      ],
+      "to": [
+        12.0,
+        8.0,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            8.0
+          ],
+          "texture": "#banner"
+        },
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            4.0,
+            8.0
+          ],
+          "texture": "#banner"
+        },
+        "east": {
+          "uv": [
+            12.0,
+            0.0,
+            13.0,
+            8.0
+          ],
+          "texture": "#banner"
+        },
+        "west": {
+          "uv": [
+            12.0,
+            0.0,
+            13.0,
+            8.0
+          ],
+          "texture": "#banner"
+        },
+        "up": {
+          "uv": [
+            0.0,
+            9.0,
+            4.0,
+            10.0
+          ],
+          "texture": "#banner"
+        },
+        "down": {
+          "uv": [
+            0.0,
+            9.0,
+            4.0,
+            10.0
+          ],
+          "texture": "#banner"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "textures": {
+    "frame": "propwash:item/gate/start_frame",
+    "particle": "propwash:item/gate/start_frame"
+  },
+  "elements": [
+    {
+      "name": "bar_top_0_half",
+      "from": [
+        8.0,
+        -4.0,
+        6.0
+      ],
+      "to": [
+        12.0,
+        -0.25,
+        10.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4.0,
+            2.0,
+            6.0,
+            4.0
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            4.0,
+            2.0,
+            6.0,
+            4.0
+          ],
+          "texture": "#frame"
+        },
+        "up": {
+          "uv": [
+            4.0,
+            0.0,
+            6.0,
+            2.0
+          ],
+          "texture": "#frame"
+        },
+        "down": {
+          "uv": [
+            4.0,
+            0.0,
+            6.0,
+            2.0
+          ],
+          "texture": "#frame"
+        }
+      }
+    }
+  ]
+}

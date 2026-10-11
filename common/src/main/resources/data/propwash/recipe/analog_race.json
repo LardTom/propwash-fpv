@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "group": "propwash_video",
+  "key": {
+    "G": "minecraft:glass_pane",
+    "A": "minecraft:lightning_rod",
+    "B": "propwash:circuit_board",
+    "L": "propwash:copper_coil"
+  },
+  "pattern": [
+    "GA",
+    "BL"
+  ],
+  "result": {
+    "id": "propwash:analog_race"
+  }
+}
