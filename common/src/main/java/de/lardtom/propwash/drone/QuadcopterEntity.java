@@ -235,6 +235,11 @@ public class QuadcopterEntity extends Entity {
     }
 
     @Override
+    public boolean fireImmune() {
+        return true;
+    }
+
+    @Override
     public void tick() {
         super.tick();
         if (this.level().isClientSide()) {
@@ -255,6 +260,7 @@ public class QuadcopterEntity extends Entity {
         }
         DroneCargo.tick(this);
         this.syncFlightTags(autonomous);
+        this.applyEffectsFromBlocks();
     }
 
     private void syncFlightTags(boolean serverFlies) {
