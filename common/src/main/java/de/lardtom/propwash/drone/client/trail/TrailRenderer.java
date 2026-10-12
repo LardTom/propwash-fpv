@@ -228,7 +228,7 @@ public final class TrailRenderer {
     }
 
     private static boolean groundBelow(QuadcopterEntity drone) {
-        if (drone.onGround()) {
+        if (drone.onGround() && TrailModel.groundFlagKnown(drone.isClientAuthoritative(), drone.isLocalInstanceAuthoritative())) {
             return true;
         }
         AABB box = drone.getBoundingBox();

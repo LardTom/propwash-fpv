@@ -11,6 +11,7 @@ Wann welche Nummer steigt, regelt [`docs/RELEASING.md`](../RELEASING.md).
 
 | Propwash | Parts-API | Netzprotokoll | Für Addons |
 |---|---|---|---|
+| 0.5.1 | 1.5.0 | 15 | nichts Neues für Addons; Drohnen tragen Entity-Tags für Server-Admins |
 | 0.5.0 | 1.5.0 | 15 | fünf Szenen-Konstanten, Umkehrschub der Props, Welt-Regeln, Schadensart, Bando-Beute, Beitritts-Übersicht aus den Metadaten, Addons nur beim Spieler inaktiv statt Trennung (`isAddonActive`), API unter MIT, Konfigurator-Tabs scrollen von selbst (`ConfigTab.reportBottom`, `scrollsItself`, `ConfigTabHost.contentShift`) |
 | 0.4.0 | 1.4.0 | 8 | erste öffentliche API |
 | 0.3.2 | – | 6 | keine API |
@@ -22,6 +23,20 @@ Wann welche Nummer steigt, regelt [`docs/RELEASING.md`](../RELEASING.md).
 
 Client und Server mit verschiedener Protokollnummer trennt schon der Handshake mit einer klaren Meldung, die beide
 Versionen nennt.
+
+---
+
+## 0.5.1 — Parts-API 1.5.0, Netzprotokoll 15 (unverändert)
+
+Fehlerbehebung ohne API-, Protokoll- oder Datenformat-Änderung; Addons für 0.5.0 laufen unverändert, Just More Parts
+1.1.0 passt. 0.5.0 und 0.5.1 spielen in beiden Richtungen zusammen.
+
+- Drohnen (`propwash:drone`) tragen gewöhnliche Entity-Tags: `pw_owner_<Name>`, `pw_pilot_<Name>`, `pw_flying` und
+  `pw_autopilot` (nur auf dem Server, mit der Drohne gespeichert, [`docs/design/drone-tags.md`](../design/drone-tags.md)).
+  Addons dürfen sie lesen (`entityTags()`); die beiden Zustands-Tags gleicht Propwash in jedem Tick ab, von außen
+  gesetzte halten also nur einen Tick.
+- Wer den Tab „Welt-Regeln“ bearbeiten darf, folgt jetzt dem Recht für `/gamerule` (Bedingungen der Befehlsknoten);
+  ein Addon oder Rechte-Mod, das die Bedingung des `gamerule`-Knotens ersetzt, wirkt damit auch auf den Tab.
 
 ---
 

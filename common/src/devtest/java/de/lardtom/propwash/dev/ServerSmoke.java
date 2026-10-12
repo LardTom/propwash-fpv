@@ -4,6 +4,7 @@ import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.core.event.ServerBus;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.DroneModule;
+import de.lardtom.propwash.drone.DroneTagChecks;
 import de.lardtom.propwash.interact.BlockBreakRights;
 import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.server.WorldRulesRights;
@@ -78,12 +79,24 @@ public final class ServerSmoke {
                 return;
             }
             Constants.LOG.info("[Server-Rauchtest] Welt-Regeln: Gast ohne Recht abgelehnt, als Operator übernommen");
+            String admin = WorldRulesRights.checkPermissionMod(server);
+            if (admin != null) {
+                fail("Welt-Regeln (Admin ohne Operator): " + admin);
+                return;
+            }
+            Constants.LOG.info("[Server-Rauchtest] Welt-Regeln: Admin ohne Operator mit /gamerule-Recht (simulierter Rechte-Mod) ändert per Tab, Voreinstellung und Befehl, ohne und nach dem Entzug nur lesbar");
             String breaks = BlockBreakRights.check(server);
             if (breaks != null) {
                 fail("Blockbruch: " + breaks);
                 return;
             }
             Constants.LOG.info("[Server-Rauchtest] Blockbruch: Spawn-Schutz lehnt den Gast schon bei der Freigabe vorab ab, Operator und außerhalb zerbrechen, Abenteuermodus und Regel aus lehnen ab");
+            String tags = DroneTagChecks.check(server);
+            if (tags != null) {
+                fail("Drohnen-Tags: " + tags);
+                return;
+            }
+            Constants.LOG.info("[Server-Rauchtest] Drohnen-Tags: {}", DroneTagChecks.summary());
             Constants.LOG.info("[Server-Rauchtest] gestartet, läuft {} Ticks{}", runTicks(),
                     JoinTestEnv.holdSeconds() > 0 ? " oder bis " + JoinTestEnv.STOP_FILE + " (Beitrittstest)" : "");
         } catch (RuntimeException e) {

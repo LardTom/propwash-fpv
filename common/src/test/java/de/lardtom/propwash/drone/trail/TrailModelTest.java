@@ -35,6 +35,13 @@ class TrailModelTest {
     }
 
     @Test
+    void groundFlagCountsOnlyWhereSomeoneSimulatesTheCollision() {
+        assertTrue(TrailModel.groundFlagKnown(false, false));
+        assertTrue(TrailModel.groundFlagKnown(true, true));
+        assertFalse(TrailModel.groundFlagKnown(true, false));
+    }
+
+    @Test
     void fadeAndTaper() {
         assertEquals(1.0F, TrailModel.freshness(0.0, 1.5F));
         assertEquals(0.5F, TrailModel.freshness(0.75, 1.5F), 1.0E-6);

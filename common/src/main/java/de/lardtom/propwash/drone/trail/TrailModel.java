@@ -61,6 +61,10 @@ public final class TrailModel {
         return groundBelow && speed < LANDED_SPEED;
     }
 
+    public static boolean groundFlagKnown(boolean flownByClient, boolean simulatedHere) {
+        return simulatedHere || !flownByClient;
+    }
+
     public static float freshness(double age, float life) {
         if (!(life > 0.0F) || !Double.isFinite(age)) {
             return 0.0F;

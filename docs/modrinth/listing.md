@@ -1,8 +1,8 @@
-# Modrinth listing — Propwash FPV 0.5.0
+# Modrinth listing — Propwash FPV 0.5.1
 
 Everything needed to fill in the Modrinth project page. Body text: [`description.md`](description.md) (English, paste
 as the project description) and [`description_de.md`](description_de.md) (German, for a translated page or as a
-spoiler section). Player-facing changelog for the version upload: [`CHANGELOG.md`](../../CHANGELOG.md), section 0.5.0.
+spoiler section). Player-facing changelog for the version upload: [`CHANGELOG.md`](../../CHANGELOG.md), section 0.5.1.
 
 ## Project
 
@@ -46,18 +46,21 @@ Upload one version per loader; both are built from the same commit.
 
 | Field | Fabric | NeoForge |
 |---|---|---|
-| File | `fabric/build/libs/propwash-fabric-26.3-0.5.0.jar` | `neoforge/build/libs/propwash-neoforge-26.3-0.5.0.jar` |
-| Version number (suggestion) | `0.5.0+fabric` | `0.5.0+neoforge` |
-| Version name (suggestion) | Propwash FPV 0.5.0 (Fabric) | Propwash FPV 0.5.0 (NeoForge) |
+| File | `fabric/build/libs/propwash-fabric-26.3-0.5.1.jar` | `neoforge/build/libs/propwash-neoforge-26.3-0.5.1.jar` |
+| Version number (suggestion) | `0.5.1+fabric` | `0.5.1+neoforge` |
+| Version name (suggestion) | Propwash FPV 0.5.1 (Fabric) | Propwash FPV 0.5.1 (NeoForge) |
 | Loaders | Fabric | NeoForge |
 | Game versions | 26.3 | 26.3 |
 | Dependencies | Fabric API — required; LambDynamicLights — optional | LambDynamicLights — optional |
 | Release channel (suggestion) | Beta | Beta |
-| Changelog | `CHANGELOG.md`, section 0.5.0 | same |
+| Changelog | `CHANGELOG.md`, section 0.5.1 | same |
 
 Do not upload the `-sources` or `-javadoc` jars as primary files.
 
-Order for 0.5.0: the changelog says the code is source-available and takes pull requests, and the website roadmap marks
+0.5.1 is a hotfix for 0.5.0 (drone trails on servers, world rules for admins with `/gamerule`, drone tags); the
+project description stays as for 0.5.0, Just More Parts stays 1.1.0 and needs no new upload.
+
+Order for 0.5.0 (done): the changelog says the code is source-available and takes pull requests, and the website roadmap marks
 "Source code goes public" as done. Publish the GitHub repositories first (`docs/RELEASING.md` §4, step 9), then upload
 0.5.0 (and Just More Parts 1.1.0, whose changelog names GitHub too) and put the website live. If GitHub has to wait,
 remove the source-available line from the uploaded changelog until it is public.
@@ -106,7 +109,7 @@ as are the gate mounts: `gate_mount_wall_dive.png` (dive gates on a wall, one as
 `flight_school_race_dive.png` (Flight School: a drone diving through a dive gate).
 `api_workbench_extension.png`, `api_workbench_import.png` and `api_config_tab.png` show the add-on extension points and
 belong on a developer page, not in the player gallery. Add-on developers find the Maven coordinates
-(`maven.modrinth:propwash-fpv:0.5.0+fabric` / `+neoforge`) and the guide in `docs/api/addon-guide.md`.
+(`maven.modrinth:propwash-fpv:0.5.1+fabric` / `+neoforge`) and the guide in `docs/api/addon-guide.md`.
 
 New in 0.3.2 (good candidates for the gallery): `inventory_drones.png` (every preset and custom drones as
 their own item icons) and `race_ghost_whoop.png` (a painted whoop ghost on a course), both taken by the screenshot

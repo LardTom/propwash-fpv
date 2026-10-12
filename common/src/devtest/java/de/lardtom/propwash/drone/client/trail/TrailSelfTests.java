@@ -41,6 +41,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -60,6 +61,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class TrailSelfTests {
     static final int PAINT_RED = 0xD02020;
     static final LedColor LED = LedColor.GREEN;
+    private static final int REMOTE_PAINT = 0x20C0C0;
     private static final String FUTURE = "trail_future";
     private static final String MARK = "trail_mark";
     private static final String PHASE = "trail_phase";
@@ -75,6 +77,7 @@ public final class TrailSelfTests {
     private static final AtomicInteger FAST = new AtomicInteger(-1);
     private static final AtomicInteger LIT = new AtomicInteger(-1);
     private static final AtomicInteger OWN = new AtomicInteger(-1);
+    private static final AtomicInteger REMOTE = new AtomicInteger(-1);
     private static final AtomicReference<Saved> SAVED = new AtomicReference<>();
     private static @Nullable Boolean savedEnabled;
 
@@ -88,12 +91,17 @@ public final class TrailSelfTests {
         SelfTest.clientStep("trails: Testfeld mit drei fliegenden Drohnen aufbauen", 400, TrailSelfTests::setupStep);
         SelfTest.clientStep("trails: Welt-Regel an – fliegende Drohnen ziehen Trails in ihrer Farbe, schnelle länger", 600, TrailSelfTests::ruleOnStep);
         SelfTest.clientStep("trails: Spielzeit des Clients springt (Abgleich mit dem Server) – Trails bleiben", 300, TrailSelfTests::clockStep);
+        SelfTest.clientStep("trails: fremd gesteuerte Drohne, die der Server als gelandet meldet (wie 0.5.0) – Trail folgt ihr", 500,
+                TrailSelfTests::remoteGroundFlagStep);
         SelfTest.clientStep("trails: Welt-Regel aus – keine Trails, Schalter im Tab Darstellung gesperrt", 400, TrailSelfTests::ruleOffStep);
         SelfTest.clientStep("trails: persönlicher Schalter aus – keine Trails, Taste schaltet wieder ein", 400, TrailSelfTests::personalStep);
         SelfTest.clientStep("trails: Einstellungssuche findet den Schalter (Trail, Spur, Schweif)", 300, TrailSelfTests::searchStep);
         SelfTest.clientStep("trails: gelandet und entschärft – keine neue Spur, Trail verblasst", 600, TrailSelfTests::landedStep);
         SelfTest.clientStep("trails: eigene Drohne – im FPV ohne eigenen Trail, im Sichtflug mit", 1600, TrailSelfTests::ownStep);
         SelfTest.clientStep("trails: Aufräumen", 400, TrailSelfTests::cleanupStep);
+        if (RemoteTrailCheck.hostEnabled()) {
+            SelfTest.clientStep(RemoteTrailCheck.HOST_STEP, RemoteTrailCheck.HOST_TICKS, RemoteTrailCheck::hostStep);
+        }
     }
 
     static ServerPlayer player(MinecraftServer server) {
@@ -223,6 +231,63 @@ public final class TrailSelfTests {
         ctx.log("Spielzeit " + CLOCK_JUMP_AHEAD + " Ticks vor: Proben " + Arrays.toString(before) + " → "
                 + Arrays.toString(after));
         return StepResult.pass();
+    }
+
+    private static void spawnRemote(MinecraftServer server) {
+        ServerPlayer player = player(server);
+        QuadcopterEntity drone = TrailFlights.spawn(player.level(), new TrailFlights.Path(player.position().add(-12.0, 7.0, 20.0), 4.0, 4.0, 8.0,
+                0.4, 0.5, false), DroneBuild.FREESTYLE, DronePaint.of(Map.of(PaintSlot.FRAME, REMOTE_PAINT)));
+        TrailFlights.reportGrounded(drone.getId());
+        REMOTE.set(drone.getId());
+    }
+
+    private static StepResult remoteGroundFlagStep(SelfTest.StepContext ctx) {
+        TrailFlights.armOnClient(true);
+        Map<String, Object> state = ctx.state();
+        int phase = (int) state.getOrDefault(PHASE, 0);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) {
+            return StepResult.fail("keine Welt");
+        }
+        if (phase == 0) {
+            state.put(FUTURE, ctx.onServer(TrailSelfTests::spawnRemote));
+            next(state, 1, ctx.tick());
+            return StepResult.pending();
+        }
+        StepResult server = await(ctx, phase == 1 ? "fremde Drohne" : "Aufräumen");
+        if (server != null) {
+            return server;
+        }
+        if (phase == 2) {
+            return StepResult.pass();
+        }
+        int id = REMOTE.get();
+        int since = ctx.tick() - (int) state.get(MARK);
+        if (!(mc.level.getEntity(id) instanceof QuadcopterEntity drone)) {
+            return since > 200 ? StepResult.fail("fremde Drohne kam nicht beim Client an") : StepResult.pending();
+        }
+        if (drone.pilot().isEmpty()) {
+            drone.setPilot(new ArmorStand(mc.level, drone.getX(), drone.getY(), drone.getZ()));
+        }
+        if (since < 80) {
+            return StepResult.pending();
+        }
+        String problem = null;
+        if (drone.isLocalInstanceAuthoritative()) {
+            problem = "Drohne gilt als vom eigenen Client gesteuert";
+        } else if (!drone.onGround()) {
+            problem = "Server-Flag „am Boden“ kam nicht an";
+        } else if (!TrailRenderer.drawn(id) || TrailRenderer.samples(id) < 4) {
+            problem = "kein Trail (" + TrailRenderer.describe(id) + ")";
+        }
+        if (problem != null) {
+            return since > 300 ? StepResult.fail(problem) : StepResult.pending();
+        }
+        ctx.log("fremd gesteuert, laut Server am Boden, in " + String.format(Locale.ROOT, "%.1f", drone.getY() - mc.player.getY())
+                + " m Höhe: Trail mit " + TrailRenderer.samples(id) + " Proben gezeichnet");
+        state.put(FUTURE, ctx.onServer(s -> TrailFlights.remove(s, id)));
+        next(state, 2, ctx.tick());
+        return StepResult.pending();
     }
 
     private static int[] sampleCounts() {

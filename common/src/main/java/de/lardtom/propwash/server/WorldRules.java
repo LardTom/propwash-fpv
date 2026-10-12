@@ -2,6 +2,7 @@ package de.lardtom.propwash.server;
 
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.serialization.Codec;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.apiimpl.ImportRateLimit;
@@ -14,19 +15,20 @@ import de.lardtom.propwash.registry.PropwashRegistries;
 import de.lardtom.propwash.registry.RegHolder;
 import de.lardtom.propwash.registry.RegList;
 import de.lardtom.propwash.server.rules.PhysicsRules;
+import de.lardtom.propwash.server.rules.RuleAccess;
 import de.lardtom.propwash.server.rules.RuleEffects;
 import de.lardtom.propwash.server.rules.RulePreset;
 import de.lardtom.propwash.server.rules.RuleSpec;
 import de.lardtom.propwash.server.rules.RuleValues;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gamerules.GameRule;
@@ -56,7 +58,9 @@ public final class WorldRules {
     private static ImportRateLimit denials = new ImportRateLimit(DENIALS_PER_WINDOW, DENIAL_WINDOW_TICKS);
     private static boolean initialized;
     private static @Nullable List<GameRule<?>> cachedRules;
+    private static List<List<String>> cachedNames = List.of();
     private static int cachedSize = -1;
+    private static boolean accessFailureLogged;
     private static volatile @Nullable MinecraftServer running;
     private static volatile @Nullable Supplier<RuleValues> clientValues;
 
@@ -78,6 +82,7 @@ public final class WorldRules {
         ServerBus.STARTED.register(server -> {
             SENT.clear();
             denials = new ImportRateLimit(DENIALS_PER_WINDOW, DENIAL_WINDOW_TICKS);
+            accessFailureLogged = false;
             running = server;
         });
         ServerBus.STOPPED.register(server -> {
@@ -120,9 +125,21 @@ public final class WorldRules {
             BuiltInRegistries.GAME_RULE.stream().filter(WorldRules::isPropwash).forEach(out::add);
             out.sort(Comparator.comparingInt(WorldRules::order).thenComparing(rule -> String.valueOf(BuiltInRegistries.GAME_RULE.getKey(rule))));
             cachedRules = List.copyOf(out);
+            cachedNames = out.stream().map(WorldRules::commandNames).toList();
             cachedSize = size;
         }
         return cachedRules;
+    }
+
+    static synchronized List<List<String>> commandNames() {
+        propwashRules();
+        return cachedNames;
+    }
+
+    static List<String> commandNames(GameRule<?> rule) {
+        String full = rule.getIdentifier().toString();
+        String shortName = rule.id();
+        return full.equals(shortName) ? List.of(full) : List.of(full, shortName);
     }
 
     public static int order(GameRule<?> rule) {
@@ -247,7 +264,35 @@ public final class WorldRules {
     }
 
     public static boolean mayEdit(ServerPlayer player) {
-        return ServerRules.isHost(player) || player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+        return ServerRules.isHost(player) || commandAllows(player, (root, source) -> RuleAccess.mayEditAny(root, source, commandNames()));
+    }
+
+    public static boolean maySet(ServerPlayer player, GameRule<?> rule) {
+        return ServerRules.isHost(player) || commandAllows(player, (root, source) -> RuleAccess.maySet(root, source, commandNames(rule)));
+    }
+
+    public static boolean mayApplyPreset(ServerPlayer player) {
+        return ServerRules.isHost(player) || commandAllows(player, (root, source) -> RuleAccess.mayApplyPreset(root, source, commandNames()));
+    }
+
+    private static boolean commandAllows(ServerPlayer player, CommandCheck check) {
+        MinecraftServer server = player.level().getServer();
+        if (server == null) {
+            return false;
+        }
+        try {
+            return check.test(server.getCommands().getDispatcher().getRoot(), player.createCommandSourceStack());
+        } catch (RuntimeException e) {
+            if (!accessFailureLogged) {
+                accessFailureLogged = true;
+                Constants.LOG.warn("Rechteprüfung für /gamerule fehlgeschlagen, {} darf Welt-Regeln deshalb nicht ändern", player.getGameProfile().name(), e);
+            }
+            return false;
+        }
+    }
+
+    private interface CommandCheck {
+        boolean test(CommandNode<CommandSourceStack> root, CommandSourceStack source);
     }
 
     public static List<WorldRulesS2C.Entry> entries(@Nullable MinecraftServer server) {
@@ -339,7 +384,7 @@ public final class WorldRules {
         if (server == null) {
             return false;
         }
-        if (!mayEdit(player)) {
+        if (!mayApplyPreset(player)) {
             if (reportDenial(player, server)) {
                 Constants.LOG.warn("{} wollte die Voreinstellung {} ohne Berechtigung setzen", player.getGameProfile().name(), payload.preset());
             }
@@ -377,10 +422,15 @@ public final class WorldRules {
             return false;
         }
         List<Component> changes = new ArrayList<>();
+        List<Identifier> refused = new ArrayList<>();
         for (WorldRulesS2C.Entry entry : payload.entries()) {
             GameRule<?> rule = BuiltInRegistries.GAME_RULE.getValue(entry.id());
             if (rule == null || !isPropwash(rule)) {
                 Constants.LOG.warn("{} wollte die unbekannte oder fremde Regel {} ändern", player.getGameProfile().name(), entry.id());
+                continue;
+            }
+            if (!maySet(player, rule)) {
+                refused.add(entry.id());
                 continue;
             }
             if (setSerialized(server, rule, entry.value())) {
@@ -395,6 +445,9 @@ public final class WorldRules {
             for (ServerPlayer other : server.getPlayerList().getPlayers()) {
                 other.sendSystemMessage(change);
             }
+        }
+        if (!refused.isEmpty() && reportDenial(player, server)) {
+            Constants.LOG.warn("{} wollte die Welt-Regeln {} ohne Berechtigung ändern", player.getGameProfile().name(), refused);
         }
         sync(server);
         return true;

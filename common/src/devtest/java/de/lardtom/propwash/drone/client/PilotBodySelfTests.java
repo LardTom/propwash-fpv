@@ -12,6 +12,7 @@ import de.lardtom.propwash.drone.DronePiloting;
 import de.lardtom.propwash.drone.PilotBodyAlert;
 import de.lardtom.propwash.drone.PilotMode;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.tag.DroneTagRules;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.rescue.FailsafeAction;
 import de.lardtom.propwash.rescue.client.RescueConfigs;
@@ -84,7 +85,7 @@ public final class PilotBodySelfTests {
 
     private record Snap(float health, float maxHealth, boolean onGround, double x, double y, double z, boolean alive, String lastDamage,
                         boolean huskTargets, boolean hurtByHusk, boolean onFire, int air, boolean dronePresent, boolean droneArmed,
-                        boolean dronePiloted, boolean dronePlanned) {
+                        boolean dronePiloted, boolean dronePlanned, boolean tagFlying, boolean tagAutopilot, boolean tagPilot) {
     }
 
     private static final class Saved {
@@ -180,7 +181,10 @@ public final class PilotBodySelfTests {
         QuadcopterEntity drone = serverDrone(level);
         return new Snap(player.getHealth(), player.getMaxHealth(), player.onGround(), player.getX(), player.getY(), player.getZ(),
                 player.isAlive(), damage, targets, hurtByHusk, player.isOnFire(), player.getAirSupply(), drone != null,
-                drone != null && drone.isArmed(), drone != null && drone.pilot().isPresent(), drone != null && drone.returnPlan() != null);
+                drone != null && drone.isArmed(), drone != null && drone.pilot().isPresent(), drone != null && drone.returnPlan() != null,
+                drone != null && drone.entityTags().contains(DroneTagRules.FLYING),
+                drone != null && drone.entityTags().contains(DroneTagRules.AUTOPILOT),
+                drone != null && drone.entityTags().contains(DroneTagRules.pilotTag(player.getGameProfile().name())));
     }
 
     private static void set(ServerLevel level, BlockPos pos, BlockState state) {
@@ -687,7 +691,13 @@ public final class PilotBodySelfTests {
                 if (!t.armed) {
                     return StepResult.fail("beim Abheben entschärft: " + t.lastDisarmReason);
                 }
-                if (height >= HOVER_HEIGHT - 0.5 && Math.abs(t.verticalSpeed) < 0.8 && since(ctx) > 30) {
+                poll(ctx);
+                Snap tags = SNAP.get();
+                boolean tagged = tags != null && tags.dronePiloted() && tags.tagFlying() && tags.tagPilot() && !tags.tagAutopilot();
+                if (height >= HOVER_HEIGHT - 0.5 && Math.abs(t.verticalSpeed) < 0.8 && !tagged && since(ctx) > 200) {
+                    return StepResult.fail("Drohne im Flug ohne " + DroneTagRules.FLYING + " und Pilot-Tag am Server: " + tags);
+                }
+                if (height >= HOVER_HEIGHT - 0.5 && Math.abs(t.verticalSpeed) < 0.8 && since(ctx) > 30 && tagged) {
                     if (mc.level != null) {
                         RescueController.INSTANCE.setHome(new Vec3(center.getX() + 0.5 + HOME_DX, center.getY(), center.getZ() + 0.5),
                                 mc.level.dimension(), true);
@@ -720,20 +730,25 @@ public final class PilotBodySelfTests {
                 if (snap == null || snap.alive() || snap.dronePiloted()) {
                     return since(ctx) > 80 ? StepResult.fail("Server gibt die Drohne nicht frei: " + snap) : StepResult.pending();
                 }
+                if (snap.dronePresent() && (snap.tagFlying() || !snap.tagPilot())) {
+                    return StepResult.fail("Tags nach dem Tod: " + snap);
+                }
                 if (action == FailsafeAction.RETURN_HOME) {
-                    if (!snap.dronePlanned()) {
-                        return since(ctx) > 80 ? StepResult.fail("kein Heimflug ohne Pilot nach dem Tod: " + snap) : StepResult.pending();
+                    if (!snap.dronePlanned() || !snap.tagAutopilot()) {
+                        return since(ctx) > 80 ? StepResult.fail("kein Heimflug mit " + DroneTagRules.AUTOPILOT + " ohne Pilot nach dem Tod: "
+                                + snap) : StepResult.pending();
                     }
                 } else {
                     if (since(ctx) < 40) {
                         return StepResult.pending();
                     }
-                    if (snap.dronePlanned() || snap.droneArmed()) {
+                    if (snap.dronePlanned() || snap.droneArmed() || snap.tagAutopilot()) {
                         return StepResult.fail("Failsafe „Absinken“, aber Drohne " + (snap.dronePlanned() ? "fliegt heim" : "bleibt scharf"));
                     }
                 }
                 ctx.log(String.format(Locale.ROOT, "FPV nach %d Ticks verlassen, Drohne %s", (int) ctx.state().get("left"),
-                        action == FailsafeAction.RETURN_HOME ? "fliegt allein heim" : "entschärft"));
+                        action == FailsafeAction.RETURN_HOME ? "fliegt allein heim (Tags " + DroneTagRules.AUTOPILOT + " und Pilot, ohne "
+                                + DroneTagRules.FLYING + ")" : "entschärft"));
                 session.clearTestInput();
                 next(ctx, 5);
                 return StepResult.pending();

@@ -169,6 +169,14 @@ mit `blackbox_decode`, fliegt Schweben, Punch und Gas weg mit derselben Motor-Du
 `build/bbcal/report.md` (rund 20 s ohne Laden). `roundtrip` prüft den Weg mit Logs aus dem eigenen Blackbox-Schreiber.
 Alles Weitere: `docs/tools/blackbox-calibration.md`.
 
+### Drohnen-Tags
+
+Die Entity-Tags für Server-Admins (`docs/design/drone-tags.md`) prüft der Server-Rauchtest bei jedem Lauf auf dem
+dedizierten Server (`drone.DroneTagChecks`, Zeile „Drohnen-Tags: …“ im Log; `:fabric:runServerSmoke` rund 10 s in der
+Testwelt). Im echten Flug mit Tod des Piloten und Failsafe-Heimflug prüft sie `'-PpropwashSelftestOnly=pilotenkörper:'`
+(15 Schritte, rund 30 s in der Testwelt), die Regeln JUnit
+`tools/fastcheck.sh test --select-class de.lardtom.propwash.drone.tag.DroneTagRulesTest`.
+
 ## 2. Schrittliste
 
 ```sh
@@ -181,7 +189,7 @@ Schritte in Reihenfolge, Rahmen-Schritte markiert) und gibt die Gruppen-Tabelle 
 Selbsttest schreibt dieselbe Datei. Die Liste entsteht aus den wirklich angemeldeten Schritten; „angemeldet in“ ist die
 Klasse, die den Schritt anmeldet.
 
-Stand integration nach Welle 3 (Fabric mit Bildschirmfotos, 658 Schritte; NeoForge 395, dort ohne Bildschirmfotos):
+Stand integration nach Welle 3 (Fabric mit Bildschirmfotos, 659 Schritte; NeoForge 396, dort ohne Bildschirmfotos):
 
 | Präfix | in der Welt | nach dem Verlassen | angemeldet in |
 |---|---:|---:|---|
@@ -200,7 +208,7 @@ Stand integration nach Welle 3 (Fabric mit Bildschirmfotos, 658 Schritte; NeoFor
 | `bildschirmfotos (drone-render):` | 2 | 0 | PartsRenderShowcase |
 | `bildschirmfotos:` | 239 | 0 | PartsRenderShowcase, CrashFallSelfTests, AutonomousRescueSelfTests, InteractSelfTests, ShowcaseTour, WizardRemoteSelfTests, SwitchCommandSelfTests, GateMountSelfTests, ProTrickShowcase, ShadowSelfTests, RelayShowcase, HeadlightShowcase, TrainingShowcase, ApiShowcase, FlashbackCamShowcase, Mode3dShowcase, CreativeShowcase, GateFreeSelfTests, CourseElementSelfTests |
 | `dust:` | 3 | 0 | DustSelfTests |
-| `trails:` | 9 | 0 | TrailSelfTests (Drohnen-Trails, `docs/design/drone-trails.md` §4; mit Bildschirmfotos dazu 9 Schritte `bildschirmfotos: Drohnen-Trails – …`) |
+| `trails:` | 10 | 0 | TrailSelfTests (Drohnen-Trails, `docs/design/drone-trails.md` §4; mit Bildschirmfotos dazu 9 Schritte `bildschirmfotos: Drohnen-Trails – …`; `lan-trails:` nur mit `PROPWASH_LANHOST`, siehe „Zwei Clients über LAN“) |
 | `drone:` | 73 | 1 | DroneSelfTests, CrashFallSelfTests, PlayLoopSelfTests, LedSwitchSelfTests, FlightModeSelfTests, Mode3dSelfTests, WearWeightSelfTests, CameraAngleSelfTests, CameraClipSelfTests, GroundContactSelfTests (`drone: Bodenkontakt`: jede Drohnen-Vorlage in 14 Lagen auf 9 Flächen, mit `-PpropwashScreenshots=true` dazu zehn Bildschirmfotos `bildschirmfotos: Bodenkontakt`, `docs/design/ground-contact.md`) |
 | `bindung:` | 13 | 0 | BindSelfTests (Pilot im Empfänger, Brille tragen statt binden, falsche Brille; Bildschirmfotos `bildschirmfotos: Bindung – …` im Rundgang) |
 | `parts-flight:` | 7 | 0 | PartsFlightSelfTests |
@@ -354,6 +362,29 @@ auf seinem Port lauscht (der Build ist dann aktuell, die beiden Gradle-Aufrufe t
   (`docs/design/client-only-addons.md`): Spieler mit Just More Parts auf einem Server ohne erwartet
   `joined|session_inactive=justmoreparts|visible_inactive_parts=0|…`, umgekehrt `Install Propwash: Just More Parts 1.1.0|!joined`,
   beide mit Just More Parts `joined|!session_inactive=justmoreparts`. Danach beide `logs/latest.log` auf Fehler prüfen.
+
+### Zwei Clients über LAN (Trails anderer Piloten)
+
+Prüft, was ein Mitspieler von einer Drohne sieht, die ein anderer Spieler per Hand fliegt – der Fall, den ein
+Selbsttest mit einem Client nicht abdeckt (dort sind fremde Drohnen vom Server bewegt). Drei Prozesse (Server und
+zwei Clients) wären einer zu viel, deshalb ist der erste Client der Gastgeber: sein integrierter Server ist derselbe
+Server-Code wie auf einem dedizierten Server (Zustandspakete, `applyPilotState`, Entity-Tracking).
+
+- `tools/remote_trails_test.sh [fabric|neoforge]` startet den Gastgeber (`runClientSelftest` mit
+  `-PpropwashSelftestOnly=lan-trails`, Umgebungsvariable `PROPWASH_LANHOST=1`, Spieler `PwLanPilot`): er stellt eine
+  Drohne auf den Boden, schaltet die Welt-Regel „Drohnen-Trails“ ein, gibt die Welt ohne Anmeldung im LAN frei und
+  schreibt den Port nach `runs/selftest-client/lan-trails/ready`. Dann tritt der Beobachter bei (`runClientSmoke` mit
+  `PROPWASH_JOINTEST=127.0.0.1:<port>`, `PROPWASH_JOINTEST_TRAIL=<sekunden>`, Spieler `PwLanWatcher`). Sobald er da ist,
+  stellt der Gastgeber ihn 10 m neben den Startpunkt, startet eine FPV-Sitzung, schärft, steigt auf etwa 7 m und pendelt
+  im Angle-Modus mit Nick ±0,3 alle 2,5 s vor und zurück (bis etwa 9 m/s), bis der Beobachter geht.
+- Der Beobachter blickt auf die fremd gesteuerte Drohne und zählt ab dem Abheben `PROPWASH_JOINTEST_TRAIL` Sekunden
+  (Standard im Skript 20, `PROPWASH_TRAIL_SECONDS`): Ticks in der Luft, Ticks mit gezeichnetem Trail, Proben, Ticks
+  mit dem Flag „am Boden“. Ergebnis in `runs/smoke-client/jointest/remote-trails.txt` (`remote trail drawn|none`,
+  `remote ground flag clear|stale`) mit Bildschirmfoto ohne HUD; Erwartung im Skript
+  `joined|remote trail drawn|remote ground flag clear|!remote trail none` (`PROPWASH_TRAIL_EXPECT`).
+- Beide Prozesse belegen je einen Minecraft-Slot; `PROPWASH_MC_LAUNCH=<Startskript>` stellt jedem Gradle-Aufruf ein
+  Skript voran (zum Beispiel eine Slot-Warteschlange). Protokolle in `PROPWASH_TRAIL_LOGS` oder einem neuen Ordner
+  unter `/tmp`; das Skript endet mit Fehler, wenn einer der beiden Läufe scheitert.
 
 ## 4. Build-Geschwindigkeit
 

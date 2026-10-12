@@ -360,7 +360,7 @@
   "propwash.guide.scene.drone_build.hint.fly": "Abheben",
   "propwash.guide.scene.configurator.callout.input": "Gleicher Knüppelausschlag für beide",
   "propwash.guide.scene.configurator.step.world_rules.title": "Welt-Regeln",
-  "propwash.guide.scene.configurator.step.world_rules.text": "Schwerkraft, Wind, Akku und Crash-Schaden gelten für die ganze Welt: Tab „Welt-Regeln“, auch mit Voreinstellungen. Ändern dürfen Host und Operatoren.",
+  "propwash.guide.scene.configurator.step.world_rules.text": "Schwerkraft, Wind, Akku und Crash-Schaden gelten für alle: Tab „Welt-Regeln“, auch mit Voreinstellungen. Ändern: Host und wer /gamerule nutzen darf.",
   "propwash.guide.scene.configurator.callout.world_rules": "Gilt für alle in dieser Welt",
   "propwash.guide.scene.configurator.callout.wind": "Welt-Regel Wind: aus bis Sturm",
   "propwash.guide.scene.configurator.hint.world_rules": "Konfigurator: Welt-Regeln",

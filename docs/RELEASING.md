@@ -23,7 +23,10 @@ CurseForge bzw. Modrinth und hat einen eigenen Abschnitt in `CHANGELOG.md`.
   unverändert laden, welche Addons passen. Keine Implementierungsdetails, keine Testzahlen, keine internen Versionsnamen,
   keine Protokoll- oder API-Nummern und keine Konfigurationsdateien (die stehen in `RELEASE-NOTES.md` und
   `api/changes.md`); verwandte Punkte zusammenfassen, damit ein Release-Abschnitt kurz bleibt (0.4.0: 41 Punkte, 0.5.0:
-  44). Der Abschnitt wird unverändert als Changelog auf Modrinth und CurseForge eingefügt.
+  44). Der Abschnitt wird unverändert als Changelog auf Modrinth und CurseForge eingefügt. Ein PATCH-Release mit nur
+  wenigen Punkten (0.5.1: drei) lässt `### Highlights` weg, sonst stünde jeder Punkt doppelt da. Der Abschnitt eines
+  veröffentlichten Releases bleibt danach unverändert; Fehlerbehebungen dazu kommen in den Abschnitt des nächsten
+  Releases.
 - Technisches gehört in die Doku: was Addon-Autoren betrifft (API, Datenformate, Netzprotokoll, Umstellung, Werkzeuge)
   nach `docs/api/changes.md`, die Einzelheiten der Spielerseite (Zahlen, Bereiche, Ursachen) nach
   `docs/RELEASE-NOTES.md`. Die Arbeitsschritte dazwischen stehen deutsch in den Tages-Changelogs unter `changelogs/`.
@@ -56,8 +59,8 @@ Das letzte öffentliche Release vor dieser Regel war **0.3.2** (CurseForge). Die
 0.4.0–0.4.4 trugen noch saubere Nummern; sie sind zusammen das öffentliche Release **0.4.0**. Ihre Jars liegen unter
 `release/internal/0.4.0-internal` … `release/internal/0.4.4-internal`, die Einzelheiten in den Tages-Changelogs vom
 29.09. bis 01.10.2026. Design-Dokumente (z. B. `docs/design/realism/calibration.md`, Flugmodell-Spezifikation) nennen
-diese internen Nummern weiter als Durchgänge; öffentlich gibt es nur 0.4.0. Danach folgte 0.5.0; das nächste Release ist
-0.5.1, interne Stände bis dahin heißen `0.5.1-dev.N` / `0.5.1-rc.N`.
+diese internen Nummern weiter als Durchgänge; öffentlich gibt es nur 0.4.0. Danach folgten 0.5.0 und die Fehlerbehebung
+0.5.1; das nächste Release ist 0.5.2, interne Stände bis dahin heißen `0.5.2-dev.N` / `0.5.2-rc.N`.
 
 ## 2. API-Version (Parts-API)
 

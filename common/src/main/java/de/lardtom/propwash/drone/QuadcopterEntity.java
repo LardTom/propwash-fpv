@@ -27,6 +27,8 @@ import de.lardtom.propwash.drone.bind.ReceiverBind;
 import de.lardtom.propwash.drone.net.DroneStateC2S;
 import de.lardtom.propwash.drone.net.MoveBudget;
 import de.lardtom.propwash.drone.net.StateValidation;
+import de.lardtom.propwash.drone.tag.DroneTagRules;
+import de.lardtom.propwash.drone.tag.DroneTags;
 import de.lardtom.propwash.interact.DroneCargo;
 import de.lardtom.propwash.rescue.ReturnPlan;
 import de.lardtom.propwash.sim.AirframeSpec;
@@ -252,6 +254,14 @@ public class QuadcopterEntity extends Entity {
             CameraCharging.tick(this);
         }
         DroneCargo.tick(this);
+        this.syncFlightTags(autonomous);
+    }
+
+    private void syncFlightTags(boolean serverFlies) {
+        boolean piloted = this.pilot().isPresent();
+        LivingEntity pilot = piloted ? this.pilotEntity() : null;
+        DroneTags.flightState(this, DroneTagRules.flying(piloted, pilot != null && pilot.isAlive()),
+                DroneTagRules.autopilot(piloted, serverFlies));
     }
 
     private void tickLoosePhysics() {
@@ -498,6 +508,10 @@ public class QuadcopterEntity extends Entity {
         return this.entityData.get(DATA_PILOT).map(EntityReference::getUUID);
     }
 
+    public @Nullable LivingEntity pilotEntity() {
+        return this.entityData.get(DATA_PILOT).map(ref -> ref.getEntity(this.level(), LivingEntity.class)).orElse(null);
+    }
+
     public boolean isFlownBy(UUID player) {
         return this.pilot().filter(player::equals).isPresent();
     }
@@ -520,6 +534,10 @@ public class QuadcopterEntity extends Entity {
             if (current.isEmpty()) {
                 this.setOnGround(false);
             }
+            if (current.isPresent() && pilot instanceof Player player) {
+                DroneTags.flownBy(this, player);
+            }
+            this.syncFlightTags(false);
             PILOT_CHANGED.fire(listener -> listener.onPilotChanged(this, previous, current));
         }
     }
@@ -760,6 +778,7 @@ public class QuadcopterEntity extends Entity {
 
     void applyPilotState(DroneStateC2S state, Quaternionf orientation, float battery, long gameTime) {
         this.setPos(state.x(), state.y(), state.z());
+        this.setOnGround(false);
         this.setAttitude(orientation);
         this.setYRot(yawDegrees(orientation));
         this.setDeltaMovement(new Vec3(state.vx(), state.vy(), state.vz()).scale(0.05));
@@ -948,6 +967,9 @@ public class QuadcopterEntity extends Entity {
         DroneCargo.load(this, input.read(DroneCargo.SAVE_KEY, DroneCargo.SAVE_CODEC).orElse(List.of()));
         this.returnPlan = input.read(RETURN_PLAN_KEY, ReturnPlan.CODEC).orElse(null);
         this.receiverBind = input.read(RECEIVER_BIND_KEY, BindCodecs.CODEC).orElse(null);
+        if (!this.level().isClientSide()) {
+            this.syncFlightTags(false);
+        }
     }
 
     @Override

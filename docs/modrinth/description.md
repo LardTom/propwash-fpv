@@ -10,14 +10,22 @@ animated Flight School teaches you the whole mod inside the game.
 
 ---
 
+## New in 0.5.1
+
+- **Drone trails on servers:** other pilots' trails now show in multiplayer, not only during GPS Rescue
+- **World rules for admins:** server admins who may use `/gamerule` – for example through a permission mod – can edit
+  the *World rules* tab, not only operators
+- **Drone tags for server admins:** every drone carries `pw_owner_<name>`, `pw_pilot_<name>` and `pw_flying` – e.g.
+  `/kill @e[type=propwash:drone,tag=pw_owner_Steve]` removes Steve's drones
+
 ## New in 0.5.0
 
 - **Flight training:** 20 hands-on lessons in five chapters – from arming and hovering to gates, flips and a final
   exam – flown with your own drone through a holographic course that only you see, with stars, best times and split
   times; works in survival and on servers
 - **World rules:** gravity, battery life, wind, turbulence, crash damage, prop strikes, infinite range, a video
-  channel limit and whether parts must fit together are game rules for the whole world, with their own *World rules* tab (the host and operators change
-  them, everyone else sees them) and one-click presets *Realistic*, *Training* and *Arcade*
+  channel limit and whether parts must fit together are game rules for the whole world, with their own *World rules* tab (the host and everyone allowed
+  to use `/gamerule` change them, everyone else sees them) and one-click presets *Realistic*, *Training* and *Arcade*
 - **Freestyle tricks that understand real flying:** 59 tricks in nine families, 43 of them new – from the Juicy Flick,
   Rubik's Cube and McTwist to Matty variants, power flips, hammerheads, new-school Sbang combos, Guillotines and Side
   Trippies, plus inverted flight, hovers, tic-tocs and 3D flips in 3D mode – recognized even when sloppy, fast or chained,

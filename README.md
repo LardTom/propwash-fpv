@@ -578,7 +578,8 @@ Creative Flight Controller.
   read-only. Creative drones don't count for leaderboards. Details: `docs/design/creative-drone.md`.
 
 - **World Rules:** every Propwash game rule of the world in one list with explanations (see *World rules* below). The
-  host in singleplayer and operators can change them, everyone else sees what applies. The camera angle is set on each
+  host in singleplayer and everyone allowed to use `/gamerule` (operators, or admins through a permission mod) can
+  change them, everyone else sees what applies. The camera angle is set on each
   drone in its service menu.
 - **Display:** drone size, prop blur, arm LEDs and the **Propwash dust** section (*Stir up dust* on/off, *Dust amount*).
   Dust also follows Minecraft's Particles setting and is off at *Minimal*.
@@ -594,7 +595,7 @@ The physics and gameplay rules are game rules of the world: they apply to every 
 can be set in the *World Rules* tab, with `/gamerule propwash:<rule> <value>` or in the game rules screen when you create
 a world. Changed physics rules mean flights do not count for leaderboards.
 
-At the top of the tab, three presets set every rule with one click (host and operators; also
+At the top of the tab, three presets set every rule with one click (host and whoever may use `/gamerule`; also
 `/propwash rules preset <realistic|training|arcade>`): *Realistic* is all defaults, *Training* turns off crash damage,
 prop strikes, battery drain, voltage sag and hardware limits but keeps the handling (mild wind included), *Arcade* adds
 any-part-fits, no wind, turbulence or prop wash, a 300 % crash tolerance without disarming, infinite range and drones
@@ -677,7 +678,7 @@ builds, paint jobs, tunes and OSD layouts.
 Developers: the add-on guide, the API reference and the JSON parts format are at
 [propwashfpv.com/docs/api](https://propwashfpv.com/docs/api/). In this repository the step-by-step guide (German) is
 [`docs/api/addon-guide.md`](docs/api/addon-guide.md), the full contract
-[`docs/design/parts-api.md`](docs/design/parts-api.md). The API has its own semantic version, independent of the mod version: Propwash 0.5.0 ships Parts API 1.5.0.
+[`docs/design/parts-api.md`](docs/design/parts-api.md). The API has its own semantic version, independent of the mod version: Propwash 0.5.0 and 0.5.1 ship Parts API 1.5.0.
 `./gradlew publishToMavenLocal` publishes `de.lardtom:propwash-common-26.3`, `propwash-fabric-26.3` and
 `propwash-neoforge-26.3` (with sources and Javadoc) to your local Maven repository for add-on development.
 

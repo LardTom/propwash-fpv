@@ -17,6 +17,7 @@ import de.lardtom.propwash.content.paint.PaintItems;
 import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.drone.bind.BindTooltips;
+import de.lardtom.propwash.drone.tag.DroneTags;
 import de.lardtom.propwash.join.JoinText;
 import de.lardtom.propwash.join.SessionItems;
 import de.lardtom.propwash.server.WorldRules;
@@ -77,6 +78,9 @@ public class QuadcopterItem extends Item {
         drone.setAttitude(new Quaternionf().rotationY((float) (Math.PI - Math.toRadians(yRot))));
         if (!level.noCollision(drone, drone.getBoundingBox())) {
             return InteractionResult.FAIL;
+        }
+        if (player != null) {
+            DroneTags.placedBy(drone, player);
         }
         if (!level.addFreshEntity(drone)) {
             return InteractionResult.FAIL;

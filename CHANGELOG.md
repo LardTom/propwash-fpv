@@ -4,6 +4,22 @@ What changed in Propwash FPV, for players and server owners. Add-on authors find
 [`docs/api/changes.md`](docs/api/changes.md), technical details per release are in
 [`docs/RELEASE-NOTES.md`](docs/RELEASE-NOTES.md).
 
+## [0.5.1] — Drone trails on servers, world rules for admins, drone tags
+
+### New
+- Drones carry tags for server admins: `pw_owner_<name>` (who placed it), `pw_pilot_<name>` (who flew it last) and `pw_flying` (`pw_autopilot` while GPS Rescue brings it home alone) – e.g. remove a player's drones with `/kill @e[type=propwash:drone,tag=pw_owner_Steve]`.
+
+### Improved
+- Server admins who may use `/gamerule` – for example through a permission mod – can now edit the *World rules* tab, not only operators.
+
+### Fixed
+- Drone trails of other pilots now show on servers, not only during GPS Rescue (return to home).
+
+### Compatibility
+- Minecraft 26.3 · Fabric (Loader 0.19.5+, Fabric API 0.161.0+26.3) or NeoForge (26.3.0.10-beta+) · Java 25 · 0.5.0 and 0.5.1 play together – clients and servers can mix both versions; other pilots' trails show as soon as the server or your own game runs 0.5.1.
+- Worlds, drones, courses and settings from 0.5.0 load unchanged; drones placed before the update get their owner tag the next time someone places them.
+- *Propwash: Just More Parts* 1.1.0 and other add-ons made for 0.5.0 keep working.
+
 ## [0.5.0] — World rules, flight training, 59 freestyle tricks, 3D mode and course elements
 
 ### Highlights

@@ -10,6 +10,15 @@ spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spi
 
 ---
 
+## Neu in 0.5.1
+
+- **Drohnen-Trails auf Servern:** Die Trails anderer Piloten erscheinen jetzt im Mehrspieler, nicht nur während GPS
+  Rescue
+- **Welt-Regeln für Admins:** Server-Admins, die `/gamerule` nutzen dürfen – etwa über einen Rechte-Mod –, ändern den
+  Tab *Welt-Regeln*, nicht nur Operatoren
+- **Drohnen-Tags für Server-Admins:** Jede Drohne trägt `pw_owner_<Name>`, `pw_pilot_<Name>` und `pw_flying` – z. B.
+  entfernt `/kill @e[type=propwash:drone,tag=pw_owner_Steve]` Steves Drohnen
+
 ## Neu in 0.5.0
 
 - **Flugtraining:** 20 Lektionen zum Selberfliegen in fünf Kapiteln – vom Scharfschalten und Schweben über Gates und
@@ -17,7 +26,7 @@ spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spi
   Bestzeiten und Zwischenzeiten; geht auch im Überleben und auf Servern
 - **Welt-Regeln:** Schwerkraft, Akkulaufzeit, Wind, Turbulenz, Crash-Schaden, Propellertreffer, unendliche Reichweite
   und eine Grenze für Videokanäle sind Spielregeln für die ganze Welt, mit eigenem Tab „Welt-Regeln“ (Host und
-  Operatoren ändern sie, alle anderen sehen sie) und den Voreinstellungen Realistisch, Training und Arcade mit einem Klick
+  alle, die `/gamerule` nutzen dürfen, ändern sie, alle anderen sehen sie) und den Voreinstellungen Realistisch, Training und Arcade mit einem Klick
 - **Freestyle-Tricks, die echtes Fliegen verstehen:** 59 Tricks in neun Familien, 43 davon neu – vom Juicy Flick,
   Rubik's Cube und McTwist über Matty-Varianten, Power Flips und Hammerheads bis zu Sbang-Kombos, Guillotine und Side Trippy
   der neuen Schule, im 3D-Modus auch Rückenflug, Schweben kopfüber, Tic-Toc und 3D-Flips – erkannt auch unsauber, schnell

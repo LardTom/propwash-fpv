@@ -14,6 +14,7 @@ public final class JoinTestEnv {
     public static final String EXPECT = "PROPWASH_JOINTEST_EXPECT";
     public static final String HOLD = "PROPWASH_JOINTEST_HOLD";
     public static final String PILOT = "PROPWASH_JOINTEST_PILOT";
+    public static final String TRAIL = "PROPWASH_JOINTEST_TRAIL";
     public static final String STOP_FILE = "jointest.stop";
     public static final String JOINED = "joined";
 
@@ -59,6 +60,10 @@ public final class JoinTestEnv {
 
     public static int pilotSeconds() {
         return integer(PILOT, 0);
+    }
+
+    public static int trailSeconds() {
+        return integer(TRAIL, 0);
     }
 
     private static int integer(String name, int fallback) {

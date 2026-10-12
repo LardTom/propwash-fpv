@@ -19,6 +19,16 @@ Für Spieler: [`docs/drone-trails.md`](../drone-trails.md).
   meldet das als Hinweis im Propwash-Stil; bei Regel aus nur der Hinweis „in dieser Welt aus“.
 - Jede **scharfe, fliegende** Drohne zieht einen dünnen, verblassenden Trail. Gelandet (Boden höchstens 0,35 Blöcke
   unter der Drohne und langsamer als 1 m/s) oder entschärft entsteht keine neue Spur, der vorhandene Trail verblasst.
+- „Boden unter der Drohne“ heißt: Bodenprobe unter der gezeigten Position (Kollisionsform des Blocks unter der Mitte).
+  Das Flag `onGround` der Entity zählt zusätzlich nur, wo es stimmt: bei der eigenen, auf diesem Client simulierten
+  Drohne und bei Drohnen, die der Server selbst bewegt (lose Drohne, GPS Rescue). Bei einer Drohne, die ein anderer
+  Spieler steuert, simuliert weder dieser Client noch der Server ihre Kollision – der Server setzt nur die gemeldete
+  Pose (`applyPilotState`). Bis 0.5.0 blieb dort das `onGround` vom letzten Liegen am Boden stehen und ging mit jedem
+  Bewegungspaket an alle anderen Clients; deren Trail galt beim Abheben als gelandet, das Tempo blieb ohne neue
+  Proben bei 0 und der Trail entstand nie (nur GPS Rescue, bei der der Server selbst fliegt, zog einen). Seit 0.5.1
+  setzt der Server `onGround` für pilotengesteuerte Drohnen bei jedem Zustand auf „nein“ (wie beim Loslassen und
+  Zurücksetzen), und der Client glaubt dem Flag fremd gesteuerter Drohnen nicht mehr. So sehen auch 0.5.0-Clients auf
+  einem 0.5.1-Server und 0.5.1-Clients auf einem 0.5.0-Server die Trails anderer Piloten; das Protokoll bleibt gleich.
 - Länge: Jede Probe lebt 1 s (bis 4 m/s) bis 2 s (ab 24 m/s), linear dazwischen nach dem geglätteten Tempo
   (Zeitkonstante 0,25 s). Der Trail wird zum Ende hin dünner (30 % Breite, aber nie schmaler als die Mindestbreite im
   Bild, siehe Breite) und durchsichtiger (1 − (1 − Frische)²,
@@ -96,7 +106,11 @@ Für Spieler: [`docs/drone-trails.md`](../drone-trails.md).
   behalten ihre Proben; entschärft → keine Probe mehr, der Trail verblasst allmählich (die Frische der jüngsten Probe
   sinkt, frühestens nach 15 Ticks leer, vorher unter 0,5 gesehen); gelandet und scharf → keine Spur; eigene
   Drohne im FPV mit Proben, aber ohne gezeichneten Trail, fremde Trails gezeichnet; im Sichtflug eigener Trail
-  gezeichnet.
+  gezeichnet; eine fremd gesteuerte Drohne, die der Server wie 0.5.0 als „am Boden“ meldet, zieht in 7 m Höhe
+  trotzdem ihren Trail.
+- Zwei Clients über LAN (`tools/remote_trails_test.sh`, `docs/testing.md`): der Gastgeber fliegt seine Drohne vom Boden
+  aus per Hand (echte Flugsitzung, Zustandspakete an seinen integrierten Server), der zweite Client muss ihren Trail
+  sehen und das Flag „am Boden“ in der Luft nie bekommen.
 - Bildschirmfotos (Fabric, `-PpropwashScreenshots=true`, Gruppe „bildschirmfotos: Drohnen-Trails“): `trails_several_drones`,
   `trails_rule_off`, `trails_personal_off`, `trails_fpv_day`, `trails_fpv_night`, `configurator_display_trails`,
   `configurator_display_trails_rule_off`, `configurator_world_rules_drone_trails`.

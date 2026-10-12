@@ -57,9 +57,9 @@ Propwash veröffentlicht drei Maven-Artefakte (Gruppe `de.lardtom`, je mit Quell
 
 | Artefakt | Inhalt | Verwendung im Addon |
 |---|---|---|
-| `de.lardtom:propwash-common-26.3:0.5.0` | gemeinsamer Code (ganze API, Mojang-Namen) | `compileOnly` im Modul `common` |
-| `de.lardtom:propwash-fabric-26.3:0.5.0` | Fabric-Mod-Jar | `implementation` im Modul `fabric` (Dev-Laufzeit) |
-| `de.lardtom:propwash-neoforge-26.3:0.5.0` | NeoForge-Mod-Jar | `implementation` im Modul `neoforge` (Dev-Laufzeit) |
+| `de.lardtom:propwash-common-26.3:0.5.1` | gemeinsamer Code (ganze API, Mojang-Namen) | `compileOnly` im Modul `common` |
+| `de.lardtom:propwash-fabric-26.3:0.5.1` | Fabric-Mod-Jar | `implementation` im Modul `fabric` (Dev-Laufzeit) |
+| `de.lardtom:propwash-neoforge-26.3:0.5.1` | NeoForge-Mod-Jar | `implementation` im Modul `neoforge` (Dev-Laufzeit) |
 
 **Lokal entwickeln (gegen einen eigenen Propwash-Stand):** im Propwash-Repository einmal
 `JAVA_HOME=/opt/homebrew/opt/openjdk@25 ./gradlew publishToMavenLocal` ausführen. Das legt alle drei Artefakte in
@@ -72,17 +72,17 @@ repositories {
 
 // common/build.gradle
 dependencies {
-    compileOnly 'de.lardtom:propwash-common-26.3:0.5.0'
+    compileOnly 'de.lardtom:propwash-common-26.3:0.5.1'
 }
 
 // fabric/build.gradle (Loom, 26.3 ist nicht obfuskiert: kein modImplementation nötig)
 dependencies {
-    implementation 'de.lardtom:propwash-fabric-26.3:0.5.0'
+    implementation 'de.lardtom:propwash-fabric-26.3:0.5.1'
 }
 
 // neoforge/build.gradle (ModDevGradle)
 dependencies {
-    implementation 'de.lardtom:propwash-neoforge-26.3:0.5.0'
+    implementation 'de.lardtom:propwash-neoforge-26.3:0.5.1'
 }
 ```
 
@@ -101,9 +101,9 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'maven.modrinth:propwash-fpv:0.5.0+neoforge'       // common
-    implementation 'maven.modrinth:propwash-fpv:0.5.0+fabric'      // fabric
-    implementation 'maven.modrinth:propwash-fpv:0.5.0+neoforge'    // neoforge
+    compileOnly 'maven.modrinth:propwash-fpv:0.5.1+neoforge'       // common
+    implementation 'maven.modrinth:propwash-fpv:0.5.1+fabric'      // fabric
+    implementation 'maven.modrinth:propwash-fpv:0.5.1+neoforge'    // neoforge
 }
 ```
 
@@ -169,8 +169,8 @@ displayURL = "https://modrinth.com/mod/mein-addon"
   inaktiv (Abschnitt 17.1). Fehlt es dem Spieler, bleibt es Pflicht.
 
 ### 1.4 API-Version prüfen
-Die API hat eine eigene Version (`PropwashApi.API_VERSION`, SemVer), unabhängig von der Mod-Version: Propwash 0.5.0
-bringt **1.5.0** (Propwash 0.4.0 brachte 1.4.0). Die Nebenversionen zählen die Ergänzungen: 1.0 Grundumfang, 1.1 Kamera-Aufbau `cameraView`, 1.2 eigene
+Die API hat eine eigene Version (`PropwashApi.API_VERSION`, SemVer), unabhängig von der Mod-Version: Propwash 0.5.0 und 0.5.1
+bringen **1.5.0** (Propwash 0.4.0 brachte 1.4.0). Die Nebenversionen zählen die Ergänzungen: 1.0 Grundumfang, 1.1 Kamera-Aufbau `cameraView`, 1.2 eigene
 Kreativ-Tabs, Flugzeit-Kennzahlen in `BuildStats`, `power_w`, `usable_fraction`, 1.3 Flugschul-Verknüpfungen für Items,
 1.4 Truhen-Beute ohne Loader-Code (`PropwashApi.loot()`, Abschnitt 8), Seltenheit per JSON, weitere
 Analyse-Kennzahlen, ESC-Event, Teilezustand, Farbstoff-Kosten, Akkus mit Teilladung, Name beim Import, Drohne erzeugen,

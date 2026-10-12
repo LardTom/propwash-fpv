@@ -360,7 +360,7 @@
   "propwash.guide.scene.drone_build.hint.fly": "Take off",
   "propwash.guide.scene.configurator.callout.input": "Same stick input for both",
   "propwash.guide.scene.configurator.step.world_rules.title": "World rules",
-  "propwash.guide.scene.configurator.step.world_rules.text": "Gravity, wind, battery and crash damage apply to the whole world: World rules tab, presets included. The host and operators can change them.",
+  "propwash.guide.scene.configurator.step.world_rules.text": "Gravity, wind, battery and crash damage apply to the whole world: World rules tab with presets. The host and whoever may use /gamerule change them.",
   "propwash.guide.scene.configurator.callout.world_rules": "Applies to everyone in this world",
   "propwash.guide.scene.configurator.callout.wind": "Wind world rule: off to storm",
   "propwash.guide.scene.configurator.hint.world_rules": "Configurator: World rules",

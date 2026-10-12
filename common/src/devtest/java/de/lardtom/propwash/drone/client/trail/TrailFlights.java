@@ -13,10 +13,13 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 final class TrailFlights {
     private static final List<Flight> FLIGHTS = new CopyOnWriteArrayList<>();
+    private static final Set<Integer> REPORTED_GROUNDED = ConcurrentHashMap.newKeySet();
     private static final float MOTOR = 0.55F;
     private static boolean installed;
 
@@ -79,7 +82,24 @@ final class TrailFlights {
         }
     }
 
+    static void reportGrounded(int id) {
+        REPORTED_GROUNDED.add(id);
+    }
+
+    static void remove(MinecraftServer server, int id) {
+        REPORTED_GROUNDED.remove(id);
+        for (Flight flight : FLIGHTS) {
+            if (flight.id() == id) {
+                FLIGHTS.remove(flight);
+                if (flight.level().getEntity(id) instanceof QuadcopterEntity drone) {
+                    drone.discard();
+                }
+            }
+        }
+    }
+
     static void clear(MinecraftServer server) {
+        REPORTED_GROUNDED.clear();
         for (Flight flight : FLIGHTS) {
             if (flight.level().getEntity(flight.id()) instanceof QuadcopterEntity drone) {
                 drone.discard();
@@ -129,6 +149,9 @@ final class TrailFlights {
             Quaternionf attitude = new Quaternionf().rotationY(heading).rotateX(-0.35F);
             drone.setAttitude(attitude);
             drone.setYRot(QuadcopterEntity.yawDegrees(attitude));
+            if (REPORTED_GROUNDED.contains(flight.id())) {
+                drone.setOnGround(true);
+            }
         }
     }
 }

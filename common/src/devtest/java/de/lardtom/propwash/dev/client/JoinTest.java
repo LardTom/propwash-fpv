@@ -5,6 +5,7 @@ import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.dev.JoinTestEnv;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.drone.client.trail.RemoteTrailCheck;
 import de.lardtom.propwash.join.client.AddonSessionSelfTests;
 import de.lardtom.propwash.platform.Services;
 import net.minecraft.client.Minecraft;
@@ -52,7 +53,8 @@ public final class JoinTest {
 
     public static List<SelfTest.Step> steps() {
         String label = JoinTestEnv.label();
-        return List.of(new SelfTest.Step(STEP + label, MAX_TICKS, JoinTest::tick));
+        int ticks = MAX_TICKS + 20 * (JoinTestEnv.trailSeconds() > 0 ? 180 + JoinTestEnv.trailSeconds() : 0);
+        return List.of(new SelfTest.Step(STEP + label, ticks, JoinTest::tick));
     }
 
     private static SelfTest.StepResult tick(SelfTest.StepContext ctx) {
@@ -104,7 +106,14 @@ public final class JoinTest {
             }
             state.put("pilot", pilot);
         }
-        String text = joined ? JoinTestEnv.JOINED + "\n" + AddonSessionSelfTests.sessionReport(mc) + state.getOrDefault("pilot", "") : describe(screen);
+        if (joined && JoinTestEnv.trailSeconds() > 0 && !state.containsKey("trail")) {
+            String trail = RemoteTrailCheck.observe(state, ctx.tick(), JoinTestEnv.trailSeconds());
+            if (trail == null) {
+                return SelfTest.StepResult.pending();
+            }
+            state.put("trail", trail);
+        }
+        String text = joined ? JoinTestEnv.JOINED + "\n" + AddonSessionSelfTests.sessionReport(mc) + state.getOrDefault("pilot", "") + state.getOrDefault("trail", "") : describe(screen);
         state.put("text", text);
         write(JoinTestEnv.label() + ".txt", text);
         Constants.LOG.info("[Beitrittstest] {}: {}", JoinTestEnv.label(), text.replace("\n", " | "));

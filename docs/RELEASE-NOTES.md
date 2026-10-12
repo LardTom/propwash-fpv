@@ -8,6 +8,55 @@ stehen in den Tages-Changelogs unter `changelogs/`.
 
 ---
 
+## 0.5.1
+
+Fehlerbehebung zu 0.5.0 mit drei Punkten. Netzprotokoll (15), Parts-API (1.5.0), Speicherformate und Flugphysik sind
+unverändert; 0.5.0 und 0.5.1 spielen in beiden Richtungen zusammen.
+
+### Trails anderer Piloten auf Servern
+
+Auf Servern zog eine Drohne, die ein anderer Spieler per Hand flog, keinen Trail – nur während GPS Rescue, wenn der
+Server selbst fliegt. Ursache: Der Server simuliert eine pilotengesteuerte Drohne nicht, er setzt nur die gemeldete
+Pose. Ihr Flag `onGround` blieb deshalb vom letzten Liegen am Boden stehen und ging mit jedem Bewegungspaket an alle
+anderen Clients. Dort galt der Trail beim Abheben als gelandet, das Tempo blieb ohne neue Proben bei 0, und der Trail
+entstand nie. Seit 0.5.1 meldet der Server pilotengesteuerte Drohnen bei jedem Zustand als nicht am Boden, und der
+Client wertet das Flag nur noch bei Drohnen, deren Kollision jemand wirklich berechnet (die eigene, lose Drohnen,
+GPS Rescue); bei fremd gesteuerten entscheidet die Bodenprobe unter der gezeigten Position. Damit sehen auch
+0.5.0-Clients auf einem 0.5.1-Server und 0.5.1-Clients auf einem 0.5.0-Server die Trails anderer Piloten
+(`docs/design/drone-trails.md`, Zwei-Client-Prüfung `tools/remote_trails_test.sh`).
+
+### Welt-Regeln für Admins ohne Operator
+
+Wer die Welt-Regeln im Tab ändern darf, entscheidet jetzt dieselbe Prüfung wie beim Befehl `/gamerule` – der Server
+testet die Bedingungen der Befehlsknoten `gamerule` → Regel → Wert mit der Befehlsquelle des Spielers
+(`server.rules.RuleAccess`). So gelten auch Rechte, die ein Rechte-Mod vergibt (auf Fabric etwa LuckPerms mit Vanilla
+Permissions, das die Bedingungen der Vanilla-Befehle durch Rechte wie `minecraft.command.gamerule` ersetzt; auf
+NeoForge entsprechende Befehls-Rechte-Mods) oder der Rechte-Satz des Spielers. Vorher prüfte der Tab nur die
+Operator-Stufe 2, ein Admin mit `/gamerule`-Recht sah die Regeln nur lesbar. Voreinstellungen darf, wer `/propwash
+rules preset` ausführen oder alle Propwash-Regeln per `/gamerule` setzen darf. Ist eine einzelne Regel per Rechte-Mod
+gesperrt, lehnt der Server nur diese ab. Der Server prüft jedes Bearbeitungspaket selbst und bewertet das Recht jeden
+Tick neu; ändert es sich, bekommt der Tab sofort den neuen Stand (Netzprotokoll unverändert).
+
+### Drohnen-Tags für Server
+
+Jede Drohne trägt gewöhnliche Entity-Tags, die Server-Admins in Selektoren nutzen (`docs/design/drone-tags.md`,
+Entity-ID `propwash:drone`):
+
+- `pw_owner_<Name>`: wer sie platziert hat – jede Platzierung ersetzt den alten Besitzer, auch im Kreativmodus und mit
+  einem Item aus `/give`. `/summon` setzt keinen.
+- `pw_pilot_<Name>`: wer sie zuletzt geflogen hat – gesetzt beim Start der Pilotensitzung, ersetzt beim nächsten Piloten,
+  bleibt nach dem Aussteigen.
+- `pw_flying`: solange ein lebender Pilot sie fliegt, auch unscharf am Boden. Aussteigen, Funke weglegen, Reichweite,
+  Abmelden und der Tod des Piloten nehmen ihn sofort.
+- `pw_autopilot`: solange der Server sie ohne Piloten heimfliegt oder notlandet (GPS Rescue ohne Pilot).
+
+Die beiden Zustands-Tags gleicht der Server in jedem Tick der Drohne und nach jedem Laden ab; nach einem Neustart oder
+Absturz bleibt keiner hängen. Namen in der Schreibweise des Profils, Zeichen außerhalb von `A–Z a–z 0–9 _` (nur auf
+Offline-Servern möglich) werden zu `_`. Kein neues Netzwerkprotokoll, keine API-Änderung. Beispiele:
+`/kill @e[type=propwash:drone,tag=pw_owner_Steve]`, `/kill @e[type=propwash:drone,tag=!pw_flying,tag=!pw_autopilot]`.
+
+---
+
 ## 0.5.0
 
 ### Nach der Gegenprüfung (Fixes vom 09./10.10.)
