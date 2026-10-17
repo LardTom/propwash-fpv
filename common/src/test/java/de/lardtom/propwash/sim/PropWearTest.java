@@ -180,7 +180,7 @@ class PropWearTest {
     @Test
     void hardImpactsStillBreakProps() {
         int broken = 0;
-        int seeds = 20;
+        int seeds = 100;
         for (long seed = 0; seed < seeds; seed++) {
             PartWear wear = wallCrash(DroneBuild.FREESTYLE, 22.0, seed);
             int count = 0;

@@ -6,6 +6,7 @@ public final class FcSample {
     public boolean armed;
     public StabMode mode = StabMode.ACRO;
     public boolean mode3d;
+    public boolean turtle;
     public boolean airmode;
     public int failsafeStage;
     public boolean linkOk = true;

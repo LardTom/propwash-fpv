@@ -86,6 +86,29 @@ public final class RecoveryScene {
                     s.at(100.0F).throttle(DRONE, 0.55F, 12.0F);
                     s.at(110.0F).move(DRONE, 30.0F, Ease.IN_OUT, AIR_START);
                 })
+                .step("turtle", 200.0F, s -> {
+                    s.at(0.0F).camera(WRECK.add(0.0F, 0.25F, 0.0F), -130.0F, 24.0F, 1.7F, 24.0F);
+                    s.at(0.0F).arm(DRONE, false);
+                    s.at(0.0F).throttle(DRONE, 0.0F, 0.0F);
+                    s.at(0.0F).move(DRONE, 16.0F, Ease.IN, WRECK);
+                    s.at(0.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 180.0F, 16.0F);
+                    s.at(20.0F).keys("turtle", 34.0F, KeyToken.mapping(SceneKit.KEY_TURTLE), KeyToken.mapping(SceneKit.KEY_ARM));
+                    s.at(22.0F).callout("turtle", onDrone, Cue.Side.RIGHT, 36.0F);
+                    s.at(54.0F).arm(DRONE, true);
+                    s.at(60.0F).keys("turtle_stick", 40.0F, KeyToken.mapping(SceneKit.KEY_ROLL_RIGHT));
+                    s.at(62.0F).callout("turtle_stick", onDrone, Cue.Side.RIGHT, 40.0F);
+                    s.at(66.0F).throttle(DRONE, 0.35F, 4.0F);
+                    s.at(66.0F).move(DRONE, 14.0F, Ease.OUT, WRECK.add(0.12F, 0.22F, 0.0F));
+                    s.at(66.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 90.0F, 14.0F);
+                    s.at(80.0F).throttle(DRONE, 0.0F, 2.0F);
+                    s.at(80.0F).move(DRONE, 10.0F, Ease.IN, WRECK.add(0.25F, 0.0F, 0.0F));
+                    s.at(80.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 0.0F, 10.0F);
+                    s.at(104.0F).arm(DRONE, false);
+                    s.at(106.0F).callout("turtle_rule", onDrone, Cue.Side.RIGHT, 50.0F);
+                    s.at(160.0F).arm(DRONE, true);
+                    s.at(160.0F).throttle(DRONE, 0.55F, 12.0F);
+                    s.at(166.0F).move(DRONE, 30.0F, Ease.IN_OUT, AIR_START);
+                })
                 .step("air", 150.0F, s -> {
                     s.at(0.0F).camera(AIR_LOW.add(0.0F, -0.7F, 0.0F), 30.0F, 12.0F, 1.15F, 24.0F);
                     s.at(10.0F).arm(DRONE, false);

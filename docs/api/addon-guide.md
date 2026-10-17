@@ -1,10 +1,12 @@
-# Addons für Propwash FPV — Schritt für Schritt (Parts-API 1.5)
+# Addons für Propwash FPV — Schritt für Schritt (Parts-API 1.6)
 
 Dieses Handbuch zeigt, wie ein eigenes Mod Propwash FPV erweitert, **ohne Propwash zu ändern**: neue Bauteile aller
 Kategorien (auch neue Rahmenformen wie Deadcat, Stretched-X, H-Frame, Ducts oder X-Class 10–13″), neue Zellchemien,
 Presets, ein eigener Kreativ-Tab, Werkbank-Knöpfe mit eigenen Fenstern, Konfigurator-Tabs, Flugschul-Szenen und ein
 Sharecode-System (Baupläne, Lackierung, Tuning und OSD-Layout teilen). Das erste Addon dieser Art ist „Propwash: Just
-More Parts“; alle Beispiele benutzen deshalb den Namensraum `justmoreparts`.
+More Parts“; alle Beispiele benutzen deshalb den Namensraum `justmoreparts`. Seit API 1.6 (Propwash 0.5.2) kommen
+Zubehör mit Verhalten und Inventar, Zubehör-Aktionen auf Schaltern und Tasten, Stöße und Kräfte im Flugmodell, Events für
+Treffer und Schaden, Drohnen-Abfragen, Flughilfen, Gimbal-Kameras und HUD-Elemente dazu (Abschnitt 20).
 
 Weiterführend:
 - öffentliche Fassung für Addon-Autoren (englisch und deutsch, je Release aus dem Code erzeugt): Handbuch
@@ -39,7 +41,8 @@ Abschnitte mit **„Neu in 1.4“** beschreiben die Ergänzungen der Parts-API 1
 | Rahmen, Stacks/ESCs, Motoren, Props, Akkus, Video-Einheiten und Zubehör per Java oder JSON anmelden | andere Motorzahlen als 4 (Hexa, Okto) |
 | eigene Arm-Geometrie, Kameraposition, Schwerpunkt, Ducts, Luftwiderstand, Akku-Regeln je Rahmen | neue Videosysteme oder Brillen (nur `analog`/`digital`) |
 | neue Motor- und Stack-Halterungen, Prop-Aufnahmen, Zellchemien bis 12S | Teile aus Welt-Datenpaketen oder per `/reload` |
-| Items, Tooltips, Werkbank, Analyse, Flugmodell, Rendering, Flugschule, Speichern „geschenkt“ | neue OSD-Elemente, neue Lack-Plätze, neue Zubehör-Halterungen |
+| Items, Tooltips, Werkbank, Analyse, Flugmodell, Rendering, Flugschule, Speichern „geschenkt“ | neue Lack-Plätze, weitere Zubehör-Halterungen als oben, unten und vorne (seit 1.6) |
+| Zubehör mit Inventar, Aktionen, Rückstoß, Kräften, Flughilfen, Gimbal und HUD (seit 1.6, Abschnitt 20) | platzierbare Elemente im OSD-Editor, eigene Funken-Items, eigene Schalterfunktionen je Addon |
 | Presets und ein eigener Kreativ-Tab „Propwash: <Name>“ direkt hinter dem Propwash-Tab | eigene Item-Klassen für Teile (Propwash stellt die Teil-Items) |
 | Baupläne lesen, Drohnen-Items erzeugen, Tuning und Lack setzen | Einträge in Propwashs eigene Beutetabellen (eigene Tabellen hängt `PropwashApi.loot()` in jede Vanilla-Truhe) |
 | server-geprüfter Import in die Werkbank oder auf die gehaltene Drohne | VTX-Leistung wirkt nur informativ; das Kamera-Sichtfeld `camera_fov_deg` bestimmt seit API 1.4 das FPV-Bild |
@@ -57,9 +60,9 @@ Propwash veröffentlicht drei Maven-Artefakte (Gruppe `de.lardtom`, je mit Quell
 
 | Artefakt | Inhalt | Verwendung im Addon |
 |---|---|---|
-| `de.lardtom:propwash-common-26.3:0.5.1` | gemeinsamer Code (ganze API, Mojang-Namen) | `compileOnly` im Modul `common` |
-| `de.lardtom:propwash-fabric-26.3:0.5.1` | Fabric-Mod-Jar | `implementation` im Modul `fabric` (Dev-Laufzeit) |
-| `de.lardtom:propwash-neoforge-26.3:0.5.1` | NeoForge-Mod-Jar | `implementation` im Modul `neoforge` (Dev-Laufzeit) |
+| `de.lardtom:propwash-common-26.3:0.5.2` | gemeinsamer Code (ganze API, Mojang-Namen) | `compileOnly` im Modul `common` |
+| `de.lardtom:propwash-fabric-26.3:0.5.2` | Fabric-Mod-Jar | `implementation` im Modul `fabric` (Dev-Laufzeit) |
+| `de.lardtom:propwash-neoforge-26.3:0.5.2` | NeoForge-Mod-Jar | `implementation` im Modul `neoforge` (Dev-Laufzeit) |
 
 **Lokal entwickeln (gegen einen eigenen Propwash-Stand):** im Propwash-Repository einmal
 `JAVA_HOME=/opt/homebrew/opt/openjdk@25 ./gradlew publishToMavenLocal` ausführen. Das legt alle drei Artefakte in
@@ -72,17 +75,17 @@ repositories {
 
 // common/build.gradle
 dependencies {
-    compileOnly 'de.lardtom:propwash-common-26.3:0.5.1'
+    compileOnly 'de.lardtom:propwash-common-26.3:0.5.2'
 }
 
 // fabric/build.gradle (Loom, 26.3 ist nicht obfuskiert: kein modImplementation nötig)
 dependencies {
-    implementation 'de.lardtom:propwash-fabric-26.3:0.5.1'
+    implementation 'de.lardtom:propwash-fabric-26.3:0.5.2'
 }
 
 // neoforge/build.gradle (ModDevGradle)
 dependencies {
-    implementation 'de.lardtom:propwash-neoforge-26.3:0.5.1'
+    implementation 'de.lardtom:propwash-neoforge-26.3:0.5.2'
 }
 ```
 
@@ -101,9 +104,9 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'maven.modrinth:propwash-fpv:0.5.1+neoforge'       // common
-    implementation 'maven.modrinth:propwash-fpv:0.5.1+fabric'      // fabric
-    implementation 'maven.modrinth:propwash-fpv:0.5.1+neoforge'    // neoforge
+    compileOnly 'maven.modrinth:propwash-fpv:0.5.2+neoforge'       // common
+    implementation 'maven.modrinth:propwash-fpv:0.5.2+fabric'      // fabric
+    implementation 'maven.modrinth:propwash-fpv:0.5.2+neoforge'    // neoforge
 }
 ```
 
@@ -169,8 +172,8 @@ displayURL = "https://modrinth.com/mod/mein-addon"
   inaktiv (Abschnitt 17.1). Fehlt es dem Spieler, bleibt es Pflicht.
 
 ### 1.4 API-Version prüfen
-Die API hat eine eigene Version (`PropwashApi.API_VERSION`, SemVer), unabhängig von der Mod-Version: Propwash 0.5.0 und 0.5.1
-bringen **1.5.0** (Propwash 0.4.0 brachte 1.4.0). Die Nebenversionen zählen die Ergänzungen: 1.0 Grundumfang, 1.1 Kamera-Aufbau `cameraView`, 1.2 eigene
+Die API hat eine eigene Version (`PropwashApi.API_VERSION`, SemVer), unabhängig von der Mod-Version: Propwash 0.5.2 bringt
+**1.6.0** (0.5.0 und 0.5.1 brachten 1.5.0, 0.4.0 brachte 1.4.0). Die Nebenversionen zählen die Ergänzungen: 1.0 Grundumfang, 1.1 Kamera-Aufbau `cameraView`, 1.2 eigene
 Kreativ-Tabs, Flugzeit-Kennzahlen in `BuildStats`, `power_w`, `usable_fraction`, 1.3 Flugschul-Verknüpfungen für Items,
 1.4 Truhen-Beute ohne Loader-Code (`PropwashApi.loot()`, Abschnitt 8), Seltenheit per JSON, weitere
 Analyse-Kennzahlen, ESC-Event, Teilezustand, Farbstoff-Kosten, Akkus mit Teilladung, Name beim Import, Drohne erzeugen,
@@ -178,7 +181,8 @@ JSON-Codec, Sprachtexte ohne Client, die Werkbank- und Client-Ergänzungen sowie
 `camera_fov_deg`, Uptilt pro Drohne mit Bereich des Kamerahalters (alle fünf sind in Propwash 0.4.0 enthalten; Details
 an den Stellen mit „Neu in 1.4“), 1.5 (Propwash 0.5.0) die Szenen-Konstanten `FlightSchoolScenes.TRICKS` und `FlightSchoolScenes.GRIPPER` sowie
 `BuildAccess#partCompatibility()` für die Welt-Regel „Teile müssen zusammenpassen“ und
-`PropwashClientApi.isAddonActive(String)` für Addons, die nur beim Spieler installiert sind (Abschnitt 17.1). Beim Start
+`PropwashClientApi.isAddonActive(String)` für Addons, die nur beim Spieler installiert sind (Abschnitt 17.1), 1.6
+(Propwash 0.5.2) die Leistungsstufen des Videosenders (`vtx_levels_mw`, `VideoDefinition#vtxLevelsMw()`, Abschnitt 3.4). Beim Start
 prüft das Addon die Hauptversion und die mindestens nötige Nebenversion:
 
 ```java
@@ -343,8 +347,14 @@ PropwashApi.parts().register(BatteryDefinition.builder(id("b8s_4500_lion"))
 
 PropwashApi.parts().register(VideoDefinition.builder(id("hd_o4"))
         .mass(9.0).link(VideoLink.DIGITAL).latency(24).range(560).imageQuality(1.0)
-        .cameraWidth(14.0).cameraFov(155.0).vtxPower(1000).build());
+        .cameraWidth(14.0).cameraFov(155.0).vtxPower(700).vtxLevels(25, 100, 400, 700, 1200).build());
 ```
+Sendeleistung (seit API 1.6): `vtx_power_mw` ist die **Nennleistung** – die Stufe, bei der `range_blocks` und `power_w`
+gelten. Drohnen ohne eigene Einstellung senden mit *Auto* und regeln zwischen der niedrigsten und der höchsten Stufe. `vtx_levels_mw` (Builder `vtxLevels`) listet die Stufen, die der Spieler
+wählen kann (aufsteigend, höchstens 8, mit der Nennleistung). Ohne Liste leitet Propwash Stufen bis zur Nennleistung
+ab (analog 25/200/400/800/…, digital 25/100/400/700/1200); ein Teil mit `vtx_power_mw: 800` kann also 25–800 mW.
+Höhere Stufen bringen 10·log10(P/P_Nenn) dB Reserve, kosten Strom und heizen den Sender auf
+(`docs/design/vtx-power.md`).
 Chemien vor den Akkus anmelden, die sie benutzen. Zubehör (`AccessoryDefinition`) kennt die Plätze `TOP`/`BOTTOM`,
 Maße, Leistungsaufnahme, LEDs und optional eine Action-Cam (`ActionCamDefinition`, nur oben).
 
@@ -689,7 +699,7 @@ Liste, JUnit `DocTablesTest` hält sie mit dieser Zeile gleich):
 | `HOLD` | `hold.*` |
 | `CAMERA` | `camera.*` (Uptilt der Drohne, `TuneSpec.CAMERA_UPTILT`; Propwash begrenzt ihn auf den Kamerahalter, ohne Wert gilt der Standard des Rahmens) |
 | `LED` | `led.*` |
-| `VTX` | `vtx.*` (Videokanal — gehört nie in einen Sharecode) |
+| `VTX` | `vtx.*` (Videokanal und Sendeleistung — gehören nie in einen Sharecode) |
 | `OTHER` | alles andere |
 
 `TuneGroup.FLIGHT` = Rates, PID, Feedforward, TPA, Filter, Gaskurve — der Standard eines Sharecodes.
@@ -1024,6 +1034,9 @@ nur ergänzt (Abschnitt 16). Vorbild im Code: das Beispiel-Fenster
 | `DRONE_DISASSEMBLED(player, data)` | Server | Drohne in der Werkbank zerlegt |
 | `BUILD_IMPORTED(player, request, result)` | Server | nach jeder Import-Anfrage, auch abgelehnten |
 | `ESC_BURNED(player, drone, data, cells)` (**neu in 1.4**) | Server | der ESC einer geflogenen Drohne ist durchgebrannt, weil der Akku mehr Zellen hat, als der Stack verträgt — genau einmal, wenn der Stack am Server kaputtgeht (nur mit der Welt-Regel `propwash:crash_damage`, bis 0.4.0 Server-Regel `partWear`); `drone` ist eine Kopie der Drohne als Item, `cells` die Zellzahl |
+| `DRONE_HIT_ENTITY(hit)` (**neu in 1.6**) | Server | eine geflogene Drohne trifft ein Lebewesen (die Spielregeln erlauben es); `EntityHit` mit Relativtempo, Kontaktpunkt, Halterung und änderbarem Schaden (Abschnitt 20.5) |
+| `DRONE_DAMAGED(damage)` (**neu in 1.6**) | Server | die Drohne nimmt Schaden (Mobs, Pfeile, Explosionen, Spieler); `DroneDamage` mit `setAmount` und `cancel` |
+| `ACCESSORY_ACTION(player, drone, number, pressed)` (**neu in 1.6**) | Server | der Pilot drückt oder lässt eine Zubehör-Aktion 1–4 los (geprüft) |
 
 Listener mit `PropwashEvents.X.register(…)` in der offenen Phase anmelden. `fire` ist intern.
 
@@ -1038,7 +1051,8 @@ Listener mit `PropwashEvents.X.register(…)` in der offenen Phase anmelden. `fi
 | Baupläne und Import | `api.build.*` |
 | Items und Kreativ-Tabs | `api.registry.PartItems`, `api.registry.CreativeEntries`, `api.registry.ExtensionTab`, `api.registry.TabSection` |
 | Events | `api.event.PropwashEvents`, `PropwashEvent#register` |
-| Client-Erweiterungen | `api.client.*` |
+| Client-Erweiterungen | `api.client.*` (seit 1.6 mit `api.client.hud`, `api.client.camera`, `ClientInput`) |
+| Zubehör, Drohnen, Flug (seit 1.6) | `api.accessory.*`, `api.drone.*`, `api.flight.*` (reines Java) |
 | freigegebene interne Typen | `ui.client.config.ConfigTab`, `ConfigTabHost`, `StepSlider`; `ui.client.theme.Palette`, `Metrics`, `ThemeText`, `ThemeDraw`, `ThemedWidgets`, `ThemedScreen`; `ui.client.widget.FlatButton`, `ScrollPanel`; `guide.scene.*` |
 
 - **SemVer**: Hauptversion bei jeder inkompatiblen Änderung, Nebenversion bei Ergänzungen, Patch bei Fehlerbehebungen.
@@ -1099,6 +1113,13 @@ Cinelifter 0–30°, X-Class 0–50°, immer einschließlich `camera.tilt_deg` d
 `BuildAccess#cameraView(spec, uptiltDeg)`, `BuildAccess#uptiltRange(frame)`. Imports, die den Winkel mitnehmen sollen,
 nennen `TuneGroup.CAMERA` in ihren Tuning-Gruppen (zum Beispiel ein Sharecode); fehlt der Winkel, gilt danach der
 Standard des Rahmens.
+
+API 1.6 (in Propwash 0.5.2, Netzprotokoll 16): Halterung vorne (`AccessorySlot.FRONT`), Zubehör-Verhalten mit
+Inventar und Aktionen (`PropwashApi.accessories()`), Drohnen-Abfragen und Stöße (`PropwashApi.drones()`), Flughilfen und
+Kräfte (`PropwashApi.flight()`), die Events `DRONE_HIT_ENTITY`, `DRONE_DAMAGED`, `ACCESSORY_ACTION` und im Client
+`registerHudElement`, `registerGimbal`, `input()` – Abschnitt 20 und [`../design/addon-api-1.6.md`](../design/addon-api-1.6.md).
+Addons für 1.0 bis 1.5 laufen unverändert; wer die neuen Punkte benutzt, prüft `requireVersion(modId, "1.6")` und hängt
+von `propwash >= 0.5.2` ab.
 
 ---
 
@@ -1202,6 +1223,13 @@ Flugschul-Szenen jedes Beispiel-Teils (`flightSchoolScenes`), Halten-Taste über
 und `openFlightSchool` für den Beispiel-Akku.
 Bildschirmfotos im Rundgang: `api_workbench_extension.png`, `api_workbench_import.png`, `api_config_tab.png`.
 
+Seit API 1.6 zeigt `dev/example/ExampleAccessories.java` (Client: `client/ExampleAccessoriesClient.java`) die neuen
+Bausteine: Werfer vorne mit vier Slots (Schneebälle, Pfeile, Windkugeln, Rückstoß auf Aktion 1), Speer unten (mehr
+Schaden bei Treffern von unten über `DRONE_HIT_ENTITY`), Gimbal-Kamera oben mit Kino-Flughilfe (`CineAssist`:
+Geschwindigkeits-Steuerung, Position halten, Stopp vor Hindernissen, Umkreisen auf Aktion 2), Gimbal über `GimbalModel`
+(Aktion 4 sperrt die Richtung) und ein HUD-Element mit Höhe, Abstand, Tempo und Munition. Selbsttest-Gruppe
+`addon-api:` (`interact.client.AddonApiSelfTests`), Bildschirmfotos `addon_api_*.png`.
+
 ---
 
 ## 19. Checkliste und Fehlersuche
@@ -1232,3 +1260,119 @@ Bildschirmfotos im Rundgang: `api_workbench_extension.png`, `api_workbench_impor
 | Import liefert `NO_TARGET` | Werkbank nicht offen (bzw. andere Container-Id) oder keine Drohne in der Haupthand |
 | Import liefert `BUSY` | mehr als 2 Anfragen pro Sekunde |
 | Szene wirft bei der Anmeldung | Id ohne eigenen Namensraum |
+
+---
+
+## 20. Zubehör, Aktionen, Physik, Flughilfen, Gimbal und HUD (neu in 1.6)
+
+Verbindliche Einzelheiten (Koordinaten, Grenzen, Netz, Threads) stehen in
+[`../design/addon-api-1.6.md`](../design/addon-api-1.6.md); wie die beiden offiziellen Add-ons die Bausteine benutzen,
+zeigen [`../design/addon-mob-defense.md`](../design/addon-mob-defense.md) und
+[`../design/addon-cinematic.md`](../design/addon-cinematic.md). Alles hier ist optional: Ohne Add-on verhält sich Propwash
+wie vorher.
+
+### 20.1 Zubehör vorne
+Neben oben (`top`) und unten (`bottom`) gibt es die Halterung `front` (`AccessorySlot.FRONT`): Das Zubehör hängt unter
+der Nase und ragt nach vorn – für Werfer, Gimbal-Kameras, Scheinwerfer. Alle eingebauten Rahmen außer dem Whoop haben
+sie; eigene Rahmen melden sie an:
+
+```json
+"accessory_mounts": ["top", "bottom", "front"],
+"accessory_anchors": { "front": {"pos": [0.0, 0.0, -72.0], "tilt_deg": 0.0, "length_mm": 0.0} }
+```
+
+Zubehör für vorne: `"slot": "front"` bzw. `AccessoryDefinition.builder(id).slot(AccessorySlot.FRONT)`. Masse, Maße und
+Stirnfläche wirken im Flugmodell wie bei den anderen Halterungen.
+
+### 20.2 Verhalten und Inventar
+
+```java
+PropwashApi.accessories().register(LAUNCHER, new AccessoryBehavior() {
+    @Override public int slots() { return 4; }
+    @Override public boolean accepts(int slot, ItemStack stack) { return stack.is(Items.ARROW); }
+    @Override public void onAction(AccessoryAction action) {
+        if (action.number() != 1 || !action.pressed()) return;
+        int slot = action.inventory().firstFilled();
+        if (slot < 0) return;
+        ItemStack ammo = action.inventory().take(slot, 1);
+        MountPose mount = action.mount();
+        Arrow arrow = new Arrow(action.level(), mount.front().x, mount.front().y, mount.front().z, ammo, null);
+        arrow.shoot(mount.forward().x, mount.forward().y, mount.forward().z, 2.5F, 0.0F);
+        arrow.setOwner(action.player());
+        action.level().addFreshEntity(arrow);
+        action.physics().impulse(mount.forward().scale(-1.0), new Vec3(0.0, -0.03, -0.08));
+    }
+});
+```
+
+- In der gemeinsamen Init anmelden, je Zubehör-Id einmal. Das Teil selbst meldest du wie jedes Zubehör an.
+- Spieler füllen das Inventar über **Wartung → „Zubehör“** (Schleichen + Rechtsklick auf die Drohne); `accepts` und
+  `maxStackSize` filtern. Der Inhalt bleibt an Drohne und Item, die Werkbank gibt ihn beim Zerlegen zurück.
+- Die Beladung wiegt im Flug mit (Standard: Item-Gewichte wie beim Greifer; eigenes Gewicht über `payloadGrams`).
+- Lesen geht auf beiden Seiten (`PropwashApi.accessories().contents(drone, slot)`), schreiben nur am Server über
+  `inventory(drone, slot)`.
+- `tick(context)` läuft am Server jeden Tick (z. B. Nachladen, Abkühlen, gehaltene Aktion als Dauerfeuer über
+  `actionHeld(n)`).
+
+### 20.3 Zubehör-Aktionen 1–4
+Die Spieler legen „Zubehör-Aktion 1–4“ im Tab „Modi“ auf Schalter oder Taster; ohne Belegung gehen die Tasten
+Ziffernblock 9, 0, Enter und + (frei belegbar; Ziffernblock 8 ist der Turtle-Modus). Drücken und Loslassen gehen geprüft an den Server: `onAction` aller
+Verhaltens-Zubehörteile der Drohne, danach das Event `ACCESSORY_ACTION`. Flughilfen sehen gehaltene Aktionen sofort als
+`FlightState#action(n)`, der Client über `PropwashClientApi.input().action(n)`.
+
+### 20.4 Stöße, Schübe, Kräfte
+- `PropwashApi.drones().physics(drone)` → `impulse(J, rahmenpunkt)` (N·s) oder `push(F, rahmenrelativ, rahmenpunkt,
+  sekunden)` (N). Propwash schickt sie an den Client des Piloten, ins Heimflug-Modell am Server oder als Tempo an eine
+  abgestellte Drohne. Grenzen: 50 N·s, 500 N, 30 s.
+- Dauerhafte Kräfte (Ballon, Fallschirm, Wasser-Eimer): `PropwashApi.flight().registerForces("ns:id", profile -> …)`
+  mit `ForceProvider#apply(state, sink)`; läuft mit 100 Hz im Flugmodell auf beiden Seiten.
+
+### 20.5 Treffer und Schaden
+```java
+PropwashEvents.DRONE_HIT_ENTITY.register(hit -> {
+    if (hit.slot().equals(Optional.of(AccessorySlot.BOTTOM)) && hit.accessory().equals(Optional.of(SPEAR))) {
+        hit.addDamage((float) (0.6 * hit.closingSpeed()));
+    }
+});
+PropwashEvents.DRONE_DAMAGED.register(damage -> {
+    if (damage.source().is(DamageTypes.ARROW)) damage.setAmount(damage.amount() * 0.5F);
+});
+```
+`framePoint` ist der Kontaktpunkt in Rahmen-Koordinaten (m, +X rechts, +Y oben, −Z vorn), `slot()` die Halterung in
+Richtung des Kontakts.
+
+### 20.6 Drohnen finden, zielen, Hindernisse
+`PropwashApi.drones()`: `dronesNear`, `nearestDrone(mob, …)` mit Sichtprüfung, `view(drone)` (Tempo, Masse, Zubehör),
+`aim(schütze, drohne, tempoProTick, schwerkraftProTick)` mit Vorhalt, `scan(drone, reichweite)` (sechs Richtungen) und
+`obstacleDistance(…)`. Drohnen sind keine `LivingEntity` – Mobs brauchen eigene KI-Ziele des Add-ons.
+
+### 20.7 Flughilfen
+```java
+PropwashApi.flight().registerAssist("ns:cine", profile -> profile.hasAccessory("ns:gimbal_cam") ? new CineAssist() : null);
+```
+`FlightAssist#update(state, out)` läuft mit 100 Hz im Flugmodell des Piloten. Ausgaben: `sticks` + `mode`
+(Knüppel ersetzen), `holdAltitude`/`climb`, `holdPosition`/`velocity` + `maxSpeed` (Regelkreise von ALTHOLD/POSHOLD mit
+GPS- und Barometerfehlern), `yawRate`/`heading`, `label` (OSD-Flugmodus), `requestReturnHome` (GPS Rescue).
+`sensorRange()` schaltet sechs Hindernis-Strahlen ein. Während GPS Rescue ruht die Flughilfe.
+
+### 20.8 Gimbal-Kamera und HUD (nur Client)
+```java
+PropwashClientApi.registerGimbal("ns:gimbal", new GimbalProvider() {
+    private final GimbalModel model = new GimbalModel().pitch(-10.0);
+    public boolean appliesTo(Entity drone) { return PropwashApi.accessories().accessoryAt(drone, AccessorySlot.FRONT).equals(Optional.of(GIMBAL)); }
+    public void orient(GimbalContext ctx, Quaternionf rotation) {
+        Quaternionfc f = ctx.frame();
+        this.model.update(ctx.deltaSeconds(), f.x(), f.y(), f.z(), f.w());
+        rotation.set((float) this.model.qx(), (float) this.model.qy(), (float) this.model.qz(), (float) this.model.qw());
+    }
+});
+PropwashClientApi.registerHudElement("ns:hud", (graphics, ctx) -> { /* ctx.telemetry(), ctx.imageX0()… */ });
+```
+Ein HUD-Element darf mit `replacesOsd` das Propwash-OSD ersetzen; es zeichnet nie über Propwash-Fenstern.
+
+### 20.9 Checkliste 1.6
+- [ ] `requireVersion(modId, "1.6")`, Abhängigkeit `propwash >= 0.5.2` auf beiden Seiten.
+- [ ] Verhalten, Flughilfen und Kräfte in der gemeinsamen Init, Gimbal und HUD in der Client-Init.
+- [ ] Ids mit eigenem Namensraum (`ns:name`), Texte de und en.
+- [ ] Welt verändern nur am Server (in `onAction`/`tick`), nie aus einer Flughilfe.
+- [ ] Ausnahmen in Flughilfen und Kräften schalten diese für den Flug ab – im Log nachsehen.

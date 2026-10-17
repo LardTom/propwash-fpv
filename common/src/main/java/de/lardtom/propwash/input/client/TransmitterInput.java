@@ -2,6 +2,7 @@ package de.lardtom.propwash.input.client;
 
 import com.mojang.blaze3d.platform.FramerateLimitTracker;
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.audio.client.LocatorBeeper;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.drone.led.LedSettings;
@@ -72,7 +73,8 @@ public final class TransmitterInput {
     private static final long OPEN_RETRY_NANOS = 5_000_000_000L;
     private static final int EDGE_FUNCTIONS = SwitchEvaluator.bit(SwitchFunction.ARM) | SwitchEvaluator.bit(SwitchFunction.RESCUE)
             | SwitchEvaluator.bit(SwitchFunction.FLIP_OVER) | SwitchEvaluator.bit(SwitchFunction.SET_HOME)
-            | SwitchEvaluator.bit(SwitchFunction.RACE_RESTART) | SwitchEvaluator.bit(SwitchFunction.RECORD) | commandBits();
+            | SwitchEvaluator.bit(SwitchFunction.RESET) | SwitchEvaluator.bit(SwitchFunction.RECORD)
+            | SwitchEvaluator.bit(SwitchFunction.VTX_POWER) | commandBits();
     private static final int ONE_SHOT_FUNCTIONS = EDGE_FUNCTIONS & ~SwitchEvaluator.bit(SwitchFunction.ARM);
     private static final float ACTIVITY_EPSILON = 0.01F;
     private static final float[] NO_AXES = new float[0];
@@ -122,6 +124,8 @@ public final class TransmitterInput {
     private final StickMapper mapper = new StickMapper();
     private volatile boolean throttle3d;
     private final SwitchEvaluator evaluator = new SwitchEvaluator();
+    private @Nullable String evaluatedGuid;
+    private @Nullable DeviceProfile evaluatedProfile;
     private final KeyboardFlight keyboard = new KeyboardFlight();
     private final MouseFlight mouse = new MouseFlight();
     private MouseCapture.Frame mouseFrame = MouseCapture.Frame.EMPTY;
@@ -129,6 +133,7 @@ public final class TransmitterInput {
     private boolean mouseWheel;
     private boolean forceMouseCapture;
     private boolean beeperLatch;
+    private @Nullable QuadcopterEntity beeperDrone;
     private boolean ledsOffLatch;
     private final KeyRepeatFilter beeperKey = new KeyRepeatFilter();
     private final KeyRepeatFilter ledsKey = new KeyRepeatFilter();
@@ -288,6 +293,24 @@ public final class TransmitterInput {
         return this.throttle3d;
     }
 
+    public void followSwitches(SwitchEvaluator target, String guid, DeviceProfile profile) {
+        DeviceProfile live = this.evaluatedProfile;
+        if (live != null && guid.equals(this.evaluatedGuid)) {
+            target.follow(this.evaluator, live, profile);
+        }
+    }
+
+    public void adoptSwitches(String guid, SwitchEvaluator edited) {
+        if (guid.equals(this.evaluatedGuid)) {
+            this.evaluator.copyFrom(edited);
+        }
+    }
+
+    private void evaluated(@Nullable String guid, @Nullable DeviceProfile profile) {
+        this.evaluatedGuid = guid;
+        this.evaluatedProfile = profile;
+    }
+
     public void setSuppressDevice(boolean suppress) {
         this.suppressDevice = suppress;
     }
@@ -298,6 +321,7 @@ public final class TransmitterInput {
 
     public void onDisconnect() {
         this.evaluator.reset();
+        this.evaluated(null, null);
         this.mapper.reset();
         this.keyboard.reset();
         this.mouse.reset();
@@ -308,6 +332,7 @@ public final class TransmitterInput {
         this.lastSwitchBits = 0;
         this.switchesGuid = null;
         this.beeperLatch = false;
+        this.beeperDrone = null;
         this.ledsOffLatch = false;
         this.deviceSwitchBits = 0;
         SwitchCommandRunner.INSTANCE.reset();
@@ -316,6 +341,7 @@ public final class TransmitterInput {
     public void simulate(@Nullable SimulatedRadio radio) {
         this.simulated = radio;
         this.evaluator.reset();
+        this.evaluated(null, null);
         this.mapper.reset();
         this.keyboard.reset();
         this.mouse.reset();
@@ -344,9 +370,19 @@ public final class TransmitterInput {
         boolean beeperPressed = this.beeperKey.pressed(clicks(InputKeys.BEEPER), InputKeys.BEEPER.isDown());
         boolean ledsPressed = this.ledsKey.pressed(clicks(InputKeys.LEDS), InputKeys.LEDS.isDown());
         if (!PilotSession.INSTANCE.isActive()) {
-            this.beeperLatch = false;
             this.ledsOffLatch = false;
+            this.beeperDrone = null;
+            if (beeperPressed && (this.beeperLatch || LocatorBeeper.ownBeeping(minecraft) != null)) {
+                this.beeperLatch = false;
+                LocatorBeeper.switchOffOwn(minecraft);
+                this.beeperToast(minecraft);
+            }
             return;
+        }
+        QuadcopterEntity drone = PilotSession.INSTANCE.drone();
+        if (drone != this.beeperDrone) {
+            this.beeperDrone = drone;
+            this.beeperLatch = drone != null && minecraft.player != null && drone.beeperBy().filter(minecraft.player.getUUID()::equals).isPresent();
         }
         if (ledsPressed) {
             this.ledsOffLatch = !this.ledsOffLatch;
@@ -356,11 +392,15 @@ public final class TransmitterInput {
         }
         if (beeperPressed) {
             this.beeperLatch = !this.beeperLatch;
-            if (minecraft.player != null) {
-                ThemedToast.show(minecraft.gui.toastManager(), BEEPER_TOAST_TOKEN,
-                        Component.translatable(this.beeperLatch ? "propwash.input.beeper.on" : "propwash.input.beeper.off"), null,
-                        this.beeperLatch ? Palette.WARNING : Palette.INFO, 2500L);
-            }
+            this.beeperToast(minecraft);
+        }
+    }
+
+    private void beeperToast(Minecraft minecraft) {
+        if (minecraft.player != null) {
+            ThemedToast.show(minecraft.gui.toastManager(), BEEPER_TOAST_TOKEN,
+                    Component.translatable(this.beeperLatch ? "propwash.input.beeper.on" : "propwash.input.beeper.off"), null,
+                    this.beeperLatch ? Palette.WARNING : Palette.INFO, 2500L);
         }
     }
 
@@ -725,11 +765,11 @@ public final class TransmitterInput {
         DeviceInfo device = Objects.requireNonNull(this.open);
         DeviceProfile profile = config.profile(device.guid());
         if (profile == null) {
-            profile = ProfileDefaults.create(device.name(), device.gamepadByDefault(), this.axisCount);
+            profile = ProfileDefaults.create(device.name(), device.gamepadByDefault(), this.axisCount, config.stickMode());
             config.profiles.put(device.guid(), profile);
             InputConfig.commit(config);
             Constants.LOG.info("Propwash: Standardbelegung für \"{}\" angelegt ({})", device.name(),
-                    profile.gamepadLayout ? "Gamepad Mode 2" : "Funke AETR");
+                    profile.gamepadLayout ? "Gamepad Mode " + config.stickMode().number() : "Funke AETR");
         }
         boolean usePad = profile.gamepadLayout && this.gamepad != 0L;
         float[] axes = usePad ? this.gamepadAxes : this.joystickAxes;
@@ -739,6 +779,7 @@ public final class TransmitterInput {
         StickPositions sticks = this.mapper.map(profile, axes, dt, this.throttle3d, armed);
         float throttle3d = this.mapper.throttle3d();
         int bits = this.evaluator.evaluate(profile, axes, buttons);
+        this.evaluated(device.guid(), profile);
         boolean reconfigured = this.noteSwitches(device.guid(), profile);
         int evaluated = bits;
         if (this.captureActive(minecraft, now)) {
@@ -796,12 +837,13 @@ public final class TransmitterInput {
 
     private void publishSimulated(SimulatedRadio fake, float dt) {
         this.capturing = false;
-        DeviceProfile profile = fake.profile();
+        DeviceProfile profile = fake.profile(InputConfig.get());
         this.commands = profile.commands;
         float[] axes = fake.axes();
         boolean[] buttons = fake.buttons();
         StickPositions sticks = this.mapper.map(profile, axes, dt, this.throttle3d, PilotSession.INSTANCE.armed());
         int bits = this.evaluator.evaluate(profile, axes, buttons);
+        this.evaluated(fake.guid(), profile);
         this.deviceSwitchBits = bits;
         this.keyboard.reset();
         this.mouse.reset();
@@ -810,6 +852,7 @@ public final class TransmitterInput {
     }
 
     private void publishFallback(Minecraft minecraft, InputConfig config, float dt) {
+        this.evaluated(null, null);
         this.previousAxes = NO_AXES;
         this.previousButtons = NO_BUTTONS;
         this.deviceSwitchBits = 0;
@@ -829,8 +872,8 @@ public final class TransmitterInput {
         this.mouse.reset();
         InputKeys.drain(InputKeys.MOUSE_CENTER);
         this.keyboard.yawKeysSteerRoll(false);
-        KeyboardFlight.Output output = this.keyboard.update(dt, session, minecraft.gui.screen() == null, config.keyboard, this.throttle3d,
-                PilotSession.INSTANCE.armed());
+        KeyboardFlight.Output output = this.keyboard.update(dt, session, minecraft.gui.screen() == null, config.keyboard, config.invertPitch,
+                this.throttle3d, PilotSession.INSTANCE.armed());
         if (output.keysHeld()) {
             wake(minecraft);
         }
@@ -850,9 +893,10 @@ public final class TransmitterInput {
         if (flying && frame.wheel() != 0.0F) {
             this.keyboard.nudgeThrottle(frame.wheel() * settings.wheelStep);
         }
-        KeyboardFlight.Output keys = this.keyboard.update(dt, session, keysAvailable, config.keyboard, this.throttle3d, PilotSession.INSTANCE.armed());
+        KeyboardFlight.Output keys = this.keyboard.update(dt, session, keysAvailable, config.keyboard, config.invertPitch, this.throttle3d,
+                PilotSession.INSTANCE.armed());
         boolean selfLevel = PilotSession.INSTANCE.flightMode() != StabMode.ACRO;
-        MouseSticks.Output aim = this.mouse.update(flying, frame, dt, settings, selfLevel);
+        MouseSticks.Output aim = this.mouse.update(flying, frame, dt, settings, selfLevel, config.invertPitch);
         StickPositions held = keys.sticks();
         StickPositions sticks = new StickPositions(held.roll() + aim.roll(), held.pitch() + aim.pitch(), held.yaw() + aim.yaw(), held.throttle()).clamped();
         if (keys.keysHeld() || flying && frame.moved()) {

@@ -10,8 +10,8 @@ class TopSpeedTest {
     static final DroneBuild[] PRESETS = DerivationTest.PRESETS;
     static final double FPS = 144.0;
     static final double ALTITUDE = 3000.0;
-    static final double[][] LEVEL_KMH = {{30, 56}, {80, 100}, {135, 155}, {160, 185}, {100, 125}};
-    static final double[] DIVE_CAP_KMH = {68, 115, 170, 195, 135};
+    static final double[][] LEVEL_KMH = {{30, 56}, {80, 100}, {135, 155}, {140, 165}, {100, 125}};
+    static final double[] DIVE_CAP_KMH = {68, 115, 170, 175, 135};
     static final double[] DIVE_RATIO = {1.25, 1.2, 1.15, 1.15, 1.15};
 
     static SimTuning freshPack() {

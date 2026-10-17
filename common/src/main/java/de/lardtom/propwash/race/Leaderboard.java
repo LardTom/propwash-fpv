@@ -30,20 +30,26 @@ public final class Leaderboard {
     private final Map<UUID, Map<Integer, Long>> races = new HashMap<>();
     private final Map<UUID, Map<Integer, AssistedRace>> assistedRaces = new HashMap<>();
 
-    public record Entry(UUID player, String name, String frame, long nanos, long dateMillis, int assist) {
+    public record Entry(UUID player, String name, String frame, long nanos, long dateMillis, int assist, List<AssistDetail> details) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
                 UUIDUtil.CODEC.fieldOf("player").forGetter(Entry::player),
                 Codec.STRING.fieldOf("name").forGetter(Entry::name),
                 Codec.STRING.optionalFieldOf("frame", "").forGetter(Entry::frame),
                 Codec.LONG.fieldOf("nanos").forGetter(Entry::nanos),
                 Codec.LONG.optionalFieldOf("date", 0L).forGetter(Entry::dateMillis),
-                Codec.INT.optionalFieldOf("assist", LapAssist.NONE).forGetter(Entry::assist)
+                Codec.INT.optionalFieldOf("assist", LapAssist.NONE).forGetter(Entry::assist),
+                AssistDetail.CODEC.listOf().optionalFieldOf("assist_details", List.of()).forGetter(Entry::details)
         ).apply(i, Entry::new));
 
         public Entry {
             name = clip(name, MAX_NAME);
             frame = clip(frame, MAX_FRAME);
             assist = assist & LapAssist.ALL;
+            details = AssistReasons.of(assist, details).details();
+        }
+
+        public Entry(UUID player, String name, String frame, long nanos, long dateMillis, int assist) {
+            this(player, name, frame, nanos, dateMillis, assist, List.of());
         }
 
         public Entry(UUID player, String name, String frame, long nanos, long dateMillis) {
@@ -53,9 +59,25 @@ public final class Leaderboard {
         public boolean assisted() {
             return this.assist != LapAssist.NONE;
         }
+
+        public AssistReasons reasons() {
+            return AssistReasons.of(this.assist, this.details);
+        }
     }
 
-    public record AssistedRace(long nanos, int assist) {
+    public record AssistedRace(long nanos, int assist, List<AssistDetail> details) {
+        public AssistedRace {
+            assist = assist & LapAssist.ALL;
+            details = AssistReasons.of(assist, details).details();
+        }
+
+        public AssistedRace(long nanos, int assist) {
+            this(nanos, assist, List.of());
+        }
+
+        public AssistReasons reasons() {
+            return AssistReasons.of(this.assist, this.details);
+        }
     }
 
     private record Laps(UUID player, int count) {
@@ -73,12 +95,13 @@ public final class Leaderboard {
         ).apply(i, RaceBest::new));
     }
 
-    private record AssistedRaceBest(UUID player, int laps, long nanos, int assist) {
+    private record AssistedRaceBest(UUID player, int laps, long nanos, int assist, List<AssistDetail> details) {
         static final Codec<AssistedRaceBest> CODEC = RecordCodecBuilder.create(i -> i.group(
                 UUIDUtil.CODEC.fieldOf("player").forGetter(AssistedRaceBest::player),
                 Codec.INT.fieldOf("laps").forGetter(AssistedRaceBest::laps),
                 Codec.LONG.fieldOf("nanos").forGetter(AssistedRaceBest::nanos),
-                Codec.INT.optionalFieldOf("assist", LapAssist.NONE).forGetter(AssistedRaceBest::assist)
+                Codec.INT.optionalFieldOf("assist", LapAssist.NONE).forGetter(AssistedRaceBest::assist),
+                AssistDetail.CODEC.listOf().optionalFieldOf("assist_details", List.of()).forGetter(AssistedRaceBest::details)
         ).apply(i, AssistedRaceBest::new));
     }
 
@@ -121,7 +144,7 @@ public final class Leaderboard {
         for (AssistedRaceBest race : assistedRaces) {
             if (race.laps() > 0 && race.nanos() > 0L) {
                 board.assistedRaces.computeIfAbsent(race.player(), p -> new TreeMap<>()).put(race.laps(), new AssistedRace(race.nanos(),
-                        race.assist() & LapAssist.ALL));
+                        race.assist(), race.details()));
             }
         }
         board.assisted.sort(ORDER);
@@ -161,7 +184,7 @@ public final class Leaderboard {
     private List<AssistedRaceBest> assistedRaceList() {
         List<AssistedRaceBest> list = new ArrayList<>();
         this.assistedRaces.forEach((player, map) -> map.forEach((count, race) -> list.add(new AssistedRaceBest(player, count, race.nanos(),
-                race.assist()))));
+                race.assist(), race.details()))));
         return list;
     }
 
@@ -226,6 +249,10 @@ public final class Leaderboard {
     }
 
     public boolean submitAssisted(UUID player, String name, String frame, long nanos, long dateMillis, int assist) {
+        return this.submitAssisted(player, name, frame, nanos, dateMillis, AssistReasons.of(assist));
+    }
+
+    public boolean submitAssisted(UUID player, String name, String frame, long nanos, long dateMillis, AssistReasons assist) {
         if (nanos <= 0L) {
             return false;
         }
@@ -235,8 +262,8 @@ public final class Leaderboard {
         if (own != null && own.nanos() <= nanos) {
             return false;
         }
-        int reasons = assist & LapAssist.ALL;
-        this.putAssisted(new Entry(player, name, cls, nanos, dateMillis, reasons == LapAssist.NONE ? LapAssist.OTHER.bit() : reasons));
+        AssistReasons reasons = assist.orOther();
+        this.putAssisted(new Entry(player, name, cls, nanos, dateMillis, reasons.mask(), reasons.details()));
         this.assisted.sort(ORDER);
         trim(this.assisted, cls);
         return true;
@@ -251,7 +278,7 @@ public final class Leaderboard {
         for (int i = 0; i < list.size(); i++) {
             Entry entry = list.get(i);
             if (entry.player().equals(player) && !entry.name().equals(clip(name, MAX_NAME))) {
-                list.set(i, new Entry(player, name, entry.frame(), entry.nanos(), entry.dateMillis(), entry.assist()));
+                list.set(i, new Entry(player, name, entry.frame(), entry.nanos(), entry.dateMillis(), entry.assist(), entry.details()));
             }
         }
     }
@@ -286,14 +313,18 @@ public final class Leaderboard {
     }
 
     public boolean submitAssistedRace(UUID player, int laps, long totalNanos, int assist) {
+        return this.submitAssistedRace(player, laps, totalNanos, AssistReasons.of(assist));
+    }
+
+    public boolean submitAssistedRace(UUID player, int laps, long totalNanos, AssistReasons assist) {
         if (laps <= 0 || totalNanos <= 0L) {
             return false;
         }
         Map<Integer, AssistedRace> map = this.assistedRaces.computeIfAbsent(player, p -> new TreeMap<>());
         AssistedRace best = map.get(laps);
         if (best == null || totalNanos < best.nanos()) {
-            int reasons = assist & LapAssist.ALL;
-            map.put(laps, new AssistedRace(totalNanos, reasons == LapAssist.NONE ? LapAssist.OTHER.bit() : reasons));
+            AssistReasons reasons = assist.orOther();
+            map.put(laps, new AssistedRace(totalNanos, reasons.mask(), reasons.details()));
             return true;
         }
         return false;

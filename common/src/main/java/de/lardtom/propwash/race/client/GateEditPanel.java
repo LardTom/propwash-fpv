@@ -47,6 +47,11 @@ final class GateEditPanel {
     private static final int PAGE_BUTTON_HEIGHT = 12;
     private static final int PAGE_GAP = 4;
     private static final int SCREEN_MARGIN = 2;
+    private static final int TIP_INSET = 3;
+    private static final int TIP_STRIPE = 2;
+    private static final int TIP_PAD = 1;
+    private static final int TIP_GAP = 3;
+    private static final int TIP_LIFT = 2;
 
     private final GateEditor editor;
     private final boolean interactive;
@@ -73,6 +78,9 @@ final class GateEditPanel {
     private int signalInfoY;
     private int signalInfoLines;
     private int separatorY;
+    private int tipY;
+    private int tipHeight;
+    private int infoY;
 
     private record Slot(GateEditModel.Row row, int y, AbstractWidget main, @Nullable AbstractWidget minus, @Nullable AbstractWidget plus) {
     }
@@ -90,7 +98,33 @@ final class GateEditPanel {
     }
 
     static int panelWidth(Font font, Component title) {
-        return Math.clamp(ThemeDraw.brandedTitleX(font, 0) + font.width(title) + Metrics.PADDING, MIN_WIDTH, MAX_WIDTH);
+        int tip = Math.max(font.width(mouseTip(false)), font.width(mouseTip(true))) + 2 * Metrics.PADDING + TIP_STRIPE + 2 * TIP_INSET;
+        return Math.clamp(Math.max(ThemeDraw.brandedTitleX(font, 0) + font.width(title) + Metrics.PADDING, tip), MIN_WIDTH, MAX_WIDTH);
+    }
+
+    static Component mouseTip(boolean mouseFree) {
+        return Component.translatable(mouseFree ? "propwash.race.edit.mouse.release" : "propwash.race.edit.mouse.hold", GateEditor.cursorKeyName());
+    }
+
+    private int tipWidth() {
+        return inner() - TIP_STRIPE - 2 * TIP_INSET;
+    }
+
+    private int tipLines() {
+        Font font = font();
+        return Math.max(font.split(mouseTip(false), this.tipWidth()).size(), font.split(mouseTip(true), this.tipWidth()).size());
+    }
+
+    int tipTop() {
+        return this.tipY;
+    }
+
+    int tipBottom() {
+        return this.tipY + this.tipHeight;
+    }
+
+    boolean compact() {
+        return this.compact;
     }
 
     GateEditor editor() {
@@ -291,23 +325,17 @@ final class GateEditPanel {
         return hints;
     }
 
-    private Component cursorTip() {
-        return Component.translatable(this.interactive ? "propwash.race.edit.hint.cursor_free" : "propwash.race.edit.hint.cursor",
-                GateEditor.cursorKeyName());
-    }
-
     private int hudFooterLines() {
         Font font = font();
         int lines = 0;
         for (Component hint : this.hints()) {
             lines += font.split(hint, inner()).size();
         }
-        return lines + font.split(Component.translatable("propwash.race.edit.hint.cursor", GateEditor.cursorKeyName()), inner()).size();
+        return lines;
     }
 
     private int cursorFooterHeight() {
-        int tip = font().split(Component.translatable("propwash.race.edit.hint.cursor_free", GateEditor.cursorKeyName()), inner()).size();
-        return 2 * (BUTTON + BUTTON_GAP) + tip * Metrics.LINE_HEIGHT;
+        return 2 * (BUTTON + BUTTON_GAP);
     }
 
     void layout(int width, int height) {
@@ -337,15 +365,22 @@ final class GateEditPanel {
         int infoGap = 4;
         int footerGap = 6;
         int room = height - 2 * SCREEN_MARGIN;
-        int total = HEADER + Metrics.PADDING + this.info.size() * Metrics.LINE_HEIGHT + infoGap + body
+        this.tipHeight = this.tipLines() * Metrics.LINE_HEIGHT + 2 * TIP_PAD;
+        int tip = this.tipHeight + TIP_GAP;
+        int tipLift = 0;
+        int total = HEADER + Metrics.PADDING + tip + this.info.size() * Metrics.LINE_HEIGHT + infoGap + body
                 + status * Metrics.LINE_HEIGHT + footerGap + footer + Metrics.PADDING;
         this.compact = total > room;
         if (this.compact) {
             this.info = List.of(this.describe().getVisualOrderText());
             status = this.statusLines().size();
             body = pageBody(rows, signal);
-            footer = this.interactive ? 2 * (BUTTON + BUTTON_GAP) + Metrics.LINE_HEIGHT : (this.hints().size() + 1) * Metrics.LINE_HEIGHT;
-            total = HEADER + Metrics.PADDING + Metrics.LINE_HEIGHT + infoGap + body + status * Metrics.LINE_HEIGHT + footerGap + footer + Metrics.PADDING;
+            footer = this.interactive ? 2 * (BUTTON + BUTTON_GAP) : this.hints().size() * Metrics.LINE_HEIGHT;
+            this.tipHeight = Metrics.LINE_HEIGHT;
+            tip = this.tipHeight;
+            tipLift = TIP_LIFT;
+            total = HEADER + Metrics.PADDING + tip + Metrics.LINE_HEIGHT + infoGap + body + status * Metrics.LINE_HEIGHT + footerGap + footer
+                    + Metrics.PADDING;
             int tighter = Math.clamp(total - room, 0, 3);
             footerGap -= tighter;
             total -= tighter;
@@ -358,7 +393,9 @@ final class GateEditPanel {
         this.top = Math.max(SCREEN_MARGIN, (height - total) / 2);
         this.bottom = this.top + total;
         int x = this.left + Metrics.PADDING;
-        int y = this.top + HEADER + Metrics.PADDING + this.info.size() * Metrics.LINE_HEIGHT + infoGap;
+        this.tipY = this.top + HEADER + Metrics.PADDING - tipLift;
+        this.infoY = this.top + HEADER + Metrics.PADDING + tip;
+        int y = this.infoY + this.info.size() * Metrics.LINE_HEIGHT + infoGap;
         GateEditModel.Section last = null;
         this.pageWidth = 0;
         if (pages > 1) {
@@ -610,7 +647,8 @@ final class GateEditPanel {
         ThemeDraw.window(g, this.left, this.top, right, this.bottom);
         ThemeDraw.brandedHeader(g, font, this.left, this.top, right, HEADER, title(this.editor.gate().kind()), right - Metrics.PADDING);
         int x = this.left + Metrics.PADDING;
-        int y = this.top + HEADER + Metrics.PADDING;
+        this.mouseTip(g, font, x, right - Metrics.PADDING);
+        int y = this.infoY;
         if (this.compact) {
             ThemeText.fitted(g, font, this.describe(), x, y, inner(), Palette.TEXT_MUTED);
         } else {
@@ -634,6 +672,31 @@ final class GateEditPanel {
             }
         }
         ThemeDraw.separator(g, x, right - Metrics.PADDING, this.separatorY);
+    }
+
+    private void mouseTip(GuiGraphicsExtractor g, Font font, int x0, int x1) {
+        int y0 = this.tipY;
+        int y1 = y0 + this.tipHeight;
+        boolean fresh = GateEditor.tipHighlighted();
+        float glow = GateEditor.tipGlow();
+        ThemeDraw.box(g, x0, y0, x1, y1, Palette.mix(Palette.WARNING_BG, Palette.ACCENT_FOCUS, glow));
+        g.fill(x0, y0 + 1, x0 + TIP_STRIPE, y1 - 1, Palette.mix(Palette.ACCENT, Palette.ACCENT_HOVER, glow));
+        if (fresh) {
+            ThemeDraw.boxOutline(g, x0, y0, x1, y1, Palette.mix(Palette.ACCENT_DIM, Palette.ACCENT_HOVER, glow));
+        }
+        int color = Palette.mix(Palette.ACCENT, Palette.TEXT, glow);
+        int tx = x0 + TIP_STRIPE + TIP_INSET;
+        Component tip = mouseTip(this.interactive);
+        if (this.compact) {
+            ThemeText.fitted(g, font, tip, tx, y0 + 1, this.tipWidth(), color);
+            return;
+        }
+        List<FormattedCharSequence> lines = font.split(tip, this.tipWidth());
+        int ty = y0 + (this.tipHeight - lines.size() * Metrics.LINE_HEIGHT) / 2 + 1;
+        for (FormattedCharSequence line : lines) {
+            ThemeText.text(g, font, line, tx, ty, color);
+            ty += Metrics.LINE_HEIGHT;
+        }
     }
 
     private Component signalInfo() {
@@ -660,29 +723,20 @@ final class GateEditPanel {
             ThemeText.text(g, font, line.text(), x, y, line.color());
             y += Metrics.LINE_HEIGHT;
         }
-        y = this.footerY;
         if (this.interactive) {
-            y += 2 * (BUTTON + BUTTON_GAP);
-        } else {
-            for (Component hint : this.hints()) {
-                if (this.compact) {
-                    ThemeText.fitted(g, font, hint, x, y, inner(), Palette.TEXT_FAINT);
-                    y += Metrics.LINE_HEIGHT;
-                    continue;
-                }
-                for (FormattedCharSequence line : font.split(hint, inner())) {
-                    ThemeText.text(g, font, line, x, y, Palette.TEXT_FAINT);
-                    y += Metrics.LINE_HEIGHT;
-                }
-            }
-        }
-        if (this.compact) {
-            ThemeText.fitted(g, font, this.cursorTip(), x, y, inner(), Palette.ACCENT);
             return;
         }
-        for (FormattedCharSequence line : font.split(this.cursorTip(), inner())) {
-            ThemeText.text(g, font, line, x, y, Palette.ACCENT);
-            y += Metrics.LINE_HEIGHT;
+        y = this.footerY;
+        for (Component hint : this.hints()) {
+            if (this.compact) {
+                ThemeText.fitted(g, font, hint, x, y, inner(), Palette.TEXT_FAINT);
+                y += Metrics.LINE_HEIGHT;
+                continue;
+            }
+            for (FormattedCharSequence line : font.split(hint, inner())) {
+                ThemeText.text(g, font, line, x, y, Palette.TEXT_FAINT);
+                y += Metrics.LINE_HEIGHT;
+            }
         }
     }
 

@@ -1,5 +1,8 @@
 package de.lardtom.propwash.input;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import de.lardtom.propwash.config.JsonConfig;
 
 import java.util.ArrayList;
@@ -12,7 +15,11 @@ public final class InputConfig {
     public static final String KEYBOARD_GUID = "keyboard";
     public static final String MOUSE_GUID = "mouse";
     public static final int PROFILE_VERSION = 2;
-    public static final JsonConfig<InputConfig> CONFIG = JsonConfig.create("input", InputConfig.class, InputConfig::new, InputConfig::sanitize);
+    public static final String INVERT_PITCH_KEY = "invertPitch";
+    public static final String LEGACY_MOUSE_BLOCK = "mouse";
+    public static final String LEGACY_MOUSE_INVERT_KEY = "invertY";
+    public static final JsonConfig<InputConfig> CONFIG = JsonConfig.create("input", InputConfig.class, InputConfig::new, InputConfig::sanitize,
+            InputConfig::migrate);
 
     private static int revision;
 
@@ -20,6 +27,8 @@ public final class InputConfig {
     public boolean keyboardFallback = true;
     public boolean appleGameController = false;
     public boolean mode3dUnlocked = false;
+    public boolean invertPitch = false;
+    public StickMode stickMode = StickMode.DEFAULT;
     public int profileVersion = 0;
     public KeyboardSettings keyboard = new KeyboardSettings();
     public MouseSettings mouse = new MouseSettings();
@@ -42,6 +51,49 @@ public final class InputConfig {
         revision++;
     }
 
+    public static void migrate(JsonObject json) {
+        JsonElement mouse = json.get(LEGACY_MOUSE_BLOCK);
+        if (mouse == null || !mouse.isJsonObject()) {
+            return;
+        }
+        JsonElement legacy = mouse.getAsJsonObject().remove(LEGACY_MOUSE_INVERT_KEY);
+        if (legacy == null || json.has(INVERT_PITCH_KEY)) {
+            return;
+        }
+        if (legacy.isJsonPrimitive() && legacy.getAsJsonPrimitive().isBoolean() && legacy.getAsBoolean()) {
+            json.add(INVERT_PITCH_KEY, new JsonPrimitive(true));
+        }
+    }
+
+    public StickMode stickMode() {
+        return StickMode.orDefault(this.stickMode);
+    }
+
+    public StickModeChange changeStickMode(StickMode next) {
+        StickMode from = this.stickMode();
+        StickMode to = StickMode.orDefault(next);
+        List<String> remapped = new ArrayList<>();
+        List<String> custom = new ArrayList<>();
+        if (from != to) {
+            for (Map.Entry<String, DeviceProfile> e : this.profiles.entrySet()) {
+                switch (ProfileDefaults.remapPadSticks(e.getValue(), from, to)) {
+                    case REMAPPED -> remapped.add(e.getKey());
+                    case CUSTOM -> custom.add(e.getKey());
+                    default -> {
+                    }
+                }
+            }
+        }
+        this.stickMode = to;
+        return new StickModeChange(from, to, List.copyOf(remapped), List.copyOf(custom));
+    }
+
+    public record StickModeChange(StickMode from, StickMode to, List<String> remapped, List<String> custom) {
+        public boolean customised(String guid) {
+            return this.custom.contains(guid);
+        }
+    }
+
     public DeviceProfile profile(String guid) {
         return this.profiles.get(guid);
     }
@@ -52,6 +104,10 @@ public final class InputConfig {
 
     public boolean mouseSelected() {
         return MOUSE_GUID.equals(this.selectedGuid);
+    }
+
+    public boolean pitchSwitchApplies(boolean deviceConnected) {
+        return !deviceConnected && (this.mouseSelected() || this.keyboardFallback || this.keyboardSelected());
     }
 
     public static boolean withoutDevice(String guid) {
@@ -120,7 +176,7 @@ public final class InputConfig {
     public DeviceProfile profileOrCreate(String guid, String name, boolean gamepad, int axisCount) {
         DeviceProfile profile = this.profiles.get(guid);
         if (profile == null) {
-            profile = ProfileDefaults.create(name, gamepad, axisCount);
+            profile = ProfileDefaults.create(name, gamepad, axisCount, this.stickMode());
             this.profiles.put(guid, profile);
         }
         return profile;
@@ -132,6 +188,8 @@ public final class InputConfig {
         copy.keyboardFallback = this.keyboardFallback;
         copy.appleGameController = this.appleGameController;
         copy.mode3dUnlocked = this.mode3dUnlocked;
+        copy.invertPitch = this.invertPitch;
+        copy.stickMode = this.stickMode;
         copy.profileVersion = this.profileVersion;
         copy.keyboard = this.keyboard.copy();
         copy.mouse = this.mouse.copy();
@@ -146,6 +204,8 @@ public final class InputConfig {
         this.selectedGuid = source.selectedGuid;
         this.keyboardFallback = source.keyboardFallback;
         this.appleGameController = source.appleGameController;
+        this.invertPitch = source.invertPitch;
+        this.stickMode = source.stickMode();
         this.keyboard = source.keyboard.copy();
         this.mouse = source.mouse.copy();
         for (Map.Entry<String, DeviceProfile> e : source.profiles.entrySet()) {
@@ -175,6 +235,7 @@ public final class InputConfig {
         if (this.selectedGuid == null || this.selectedGuid.length() > 64) {
             this.selectedGuid = "";
         }
+        this.stickMode = this.stickMode();
         if (this.keyboard == null) {
             this.keyboard = new KeyboardSettings();
         }

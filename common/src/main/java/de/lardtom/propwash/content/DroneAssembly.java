@@ -16,6 +16,7 @@ import de.lardtom.propwash.creative.CreativeModule;
 import de.lardtom.propwash.creative.CreativeSpec;
 import de.lardtom.propwash.drone.CameraMount;
 import de.lardtom.propwash.drone.bind.BindComponents;
+import de.lardtom.propwash.drone.coating.CoatingComponents;
 import de.lardtom.propwash.drone.TuneMapping;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -179,6 +180,7 @@ public final class DroneAssembly {
             drone.set(CoreComponents.DRONE_ID.get(), id);
         }
         BindComponents.copy(stackPart, drone);
+        CoatingComponents.fromPart(stackPart, drone, build);
         Component name = framePart.get(DataComponents.CUSTOM_NAME);
         if (name != null) {
             drone.set(DataComponents.CUSTOM_NAME, name);
@@ -255,6 +257,7 @@ public final class DroneAssembly {
             stackPart.set(CoreComponents.DRONE_ID.get(), id);
         }
         BindComponents.copy(drone, stackPart);
+        CoatingComponents.toPart(drone, stackPart);
         if (build.edited() && !stackPart.isEmpty()) {
             stackPart.set(CreativeModule.SPEC.get(), build.creative());
         }

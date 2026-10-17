@@ -1,7 +1,8 @@
-# Parts-API — Vertrag für Propwash FPV 0.5.0 (API 1.5.0)
+# Parts-API — Vertrag für Propwash FPV 0.5.2 (API 1.6.0)
 
 Status: **verbindlicher Vertrag**, entstanden für die vier Implementierer (A–D) der Version 0.4.0 und mit jeder
-API-Nebenversion fortgeschrieben (zuletzt 1.5.0 mit Propwash 0.5.0). Architekt: Branch
+API-Nebenversion fortgeschrieben (zuletzt 1.6.0 mit Propwash 0.5.2; die neuen Bausteine für Zubehör, Aktionen,
+Physik, Flughilfen, Gimbal und HUD stehen in [`addon-api-1.6.md`](addon-api-1.6.md)). Architekt: Branch
 `feature/parts-api`, Basis-Commit „Parts-API: Vertrag …“ (dieser Commit). Wer vom Vertrag abweichen muss, meldet einen
 „Architektur-Wunsch“ im Bericht statt still umzubauen.
 
@@ -16,7 +17,7 @@ stehen keine Kommentare; alle Erklärungen zur API stehen hier.
   Rahmen, Stacks/ESCs, Motoren, Props, Akkus (auch Li-Ion/LiHV bis 12S), Video-Einheiten und Zubehör an — per Java
   oder als JSON in seinen eigenen Ressourcen — und bekommt dafür Items, Werkbank, Analyse, Flugmodell, Rendering,
   Tooltips, einen eigenen Kreativ-Tab, Flugschule und Speichern „geschenkt“.
-- Die öffentliche API liegt in `de.lardtom.propwash.api` (stabil, SemVer `API_VERSION = "1.5.0"`), Einstieg
+- Die öffentliche API liegt in `de.lardtom.propwash.api` (stabil, SemVer `API_VERSION = "1.6.0"`), Einstieg
   `PropwashApi` (gemeinsam) und `api.client.PropwashClientApi` (nur Client).
 - Ein **Addon-Sharecode** (lebt im Addon, nicht in Propwash) braucht genau: `BuildAccess.read(ItemStack)` →
   `DroneData` (Teile + Lackierung + Tuning + Name), `BuildAccess.createDrone(DroneData)`, Tuning-Gruppen
@@ -108,7 +109,7 @@ Neu in `build`: `PartIndex` (Register-Kern, thread-sicher, Lesen ohne Sperre), `
 ## 3. Stabilität und Versionierung
 
 ### 3.1 Versionen
-- `PropwashApi.API_VERSION = "1.5.0"` ist unabhängig von der Mod-Version (Propwash 0.5.0, `docs/RELEASING.md`). 1.1
+- `PropwashApi.API_VERSION = "1.6.0"` ist unabhängig von der Mod-Version (Propwash 0.5.2, `docs/RELEASING.md`). 1.1
   ergänzt `BuildAccess#cameraView`, 1.2 die eigenen Kreativ-Tabs der Addons (Abschnitt 6.5), `VideoDefinition#powerW`,
   `CellChemistry#usableFraction` und die Energie-Kennzahlen in `BuildStats` (Flugmodell-Spezifikation Kap. 18), 1.3 die
   Flugschul-Verknüpfungen für Items (Abschnitt 12.3), 1.4 die Truhen-Beute ohne Loader-Code (Abschnitt 6.6), die
@@ -124,7 +125,15 @@ Neu in `build`: `PartIndex` (Register-Kern, thread-sicher, Lesen ohne Sperre), `
   (`PropDefinition#reverseThrust()`, Builder `reverseThrust(r)`, JSON `reverse_thrust`; der Konstruktor ohne das Feld bleibt)
   sowie `BuildAccess#partCompatibility()` (Default-Methode) für die Welt-Regel `propwash:part_compatibility`: `check` und
   `createDrone` folgen ihr, bei abgeschalteter Regel stehen die aufgehobenen Probleme unter den Warnungen
-  (`docs/design/part-freedom.md` §6). Addons für 1.0 bis 1.4 laufen unverändert weiter.
+  (`docs/design/part-freedom.md` §6). Addons für 1.0 bis 1.4 laufen unverändert weiter. 1.6 (Propwash 0.5.2,
+  Netzprotokoll 16) ergänzt die Halterung vorne (`AccessorySlot.FRONT`), Zubehör-Verhalten mit Inventar und
+  Aktionen (`PropwashApi.accessories()`, Paket `api.accessory`), Drohnen-Abfragen und Stöße (`PropwashApi.drones()`,
+  `api.drone`), Flughilfen und Kräfte im Flugmodell (`PropwashApi.flight()`, reines Java in `api.flight`), die Events
+  `DRONE_HIT_ENTITY`, `DRONE_DAMAGED`, `ACCESSORY_ACTION` und im Client HUD-Elemente, Gimbal und Eingaben
+  (`api.client.hud`, `api.client.camera`, `ClientInput`); Vertrag in [`addon-api-1.6.md`](addon-api-1.6.md). Dazu kommen
+  die Leistungsstufen des Videosenders: `VideoDefinition#vtxLevelsMw()` (Builder `vtxLevels(int...)`, JSON
+  `vtx_levels_mw`; die Konstruktoren ohne das Feld bleiben), und `vtx_power_mw` wirkt jetzt als Nennleistung
+  (Abschnitt 5.7, `docs/design/vtx-power.md`). Addons für 1.0 bis 1.5 laufen unverändert weiter.
 - **SemVer**: MAJOR bei jeder inkompatiblen Änderung stabiler Typen; MINOR bei Ergänzungen; PATCH bei Fehlerbehebungen
   ohne API-Änderung. `PropwashApi.isCompatible("1.4")` = gleiche Hauptversion und mindestens 1.4.
 - Addons prüfen beim Start `PropwashApi.requireVersion("justmoreparts", "1.0")` (wirft mit klarer Meldung) und deklarieren
@@ -324,8 +333,9 @@ Radstand ≥ 800 mm, Props 10–13″ (254–330 mm).
 | `race_5` | 215 | 88 | ≤130 | m22 / s30, s20 | nein | ja / 25 / 10 | 38 | 4–6S (6S bevorzugt), ≤230 g |
 | `long_range_7` | 295 | 170 | ≤180 | m28, m22 / s30, s20 | nein | ja / 32 / 14 | 20 | 6S, ≤500 g, ≥1300 mAh bevorzugt |
 
-Alle eingebauten Rahmen haben **keine** `arms` (Flugmodell rechnet wie bisher True-X aus dem Radstand);
-`race_5` trägt `shape: stretched_x` nur beschreibend, weil sein Modell gestreckt ist.
+Alle eingebauten Rahmen haben **keine** `arms` (Flugmodell rechnet wie bisher True-X aus dem Radstand).
+`race_5` trug bis zum 10.10.2026 `shape: stretched_x` nur beschreibend, weil sein Modell gestreckt war; seit dem
+Playtest ist das Modell True-X wie das Flugmodell und `shape` ist `true_x` (`realism/motors-props.md` §12.4).
 
 ### 5.3 Stack/ESC — `StackDefinition`
 | Feld | JSON | Standard | Wirkung |
@@ -381,7 +391,8 @@ m22, 45, 0,055, 6S), `m2306_1860` (2306.5, 1860, 31, m22, 42, 0,060, 6S), `m2807
 | `mount` | `mount` | `propwash:universal` | Prop-Aufnahme |
 
 Eingebaut: `p31_4b`, `p31_3b`, `p3_3b`, `p51_3b`, `p7_2b` mit den bisherigen Werten, alle Polycarbonat, Steifigkeit
-1,0, universal.
+1,0, universal. Seit 0.5.0 dazu `p51_29_3b` (5,1×2,9×3, 4,4 g, `ct` 0,122, `cp` 0,065), der flache Race-Prop des
+Race-Presets; er steht als letztes eingebautes Prop im Register (`realism/motors-props.md` §12).
 
 Tooltip (API 1.4): Weicht `stiffness` vom Standard des Materials ab, zeigt der Daten-Abschnitt die Zeile
 `propwash.parts.tooltip.stiffness` („Steifigkeit: ×1,8“); eingebaute Props und Props mit Material-Standard bleiben ohne
@@ -415,10 +426,12 @@ Werten; Akzentfarben = bisherige Hüllenfarben.
 | `latencyMs`, `rangeBlocks`, `imageQuality` | `latency_ms`, `range_blocks`, `image_quality` | Pflicht | Videoverbindung, Bildstörungen |
 | `cameraWidthMm` | `camera_width_mm` | 19 | Kamerabreite (Form, Sockel) |
 | `cameraFovDeg` | `camera_fov_deg` | leer | **horizontales** Sichtfeld der Kamera (60–180°): seit API 1.4 das FPV-Sichtfeld mit analoger und digitaler Brille und das Sichtfeld der Analyse (gezeichnet höchstens 160°); leer = Standard des Systems (analog 120°, digital 130°). Datenblätter nennen meist das diagonale Sichtfeld: horizontal ≈ 0,8 × diagonal (4:3) bzw. 0,85 × (16:9), `docs/design/realism/power-video.md` §4.4 |
-| `vtxPowerMw` | `vtx_power_mw` | 0 | 1.0: nur Anzeige |
+| `vtxPowerMw` | `vtx_power_mw` | 0 | bis 1.5 nur Anzeige; ab 1.6 Nennleistung des Senders: bei ihr gelten `range_blocks` und `power_w`, Drohnen ohne eigene Einstellung senden mit Auto; 0 = 200 mW |
+| `vtxLevelsMw` | `vtx_levels_mw` | leer | ab 1.6: einstellbare Stufen in mW, aufsteigend, höchstens 8, muss `vtx_power_mw` enthalten; leer = aus der Nennleistung abgeleitet (analog bis 400 mW 25/100/200/400, darüber 25/200/400/800/1600/2000, digital 25/100/400/700/1200, jeweils bis zur Nennleistung). Mehr Leistung hebt die Link-Reserve um 10·log10(P/P_Nenn) dB, kostet Strom (analog 4,3 W, digital 2,5 W je W Sendeleistung) und Wärme, `docs/design/vtx-power.md` |
 
 ### 5.8 Zubehör — `AccessoryDefinition` + `ActionCamDefinition`
-Felder wie bisher `AccessoryType`: `slot` (`top`/`bottom`), `size_mm: [b, h, t]`, `flight_battery_w`, `frontal_area_m2`,
+Felder wie bisher `AccessoryType`: `slot` (`top`/`bottom`, seit 1.6 auch `front`: hängt unter der Nase, Quader
+`y ∈ [−h, 0]`, `z ∈ [−t, 0]` ab dem Anbaupunkt), `size_mm: [b, h, t]`, `flight_battery_w`, `frontal_area_m2`,
 `leds`, `lens: {x_mm, length_mm}`, `action_cam: {max_height, max_fps, stabilization, horizon_levelling,
 own_battery_wh, record_w, max_record_w, fov_deg, image_quality, low_light_noise, sensor_in}` (nur `top`).
 

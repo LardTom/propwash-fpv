@@ -685,7 +685,7 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
         if (!row.assisted()) {
             return any ? hidden : null;
         }
-        MutableComponent tip = Component.translatable("propwash.race.board.assisted_tooltip", AssistText.storedReasons(row.assist()));
+        MutableComponent tip = Component.translatable("propwash.race.board.assisted_tooltip", AssistText.storedReasons(row.reasons()));
         return any ? tip.append("\n").append(hidden) : tip;
     }
 

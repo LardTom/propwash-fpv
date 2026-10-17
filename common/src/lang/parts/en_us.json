@@ -39,6 +39,7 @@
   "propwash.parts.tooltip.camera_fov": "Camera field of view (horizontal): %s",
   "propwash.parts.tooltip.vtx_power": "Transmit power: %s",
   "propwash.parts.tooltip.milliwatts": "%s mW",
+  "propwash.parts.tooltip.vtx_levels": "%s–%s mW, Auto (rated %s mW)",
   "propwash.parts.tooltip.durability": "Durability: %s",
   "propwash.parts.tooltip.factor": "×%s",
   "propwash.parts.handshake.title": "Your Propwash parts don't match the server's.",

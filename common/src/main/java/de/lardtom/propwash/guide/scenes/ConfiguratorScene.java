@@ -10,6 +10,7 @@ import de.lardtom.propwash.guide.scene.KeyToken;
 import de.lardtom.propwash.guide.scene.Scene;
 import de.lardtom.propwash.guide.scene.SceneBuilder;
 import de.lardtom.propwash.guide.scene.ScenePos;
+import de.lardtom.propwash.input.StickChannel;
 
 import static de.lardtom.propwash.guide.scenes.SceneKit.GRASS;
 import static de.lardtom.propwash.guide.scenes.SceneKit.REMOTE;
@@ -75,6 +76,10 @@ public final class ConfiguratorScene {
         ScenePos right = stickTip(false);
         Anchor leftStick = Anchor.on(RADIO, left.x(), left.y(), left.z());
         Anchor rightStick = Anchor.on(RADIO, right.x(), right.y(), right.z());
+        Anchor rollStick = Anchor.onStick(RADIO, StickChannel.ROLL, right);
+        Anchor pitchStick = Anchor.onStick(RADIO, StickChannel.PITCH, right);
+        Anchor yawStick = Anchor.onStick(RADIO, StickChannel.YAW, left);
+        Anchor throttleStick = Anchor.onStick(RADIO, StickChannel.THROTTLE, left);
         ScenePos top = radioPoint(0.0F, 0.9F, 0.0F);
         Anchor radioTop = Anchor.on(RADIO, top.x(), top.y(), top.z());
         return SceneBuilder.scene(ID)
@@ -100,7 +105,7 @@ public final class ConfiguratorScene {
                     sticks(s, 80.0F, 0.0F, HOVER, 0.0F, 0.0F);
                     s.at(81.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 9.0F);
                     s.at(62.0F).callout("roll", onDrone, Cue.Side.LEFT, 32.0F);
-                    s.at(62.0F).callout("stick_roll", rightStick, Cue.Side.RIGHT, 32.0F);
+                    s.at(62.0F).callout("stick_roll", rollStick, Cue.Side.RIGHT, 32.0F);
 
                     sticks(s, 96.0F, 0.0F, HOVER, 0.0F, 1.0F);
                     s.at(97.0F).turn(DRONE, 0.0F, PITCH_ANGLE, 0.0F, 7.0F);
@@ -108,7 +113,7 @@ public final class ConfiguratorScene {
                     sticks(s, 114.0F, 0.0F, HOVER, 0.0F, 0.0F);
                     s.at(115.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 9.0F);
                     s.at(96.0F).callout("pitch", onDrone, Cue.Side.LEFT, 32.0F);
-                    s.at(96.0F).callout("stick_pitch", rightStick, Cue.Side.RIGHT, 32.0F);
+                    s.at(96.0F).callout("stick_pitch", pitchStick, Cue.Side.RIGHT, 32.0F);
 
                     sticks(s, 130.0F, 1.0F, HOVER, 0.0F, 0.0F);
                     s.at(132.0F).turn(DRONE, 70.0F, 0.0F, 0.0F, 16.0F);
@@ -116,7 +121,7 @@ public final class ConfiguratorScene {
                     s.at(150.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 14.0F);
                     sticks(s, 162.0F, 0.0F, HOVER, 0.0F, 0.0F);
                     s.at(130.0F).callout("yaw", onDrone, Cue.Side.RIGHT, 36.0F);
-                    s.at(130.0F).callout("stick_yaw", leftStick, Cue.Side.LEFT, 36.0F);
+                    s.at(130.0F).callout("stick_yaw", yawStick, Cue.Side.LEFT, 36.0F);
 
                     sticks(s, 168.0F, 0.0F, CLIMB, 0.0F, 0.0F);
                     s.at(170.0F).throttle(DRONE, 0.75F, 8.0F);
@@ -124,7 +129,7 @@ public final class ConfiguratorScene {
                     sticks(s, 188.0F, 0.0F, HOVER, 0.0F, 0.0F);
                     s.at(188.0F).throttle(DRONE, 0.45F, 8.0F);
                     s.at(168.0F).callout("throttle", onDrone, Cue.Side.RIGHT, 36.0F);
-                    s.at(168.0F).callout("stick_throttle", leftStick, Cue.Side.LEFT, 36.0F);
+                    s.at(168.0F).callout("stick_throttle", throttleStick, Cue.Side.LEFT, 36.0F);
                 })
                 .step("rates", 160.0F, s -> {
                     s.at(0.0F).camera(RATES_VIEW, 12.0F, 30.0F, RATES_ZOOM, 18.0F);
@@ -134,7 +139,7 @@ public final class ConfiguratorScene {
                     s.at(0.0F).throttle(SECOND, 0.45F, 10.0F);
                     s.at(16.0F).callout("low", onDrone, Cue.Side.LEFT, 0.0F);
                     s.at(16.0F).callout("high", onSecond, Cue.Side.RIGHT, 0.0F);
-                    s.at(20.0F).callout("input", rightStick, Cue.Side.RIGHT, 0.0F);
+                    s.at(20.0F).callout("input", rollStick, Cue.Side.RIGHT, 0.0F);
                     for (int round = 0; round < 2; round++) {
                         float t = 30.0F + round * 64.0F;
                         sticks(s, t, 0.0F, HOVER, 1.0F, 0.0F);

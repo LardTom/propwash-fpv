@@ -4,6 +4,56 @@ What changed in Propwash FPV, for players and server owners. Add-on authors find
 [`docs/api/changes.md`](docs/api/changes.md), technical details per release are in
 [`docs/RELEASE-NOTES.md`](docs/RELEASE-NOTES.md).
 
+## [0.5.2] — Fisheye lens, waterproof drones, turtle mode and zones
+
+### Highlights
+- **A real FPV lens:** the FPV picture now looks through a fisheye like a real FPV camera – things ahead appear bigger and closer, the edges bend away, and speed feels like in a real feed. A slider sets how strong it is.
+- **Waterproof drones and turtle mode:** spray a drone with waterproof coating and it flies in water; when it lands upside down, flip it back over with its own props, just like in Betaflight.
+- **Zones:** give part of your world its own simulation settings – infinite battery on a practice field, zero gravity in a race passage – race-legal or counted as assisted.
+
+### New
+- *Fisheye* slider in the *Video* tab from 0 % (flat, the old picture) to 100 %, 80 % by default – interference, 4:3, the OSD, props in view and shader packs follow it.
+- Waterproof Coating spray can (iron nuggets, honeycomb, resin clump): right-click a placed drone or combine both in the crafting grid; one can coats ten drones. The world rule *Drones are waterproof* coats every drone (on in *Arcade*).
+- Turtle mode on a radio switch or key (numpad 8) in the *Modes* tab: arm while the drone lies upside down and push the stick toward the side it should tip to.
+- Zones are easy to find at the top of the *World rules* tab, right below the presets; make them there with a zone editor like *Adjust gate* or with `/propwash zone`. They show a subtle border, the OSD tells you when you fly in or out, and gravity and wind fade in smoothly.
+- VTX power from 25 mW up to 1600 mW in the *Video channel* tab, or step through it in flight with the *VTX power* switch or F10: more range and better penetration, but more battery drain and heat (*VTX OVERHEAT*). *Auto* is the default for every drone – digital systems follow their video link, analog ones let the flight controller follow your radio link – plus *Low when disarmed* like in Betaflight and an OSD element for the power.
+- Bando maps: journeyman cartographers sell a map (10 emeralds and a compass) to the nearest unexplored bando; sometimes one lies in a bando chest or a village cartographer's house.
+- Cobwebs catch your drone – punch out with full throttle; tripwire string snags the props, vines, glow lichen, hanging roots and moss brake you lightly. Fly into a bell and it rings like an arrow hit it.
+- *Why is my lap assisted?* check in the *Race* tab: lists everything that would make your lap count as assisted right now.
+- A 5.1″ race prop with 2.9″ pitch (the "5129" many racers fly): the same punch off the line as the 4.6″ prop, less top speed.
+- *Invert pitch* in the *Receiver* tab flips forward and back for the mouse and the pitch keys.
+- *Stick mode* 1–4: pick it first in the receiver wizard or later in the *Receiver* tab – the wizard's prompts and animated radio, the OSD stick overlay, the Flight school and the radio in your hand follow your mode. Radios keep their channels, gamepad sticks follow the mode.
+- Action Cam (Flashback): OSD element *Flashback timeline*, a *Simplification* slider with a preview of the saved camera path that rings the spot where the two paths drift apart most, and *Check replays* to thin flights that are too long.
+- Every drone remembers its GPS Rescue home point; server admins read and move it with `/data` (`HomePoint`).
+- *Reset* (Backspace or a radio switch) puts your drone back on its home point – level, disarmed and standing still, also from far away. It replaces *Restart race*; a running race is canceled. Server owners can switch it off with the world rule *Allow reset*.
+- For add-ons: a front mount under the nose (all frames except the Whoop), accessories with their own load (*Accessories* in the service menu) and *Accessory action 1–4* (switch functions and the keys numpad 9, 0, Enter and +).
+
+### Improved
+- Batteries discharge like real packs: nearly flat for most of the flight, a steep drop in the last ~10 %, and you feel the end of the pack in every punch. The OSD voltage is smoothed like in Betaflight and flashes while it sags below warning or cutoff.
+- Drones touch down on their real frame, battery, props and ducts and settle like a real quad, and crashes end like real ones: fast hits keep their bounce and props dig in, so nose-ins, wall hits and cartwheels can leave the drone upside down or on its side – ready for turtle mode.
+- Assisted laps name their exact reasons everywhere, for example "Gravity 130 % instead of 100 %" – also while a zone's gravity or wind is still fading out, for add-on flight assists and in heat results.
+- The 5″ race frame is a true X like current race quads, and the Racing Drone flies the new race prop: about 147 km/h top speed instead of 168 – fit the 4.6″ prop if you want top speed.
+- The rule that stops the motors after a crash is now called *Disarm on crash*; it lives in the *World rules* tab, and the settings search takes you there.
+- *Adjust gate* shows at the top of its panel how to use the mouse: hold `Alt` (`⌥ Option` on a Mac).
+- Standing starts: after a *Reset*, arm at the start gate to line up – other pilots join by arming there too.
+- Better signal through walls: one block of stone, brick, planks or concrete dampens like one house wall, glass, leaves and wool much less, while hills, badlands mesas, sandstone cliffs, End islands and caves still cut the link. The picture breaks up gradually instead of going black behind a block – analog fades into static, digital gets softer, blockier and laggier like DJI or Walksnail (HDZero-like systems stay sharp and break up) and freezes on the last frame before *NO SIGNAL*.
+- The radio link sees the same walls and terrain: RSSI drops behind obstacles, far behind a hill or deep underground the drone goes to failsafe, and VTX *Auto* reacts to obstacles also when you fly line of sight.
+
+### Fixed
+- *Restart race* seemed to do nothing: it never moved the drone and did nothing away from the start gate. It is now *Reset*.
+- The locator beeper no longer stops when you leave the drone: it keeps beeping until you switch it off, pick the drone up or its battery runs flat, and everyone nearby hears it.
+- OSD elements you switch on no longer land on top of others in the *Minimal*, *Standard* and *Race* layouts (Speed covered the new VTX power), and saved layouts move such elements to a free spot.
+- Drones no longer end up upside down after gentle landings, on half slabs or when sliding off a step.
+- Long Action Cam flights no longer crash the game when you open the replay in Flashback: Propwash thins them when saving (*Flashback limit*, on by default).
+- The *Modes* tab lights up the mode your switch selects right away, also while the menu pauses the game and for ranges you haven't saved yet; toggle switches show their real state.
+- Laps no longer count as assisted after world rules were set back to default mid-flight, and servers judge each lap on its own for every pilot.
+- Setting *Battery life* from infinite back to a limit mid-flight no longer drains the battery.
+
+### Compatibility
+- Minecraft 26.3 · Fabric (Loader 0.19.5+, Fabric API 0.161.0+26.3) or NeoForge (26.3.0.10-beta+) · Java 25 · client and server must both run 0.5.2 – 0.5.0 and 0.5.1 can't join a 0.5.2 server and the other way round.
+- Worlds, drones, courses, leaderboards and settings from 0.5.x load unchanged; drones without a VTX power setting start on *Auto*, your Flashback keyframe setting carries over, and everyone starts in stick mode 2 (the previous layout). Your *Restart race* key and switch become *Reset*.
+- *Propwash: Just More Parts* 1.1.1 and other add-ons made for 0.5.x keep working; new add-on features for accessories, flight assists, gimbal cameras and HUD elements.
+
 ## [0.5.1] — Drone trails on servers, world rules for admins, drone tags
 
 ### New

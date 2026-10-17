@@ -9,6 +9,9 @@ final class OperatingPoints {
     static final int TILT_STEPS = 40;
     static final double MAX_TILT = Math.toRadians(89.0);
     static final double MAX_SPEED = 150.0;
+    static final int INSTANT = 0;
+    static final int SUSTAINED = 1;
+    static final int STEADY = 2;
 
     private OperatingPoints() {
     }
@@ -27,10 +30,36 @@ final class OperatingPoints {
         return p.cells * CellCurve.ocv(p.chemistry, soc);
     }
 
+    static double lowSoc(double soc) {
+        double x = Math.min(1.0, Math.max(0.0, ModelConstants.LOW_SOC_KNEE - soc) / ModelConstants.LOW_SOC_KNEE);
+        return StrictMath.pow(x, ModelConstants.LOW_SOC_EXPONENT);
+    }
+
+    static double rateFactor(AirframeSpec p, double batteryCurrent) {
+        return 1.0 + ModelConstants.C_RATE_PENALTY * Math.max(0.0, batteryCurrent / p.continuousCurrent - 1.0);
+    }
+
     static double internalResistance(AirframeSpec p, double batteryCurrent, double soc) {
-        double rate = 1.0 + ModelConstants.C_RATE_PENALTY * Math.max(0.0, batteryCurrent / p.continuousCurrent - 1.0);
-        double low = 1.0 + ModelConstants.LOW_SOC_GAIN * Math.max(0.0, ModelConstants.LOW_SOC_KNEE - soc) / ModelConstants.LOW_SOC_KNEE;
-        return p.packResistance * rate * low;
+        double low = 1.0 + ModelConstants.LOW_SOC_OHMIC_GAIN * lowSoc(soc);
+        return p.packResistance * (rateFactor(p, batteryCurrent) - ModelConstants.SAG_FAST_FRACTION) * low;
+    }
+
+    static double fastResistance(AirframeSpec p, double soc) {
+        return ModelConstants.SAG_FAST_FRACTION * p.packResistance * (1.0 + ModelConstants.LOW_SOC_FAST_GAIN * lowSoc(soc));
+    }
+
+    static double slowResistance(AirframeSpec p, double soc) {
+        return p.polarizationResistance * (1.0 + ModelConstants.LOW_SOC_SLOW_GAIN * lowSoc(soc));
+    }
+
+    static double sustainedResistance(AirframeSpec p, double batteryCurrent, double soc) {
+        double low = lowSoc(soc);
+        return p.packResistance * rateFactor(p, batteryCurrent) * (1.0 + ModelConstants.LOW_SOC_OHMIC_GAIN * low)
+                + ModelConstants.SAG_FAST_FRACTION * p.packResistance * (ModelConstants.LOW_SOC_FAST_GAIN - ModelConstants.LOW_SOC_OHMIC_GAIN) * low;
+    }
+
+    static double dcResistance(AirframeSpec p, double batteryCurrent, double soc) {
+        return sustainedResistance(p, batteryCurrent, soc) + slowResistance(p, soc);
     }
 
     static double currentLimit(AirframeSpec p, double busVoltage, double omega) {
@@ -82,8 +111,8 @@ final class OperatingPoints {
             double omega = motorOmega(p, duty, mid, axialSpeed, 1.0);
             double current = phaseCurrent(p, duty, mid, omega);
             double iBat = 4.0 * motorInputCurrent(p, mid, omega, current) + p.auxPower / mid;
-            double r = internalResistance(p, iBat, soc);
-            double vPol = polarized ? p.polarizationResistance * iBat : fixedPolarization;
+            double r = sustainedResistance(p, iBat, soc);
+            double vPol = polarized ? slowResistance(p, soc) * iBat : fixedPolarization;
             if (e - vPol - r * iBat - mid > 0.0) {
                 lo = mid;
             } else {
@@ -104,15 +133,21 @@ final class OperatingPoints {
 
     static void steadyMotor(AirframeSpec p, double omega, double current, double soc, boolean polarized, double fixedPolarization,
                             boolean sag, Point out) {
-        double e = emf(p, PowerSystem.restingSoc(soc, sag));
+        loadedMotor(p, omega, current, soc, polarized ? STEADY : SUSTAINED, fixedPolarization, sag, out);
+    }
+
+    static void loadedMotor(AirframeSpec p, double omega, double current, double soc, int load, double fixedPolarization, boolean sag,
+                            Point out) {
+        double rested = PowerSystem.restingSoc(soc, sag);
+        double e = emf(p, rested);
         double drive = p.phaseResistance * current + p.kt * omega;
         double v = e;
         for (int k = 0; k < HOVER_STEPS; k++) {
             double vv = Math.max(v, 0.05 * e);
             double duty = drive / vv;
             double iBat = 4.0 * duty * current + p.auxPower / vv;
-            double r = internalResistance(p, iBat, soc);
-            double vPol = polarized ? p.polarizationResistance * iBat : fixedPolarization;
+            double r = load == INSTANT ? internalResistance(p, iBat, rested) : sustainedResistance(p, iBat, rested);
+            double vPol = load == STEADY ? slowResistance(p, rested) * iBat : fixedPolarization;
             v = 0.5 * v + 0.5 * (e - vPol - r * iBat);
         }
         v = Math.max(v, 0.05 * e);

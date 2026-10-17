@@ -17,6 +17,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,7 +64,8 @@ class BuildSlotsTest {
         BuildSlots.Check check = BuildSlots.check(layout);
         assertEquals(build, check.build().orElseThrow());
         assertTrue(check.buildable());
-        assertEquals(BuildSlots.COUNT, check.filledSlots());
+        assertEquals(BuildSlots.COUNT - 1, check.filledSlots());
+        assertNull(layout.get(BuildSlots.accessorySlot(AccessoryMount.FRONT)));
         List<PartInfo> bare = new ArrayList<>(layout);
         bare.set(BuildSlots.accessorySlot(AccessoryMount.TOP), null);
         assertEquals(DroneBuild.FREESTYLE.withAccessory(AccessoryType.LED_STRIP), BuildSlots.check(bare).build().orElseThrow());

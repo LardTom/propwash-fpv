@@ -10,6 +10,18 @@ animated Flight School teaches you the whole mod inside the game.
 
 ---
 
+## New in 0.5.2
+
+- **A real FPV lens:** the FPV picture looks through a fisheye like a real FPV camera – the *Fisheye* slider in the
+  *Video* tab sets how strong, 0 % brings back the old flat picture
+- **Waterproof drones and turtle mode:** coat a drone with the new spray and it flies in water; flip it back over with
+  its own props when it lands upside down
+- **Zones:** give part of your world its own simulation settings – race-legal or counted as assisted
+- **VTX power, bando maps, cobwebs and bells:** transmit power (*Auto* by default) with range, heat and battery drain, explorer
+  maps to the nearest bando, drones get caught in cobwebs and ring bells
+- **Batteries like real packs, better landings and real crashes:** a flat discharge curve with a steep end you feel in
+  every punch; drones settle on their real frame after a landing, while hard crashes can leave them upside down
+
 ## New in 0.5.1
 
 - **Drone trails on servers:** other pilots' trails now show in multiplayer, not only during GPS Rescue
@@ -84,7 +96,7 @@ animated Flight School teaches you the whole mod inside the game.
 - **Field of view from the camera, camera angle on the drone:** like on real quads the FPV field of view comes from the
   camera in the video unit (analog 125°, digital lite 104°, HD 130°), and each drone has its own camera angle, set in
   its service menu within the range of the frame's camera mount – for every goggles, spectators and recordings
-- **"Props in the camera view" matches the FPV image** and follows the frame and its camera mount (race frames show more
+- **"Props in the camera view" matches the FPV image** and follows the frame and its camera mount (stretched frames show more
   prop than a true X, deadcats none), the built-in cinewhoop reaches a realistic 89 km/h, and the
   workbench stays readable in every language and GUI scale
 - **Fixes:** no more x-ray through water behind spinning props, no more periodic OSD/HUD freezes with font resource
@@ -142,7 +154,7 @@ animated Flight School teaches you the whole mod inside the game.
 
 ### Build your own drones
 - Five frames from a 65 mm whoop through a 3″ cinewhoop and 5″ freestyle and race frames to a 7″ long range
-- Flight controllers, six motors, five props, batteries and video units, each with real specs
+- Flight controllers, six motors, six props, batteries and video units, each with real specs
 - Real choices within a frame: light 1404 or punchy 2004 motors on the cinewhoop, quad- or tri-blades on the whoop,
   a 30×30 stack or a light 20×20 AIO on race and long-range frames, 2807 or 2207 motors on the 7″
 - Name your drone in the configurator, with a name tag or an anvil; the name shows in the OSD and on radio and goggles
@@ -153,7 +165,9 @@ animated Flight School teaches you the whole mod inside the game.
 ### Fly with your real radio
 - EdgeTX/OpenTX radios over USB, gamepads and a keyboard fallback
 - Receiver wizard for channels, calibration and switches; free switch assignment for arm, flight modes, flip
-  upright, rescue, home point, beeper, race restart and action cam recording
+  upright, rescue, home point, beeper, reset to the home point and action cam recording
+- Stick mode 1–4 (Mode 2 by default), picked first in the receiver wizard; the OSD stick overlay, the Flight school
+  and the FPV Remote follow it
 - The in-game **FPV Remote** moves its sticks with yours
 
 ### FPV or line of sight
@@ -164,9 +178,11 @@ animated Flight School teaches you the whole mod inside the game.
 ### Analog and digital video
 - **Analog:** almost no latency; the picture breaks up in stages with distance and obstacles – torn lines, fading
   color, snow with sync jumps and finally full static
-- **Digital:** a clean HD picture with a little more latency, then blur, block artifacts, stutter, freezes and a hard
-  cut to "NO SIGNAL" – never analog snow
-- Signal model with range per video unit and damping by blocks, leaves and water
+- **Digital:** a clean HD picture with a little more latency; at the edge it gets softer, blockier and laggier,
+  stutters and freezes on the last frame before "NO SIGNAL" – never analog snow; HDZero-like systems stay sharp and
+  break up into blocks instead
+- Signal model with range per video unit: one block of stone, brick, planks or concrete dampens like a house wall,
+  leaves and glass much less, hills, caves, deep water and metal still cut the link – also for the radio link
 - Image format 16:9 or 4:3 (black bars like 4:3 goggles, same horizontal field of view, OSD inside the image) or Auto
   by video system
 - **Creative goggles** receive every system and let you set latency, range and noise freely; in creative mode or with
@@ -309,7 +325,7 @@ Stuck? Hold **M** over any Propwash item for its Flight School lesson, or **Shif
 | GPS Rescue on/off | J |
 | Set home point | , |
 | Locator beeper | . |
-| Restart race | Backspace |
+| Reset (back to the home point) | Backspace |
 | Rotate gate (gate or course tool in hand; sneak: change mount) | R (shared with *Cycle flight mode*) |
 | Action cam: start/stop recording | F9 |
 | Configurator | K |

@@ -2,7 +2,10 @@ package de.lardtom.propwash.video.client;
 
 import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.build.VideoType;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import de.lardtom.propwash.video.CameraShake;
+import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageFormat;
 import org.jspecify.annotations.Nullable;
@@ -10,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 public final class VideoConfig {
     public static final int DEFAULT_FOV_CREATIVE = FovMath.DEFAULT_CREATIVE_DEGREES;
     public static final int MAX_CREATIVE_LATENCY_MS = 500;
+    public static final int CREATIVE_LATENCY_STEP_MS = 5;
     public static final int MAX_CREATIVE_RANGE_BLOCKS = 2000;
 
     public boolean creativeFovFromModule = true;
@@ -25,12 +29,22 @@ public final class VideoConfig {
     public ImageFormat imageFormat = ImageFormat.WIDE;
     public boolean ledLighting = true;
     public float cameraShake = CameraShake.DEFAULT_INTENSITY;
+    public int lensStrength = FisheyeLens.DEFAULT_PERCENT;
 
     public double horizontalFov(@Nullable VideoSystem goggles, @Nullable VideoType camera) {
         if (goggles == VideoSystem.CREATIVE && !this.creativeFovFromModule) {
             return this.fovCreative;
         }
         return FovMath.cameraHorizontalDegrees(camera);
+    }
+
+    public static int ownLatencyStart(int ownMs, int moduleLatencyMs) {
+        if (ownMs >= moduleLatencyMs) {
+            return ownMs;
+        }
+        int step = CREATIVE_LATENCY_STEP_MS;
+        int rounded = (moduleLatencyMs + step - 1) / step * step;
+        return Math.min(rounded, MAX_CREATIVE_LATENCY_MS);
     }
 
     public int latencyMs(@Nullable VideoSystem goggles, int moduleLatencyMs) {
@@ -77,6 +91,7 @@ public final class VideoConfig {
         copy.imageFormat = this.imageFormat;
         copy.ledLighting = this.ledLighting;
         copy.cameraShake = this.cameraShake;
+        copy.lensStrength = this.lensStrength;
         return copy;
     }
 
@@ -92,8 +107,19 @@ public final class VideoConfig {
         if (this.imageFormat == null) {
             this.imageFormat = ImageFormat.WIDE;
         }
+        this.lensStrength = Math.min(Math.max(this.lensStrength, 0), FisheyeLens.MAX_PERCENT);
         this.cameraShake = Float.isFinite(this.cameraShake) ? Math.min(Math.max(this.cameraShake, 0.0F), CameraShake.MAX_INTENSITY)
                 : CameraShake.DEFAULT_INTENSITY;
+    }
+
+    public static void migrate(JsonObject json) {
+        if (json.has("lensStrength") || !json.has("lens")) {
+            return;
+        }
+        JsonElement old = json.get("lens");
+        boolean flat = old != null && old.isJsonPrimitive() && "FLAT".equalsIgnoreCase(old.getAsString());
+        json.addProperty("lensStrength", flat ? 0 : FisheyeLens.DEFAULT_PERCENT);
+        json.remove("lens");
     }
 
     private static int clampFov(int degrees) {

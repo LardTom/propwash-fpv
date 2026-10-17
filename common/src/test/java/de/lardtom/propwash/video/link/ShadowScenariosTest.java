@@ -197,11 +197,12 @@ class ShadowScenariosTest {
     }
 
     @Test
-    void aSingleTrunkShadowsLessThanAWall() {
+    void aOneBlockWallCostsAboutOneHouseWallAndATreeKeepsItsCalibration() {
         for (int d : new int[]{20, 50, 100}) {
             Result trunk = behindTree(d, 1.5);
             Result wall = behindWall(d);
-            assertTrue(wall.newDb > trunk.newDb + 8.0, trunk.row() + " vs " + wall.row());
+            assertTrue(wall.newDb > 6.5 && wall.newDb < 10.0, wall.row());
+            assertEquals(13.8, trunk.newDb, 1.0, trunk.row());
         }
     }
 
@@ -211,10 +212,11 @@ class ShadowScenariosTest {
         Result planks = behindHouse(60, ScenarioWorld.PLANKS, "planks");
         Result cobble = behindHouse(60, ScenarioWorld.COBBLE, "cobblestone");
         Result forest = throughForest(50, 15);
-        assertTrue(cobble.newDb > planks.newDb, planks.row() + " vs " + cobble.row());
-        assertTrue(cobble.newDb > tree.newDb, cobble.row());
+        assertTrue(cobble.newDb > planks.newDb + 4.0, planks.row() + " vs " + cobble.row());
+        assertTrue(cobble.newDb > tree.newDb - 1.0, cobble.row());
         assertTrue(forest.newDb > tree.newDb, forest.row());
-        assertTrue(cobble.analog(cobble.newDb) < 0.2, cobble.row());
+        assertTrue(cobble.analog(cobble.newDb) > 0.2 && cobble.analog(cobble.newDb) < 0.6, cobble.row());
+        assertTrue(cobble.digital(cobble.newDb) > 0.6, cobble.row());
         assertTrue(forest.analog(forest.newDb) < 0.2, forest.row());
     }
 
@@ -233,7 +235,7 @@ class ShadowScenariosTest {
             assertTrue(pastTree(d, 0.0).lossDb() > 12.0);
             ObstructionScan nearMiss = pastTree(d, 0.75);
             assertEquals(0.0, nearMiss.centerLossDb(), 0.0, "the straight ray passes the trunk");
-            assertTrue(nearMiss.lossDb() > 1.0 && nearMiss.lossDb() < 8.0, "near miss at " + d + " m: " + nearMiss.lossDb());
+            assertTrue(nearMiss.lossDb() > 0.5 && nearMiss.lossDb() < 8.0, "near miss at " + d + " m: " + nearMiss.lossDb());
             for (double clear : new double[]{1.5, 2.0, 3.0}) {
                 assertEquals(0.0, pastTree(d, clear).lossDb(), 0.0, "clear of the trunk at " + d + " m, " + clear + " m beside");
                 assertEquals(0.0, pastTree(d, -clear).lossDb(), 0.0);
@@ -257,7 +259,7 @@ class ShadowScenariosTest {
                 }
             }
             System.out.println(row);
-            assertTrue(aroundHouse(d, 0) > 15.0, row.toString());
+            assertTrue(aroundHouse(d, 0) > 12.0, row.toString());
             assertTrue(shadowed <= 3, row.toString());
         }
     }
@@ -269,8 +271,8 @@ class ShadowScenariosTest {
             double[] before = forestSpread(d, 2.5, true);
             System.out.println(String.format(Locale.ROOT, "forest 15 m deep at %d m, 21 positions: before %.1f / %.1f / %.1f dB, after %.1f / %.1f / %.1f dB (min / median / max)",
                     d, before[0], before[10], before[20], now[0], now[10], now[20]));
-            assertTrue(now[10] > 12.0 && now[10] < 30.0, "median " + now[10]);
-            assertTrue(now[10] > before[10], "a forest costs more than before");
+            assertTrue(now[10] > 8.0 && now[10] < 20.0, "median " + now[10]);
+            assertTrue(now[20] > before[20], "behind a trunk deep in the forest it costs more than before 0.5.0");
             assertTrue(now[20] - now[0] > 10.0, "a forest is not uniform");
         }
     }

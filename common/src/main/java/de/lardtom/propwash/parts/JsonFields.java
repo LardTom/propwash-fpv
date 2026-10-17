@@ -296,6 +296,28 @@ final class JsonFields {
         return Optional.of(new int[]{(int) values[0], (int) values[1]});
     }
 
+    Optional<int[]> optIntList(String key) {
+        JsonElement element = this.take(key);
+        if (element == null) {
+            return Optional.empty();
+        }
+        if (!element.isJsonArray()) {
+            this.error(key, "Liste ganzer Zahlen erwartet, gefunden: " + element);
+            return Optional.empty();
+        }
+        JsonArray array = element.getAsJsonArray();
+        int[] out = new int[array.size()];
+        for (int i = 0; i < out.length; i++) {
+            OptionalInt value = integer(array.get(i));
+            if (value.isEmpty()) {
+                this.error(key, "Liste ganzer Zahlen erwartet, gefunden: " + element);
+                return Optional.empty();
+            }
+            out[i] = value.getAsInt();
+        }
+        return Optional.of(out);
+    }
+
     int[] requireRange(String key) {
         if (!this.has(key)) {
             this.take(key);

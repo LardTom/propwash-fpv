@@ -92,6 +92,25 @@ class RescueSupervisorTest {
     }
 
     @Test
+    void armEdgeIsReportedOnceInEveryMode() {
+        for (HomeMode mode : HomeMode.values()) {
+            this.cfg.homeMode = mode;
+            this.frame.armed = true;
+            this.tick();
+            assertTrue(this.supervisor.armedNow(), mode.name());
+            this.tick();
+            assertFalse(this.supervisor.armedNow(), mode + ": nur auf der Flanke");
+            this.frame.armed = false;
+            this.tick();
+            assertFalse(this.supervisor.armedNow(), mode + ": Entschärfen ist keine Flanke");
+        }
+        this.supervisor.beginSession(true, true);
+        this.frame.armed = true;
+        this.tick();
+        assertFalse(this.supervisor.armedNow(), "scharf übernommene Sitzung ist keine Flanke");
+    }
+
+    @Test
     void setHomeSwitchAndKeyRequestManualHome() {
         this.frame.setHomeSwitch = true;
         this.tick();

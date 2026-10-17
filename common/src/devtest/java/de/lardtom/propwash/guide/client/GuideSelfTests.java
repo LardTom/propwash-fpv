@@ -147,7 +147,8 @@ public final class GuideSelfTests {
             new Shot("flight_school_3d", Mode3dScene.ID, 2, 80.0F, false),
             new Shot("flight_school_3d_takeoff", Mode3dScene.ID, 4, 150.0F, false),
             new Shot("flight_school_repair_material", RepairScene.ID, 2, 64.0F, false),
-            new Shot("flight_school_arm_air", RecoveryScene.ID, 2, 48.0F, false),
+            new Shot("flight_school_turtle", RecoveryScene.ID, 2, 75.0F, false),
+            new Shot("flight_school_arm_air", RecoveryScene.ID, 3, 48.0F, false),
             new Shot("flight_school_creative", CreativeScene.ID, 0, 100.0F, false),
             new Shot("flight_school_creative_editor", CreativeScene.ID, 1, 80.0F, false),
             new Shot("flight_school_index", DroneBuildScene.ID, 0, 0.0F, true));

@@ -7,7 +7,11 @@ import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.DroneTagChecks;
 import de.lardtom.propwash.interact.BlockBreakRights;
 import de.lardtom.propwash.platform.Services;
+import de.lardtom.propwash.race.AssistServerChecks;
+import de.lardtom.propwash.rescue.HomePointChecks;
+import de.lardtom.propwash.rescue.HomeResetChecks;
 import de.lardtom.propwash.server.WorldRulesRights;
+import de.lardtom.propwash.zone.ZoneServerChecks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -21,12 +25,16 @@ import java.nio.file.Files;
 public final class ServerSmoke {
     public static final String PROPERTY = "propwash.serversmoke";
     public static final int RUN_TICKS = 100;
+    private static final int ASSIST_TICK = 40;
+    private static final int HOME_CHECK_TICK = 20;
+    private static final int ZONE_TICK = 60;
 
     private static final boolean ENABLED = Boolean.getBoolean(PROPERTY);
     private static int ticksSinceStart = -1;
     private static @Nullable QuadcopterEntity drone;
     private static @Nullable String failure;
     private static boolean finished;
+    private static boolean resetFinished;
 
     private ServerSmoke() {
     }
@@ -110,8 +118,57 @@ public final class ServerSmoke {
             return;
         }
         ticksSinceStart++;
+        if (ticksSinceStart == 1) {
+            AssistServerChecks.forceChunks(server, true);
+        }
+        if (ticksSinceStart == ASSIST_TICK && failure == null) {
+            String assist = AssistServerChecks.check(server);
+            if (assist != null) {
+                fail("Flughilfe: " + assist);
+            } else {
+                Constants.LOG.info("[Server-Rauchtest] Flughilfe je Pilot: {}", AssistServerChecks.summary());
+            }
+        }
+        if (ticksSinceStart == ZONE_TICK && failure == null) {
+            String zones = ZoneServerChecks.check(server);
+            if (zones != null) {
+                fail("Zonen: " + zones);
+            } else {
+                Constants.LOG.info("[Server-Rauchtest] Zonen: {}", ZoneServerChecks.summary());
+            }
+        }
+        if (JoinTestEnv.holdSeconds() > 0 && JoinTestEnv.zones()) {
+            ZoneJoinCheck.tick(server, ticksSinceStart);
+        }
         if (JoinTestEnv.holdSeconds() > 0 && JoinTestEnv.pilotSeconds() > 0) {
             PilotJoinCheck.tick(server, ticksSinceStart);
+        }
+        if (JoinTestEnv.holdSeconds() > 0 && JoinTestEnv.assist()) {
+            AssistJoinCheck.tick(server, ticksSinceStart);
+        }
+        if (ticksSinceStart == HOME_CHECK_TICK && failure == null) {
+            String home = HomePointChecks.check(server);
+            if (home != null) {
+                fail("Homepoint: " + home);
+            } else {
+                Constants.LOG.info("[Server-Rauchtest] Homepoint: {}", HomePointChecks.summary());
+            }
+            String reset = failure == null ? HomeResetChecks.check(server) : null;
+            if (reset != null) {
+                fail("Reset: " + reset);
+            } else if (failure == null) {
+                Constants.LOG.info("[Server-Rauchtest] Reset: {}", HomeResetChecks.summary());
+            }
+        }
+        if (!resetFinished && failure == null && ticksSinceStart >= HOME_CHECK_TICK + HomeResetChecks.FINISH_DELAY_TICKS
+                && (HomeResetChecks.finishReady(server) || ticksSinceStart >= RUN_TICKS - 5)) {
+            resetFinished = true;
+            String reset = HomeResetChecks.finish(server);
+            if (reset != null) {
+                fail("Reset: " + reset);
+            } else {
+                Constants.LOG.info("[Server-Rauchtest] Reset: {}", HomeResetChecks.finishSummary());
+            }
         }
         if (JoinTestEnv.holdSeconds() > 0 || failure == null && ticksSinceStart < RUN_TICKS) {
             return;

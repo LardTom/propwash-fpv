@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import de.lardtom.propwash.calibration.BatteryFit;
 import de.lardtom.propwash.calibration.Flight;
 import de.lardtom.propwash.calibration.LogData;
 import de.lardtom.propwash.calibration.LogHeader;
@@ -18,6 +19,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -209,6 +211,7 @@ public final class RealLogCalibration {
             row.problems.add(e.getMessage());
         }
         rates(row, h, f);
+        battery(row, f, nominal);
         if (out != null) {
             plots(row, f, m, steady, nominal, out);
         }
@@ -306,6 +309,141 @@ public final class RealLogCalibration {
             row.real.put("thrust_ratio_low", Math.min(a, b));
             row.real.put("thrust_ratio_high", Math.max(a, b));
             row.real.put("thrust_ratio_n", (double) thrustRatio.size());
+        }
+    }
+
+    static final int BATTERY_ALIGN_STEPS = 30;
+    static final int BATTERY_PARTS = 3;
+    static final double BATTERY_SCALE_MIN_USED = 0.15;
+    static final double BATTERY_SCALE_TOLERANCE = 0.1;
+    static final double BATTERY_SCALE_MIN = 0.4;
+    static final double BATTERY_SCALE_MAX = 2.5;
+    static final int BATTERY_SOC_STEPS = 40;
+
+    static double socForOcv(AirframeSpec p, double cellVolts) {
+        double lo = 0.0;
+        double hi = 1.0;
+        for (int k = 0; k < BATTERY_SOC_STEPS; k++) {
+            double mid = 0.5 * (lo + hi);
+            if (CellCurve.ocv(p.chemistry, mid) < cellVolts) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        return 0.5 * (lo + hi);
+    }
+
+    static double[] batteryTrace(AirframeSpec p, BatteryFit.Series s, double startSoc, double[] socOut) {
+        PowerSystem power = new PowerSystem();
+        power.configure(p, BatteryFit.STEP_SECONDS);
+        power.setStateOfCharge(startSoc);
+        double[] volts = new double[s.size()];
+        for (int k = 0; k < volts.length; k++) {
+            double dt = k > 0 ? s.seconds()[k] - s.seconds()[k - 1] : BatteryFit.STEP_SECONDS;
+            power.forceBatteryCurrent(Math.max(0.0, s.amps()[k]), dt, true, false);
+            volts[k] = power.busVoltage / p.cells;
+            if (socOut != null) {
+                socOut[k] = power.soc;
+            }
+        }
+        return volts;
+    }
+
+    static double batteryStartSoc(AirframeSpec p, BatteryFit.Series s) {
+        double target = Signals.mean(s.cellVolts(), 0, s.size());
+        double lo = 0.0;
+        double hi = 1.0;
+        for (int k = 0; k < BATTERY_ALIGN_STEPS; k++) {
+            double mid = 0.5 * (lo + hi);
+            double[] sim = batteryTrace(p, s, mid, null);
+            if (Signals.mean(sim, 0, sim.length) < target) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        return 0.5 * (lo + hi);
+    }
+
+    static void putFit(Map<String, Double> target, BatteryFit.Result r) {
+        target.put("bat_r0", r.r0());
+        target.put("bat_r1", r.r1());
+        target.put("bat_tau1", r.tau1());
+        target.put("bat_r2", r.r2());
+        target.put("bat_tau2", r.tau2());
+        target.put("bat_sum", r.sum());
+        target.put("bat_fit_rms", r.rmsVolts());
+    }
+
+    static void battery(Row row, Flight f, RealLogSim n) {
+        AirframeSpec p = n.params;
+        row.real.put("bat_cells", (double) p.cells);
+        row.real.put("bat_capacity", p.capacityMah);
+        if (!f.hasAmps) {
+            row.problems.add("kein Strom im Log: Akku-Vergleich nur über den Punch-Einbruch");
+            return;
+        }
+        BatteryFit.Series real = BatteryFit.series(f, p.cells);
+        if (!BatteryFit.usableCurrent(real)) {
+            row.problems.add("Stromsensor nicht verwertbar (Strom ändert sich kaum mit dem Gas): Akku-Vergleich nur über den Punch-Einbruch");
+            return;
+        }
+        Optional<BatteryFit.Result> raw = BatteryFit.fit(real);
+        double scale = 1.0;
+        if (raw.isPresent()) {
+            double used = socForOcv(p, raw.get().ocvStart()) - socForOcv(p, raw.get().ocvEnd());
+            if (used >= BATTERY_SCALE_MIN_USED) {
+                double seen = raw.get().mah() / used;
+                row.real.put("bat_capacity_seen", seen);
+                double k = p.capacityMah / seen;
+                if (k < BATTERY_SCALE_MIN || k > BATTERY_SCALE_MAX) {
+                    row.problems.add(String.format(Locale.ROOT, "Strom und Spannungsverlauf passen nicht zum Akku der Quellentabelle (%.0f mAh aus "
+                            + "der Spannung, %.0f mAh im Aufbau): kein Akku-Vergleich", seen, p.capacityMah));
+                    return;
+                }
+                if (Math.abs(k - 1.0) > BATTERY_SCALE_TOLERANCE) {
+                    scale = k;
+                }
+            }
+        }
+        row.real.put("bat_scale", scale);
+        if (scale != 1.0) {
+            real = real.scaled(scale);
+        }
+        double peak = BatteryFit.percentile(real.amps(), 0.99);
+        row.real.put("bat_amps_mid", BatteryFit.percentile(real.amps(), 0.5));
+        row.real.put("bat_amps_peak", peak);
+        row.real.put("bat_mah", real.mah(0, real.size()));
+        BatteryFit.fit(real).ifPresent(r -> putFit(row.real, r));
+        double startSoc = batteryStartSoc(p, real);
+        double[] soc = new double[real.size()];
+        BatteryFit.Series sim = real.withVolts(batteryTrace(p, real, startSoc, soc));
+        BatteryFit.fit(sim).ifPresent(r -> putFit(row.sim, r));
+        double sum = 0.0;
+        for (int k = 0; k < real.size(); k++) {
+            double d = sim.cellVolts()[k] - real.cellVolts()[k];
+            sum += d * d;
+        }
+        row.sim.put("bat_trace_rms", Math.sqrt(sum / real.size()));
+        row.sim.put("bat_soc_start", startSoc);
+        row.sim.put("bat_soc_end", soc[soc.length - 1]);
+        row.real.put("bat_v_end", Signals.mean(real.cellVolts(), real.size() - 100, real.size()));
+        row.sim.put("bat_v_end", Signals.mean(sim.cellVolts(), sim.size() - 100, sim.size()));
+        for (int part = 0; part < BATTERY_PARTS; part++) {
+            int from = part * real.size() / BATTERY_PARTS;
+            int to = (part + 1) * real.size() / BATTERY_PARTS;
+            Optional<BatteryFit.Step> a = BatteryFit.step(real, from, to, peak);
+            Optional<BatteryFit.Step> b = BatteryFit.step(sim, from, to, peak);
+            if (a.isEmpty() || b.isEmpty()) {
+                continue;
+            }
+            String key = "bat_sag" + (part + 1);
+            row.real.put(key, a.get().sag());
+            row.real.put(key + "_lo", a.get().lowAmps());
+            row.real.put(key + "_hi", a.get().highAmps());
+            row.sim.put(key, b.get().sag());
+            row.sim.put(key + "_soc", soc[(from + to) / 2]);
         }
     }
 

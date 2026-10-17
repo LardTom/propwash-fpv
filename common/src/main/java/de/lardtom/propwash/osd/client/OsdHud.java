@@ -9,9 +9,11 @@ import de.lardtom.propwash.osd.OsdElement;
 import de.lardtom.propwash.osd.OsdGrid;
 import de.lardtom.propwash.osd.OsdSampler;
 import de.lardtom.propwash.ui.client.theme.ThemedScreen;
+import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageArea;
 import de.lardtom.propwash.video.client.FpvImage;
+import de.lardtom.propwash.video.client.FpvLens;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -21,12 +23,15 @@ import net.minecraft.util.Util;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 
 public final class OsdHud {
     public static final Identifier ID = Constants.id("osd");
+    private static BooleanSupplier replacement = () -> false;
     private static final long ERROR_LOG_INTERVAL_NANOS = 10_000_000_000L;
 
     private static final OsdSampler SAMPLER = new OsdSampler(new LiveOsdSource());
@@ -42,6 +47,10 @@ public final class OsdHud {
     }
 
     private OsdHud() {
+    }
+
+    public static void setReplacement(BooleanSupplier check) {
+        replacement = Objects.requireNonNull(check, "check");
     }
 
     public static void onFrame(Minecraft minecraft, DeltaTracker deltaTracker) {
@@ -60,7 +69,7 @@ public final class OsdHud {
         try {
             OsdData data = SAMPLER.data();
             Minecraft minecraft = Minecraft.getInstance();
-            if (data.active && !(minecraft.gui.screen() instanceof ThemedScreen)) {
+            if (data.active && !(minecraft.gui.screen() instanceof ThemedScreen) && !replacement.getAsBoolean()) {
                 graphics.nextStratum();
                 OsdConfig config = config();
                 OsdGrid grid = grid(graphics.guiWidth(), graphics.guiHeight());
@@ -104,8 +113,10 @@ public final class OsdHud {
             return null;
         }
         Vec3 position = camera.position();
-        float fov = FovMath.verticalWithin(camera.getFov(), FpvImage.area().heightShare());
-        return new OsdRenderer.View(camera.rotation(), fov, position.x, position.y, position.z);
+        FisheyeLens lens = FpvLens.INSTANCE.rendered();
+        float fov = FovMath.verticalWithin(lens != null ? (float) lens.centreEquivalentVerticalDeg() : camera.getFov(), FpvImage.area().heightShare());
+        return new OsdRenderer.View(camera.rotation(), fov, position.x, position.y, position.z, lens != null ? (float) lens.horizontalDeg() : 0.0F,
+                lens != null ? (float) lens.bend() : 0.0F);
     }
 
     public static boolean showsVideoSignal() {

@@ -6,12 +6,14 @@ public final class RayLoss {
     private double linearDb;
     private double foliageMeters;
     private int cells;
+    private double runMeters;
     private @Nullable RfMaterial run;
 
     public void reset() {
         this.linearDb = 0.0;
         this.foliageMeters = 0.0;
         this.cells = 0;
+        this.runMeters = 0.0;
         this.run = null;
     }
 
@@ -19,12 +21,15 @@ public final class RayLoss {
         if (material != this.run) {
             this.linearDb += material.dbPerCrossing();
             this.run = material;
+            this.runMeters = 0.0;
         }
         if (material.foliage()) {
             this.foliageMeters += meters * material.foliageDensity();
-        } else {
-            this.linearDb += meters * material.dbPerMeter();
+            return;
         }
+        double counted = Math.max(0.0, Math.min(meters, material.maxRunMeters() - this.runMeters));
+        this.runMeters += meters;
+        this.linearDb += counted * material.dbPerMeter();
     }
 
     void breakRun() {

@@ -104,7 +104,7 @@ Jede Zeile nennt, was die drei Entwürfe vorschlagen, was gilt und warum.
 | 18 | Rumpfflächen | Seite 1,3, oben aus k_top·wb² | 1,1 / 2,5 | 1,15 / 1,4 + Scheibe | **A_x = 1,15·A_z, A_y = 2,9·A_z offen / 2,5·A_z Duct** (Kalibrierung 2026-09-24, vorher 1,8 offen) | auf reale Topspeeds kalibriert; A_y ist die ganze Draufsicht inkl. Arme, Motorglocken, Propblätter und Action-Cam, der Schubverlust durch die Anströmung der Propscheiben steckt in Zeile 10 |
 | 19 | Druckpunkt | – | – | 0,1·L hinter CoM | **entfällt** | Wirkung marginal |
 | 20 | OCV-Kurve | normiert | normiert | absolut (ignoriert Enum) | **normiert zwischen `empty` und `full` (RB-Tabelle)** | Enum-Spannungen sind maßgeblich |
-| 21 | Polarisation | 0,5·R0, 5 s | 0,6·R, 8 s | 0,5·R, 4 s | **0,5·R_pack, τ = 5 s** | Mitte |
+| 21 | Polarisation | 0,5·R0, 5 s | 0,6·R, 8 s | 0,5·R, 4 s | **0,5·R_pack, τ = 5 s**; seit 0.5.2 zusätzlich ein schneller Anteil: 0,35·R_pack bauen sich mit τ = 0,5 s auf (Entscheidung 49) | Mitte |
 | 22 | Nebenverbraucher | Tabelle | 0,35 W/g + 0,5 | 1,0 + 0,3 W/g | **0,6 W + 0,3 W/g·m_video** | Whoop sonst unrealistisch belastet |
 | 23 | Brownout | Stack-Spannung, 50 ms | E/N < 0,8·cutoff | V_bus < 3,0 V, 5 ms | **V_bus < 2,9 V (1S-Stacks) bzw. 5,5 V, 5 ms** | Stack-abhängig, praktisch nur 1S |
 | 24 | PID-Skalen | BF | BF | BF + k_auth | **P/I/D in BF-Skalen; F physikalisch normiert** | F = 100 bedeutet auf jedem Werkbank-Build dasselbe |
@@ -398,9 +398,11 @@ Kombinationen endliche Werte, auch für nicht baubare (`problems()` nicht leer) 
 | `OMEGA_MAX_FACTOR` | 1,15 | `ω_max = 1,15·K_v·V_full` |
 | `MOTOR_TAU_MAX` | 0,040 s | Klemme der Motor-Zeitkonstante über J_eff |
 | `WIRING_R` | 0,003 Ω | Kabel + Stecker |
-| `POL_FRACTION`, `POL_TAU` | 0,5; 5 s | Polarisation |
+| `POL_FRACTION`, `POL_TAU` | 0,5; 5 s | langsame Polarisation (zusätzlich zu R_pack) |
+| `SAG_FAST_FRACTION`, `SAG_FAST_TAU` | 0,35; 0,5 s | Anteil von R_pack, der sich erst mit τ aufbaut; sofort wirken nur 65 % (aus echten Logs, Entscheidung 49) |
 | `C_RATE_PENALTY`, `C_RATE_TAU` | 0,5; 2 s | Widerstandsanstieg über Dauerstrom, getrieben vom mit 2 s gefilterten Akkustrom (Erwärmung) |
-| `LOW_SOC_GAIN`, `LOW_SOC_KNEE` | 1,0; 0,25 | Widerstandsanstieg bei leerem Akku |
+| `LOW_SOC_KNEE`, `LOW_SOC_EXPONENT` | 0,15; 1,5 | Widerstandsanstieg bei leerem Akku: `L = clamp((0,15 − soc)/0,15, 0, 1)^1,5` (Entscheidung 50) |
+| `LOW_SOC_OHMIC_GAIN`, `LOW_SOC_FAST_GAIN`, `LOW_SOC_SLOW_GAIN` | 1,5; 6; 4 | Faktor `1 + Gain·L` je Anteil: bei leerem Akku ohmsch ×2,5, schnell ×7, langsam ×5 |
 | `AUX_BASE_W`, `AUX_PER_GRAM_W` | 0,6 W; 0,3 W/g | FC + RX + Video |
 | `BATTERY_DENSITY` | 2,0 g/cm³ LiPo/LiHV, 2,4 g/cm³ Li-Ion | Akku-Quader |
 | `BATTERY_ASPECT` | L : B : H = 2,2 : 1,3 : 1 | Länge entlang Z_B |
@@ -531,8 +533,14 @@ Leerlaufspannung je Zelle `OCV(soc) = empty + (full − empty)·u(soc)` mit line
 
 | soc | 0 | 0,05 | 0,1 | 0,2 | 0,3 | 0,4 | 0,5 | 0,6 | 0,7 | 0,8 | 0,9 | 1,0 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| LIPO / LIHV | 0 | 0,13 | 0,20 | 0,29 | 0,34 | 0,39 | 0,43 | 0,49 | 0,57 | 0,69 | 0,83 | 1 |
-| LION | 0 | 0,09 | 0,16 | 0,27 | 0,36 | 0,44 | 0,52 | 0,60 | 0,68 | 0,78 | 0,88 | 1 |
+| LIPO | 0 | 0,16 | 0,27 | 0,33 | 0,37 | 0,40 | 0,43 | 0,50 | 0,61 | 0,73 | 0,86 | 1 |
+| LIHV | 0 | 0,14 | 0,25 | 0,31 | 0,35 | 0,39 | 0,43 | 0,49 | 0,57 | 0,69 | 0,83 | 1 |
+| LION | 0 | 0,22 | 0,31 | 0,38 | 0,43 | 0,47 | 0,52 | 0,60 | 0,68 | 0,78 | 0,88 | 1 |
+
+In Volt (LiPo 3,50–4,20 V): 3,61 V bei 5 %, 3,69 V bei 10 %, 3,73 V bei 20 %, 3,80 V bei 50 %, 3,93 V bei 70 %, 4,10 V
+bei 90 %; Li-Ion (3,00–4,20 V): 3,26 / 3,37 / 3,46 / 3,62 / 3,82 / 4,06 V. Die Werte bei 50 % sind seit 0.3.2 unverändert,
+weil Schwebe-Arbeitspunkt, Steuerautorität und Auto-PIDs dort abgeleitet werden (Entscheidung 50, Vergleich mit
+Tabellen in `docs/design/realism/power-video.md` 2.4b).
 
 Unter soc = 0 (Tiefentladung): linear von `empty` auf `cutoff` bei soc = −0,05, dann auf `0,8·cutoff` bei
 soc = −0,10; soc wird bei −0,10 geklemmt.
@@ -609,21 +617,21 @@ b_yaw,inst = 4·K_t·V_h·(1 − idle)/(R_m·Iyy)           sofort (Strom-Kick v
 
 | Größe | WHOOP | CINEWHOOP | FREESTYLE | RACER | LONG_RANGE |
 |---|---|---|---|---|---|
-| Masse [g] | 28,1 | 286,7 | 525,2 | 430,2 | 846,2 |
+| Masse [g] | 28,1 | 286,7 | 525,2 | 430,6 | 846,2 |
 | s [mm] | 23,0 | 50,2 | 79,5 | 76,0 | 104,3 |
-| y_com / y_m [mm] | 0,7 / 9,3 | 10,3 / 1,7 | 22,0 / −7,0 | 19,8 / −5,3 | 28,5 / −13,5 |
-| Ixx / Iyy / Izz [10⁻⁶ kg·m²] | 7,99 / 13,63 / 7,75 | 473,1 / 820,8 / 461,4 | 1469,5 / 2398,5 / 1408,6 | 1155,6 / 1971,7 / 1110,6 | 3567,8 / 5934,4 / 3396,6 |
-| J / J_eff [10⁻⁹ kg·m²] | 46,4 / 36,7 | 893,5 | 6346 | 6365 | 17304 |
-| k_T [N·s²] (ohne Duct) | 2,8656e−9 | 9,3169e−8 | 1,0635e−6 | 1,0635e−6 | 2,8035e−6 |
-| k_Q [N·m·s²] | 1,2018e−11 | 1,0643e−9 | 1,1002e−8 | 1,1002e−8 | 3,1769e−8 |
+| y_com / y_m [mm] | 0,7 / 9,3 | 10,3 / 1,7 | 22,0 / −7,0 | −4,2 / 18,7 | 28,5 / −13,5 |
+| Ixx / Iyy / Izz [10⁻⁶ kg·m²] | 7,99 / 13,63 / 7,75 | 473,1 / 820,8 / 461,4 | 1469,5 / 2398,5 / 1408,6 | 1089,6 / 1976,3 / 1044,6 | 3567,8 / 5934,4 / 3396,6 |
+| J / J_eff [10⁻⁹ kg·m²] | 46,4 / 36,7 | 893,5 | 6346 | 6470 | 17304 |
+| k_T [N·s²] (ohne Duct) | 2,8656e−9 | 9,3169e−8 | 1,0635e−6 | 1,0812e−6 | 2,8035e−6 |
+| k_Q [N·m·s²] | 1,2018e−11 | 1,0643e−9 | 1,1002e−8 | 1,1919e−8 | 3,1769e−8 |
 | K_t [mN·m/A] / R_m [mΩ] | 0,434 / 233,0 | 2,076 / 149,0 | 5,457 / 60,7 | 5,134 / 65,7 | 7,346 / 75,7 |
 | I_0 / I_lim / I_in [A] | 0,105 / 6,5 / 4,0 | 0,54 / 32,5 / 20,0 | 1,35 / 71,5 / 44,0 | 1,26 / 71,5 / 44,0 | 1,35 / 71,5 / 44,0 |
 | R_pack [mΩ] / I_cont [A] / P_aux [W] | 43 / 13,5 / 1,80 | 43 / 61,8 / 3,15 | 36 / 156 / 7,50 | 39 / 132 / 3,00 | 75 / 44 / 7,50 |
 | v_h [m/s] | 5,69 | 7,42 | 6,29 | 5,70 | 5,83 |
-| τ_phys → τ_m [ms] | 50,5 → **40,0** | 26,0 | 12,3 | 15,0 | 22,6 |
-| b_roll / b_pitch [rad/s²] | 2557 / 2481 | 1353 / 1320 | 1969 / 1887 | 2289 / 2200 | 1491 / 1419 |
-| b_yaw stat / inst | 231 / 1928 | 151 / 949 | 150 / 3195 | 175 / 3386 | 93 / 1301 |
-| Hitbox B × H [mm], Fuß [mm] | 83 × 24, −14,6 | 182 × 47, −13,3 | 289 × 66, −25,0 | 282 × 59, −22,8 | 387 × 74, −31,5 |
+| τ_phys → τ_m [ms] | 50,5 → **40,0** | 26,0 | 12,3 | 15,2 | 22,6 |
+| b_roll / b_pitch [rad/s²] | 2557 / 2481 | 1353 / 1320 | 1969 / 1887 | 2445 / 2344 | 1491 / 1419 |
+| b_yaw stat / inst | 231 / 1928 | 151 / 949 | 150 / 3195 | 187 / 3377 | 93 / 1301 |
+| Hitbox B × H [mm], Fuß [mm] | 83 × 24, −14,6 | 182 × 47, −13,3 | 289 × 66, −25,0 | 282 × 49, −29,9 | 387 × 74, −31,5 |
 
 ---
 
@@ -647,8 +655,12 @@ u⊥,i   = (u_i.x, 0, u_i.z),   v⊥,i = |u⊥,i|
 ### 5.2 Akku ↔ ESC (geschlossene Lösung; explizite Kopplung ist bei 5″ instabil, Schleifenverstärkung ≈ 2,4)
 
 ```
-E      = N·OCV(soc') − V_pol          soc' = soc (batterySag = true) bzw. 1 (batterySag = false: Ruhespannung bleibt voll)
-R_int  = R_pack·(1 + 0,5·max(0, I_heat/I_cont − 1))·(1 + 1,0·max(0, 0,25 − soc)/0,25)   (gilt immer, auch ohne batterySag)
+E      = N·OCV(soc') − V_fast − V_pol soc' = soc (batterySag = true) bzw. 1 (batterySag = false: Akku bleibt bis zuletzt wie voll)
+L      = clamp((0,15 − soc')/0,15, 0, 1)^1,5                      Anstieg bei leerem Akku, unter soc 0 kein weiterer Zuwachs
+R_int  = R_pack·(0,65 + 0,5·max(0, I_heat/I_cont − 1))·(1 + 1,5·L)   Sofort-Anteil (gilt immer, auch ohne batterySag)
+R_fast = 0,35·R_pack·(1 + 6·L)        R_slow = 0,5·R_pack·(1 + 4·L)    bauen sich mit 0,5 s bzw. 5 s auf (5.10)
+stationär (Analyse, Flugzeiten): R_int + R_fast = R_pack·(1 + 0,5·max(0, I/I_cont − 1))·(1 + 1,5·L) + 0,35·R_pack·4,5·L, dazu R_slow;
+   über soc 0,15 ist das bitgleich der Wert von 0.5.1 (R_pack·Rate + 0,5·R_pack)
 I_heat ← I_heat + (|I_bat| − I_heat)·(1 − e^(−h/2 s))           Erwärmung; kurze Stromspitzen erhöhen R_int nicht
 I_aux  = P_aux / max(V_bus,prev, 1 V)
 aktive Kanäle: armed und kein Brownout; sonst Brücke offen (I_i = 0)
@@ -786,7 +798,8 @@ stehen und nimmt nur die Böen weg, „Wind“ (`windScale = 0`) nimmt beides we
 
 ```
 mAhUsed += I_bat·h/3,6/batteryScale;   soc = infiniteBattery ? soc : max(−0,10, 1 − mAhUsed/C)
-V_pol    ← V_pol + (R_1·I_bat − V_pol)·(1 − e^(−h/τ_1))          (Koeffizient vorberechnet)
+V_fast   ← V_fast + (R_fast·I_bat − V_fast)·(1 − e^(−h/0,5 s))    schneller Anteil: Einbruch wächst im Punch, kommt nach ~1 s zurück
+V_pol    ← V_pol + (R_slow·I_bat − V_pol)·(1 − e^(−h/5 s))        langsamer Anteil (Koeffizienten vorberechnet)
 Zelle unter Last U_L = V_bus/N, PT1 1 Hz gefiltert →
    U_L < emptyCellVoltage für ≥ 2 s   → BatteryState.LOW, Event BATTERY_LOW
    U_L < cutoffCellVoltage für ≥ 2 s  → CRITICAL, Event BATTERY_CRITICAL
@@ -1170,8 +1183,8 @@ Ergebnis für die Presets (2-kHz-Loop, Standardfilter):
 | | WHOOP | CINEWHOOP | FREESTYLE | RACER | LONG_RANGE |
 |---|---|---|---|---|---|
 | ω_c [rad/s] | 100 | 150 | 150 | 150 | 150 |
-| Roll P/I/D/F | 21/17/52/120 | 60/71/95/120 | 42/49/31/120 | 36/42/33/120 | 55/65/75/120 |
-| Pitch P/I/D/F | 22/17/53/120 | 62/73/97/120 | 43/51/32/120 | 37/44/34/120 | 58/68/79/120 |
+| Roll P/I/D/F | 21/17/52/120 | 60/71/95/120 | 42/49/31/120 | 33/39/31/120 | 55/65/75/120 |
+| Pitch P/I/D/F | 22/17/53/120 | 62/73/97/120 | 43/51/32/120 | 35/41/32/120 | 58/68/79/120 |
 | Yaw P/I/D/F | 57/74/0/120 | 145/190/0/120 | 51/67/0/120 | 48/63/0/120 | 126/165/0/120 |
 | angleStrength | 71 | 107 | 107 | 107 | 107 |
 | tpaBreakpoint | 0,70 | 0,51 | 0,38 | 0,35 | 0,43 |
@@ -1691,7 +1704,7 @@ gelöst in `OperatingPoints`; `warnings` als `Set.copyOf(EnumSet)`. Cache `Concu
 |---|---|
 | hoverThrottlePercent | Stick bei soc 0,5 (lineare Kurve, Idle 5,5 %, Polarisation stationär); > 100 → NaN und `CANNOT_HOVER` |
 | hoverCurrentA | Akkustrom im Schweben bei soc 1,0 – seit 0.4.2 aus der Energiebilanz (Kap. 18) |
-| maxThrustPerMotorGrams / thrustToWeight | alle Motoren Duty 1, soc 1,0, ohne Polarisation, statisch, Duct-Gewinn 1,15 |
+| maxThrustPerMotorGrams / thrustToWeight | alle Motoren Duty 1, soc 1,0, mit ganzem R_pack (schneller Anteil aufgebaut), ohne langsame Polarisation, statisch, Duct-Gewinn 1,15 |
 | fullThrottleCurrentA / fullThrottleCellVoltage | derselbe Punkt; Strom seit 0.4.2 aus der Energiebilanz (Kap. 18), Zellspannung, `HEAVY_SAG` und `BATTERY_OVERLOAD` weiter aus der Flugphysik; `escLoadPercent = 100·I_phase/escCurrentPerMotor`, `batteryLoadPercent = 100·I_Akku/I_cont` |
 | topSpeedAcroKmh | Horizontalflug, Vollgas, soc 0,8 mit stationärer Polarisation: größte Geschwindigkeit, bei der Vollgas die Höhe noch hält (Bisektion über die Neigung) |
 | topSpeedAngleKmh | Horizontalflug mit Neigung = min(angleLimitDeg Standard 60°, Neigung aus ACRO), Gas so, dass die Höhe gehalten wird |
@@ -1732,24 +1745,24 @@ geprüft, dynamische über die volle `DroneSim` mit Testwelt.
 
 | Kennwert | WHOOP | CINEWHOOP | FREESTYLE | RACER | LONG_RANGE | Toleranz |
 |---|---|---|---|---|---|---|
-| Masse [g] | 28,1 | 286,7 | 525,2 | 430,2 | 846,2 | ±0,01 g |
-| **Schwebegas** Stick soc 1,0 / 0,5 [%] | **47,8 / 55,0** | **32,2 / 36,4** | **20,6 / 23,4** | **16,7 / 19,2** | **22,8 / 27,7** | ±1,5 Punkte |
-| Schwebedrehzahl [U/min] | 43 669 | 24 463 | 10 509 | 9 511 | 8 216 | ±1 % |
-| Schwebe-Akkustrom soc 1,0 [A] (seit 0.4.2 Energiebilanz) | 3,54 | 5,16 | 5,19 | 4,03 | 6,47 | ±3 % |
-| **Max. Schub pro Motor [g]** | **22** | **335** | **1397** | **1430** | **1227** | ±3 % |
-| **Schub/Gewicht** | **3,18** | **4,67** | **10,64** | **13,30** | **5,80** | ±3 % |
-| Vollgas: Drehzahl [U/min] | 77 915 | 52 868 | 34 284 | 34 683 | 19 785 | ±1,5 % |
-| Vollgas: Akkustrom [A] (seit 0.4.2 Energiebilanz) / Zelle unter Last [V] | 10,6 / 4,00 | 67,4 / 3,48 | 115,6 / 3,54 | 124,7 / 3,43 | 84,3 / 2,79 | ±3 % / ±0,05 V |
-| **Topspeed ACRO [km/h]** (Neigung) | **36** (46,4°) | **89** (62,8°) | **140** (71,0°) | **168** (73,4°) | **108** (54,3°) | ±5 % / ±2° |
-| **Topspeed ANGLE 60° [km/h]** | **36**¹ | **84** | **108** | **120** | **108**¹ | ±5 % |
-| **Flugzeit Schweben** (Kap. 18) [min] | **3,9** | **5,6** | **11,1** | **12,1** | **28,5** | ±5 % |
-| **Flugzeit Reisen** (18,5/30/55/60/63 km/h, höchstens Anteil von v_top) [min] | **3,5** | **5,2** | **7,9** | **8,6** | **18,1** | ±5 % |
-| **Flugzeit gemischt / aggressiv** [min] | **2,75 / 2,3** | **4,1 / 2,7** | **5,7 / 4,1** | **3,1 / 2,4** | **15,0 / 9,7** | ±5 % |
-| τ_m im Schweben [ms] (τ_phys) | 40,0 (50,5) | 26,0 | 12,3 | 15,0 | 22,6 | ±5 % |
-| Punch 1 s Vollgas aus Schweben: v_y [m/s] / Spitzen-g (seit 0.5.0 Steigflug nach Impulstheorie) | 10,7 / 2,84 | 20,4 / 4,33 | 38,7 / 9,60 | 47,1 / 11,71 | 27,0 / 5,72 | ±10 % |
+| Masse [g] | 28,1 | 286,7 | 525,2 | 430,6 | 846,2 | ±0,01 g |
+| **Schwebegas** Stick soc 1,0 / 0,5 [%] | **47,8 / 55,0** | **32,2 / 36,4** | **20,6 / 23,4** | **16,6 / 19,0** | **22,8 / 27,7** | ±1,5 Punkte |
+| Schwebedrehzahl [U/min] | 43 669 | 24 463 | 10 509 | 9 438 | 8 216 | ±1 % |
+| Schwebe-Akkustrom soc 1,0 [A] (seit 0.4.2 Energiebilanz) | 3,54 | 5,16 | 5,19 | 4,13 | 6,47 | ±3 % |
+| **Max. Schub pro Motor [g]** | **22** | **335** | **1397** | **1407** | **1227** | ±3 % |
+| **Schub/Gewicht** | **3,18** | **4,67** | **10,64** | **13,07** | **5,80** | ±3 % |
+| Vollgas: Drehzahl [U/min] | 77 915 | 52 868 | 34 284 | 34 119 | 19 785 | ±1,5 % |
+| Vollgas: Akkustrom [A] (seit 0.4.2 Energiebilanz) / Zelle unter Last [V] | 10,6 / 4,00 | 67,4 / 3,48 | 115,6 / 3,54 | 130,3 / 3,40 | 84,3 / 2,79 | ±3 % / ±0,05 V |
+| **Topspeed ACRO [km/h]** (Neigung) | **36** (46,4°) | **89** (62,8°) | **140** (71,0°) | **147** (67,8°) | **108** (54,3°) | ±5 % / ±2° |
+| **Topspeed ANGLE 60° [km/h]** | **36**¹ | **84** | **108** | **123** | **108**¹ | ±5 % |
+| **Flugzeit Schweben** (Kap. 18) [min] | **3,9** | **5,6** | **11,1** | **11,8** | **28,5** | ±5 % |
+| **Flugzeit Reisen** (18,5/30/55/60/63 km/h, höchstens Anteil von v_top) [min] | **3,5** | **5,2** | **7,9** | **7,8** | **18,1** | ±5 % |
+| **Flugzeit gemischt / aggressiv** [min] | **2,75 / 2,3** | **4,1 / 2,7** | **5,7 / 4,1** | **2,9 / 2,2** | **15,0 / 9,7** | ±5 % |
+| τ_m im Schweben [ms] (τ_phys) | 40,0 (50,5) | 26,0 | 12,3 | 15,2 | 22,6 | ±5 % |
+| Punch 1 s Vollgas aus Schweben: v_y [m/s] / Spitzen-g (seit 0.5.0 Steigflug nach Impulstheorie) | 10,7 / 2,84 | 20,4 / 4,33 | 38,7 / 9,60 | 41,1 / 11,21 | 27,0 / 5,72 | ±10 % |
 | Fallgeschwindigkeit flach, disarmed [m/s] | 6,8 | 15,2 | 16,4 | 18,8 | 18,0 | ±3 % |
-| Topspeed geradeaus, frischer Akku (`infiniteBattery`, ohne `batterySag`) [km/h] | 52 | 95 | 148 | 176 | 114 | Bänder in `TopSpeedTest` |
-| Sturzflug senkrecht, Vollgas, frischer Akku [km/h] | 63 | 111 | 161 | 192 | 127 | ≥ geradeaus, ≤ 1,15 × geradeaus (Whoop 1,25 ×, Cinewhoop 1,2 ×) |
+| Topspeed geradeaus, frischer Akku (`infiniteBattery`, ohne `batterySag`) [km/h] | 52 | 95 | 148 | 153 | 114 | Bänder in `TopSpeedTest` |
+| Sturzflug senkrecht, Vollgas, frischer Akku [km/h] | 63 | 111 | 161 | 166 | 127 | ≥ geradeaus, ≤ 1,15 × geradeaus (Whoop 1,25 ×, Cinewhoop 1,2 ×) |
 | **Rollraten-Antwort** t90 0 → 500 °/s [ms], 144 fps | **111** | **76** | **49** | **56** | **76** | ≤ 1,25 × Wert + 5 ms |
 | … bei 60 fps | 117 | 83 | 50 | 50 | 83 | ≤ 1,25 × Wert + 5 ms |
 | Überschwingen Roll-Sprung [%] | 1,7 | 4,4 | 0,5 | 0,9 | 3,3 | ≤ 8 % |
@@ -1759,6 +1772,14 @@ geprüft, dynamische über die volle `DroneSim` mit Testwelt.
 | ANGLE-Sinus ±20°/0,5 Hz, RMS-Fehler [°] 144 / 60 fps | 0,39 / 0,73 | 0,45 / 0,87 | 0,49 / 0,92 | 0,48 / 0,91 | 0,46 / 0,89 | ≤ 1,0° / ≤ 1,5° |
 
 ¹ Neigung aus ACRO (46,4°, 57,1° bzw. 58,0°) liegt unter dem Winkel-Limit, ANGLE ist daher so schnell wie ACRO.
+
+**RACER seit dem 11.10.2026 (0.5.0):** Das Race-Preset fliegt mit dem flachen Dreiblatt `p51_29_3b` (5,1×2,9×3) auf dem
+True-X-Rahmen statt mit `p51_3b` (5,1×4,6×3). Die RACER-Spalten dieser Tabelle und der Tabelle in Abschnitt 4.9 zeigen
+den neuen Stand (stationäre Zeilen, Punch, Topspeeds); die dynamischen Zeilen darunter (Rollraten-Antwort bis
+ANGLE-Sinus) bleiben in ihren Toleranzen. Mit dem 4,6″-Prop auf demselben Rahmen gelten weiter die alten Werte
+(Schub/Gewicht 13,30, Vollgas 34 683 U/min und 124,7 A, Topspeed 168 km/h, Punch 47,1 m/s, Flugzeit 12,1 / 8,6 / 3,1 /
+2,4 min) – dieser Aufbau steht als `RACER_040` weiter in den Goldens. Herleitung und Quellen:
+`docs/design/realism/motors-props.md` §12.
 
 **Messdefinitionen.** Rollraten-Antwort: Schwebeflug in ACRO bei soc 0,5 (`infiniteBattery`), Schwebe-Stick,
 Frames zu 1/144 s; zum Zeitpunkt t0 springt der Roll-Stick an einer Frame-Grenze auf den Wert für 500 °/s
@@ -2088,7 +2109,8 @@ der Propebene (Whoop: knapp über den Ducts). Vorher galt die Altformel (15 mm �
 8–22 mm über die Propebene setzte; der Racer zeigte 0 %. Nur `lensUp`/`lensForward` ändern sich, die Flugphysik nicht
 (Bewegungs-Fingerabdrücke bitgleich). Recherche, Zielbereiche und alle Rahmen: `docs/design/realism/props-in-view.md`.
 Eingebaute Presets (Bild gemessen / Analyse bei 1708 × 960): WHOOP 9,0 % (8,99 / 9,02), CINEWHOOP 7,3 % (7,27 / 7,29),
-FREESTYLE 8,4 % (8,35 / 8,38), RACER 11,2 % (11,15 / 11,21), LONG_RANGE 9,5 % (9,44 / 9,48) – keine Warnung.
+FREESTYLE 8,4 % (8,35 / 8,38), RACER 11,2 % (11,15 / 11,21; seit dem 11.10.2026 als True-X 6,4 %, 6,36 / 6,39),
+LONG_RANGE 9,5 % (9,44 / 9,48) – keine Warnung.
 
 ### 17.8 Charakterisierung (Tests `AddonCharacterizationTest`, `FrameGeometryTest`, Teile nur über `PartIndex.detached`)
 
@@ -2413,3 +2435,84 @@ Nebenwirkungen: Punch-Geschwindigkeit nach 1 s −12 % (FREESTYLE 41,2 → 36,4 
 Beschleunigung aus dem Schweben auf 100+ km/h etwas langsamer (FREESTYLE nach 1 s 133 → 114 km/h), flache
 Fallgeschwindigkeit disarmed 20,8 → 16,4 m/s. Neuer Test `TopSpeedTest` (Geradeausflug mit frischem Akku,
 Sturzflug, `batterySag = false`).
+
+49. **Akku-Sag mit zwei Zeitkonstanten und starkem Anstieg bei leerem Akku (0.5.2, Rückmeldung eines FPV-Piloten: Spannung
+    fällt zu gleichmäßig, bei fast leerem Akku fehlt der große Einbruch im Punch):** Vorher wirkte der ganze `R_pack` sofort,
+    dazu eine langsame Polarisation; der Einbruch war bei vollem und fast leerem Akku praktisch gleich groß (5″, Vollgas im
+    freien Flug: 0,58 V je Zelle bei 100 %, 0,63 V bei 15 %) und sprang beim Loslassen sofort zurück. Jetzt (5.2, 5.10):
+    - `R_pack` wird geteilt: 65 % sofort, 35 % mit τ = 0,5 s. Die echten Logs mit Stromsensor zeigen als Sofort-Widerstand
+      je Zelle 3,3–3,6 mΩ (5″ 6S 1300), 3,2 mΩ (7″ 6S 2200), 27–28 mΩ (2S 450 HV); das Modell hatte 6,0 / 4,4 / 36–38 mΩ und
+      hat jetzt 3,9–4,0 / 2,9 / 21 mΩ (`docs/tools/blackbox-calibration.md`, Abschnitt Akku). Die langsame Polarisation
+      (0,5·R_pack, 5 s) bleibt.
+    - Unter 25 % Ladung (seit Entscheidung 50: unter 15 % mit `L^1,5`) wachsen alle drei Anteile mit `L³`, der schnelle am stärksten (ohmsch ×2,5, schnell ×7, langsam ×5
+      bei leer; bei 15 % erst +10 / +38 / +26 %, bei 10 % +32 / +130 / +86 %). Die Form folgt Ersatzschaltbildern für
+      Lithium-Polymer-Zellen (Widerstände steigen exponentiell unter ~15 % Ladung); die echten Logs reichen nicht unter
+      ~14 % und zeigen bis dorthin keinen Anstieg – das passt zum späten Knie, die Höhe unter 10 % ist aus der Literatur.
+    - Die Welt-Regel „Spannungseinbruch“ aus nimmt auch diesen Anstieg weg (Akku bis zuletzt wie voll).
+    - Dauerwerte über 25 % Ladung sind bitgleich (alle 150 Airframe-Goldens unverändert): Schub/Gewicht, Vollgasstrom,
+      Topspeed und Schweben der Werkbank ändern sich nicht. Flugzeiten der 27 Kalibrier-Aufbauten: 24 unverändert bis
+      ±0,5 %, größte Abweichung +2,3 % (aggressiv, 7″ Li-Ion), weil das Knie später, dann steiler einsetzt.
+    - Erklärte Änderungen im Flug: Der erste Moment eines Punches mit vollem Akku ist kräftiger (Spitze 2,79 → 2,98 g Whoop,
+      4,20 → 4,69 g Cinewhoop, 9,34 → 10,44 g Freestyle, 11,27 → 12,84 g Race, 5,51 → 6,47 g Long Range; Geschwindigkeit
+      nach 1 s +7 bis +11 %), nach rund 2 s ist der Einbruch wie vorher. Mit fast leerem Akku ist der Punch schwächer
+      (Freestyle bei 10 %: 29,6 N statt 40,9 N nach 0,5 s). Alle Flug-Goldens (`builtin_regression.txt`,
+      `builtin_ground_rest.txt`) sind neu.
+
+    Vollgas aus dem Schweben im freien Flug, Einbruch je Zelle nach 0,5 s (in Klammern nach 1,5 s), Stand nach Entscheidung 50,
+    `tools/calibration.sh` schreibt die ganze Tabelle nach `build/calibration/battery_sag.txt`:
+
+    | Ladung | Whoop 65 (1S) | Cinewhoop 3″ (4S) | Freestyle 5″ (6S) | Race 5″ (6S) | Long Range 7″ (6S Li-Ion) |
+    |---|---|---|---|---|---|
+    | 100 % | 0,25 (0,28) V | 0,57 (0,65) V | 0,51 (0,56) V | 0,59 (0,65) V | 0,83 (0,86) V |
+    | 50 % | 0,20 (0,22) V | 0,49 (0,54) V | 0,43 (0,47) V | 0,50 (0,54) V | 0,70 (0,69) V |
+    | 20 % | 0,20 (0,21) V | 0,48 (0,53) V | 0,42 (0,46) V | 0,49 (0,53) V | 0,66 (0,66) V |
+    | 10 % | 0,31 (0,37) V | 0,72 (0,92) V | 0,64 (0,78) V | 0,74 (0,89) V | 0,88 (0,93) V |
+    | 5 % | schaltet ab (unter 2,9 V) | 0,89 (1,08) V | 0,86 (1,00) V | 0,97 (1,12) V | 1,00 (1,06) V |
+
+    Erholung beim Freestyle mit 10 %: 0,1 s nach dem Loslassen fehlen noch 0,36 V, nach 1 s 0,16 V, nach 5 s 0,11 V (in 0.5.1
+    0,05 V nach 0,1 s). Verworfen: (a) den Widerstand voller Akkus senken, damit ein voller Akku „kaum“ einbricht – die
+    echten Logs zeigen bei Vollgas auch mit vollem Akku 0,4–0,8 V je Zelle, und Schub, Topspeed und Flugzeiten sind auf
+    diesen Widerstand kalibriert; (b) der Anstieg schon ab 30–40 % Ladung – die Logs zeigen bis 14 % keinen, und die
+    Flugzeiten der LiHV- und Li-Ion-Aufbauten würden um mehrere Prozent kürzer; (c) eine schärfere Ruhespannungskurve – das
+    Knie ist schon steil (letzte 5 % fünfmal so steil wie die Mitte), die Quellen sind sich über 10–20 % nicht einig;
+    (d) Akkutemperatur (echte Packs werden im Flug um 30–50 % niederohmiger) – das Flugmodell kennt keine Akkutemperatur,
+    sie müsste mit dem Akku-Item gespeichert und übertragen werden. Tests: `BatterySagTest`, `OpenLoopPhysicsTest`
+    (Zeitkonstanten, Punch-Spitzen), `BatteryWarningTest`; Selbsttest „akku-sag:“.
+
+50. **Entladekurve wie ein echter 6S-Entladetest (0.5.2, Rückmeldung desselben Piloten mit dem Diagramm eines Entladetests
+    bei 15 C, rund 20 6S-LiPos mit 1200–1800 mAh):** Echt: Start bei 25,2 V, schneller Abfall auf rund 24 V in den ersten
+    5 %, dann lange flach bis rund 21,5 V, in den letzten rund 10 % ein steiles Knie bis 18,6 V (3,1 V je Zelle); ein
+    Gasstoß kurz vor Schluss lässt die Spannung um 2–3 V mehr einbrechen und sie kommt danach zurück. Das Modell nach
+    Entscheidung 49 knickte zu früh und zu weich ab (6S 1300 bei 15 C: 3,45 V je Zelle bei 90 % der Entladung, 3,32 V bei
+    95 %), die Ruhespannung von LiPo lag zwischen 10 und 90 % 0,02–0,05 V unter veröffentlichten Tabellen, die von Li-Ion
+    unter 30 % bis 0,2 V unter NMC/NCA-Zellen. Jetzt:
+    - **Ruhespannung (4.5):** LiPo nach den üblichen Tabellen (3,61 / 3,69 / 3,73 V bei 5 / 10 / 20 %, 4,01 / 4,10 V bei
+      80 / 90 %), LiHV und Li-Ion nur unter 50 % angehoben (LiHV 3,62 / 3,71 V bei 5 / 10 %, Li-Ion 3,26 / 3,37 / 3,46 V bei
+      5 / 10 / 20 %). Der Wert bei 50 % bleibt bei allen drei gleich: Dort leitet `ParamDerivation` Schwebespannung und
+      Steuerautorität ab und `PidAutoTune` die PIDs – so bleiben Handling, Auto-PIDs und alle Airframe-Werte außer den
+      Flugzeiten bitgleich.
+    - **Anstieg bei leerem Akku (5.2):** erst unter 15 % statt 25 %, dafür mit Exponent 1,5 statt 3 (bei 10 %: ohmsch
+      +29 %, schnell +115 %, langsam +77 %; bei 5 % +82 / +327 / +218 %; bei 0 % wie bisher ×2,5 / ×7 / ×5). Die echten
+      Logs zeigen bis rund 11–14 % keinen Anstieg (Pavo Pico, `docs/tools/blackbox-calibration.md`).
+    - **Ergebnis bei 15 C (6S 1300, `DischargeCurveTest`, Plot `docs/design/realism/battery-discharge.svg`):** 23,9 V
+      nach 5 %, 21,8 V bei 50 %, 21,1 V bei 90 %, 20,3 V bei 95 %, 18,6 V bei 96 % der Nennkapazität; die letzten 10 % fallen
+      knapp 11-mal so steil wie die Mitte (0.5.1: 5,6-mal, 20,2 V bei 90 %). Bei 1 / 5 / 30 C liefert der Pack 106 / 104 / 91 % der Nennkapazität bis
+      3,1 V. Punch am Ende des Packs (5″ Freestyle, 6 % Ladung, 1 s Vollgas aus dem Schweben): 5,4 V Einbruch statt 2,7 V
+      bei 50 %, 1 s nach dem Loslassen sind 4,4 V zurück, nach 3 s fehlen noch 0,6 V.
+    - **OSD (`osd.VoltageDisplay`):** Die angezeigte Spannung ist wie bei Betaflight geglättet (`vbat_display_lpf_period`
+      30, τ ≈ 0,48 s) und blinkt gelb bzw. rot, solange sie unter Warn- bzw. Abschaltspannung der Zellchemie liegt
+      (Rückweg 0,03 V). Am Ende des Packs blinkt sie so bei jedem Punch und hört danach wieder auf; ein voller Akku blinkt
+      im Punch nicht. Warnungen, Alarme und Ereignisse (`BatteryAlarm`, 2 s) bleiben unverändert.
+    - **Flugzeiten** der 32 Kalibrier-Aufbauten gegen 0.5.1: Median +0,4 %, eingebaute Presets −0 bis +1,2 %, Long Range
+      7″ aggressiv +4,1 %, Li-Ion-Aufbauten aus Just More Parts aggressiv +6 bis +10 % (die alte Li-Ion-Kurve ließ sie zu
+      früh landen); alle bleiben in ihren Referenzbereichen, die Antwort des Besitzers zum 65-mm-Whoop gilt weiter.
+
+    Verworfen: (a) die langsame Polarisation senken (`POL_FRACTION` 0,5 → 0,25), damit die Mitte bei 15 C so hoch liegt
+    wie im Diagramm – die 5″-Logs sprechen dafür, die Whoop-, Pavo- und Firefly-Logs dagegen (dort bricht das Modell
+    schon jetzt weniger ein als echt), und die Topspeeds der Whoops würden steigen; (b) die Ruhespannung bei 50 % auf die
+    Tabellenwerte heben (+0,04 V) – das ändert Steuerautorität und Auto-PIDs aller Drohnen, also das Handling, für einen
+    Unterschied, der unter der Streuung echter Packs liegt; (c) die Warnstufen selbst ohne Verzögerung schalten wie
+    Betaflight mit `vbat_duration_for_warning` 0 – dann flackern Warntext, Töne und Ereignisse bei jedem Punch ab der
+    Hälfte des Akkus; (d) die Anzeige ungeglättet lassen – die Rohspannung springt beim Anfahren der Motoren für 50 ms
+    weit tiefer, als ein Flugcontroller sie zeigt. Offen: Akkutemperatur (ein 15-C-Entladetest erwärmt den Pack, der
+    Innenwiderstand sinkt dabei; das Modell liegt deshalb in der Mitte des Tests rund 0,4 V unter dem Diagramm).

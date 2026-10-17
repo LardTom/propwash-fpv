@@ -1,6 +1,7 @@
 package de.lardtom.propwash.race;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.network.PropwashNet;
@@ -8,9 +9,11 @@ import de.lardtom.propwash.network.ServerPayloadContext;
 import de.lardtom.propwash.server.ServerRules;
 import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
+import de.lardtom.propwash.zone.ZoneField;
+import de.lardtom.propwash.zone.ZoneLimits;
+import de.lardtom.propwash.zone.ZoneServer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,6 +43,7 @@ public final class RaceServer {
     public static final long START_SLACK_NANOS = 3L * LapTracker.SECOND;
     public static final long COUNTDOWN_SLACK_NANOS = RaceLobby.MAX_COUNTDOWN_SECONDS * LapTracker.SECOND;
     public static final long CROSSING_TOLERANCE_NANOS = 250_000_000L;
+    public static final long ZONE_SETTLE_NANOS = ZoneLimits.MAX_TRANSITION_TENTHS * 100_000_000L;
     private static final long BASE_TOLERANCE_NANOS = 1_500_000_000L;
     private static final double GATE_SEARCH_MARGIN = 4.0;
     private static final double CONTINUITY_EPSILON = 1.0E-6;
@@ -72,11 +77,30 @@ public final class RaceServer {
         int windowReports;
         long requestWindowStart;
         int requestWindow;
-        int lapAssist;
-        int raceAssist;
+        final AssistTimeline assist = new AssistTimeline();
+        final ZoneField zones = new ZoneField();
+        int zoneDrone = Integer.MIN_VALUE;
+        long zoneNanos;
+        AssistReasons raceAssist = AssistReasons.NONE;
         boolean hasLastMove;
         Vec3 lastMove = Vec3.ZERO;
         long lastMoveNanos;
+
+        AssistReasons physics(QuadcopterEntity drone, long now) {
+            MinecraftServer server = drone.level().getServer();
+            if (server == null) {
+                return AssistCheck.physics(ZoneServer.resolve(drone.level(), drone.getX(), drone.getY(), drone.getZ()), drone.physicsModified());
+            }
+            boolean fresh = drone.getId() != this.zoneDrone || now < this.zoneNanos || now - this.zoneNanos > ZONE_SETTLE_NANOS;
+            if (fresh) {
+                this.zones.reset();
+            }
+            this.zones.update(ZoneServer.zones(drone.level()), ZoneServer.dimension(drone.level()), WorldRules.physics(server), drone.getX(),
+                    drone.getY(), drone.getZ(), fresh ? 0.0 : (now - this.zoneNanos) / 1.0e9);
+            this.zoneDrone = drone.getId();
+            this.zoneNanos = now;
+            return AssistCheck.physics(this.zones.resolution(), this.zones.blendDetails(), drone.physicsModified());
+        }
 
         boolean allow(long now) {
             if (now - this.windowStart > LapTracker.SECOND || now < this.windowStart) {
@@ -99,8 +123,7 @@ public final class RaceServer {
             this.lap = 0;
             this.lapSum = 0L;
             this.lastEventNanos = now;
-            this.lapAssist = LapAssist.NONE;
-            this.raceAssist = LapAssist.NONE;
+            this.raceAssist = AssistReasons.NONE;
             this.startedAt = now;
             this.lastEndSequence = LapVerifier.NO_SEQUENCE;
             this.pending.clear();
@@ -171,32 +194,55 @@ public final class RaceServer {
         }
     }
 
-    static boolean modifiedPhysics(QuadcopterEntity drone) {
-        return serverAssist(drone) != LapAssist.NONE;
+    public static int serverAssist(QuadcopterEntity drone) {
+        return serverReasons(drone).mask();
     }
 
-    public static int serverAssist(QuadcopterEntity drone) {
-        int mask = LapAssist.NONE;
-        if (drone.physicsModified() || WorldRules.physics(drone.level().getServer()).modified()) {
-            mask |= LapAssist.WORLD_PHYSICS.bit();
+    public static AssistReasons serverReasons(QuadcopterEntity drone) {
+        AssistReasons physics = AssistCheck.physics(ZoneServer.resolve(drone.level(), drone.getX(), drone.getY(), drone.getZ()),
+                drone.physicsModified());
+        return physics.plus(AssistCheck.drone(drone.build().isCreative(), issues(drone.build())));
+    }
+
+    public static List<String> issues(DroneBuild build) {
+        List<String> out = new ArrayList<>();
+        for (DroneBuild.Issue issue : build.problems()) {
+            out.add(issue.name().toLowerCase(Locale.ROOT));
         }
-        if (drone.build().isCreative()) {
-            mask |= LapAssist.CREATIVE_DRONE.bit();
-        }
-        if (!drone.build().buildable()) {
-            mask |= LapAssist.PARTS_MISMATCH.bit();
-        }
-        return mask;
+        return out;
     }
 
     static void onDroneMoved(QuadcopterEntity drone, ServerPlayer pilot, Vec3 from, Vec3 to) {
-        int assist = serverAssist(drone);
-        if (assist != LapAssist.NONE) {
-            Session session = SESSIONS.computeIfAbsent(pilot.getUUID(), uuid -> new Session());
-            session.lapAssist |= assist;
-            session.raceAssist |= assist;
+        onDroneMoved(drone, pilot, from, to, System.nanoTime());
+    }
+
+    public static void onDroneMoved(QuadcopterEntity drone, ServerPlayer pilot, Vec3 from, Vec3 to, long now) {
+        Session session = SESSIONS.computeIfAbsent(pilot.getUUID(), uuid -> new Session());
+        AssistReasons build = AssistCheck.drone(drone.build().isCreative(), issues(drone.build()));
+        session.assist.observe(now, session.physics(drone, now).plus(build));
+        onDroneMoved(pilot, from, to, drone.orientation(), now);
+    }
+
+    public static void onHomeReset(QuadcopterEntity drone, ServerPlayer pilot) {
+        Session session = SESSIONS.get(pilot.getUUID());
+        if (session != null) {
+            RaceLobby.Heat heat = HEATS.get(session.courseId);
+            if (heat != null) {
+                heat.drop(pilot.getUUID());
+            }
+            session.reset();
+            session.hasLastMove = false;
         }
-        onDroneMoved(pilot, from, to, drone.orientation(), System.nanoTime());
+        leaveLobbies(pilot.level().getServer(), pilot.getUUID());
+    }
+
+    public static int sessionCourse(ServerPlayer pilot) {
+        Session session = SESSIONS.get(pilot.getUUID());
+        return session == null ? GateEntity.NO_COURSE : session.courseId;
+    }
+
+    public static void observe(ServerPlayer pilot, AssistReasons reasons, long now) {
+        SESSIONS.computeIfAbsent(pilot.getUUID(), uuid -> new Session()).assist.observe(now, reasons);
     }
 
     public static void onDroneMoved(ServerPlayer pilot, Vec3 from, Vec3 to, long now) {
@@ -424,11 +470,11 @@ public final class RaceServer {
         session.lastEventNanos = now;
         session.lastEndSequence = verified.endSequence();
         QuadcopterEntity drone = pilotedDrone(player);
-        int assist = session.lapAssist | report.assistMask() | (drone != null ? serverAssist(drone) : LapAssist.NONE);
-        session.lapAssist = LapAssist.NONE;
-        session.raceAssist |= assist;
+        AssistReasons assist = lapReasons(session, report, serverStart, verified.endNanos(), drone);
+        session.raceAssist = session.raceAssist.plus(assist);
+        notifyServerVerdict(player, report, assist);
         String frame = drone == null ? "" : drone.build().frame().key();
-        if (assist != LapAssist.NONE) {
+        if (assist.any()) {
             session.ghost.trim(verified.endNanos() - LapTracker.SECOND);
             if (WorldRules.on(player.level().getServer(), WorldRuleSpecs.SAVE_ASSISTED_LAPS)
                     && registry.submitAssistedLap(course, player, frame, lapNanos, assist)) {
@@ -477,8 +523,8 @@ public final class RaceServer {
             session.reset();
             return Verdict.OUT_OF_SEQUENCE;
         }
-        int assist = session.raceAssist | session.lapAssist;
-        if (assist == LapAssist.NONE) {
+        AssistReasons assist = session.raceAssist;
+        if (assist.none()) {
             if (registry.submitRace(course, player, session.lap, report.totalNanos())) {
                 player.sendSystemMessage(Component.translatable("propwash.race.server.race_best", session.lap, CourseRegistry.ref(course),
                         RaceFormat.time(report.totalNanos())).withStyle(ChatFormatting.GOLD));
@@ -492,8 +538,10 @@ public final class RaceServer {
         if (heat != null) {
             int place = heat.finish(player.getUUID());
             if (place > 0 && heat.multiplayer()) {
-                Component message = Component.translatable("propwash.race.server.heat_place", place, player.getDisplayName(),
-                        RaceFormat.time(report.totalNanos())).withStyle(place == 1 ? ChatFormatting.GOLD : ChatFormatting.WHITE);
+                Component message = (assist.none() ? Component.translatable("propwash.race.server.heat_place", place, player.getDisplayName(),
+                        RaceFormat.time(report.totalNanos())) : Component.translatable("propwash.race.server.heat_place_assisted", place,
+                        player.getDisplayName(), RaceFormat.time(report.totalNanos()), assistReasons(assist)))
+                        .withStyle(place == 1 ? ChatFormatting.GOLD : ChatFormatting.WHITE);
                 for (UUID pilot : heat.pilots()) {
                     ServerPlayer other = player.level().getServer().getPlayerList().getPlayer(pilot);
                     if (other != null) {
@@ -516,16 +564,26 @@ public final class RaceServer {
     }
 
     public static Component assistReasons(int mask) {
-        MutableComponent out = Component.empty();
-        boolean first = true;
-        for (LapAssist assist : LapAssist.list(mask)) {
-            if (!first) {
-                out.append(Component.translatable("propwash.race.assist.separator"));
-            }
-            out.append(Component.translatable(assist.translationKey()));
-            first = false;
+        return assistReasons(AssistReasons.of(mask));
+    }
+
+    public static Component assistReasons(AssistReasons reasons) {
+        return AssistWords.describe(reasons);
+    }
+
+    static AssistReasons lapReasons(Session session, RacePayloads.RaceReportC2S report, long start, long end, @Nullable QuadcopterEntity drone) {
+        AssistReasons fallback = drone != null ? serverReasons(drone) : AssistReasons.NONE;
+        return AssistCheck.lapVerdict(session.assist, start, end, fallback, report.reasons());
+    }
+
+    private static void notifyServerVerdict(ServerPlayer player, RacePayloads.RaceReportC2S report, AssistReasons verdict) {
+        if (verdict.mask() == report.assistMask()) {
+            return;
         }
-        return out;
+        Component text = verdict.any()
+                ? Component.translatable("propwash.race.server.verdict_assisted", report.lap(), assistReasons(verdict))
+                : Component.translatable("propwash.race.server.verdict_clean", report.lap(), assistReasons(report.reasons()));
+        player.sendSystemMessage(text.copy().withStyle(ChatFormatting.GRAY));
     }
 
     public static Component className(String frame) {
@@ -616,7 +674,7 @@ public final class RaceServer {
                 Leaderboard.Entry overall = board.bestAssisted(entry.player(), null);
                 int overallRank = entry.equals(overall) ? board.assistedRank(entry.player(), null) : -1;
                 rows.add(new RacePayloads.BoardRow(entry.name(), entry.frame(), entry.nanos(), entry.dateMillis(), entry.player().equals(viewer),
-                        board.assistedRank(entry.player(), entry.frame()), overallRank, entry.assist()));
+                        board.assistedRank(entry.player(), entry.frame()), overallRank, entry.assist(), entry.details()));
             }
         }
         int raceLaps = CourseEdits.lapsFor(course, viewer);

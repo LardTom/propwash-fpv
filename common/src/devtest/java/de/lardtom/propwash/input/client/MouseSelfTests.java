@@ -25,15 +25,20 @@ import de.lardtom.propwash.input.client.screen.MousePreview;
 import de.lardtom.propwash.input.client.screen.MouseSetupScreen;
 import de.lardtom.propwash.input.client.screen.ReceiverTab;
 import de.lardtom.propwash.input.client.screen.ReceiverWizardScreen;
+import de.lardtom.propwash.input.client.screen.remote.MouseDemoView;
 import de.lardtom.propwash.sim.StabMode;
 import de.lardtom.propwash.ui.SettingsSearch;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
 import de.lardtom.propwash.ui.client.search.SearchBar;
+import de.lardtom.propwash.ui.client.theme.Metrics;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -154,6 +159,10 @@ public final class MouseSelfTests {
         SESSION,
         HOLD_PUSH,
         HOLD_KEEP,
+        INVERT_PUSH,
+        INVERT_KEY,
+        NORMAL_KEY,
+        KEY_RELEASE,
         SCREEN,
         SCREEN_MOVE,
         CENTER_PUSH,
@@ -179,6 +188,7 @@ public final class MouseSelfTests {
         private @Nullable String selected;
         private @Nullable MouseSettings mouse;
         private @Nullable Boolean startInAngle;
+        private @Nullable Boolean invertPitch;
         private @Nullable Screen screen;
         private float rateMin = Float.MAX_VALUE;
         private float rateMax = -Float.MAX_VALUE;
@@ -214,6 +224,8 @@ public final class MouseSelfTests {
                     this.selected = config.selectedGuid;
                     this.mouse = config.mouse.copy();
                     this.startInAngle = config.keyboard.startInAngle;
+                    this.invertPitch = config.invertPitch;
+                    config.invertPitch = false;
                     config.selectedGuid = InputConfig.MOUSE_GUID;
                     config.mouse = testSettings();
                     config.keyboard.startInAngle = true;
@@ -258,6 +270,45 @@ public final class MouseSelfTests {
                     }
                     if (waited < 10) {
                         yield StepResult.pending();
+                    }
+                    InputConfig.get().invertPitch = true;
+                    MouseCapture.INSTANCE.inject(0.0F, -6.0F * COUNTS_PER_CM, 0.0F);
+                    this.enter(Stage.INVERT_PUSH, ctx.tick());
+                    yield StepResult.pending();
+                }
+                case INVERT_PUSH -> {
+                    if (Math.abs(p.pitch() + 0.5F) > 0.01F || Math.abs(p.roll()) > 0.01F) {
+                        yield waited > 20 ? StepResult.fail("„Nick umkehren“: 6 cm vor führt von +50 % nicht auf Nick −50 %: " + sticks()) : StepResult.pending();
+                    }
+                    InputKeys.effective(InputKeys.PITCH_FORWARD).setDown(true);
+                    this.enter(Stage.INVERT_KEY, ctx.tick());
+                    yield StepResult.pending();
+                }
+                case INVERT_KEY -> {
+                    if (p.pitch() > -0.95F) {
+                        yield waited > 40 ? StepResult.fail("„Nick umkehren“: Taste „Nase runter“ zieht die Nase nicht hoch: " + sticks()) : StepResult.pending();
+                    }
+                    InputConfig.get().invertPitch = false;
+                    this.enter(Stage.NORMAL_KEY, ctx.tick());
+                    yield StepResult.pending();
+                }
+                case NORMAL_KEY -> {
+                    float expected = -0.5F + InputConfig.get().keyboard.rollPitchLimit;
+                    if (Math.abs(p.pitch() - expected) > 0.02F) {
+                        yield waited > 60 ? StepResult.fail("ohne „Nick umkehren“ drückt die Taste „Nase runter“ nicht nach vorn (erwartet "
+                                + expected + "): " + sticks()) : StepResult.pending();
+                    }
+                    InputKeys.effective(InputKeys.PITCH_FORWARD).setDown(false);
+                    MouseCapture.INSTANCE.inject(0.0F, -6.0F * COUNTS_PER_CM, 0.0F);
+                    this.enter(Stage.KEY_RELEASE, ctx.tick());
+                    yield StepResult.pending();
+                }
+                case KEY_RELEASE -> {
+                    if (waited < 30) {
+                        yield StepResult.pending();
+                    }
+                    if (Math.abs(p.pitch() - 0.5F) > 0.01F || Math.abs(p.roll()) > 0.01F) {
+                        yield StepResult.fail("nach „Nick umkehren“ steht der Knüppel nicht wieder auf Nick 50 %: " + sticks());
                     }
                     this.screen = new Screen(Component.literal("Propwash-Selbsttest")) {
                     };
@@ -482,6 +533,10 @@ public final class MouseSelfTests {
             if (this.mouse != null) {
                 config.mouse = this.mouse;
             }
+            if (this.invertPitch != null) {
+                config.invertPitch = this.invertPitch;
+            }
+            InputKeys.effective(InputKeys.PITCH_FORWARD).setDown(false);
             if (this.startInAngle != null) {
                 config.keyboard.startInAngle = this.startInAngle;
             }
@@ -538,6 +593,8 @@ public final class MouseSelfTests {
         private int since;
         private @Nullable String selected;
         private @Nullable MouseSettings mouse;
+        private @Nullable Boolean invertPitch;
+        private long demoFrames;
         private boolean cleaned;
 
         private StepResult advance(SelfTest.StepContext ctx) {
@@ -548,6 +605,8 @@ public final class MouseSelfTests {
                     InputConfig config = InputConfig.get();
                     this.selected = config.selectedGuid;
                     this.mouse = config.mouse.copy();
+                    this.invertPitch = config.invertPitch;
+                    config.invertPitch = false;
                     config.selectedGuid = InputConfig.MOUSE_GUID;
                     config.mouse = new MouseSettings();
                     mc.gui.setScreen(null);
@@ -569,6 +628,10 @@ public final class MouseSelfTests {
                     if (!screen.tabErrors().isEmpty()) {
                         return StepResult.fail("Tab-Fehler: " + screen.tabErrors());
                     }
+                    String misplaced = invertSwitchProblem(tab);
+                    if (misplaced != null) {
+                        return StepResult.fail("Maus + Tastatur: " + misplaced);
+                    }
                     MousePreview preview = tab.mousePreview();
                     int[] pad = preview.padCenter();
                     if (!preview.mouseClicked(pad[0], pad[1], InputConstants.MOUSE_BUTTON_LEFT) || !preview.dragging()) {
@@ -586,6 +649,37 @@ public final class MouseSelfTests {
                         return waited > 20 ? StepResult.fail("Testfläche bewegt die virtuellen Knüppel nicht: " + shown) : StepResult.pending();
                     }
                     tab.mousePreview().mouseReleased();
+                    CycleButton<Boolean> invert = tab.invertPitchButton();
+                    if (invert == null) {
+                        return StepResult.fail("Schalter „Nick umkehren“ verschwunden");
+                    }
+                    invert.onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
+                    if (!tab.pitchInverted() || !invert.getValue() || InputConfig.get().invertPitch) {
+                        return StepResult.fail("„Nick umkehren“ muss erst die Arbeitskopie umschalten: Kopie " + tab.pitchInverted() + ", Knopf "
+                                + invert.getValue() + ", gespeichert " + InputConfig.get().invertPitch);
+                    }
+                    String shownKeys = tab.shownMouseKeyRows().get(2).keys().getString();
+                    if (!I18n.get("propwash.input.mouse.key.mouse_y_inverted").equals(shownKeys)) {
+                        return StepResult.fail("Tastentabelle zeigt die Umkehrung nicht: „" + shownKeys + "“");
+                    }
+                    MousePreview preview = tab.mousePreview();
+                    int[] pad = preview.padCenter();
+                    if (!preview.mouseClicked(pad[0], pad[1], InputConstants.MOUSE_BUTTON_LEFT) || !preview.dragging()) {
+                        return StepResult.fail("Testfläche nimmt den zweiten Klick nicht an");
+                    }
+                    MouseCapture.INSTANCE.inject(1.5F * COUNTS_PER_CM, -2.0F * COUNTS_PER_CM, 0.0F);
+                    return this.next(ctx);
+                }
+                case 3 -> {
+                    if (!(mc.gui.screen() instanceof ConfiguratorScreen screen) || !(screen.activeTab() instanceof ReceiverTab tab)) {
+                        return StepResult.fail("Empfänger-Tab geschlossen");
+                    }
+                    StickPositions shown = tab.mousePreview().sticks();
+                    if (shown.roll() < 0.1F || shown.pitch() > -0.15F) {
+                        return waited > 20 ? StepResult.fail("Testfläche zeigt „Nick umkehren“ nicht (Maus vor muss Nick negativ geben): " + shown)
+                                : StepResult.pending();
+                    }
+                    tab.mousePreview().mouseReleased();
                     String query = I18n.get("propwash.input.mouse.section");
                     SearchBar search = screen.search();
                     if (search == null) {
@@ -600,12 +694,25 @@ public final class MouseSelfTests {
                                 + search.hits().stream().map(h -> h.entry().label()).toList());
                     }
                     ctx.log("Suche „" + query + "“: " + receiverHits + " Treffer im Empfänger-Tab");
+                    String invertLabel = I18n.get("propwash.input.invert_pitch");
+                    for (String word : List.of("invert", "pitch", "reverse")) {
+                        search.type(word);
+                        boolean found = search.hits().stream().map(SettingsSearch.Hit::entry)
+                                .anyMatch(e -> ReceiverTab.ID.equals(e.tabId()) && invertLabel.equals(e.label()));
+                        if (!found) {
+                            return StepResult.fail("Suche „" + word + "“ findet „" + invertLabel + "“ nicht: "
+                                    + search.hits().stream().map(h -> h.entry().label()).toList());
+                        }
+                    }
                     screen.discardAndClose();
+                    if (InputConfig.get().invertPitch) {
+                        return StepResult.fail("verworfene Änderung hat „Nick umkehren“ trotzdem gespeichert");
+                    }
                     ReceiverWizardScreen wizard = ReceiverWizardScreen.standalone(null);
                     mc.gui.setScreen(wizard);
                     return this.next(ctx);
                 }
-                case 3 -> {
+                case 4 -> {
                     if (!(mc.gui.screen() instanceof ReceiverWizardScreen wizard)) {
                         return waited > 40 ? StepResult.fail("Assistent öffnet nicht") : StepResult.pending();
                     }
@@ -615,7 +722,7 @@ public final class MouseSelfTests {
                     wizard.openMouseStep();
                     return this.next(ctx);
                 }
-                case 4 -> {
+                case 5 -> {
                     if (!(mc.gui.screen() instanceof MouseSetupScreen step)) {
                         return waited > 40 ? StepResult.fail("Maus-Schritt öffnet nicht") : StepResult.pending();
                     }
@@ -628,12 +735,83 @@ public final class MouseSelfTests {
                     if (!step.demo().drawn()) {
                         return StepResult.fail("Funke in der Maus-Vorführung fehlt");
                     }
+                    CycleButton<Boolean> invert = step.invertPitchButton();
+                    if (invert == null || !invert.visible || invert.getValue()
+                            || !I18n.get("propwash.input.invert_pitch").equals(labelOf(invert))) {
+                        return StepResult.fail("Maus-Schritt ohne Schalter „Nick umkehren“ auf Aus");
+                    }
+                    float forward = forwardSeconds();
+                    step.demo().freezeAt(forward);
+                    this.demoFrames = step.demo().frames();
+                    return this.next(ctx);
+                }
+                case 6 -> {
+                    if (!(mc.gui.screen() instanceof MouseSetupScreen step)) {
+                        return StepResult.fail("Maus-Schritt geschlossen");
+                    }
+                    MouseDemo.Frame frame = step.demo().lastFrame();
+                    if (step.demo().frames() < this.demoFrames + 2 || frame == null) {
+                        return waited > 40 ? StepResult.fail("Maus-Vorführung zeichnet nicht weiter") : StepResult.pending();
+                    }
+                    if (frame.sticks().pitch() < 0.25F) {
+                        return StepResult.fail("Vorführung „Maus nach vorn“ ohne Umkehrung nicht Nick vor: " + frame.sticks().pitch());
+                    }
+                    CycleButton<Boolean> invert = step.invertPitchButton();
+                    if (invert == null) {
+                        return StepResult.fail("Schalter „Nick umkehren“ im Maus-Schritt verschwunden");
+                    }
+                    invert.onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
+                    if (!step.working().invertPitch) {
+                        return StepResult.fail("Schalter im Maus-Schritt stellt „Nick umkehren“ nicht um");
+                    }
+                    step.demo().freezeAt(forwardSeconds());
+                    this.demoFrames = step.demo().frames();
+                    return this.next(ctx);
+                }
+                case 7 -> {
+                    if (!(mc.gui.screen() instanceof MouseSetupScreen step)) {
+                        return StepResult.fail("Maus-Schritt geschlossen");
+                    }
+                    MouseDemo.Frame frame = step.demo().lastFrame();
+                    if (step.demo().frames() < this.demoFrames + 2 || frame == null) {
+                        return waited > 40 ? StepResult.fail("Maus-Vorführung zeichnet nach dem Umschalten nicht weiter") : StepResult.pending();
+                    }
+                    if (frame.sticks().pitch() > -0.25F) {
+                        return StepResult.fail("Vorführung „Maus nach vorn“ mit Umkehrung nicht Nick zurück: " + frame.sticks().pitch());
+                    }
+                    String caption = MouseDemoView.caption(MouseDemo.Cue.FORWARD, step.working().mouse, step.working().invertPitch, frame.sticks())
+                            .getString();
+                    if (!I18n.get("propwash.input.mouse.demo.forward.inverted").equals(caption)) {
+                        return StepResult.fail("Vorführung beschriftet die Umkehrung nicht: „" + caption + "“");
+                    }
                     step.onClose();
                     return this.next(ctx);
                 }
-                default -> {
+                case 8 -> {
                     if (!(mc.gui.screen() instanceof ReceiverWizardScreen)) {
                         return waited > 40 ? StepResult.fail("„Zurück“ führt nicht zum Assistenten") : StepResult.pending();
+                    }
+                    mc.gui.setScreen(null);
+                    InputConfig config = InputConfig.get();
+                    config.selectedGuid = InputConfig.KEYBOARD_GUID;
+                    config.invertPitch = false;
+                    ConfigTabs.open(null, ReceiverTab.ID);
+                    return this.next(ctx);
+                }
+                default -> {
+                    if (!(mc.gui.screen() instanceof ConfiguratorScreen screen) || !(screen.activeTab() instanceof ReceiverTab tab)
+                            || screen.extractedFrames(ReceiverTab.ID) < 3) {
+                        return waited > 200 ? StepResult.fail("Empfänger-Tab für die Tastatur öffnet nicht") : StepResult.pending();
+                    }
+                    if (tab.mouseLayout()) {
+                        return StepResult.fail("Empfänger-Tab zeigt für „Tastatur“ das Maus-Layout");
+                    }
+                    String misplaced = invertSwitchProblem(tab);
+                    if (misplaced != null) {
+                        return StepResult.fail("Tastatur: " + misplaced);
+                    }
+                    if (!screen.tabErrors().isEmpty()) {
+                        return StepResult.fail("Tab-Fehler: " + screen.tabErrors());
                     }
                     return StepResult.pass();
                 }
@@ -644,6 +822,40 @@ public final class MouseSelfTests {
             this.phase++;
             this.since = ctx.tick();
             return StepResult.pending();
+        }
+
+        private static float forwardSeconds() {
+            for (MouseDemo.Phase phase : MouseDemo.all()) {
+                if (phase.cue() == MouseDemo.Cue.FORWARD) {
+                    return (phase.start() + phase.end()) * 0.5F;
+                }
+            }
+            throw new IllegalStateException("Vorführung ohne Phase „Maus nach vorn“");
+        }
+
+        private static String labelOf(AbstractWidget widget) {
+            String text = widget.getMessage().getString();
+            int colon = text.indexOf(':');
+            return colon < 0 ? text : text.substring(0, colon);
+        }
+
+        private static @Nullable String invertSwitchProblem(ReceiverTab tab) {
+            CycleButton<Boolean> invert = tab.invertPitchButton();
+            AbstractWidget source = tab.sourceButton();
+            if (invert == null || source == null || !invert.visible) {
+                return "Schalter „Nick umkehren“ fehlt im Empfänger-Tab";
+            }
+            if (invert.getValue()) {
+                return "Schalter „Nick umkehren“ steht ohne Zutun auf An";
+            }
+            if (!I18n.get("propwash.input.invert_pitch").equals(labelOf(invert))) {
+                return "Schalter heißt „" + invert.getMessage().getString() + "“";
+            }
+            if (invert.getX() != source.getX() || invert.getY() != source.getY() + Metrics.ROW_HEIGHT || invert.getWidth() != source.getWidth()) {
+                return "Schalter „Nick umkehren“ steht nicht direkt unter der Eingabequelle: Quelle " + source.getX() + "/" + source.getY()
+                        + ", Schalter " + invert.getX() + "/" + invert.getY();
+            }
+            return null;
         }
 
         private void cleanup() {
@@ -665,6 +877,10 @@ public final class MouseSelfTests {
             if (this.mouse != null) {
                 config.mouse = this.mouse;
             }
+            if (this.invertPitch != null) {
+                config.invertPitch = this.invertPitch;
+            }
+            InputKeys.effective(InputKeys.PITCH_FORWARD).setDown(false);
         }
     }
 
@@ -672,6 +888,7 @@ public final class MouseSelfTests {
         private int phase;
         private @Nullable String selected;
         private @Nullable MouseSettings mouse;
+        private @Nullable Boolean invertPitch;
 
         @Override
         public StepResult prepare(SelfTest.StepContext ctx) {
@@ -680,6 +897,8 @@ public final class MouseSelfTests {
                 InputConfig config = InputConfig.get();
                 this.selected = config.selectedGuid;
                 this.mouse = config.mouse.copy();
+                this.invertPitch = config.invertPitch;
+                config.invertPitch = false;
                 config.selectedGuid = InputConfig.MOUSE_GUID;
                 config.mouse = new MouseSettings();
                 TransmitterInput.INSTANCE.simulate(null);
@@ -738,6 +957,10 @@ public final class MouseSelfTests {
             if (this.mouse != null) {
                 config.mouse = this.mouse;
             }
+            if (this.invertPitch != null) {
+                config.invertPitch = this.invertPitch;
+            }
+            InputKeys.effective(InputKeys.PITCH_FORWARD).setDown(false);
             this.phase = 0;
         }
     }

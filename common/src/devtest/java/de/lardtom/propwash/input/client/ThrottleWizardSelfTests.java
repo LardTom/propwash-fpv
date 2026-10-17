@@ -201,8 +201,15 @@ public final class ThrottleWizardSelfTests {
                     if (wizard == null || ThemeStats.frames(ReceiverWizardScreen.class) == 0L) {
                         return elapsed > STEP_TIMEOUT ? StepResult.fail("Assistent wird nicht gezeichnet") : StepResult.pending();
                     }
+                    if (wizard.page() == ReceiverWizardScreen.Page.MODE) {
+                        Button modeNext = button(wizard, "propwash.input.wizard.next");
+                        if (modeNext != null) {
+                            modeNext.onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
+                        }
+                        return StepResult.pending();
+                    }
                     if (wizard.page() != ReceiverWizardScreen.Page.DEVICE) {
-                        return StepResult.fail("Assistent startet nicht auf der Geräteseite: " + wizard.page());
+                        return StepResult.fail("Assistent geht nach der Mode-Wahl nicht zur Geräteseite: " + wizard.page());
                     }
                     Button next = button(wizard, "propwash.input.wizard.next");
                     if (next == null || !next.active) {

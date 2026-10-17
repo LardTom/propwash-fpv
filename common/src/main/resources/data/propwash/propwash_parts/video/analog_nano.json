@@ -7,6 +7,8 @@
   "image_quality": 0.55,
   "camera_width_mm": 12.0,
   "camera_fov_deg": 125.0,
+  "vtx_power_mw": 200,
+  "vtx_levels_mw": [25, 100, 200, 400],
   "power_w": 1.9,
   "sort": 0
 }

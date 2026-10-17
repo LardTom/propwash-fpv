@@ -2,6 +2,7 @@ package de.lardtom.propwash.input.client;
 
 import de.lardtom.propwash.input.ChannelMath;
 import de.lardtom.propwash.input.DeviceProfile;
+import de.lardtom.propwash.input.InputConfig;
 
 import java.util.Objects;
 
@@ -12,6 +13,7 @@ public final class SimulatedRadio {
     private final float[] axes;
     private final boolean[] buttons;
     private final DeviceInfo device;
+    private volatile boolean savedProfile;
 
     public SimulatedRadio(String guid, String name, DeviceProfile profile, int axisCount, int buttonCount) {
         this.guid = Objects.requireNonNull(guid, "guid");
@@ -42,6 +44,16 @@ public final class SimulatedRadio {
 
     public DeviceProfile profile() {
         return this.profile;
+    }
+
+    public SimulatedRadio useSavedProfile() {
+        this.savedProfile = true;
+        return this;
+    }
+
+    public DeviceProfile profile(InputConfig config) {
+        DeviceProfile saved = this.savedProfile ? config.profile(this.guid) : null;
+        return saved != null ? saved : this.profile;
     }
 
     public synchronized void setAxis(int index, float value) {

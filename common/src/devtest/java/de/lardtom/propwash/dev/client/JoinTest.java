@@ -8,6 +8,8 @@ import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.drone.client.trail.RemoteTrailCheck;
 import de.lardtom.propwash.join.client.AddonSessionSelfTests;
 import de.lardtom.propwash.platform.Services;
+import de.lardtom.propwash.race.client.AssistJoinProbe;
+import de.lardtom.propwash.zone.client.ZoneJoinProbe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -53,7 +55,8 @@ public final class JoinTest {
 
     public static List<SelfTest.Step> steps() {
         String label = JoinTestEnv.label();
-        int ticks = MAX_TICKS + 20 * (JoinTestEnv.trailSeconds() > 0 ? 180 + JoinTestEnv.trailSeconds() : 0);
+        int ticks = MAX_TICKS + 20 * (JoinTestEnv.trailSeconds() > 0 ? 180 + JoinTestEnv.trailSeconds() : 0) + (JoinTestEnv.assist() ? 20 * 90 : 0)
+                + (JoinTestEnv.zones() ? ZoneJoinProbe.TIMEOUT_TICKS + 20 * 30 : 0);
         return List.of(new SelfTest.Step(STEP + label, ticks, JoinTest::tick));
     }
 
@@ -99,6 +102,13 @@ public final class JoinTest {
         if (!settled || ctx.tick() - (int) state.get("since") < STABLE_TICKS) {
             return SelfTest.StepResult.pending();
         }
+        if (joined && JoinTestEnv.zones() && !state.containsKey("zones")) {
+            String zones = ZoneJoinProbe.observe(state, ctx.tick(), mc);
+            if (zones == null) {
+                return SelfTest.StepResult.pending();
+            }
+            state.put("zones", zones);
+        }
         if (joined && JoinTestEnv.pilotSeconds() > 0 && !state.containsKey("pilot")) {
             String pilot = pilotProbe(ctx, mc);
             if (pilot == null) {
@@ -113,7 +123,15 @@ public final class JoinTest {
             }
             state.put("trail", trail);
         }
-        String text = joined ? JoinTestEnv.JOINED + "\n" + AddonSessionSelfTests.sessionReport(mc) + state.getOrDefault("pilot", "") + state.getOrDefault("trail", "") : describe(screen);
+        if (joined && JoinTestEnv.assist() && !state.containsKey("assist")) {
+            String assist = AssistJoinProbe.observe(state, ctx.tick(), mc);
+            if (assist == null) {
+                return SelfTest.StepResult.pending();
+            }
+            state.put("assist", assist);
+        }
+        String text = joined ? JoinTestEnv.JOINED + "\n" + AddonSessionSelfTests.sessionReport(mc) + state.getOrDefault("pilot", "") + state.getOrDefault("trail", "")
+                + state.getOrDefault("assist", "") + state.getOrDefault("zones", "") : describe(screen);
         state.put("text", text);
         write(JoinTestEnv.label() + ".txt", text);
         Constants.LOG.info("[Beitrittstest] {}: {}", JoinTestEnv.label(), text.replace("\n", " | "));

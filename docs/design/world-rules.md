@@ -24,7 +24,7 @@ beim Anlegen einer Welt.
 | `propwash:crash_damage` | Schalter | an | – | Absturz und Schaden | Crash-, Hitze- und ESC-Verschleiß der Teile | nein |
 | `propwash:crash_damage_scale` | Zahl, % | 100 | 25–300 | Absturz und Schaden | Stärke des Crash-Verschleißes | nein |
 | `propwash:crash_tolerance` | Zahl, % | 100 | 50–400 | Absturz und Schaden | Aufprallgeschwindigkeit, ab der ein Absturz zählt (`crashSpeedScale`) | ja |
-| `propwash:crash_disarm` | Schalter | an | – | Absturz und Schaden | Motoren nach hartem Aufprall aus | ja |
+| `propwash:crash_disarm` | Schalter | an | – | Absturz und Schaden | „Nach Absturz abschalten“: Motoren nach hartem Aufprall aus; aus = die Drohne bleibt scharf (kopfüber hilft der Turtle-Modus); nur hier, die Suche führt hierher | ja |
 | `propwash:prop_strikes` | Schalter | an | – | Absturz und Schaden | Propellertreffer | ja |
 | `propwash:infinite_range_analog` | Schalter | aus | – | Video und Funk | Drohnen mit analogem Video: Bild und Funk reißen nie ab | nein |
 | `propwash:infinite_range_digital` | Schalter | aus | – | Video und Funk | dasselbe für digitales Video | nein |
@@ -41,6 +41,8 @@ beim Anlegen einer Welt.
 | `propwash:save_assisted_laps` | Schalter | aus | – | Spiel | Runden und Rennen mit Flughilfe werden in einer eigenen Wertung „Mit Flughilfe“ gespeichert und überall markiert, nie als Rekord (`docs/design/assisted-laps.md`) | nein |
 | `propwash:drone_trails` | Schalter | aus | – | Spiel | Drohnen-Trails: dünne, verblassende Spur hinter jeder fliegenden Drohne in ihrer Farbe, auch im FPV-Bild; jeder Spieler kann sie im Tab „Darstellung“ für sich ausschalten (`docs/design/drone-trails.md`) | nein |
 | `propwash:invulnerable_pilots` | Schalter | aus | – | Spiel | Unverwundbare Piloten: wer gerade eine Drohne steuert, nimmt keinen Schaden (für Events mit geschützten Piloten); Leere und `/kill` wirken immer; aus = der Körper bleibt ein normaler Spieler (`docs/design/pilot-body.md`) |
+| `propwash:waterproof_drones` | Schalter | aus | – | Spiel | Drohnen sind wasserdicht: jede Drohne verhält sich wie mit Wasserschutz-Spray beschichtet – scharf schalten, fliegen und entschärfen im Wasser statt Kurzschluss; Lava beendet weiter jeden Flug (`docs/design/waterproof-turtle.md`) | nein |
+| `propwash:allow_reset` | Schalter | an | – | Spiel | Reset erlauben: Der Pilot setzt seine Drohne mit dem Schalter oder der Taste „Reset“ (Rücktaste) auf ihren Homepoint zurück – gerade, entschärft, im Stillstand; ein laufendes Rennen wird abgebrochen, Fracht fällt am alten Ort ab; aus = der Server lehnt mit einer Meldung ab (`docs/design/home-point.md`) | nein |
 
 \* „Physik“: Weicht die Regel vom Standard ab, gilt die Physik als verändert (`PhysicsRules#modified`): Flüge zählen
 nicht für Bestenlisten und Server-Rekorde, wie vorher bei veränderten persönlichen Optionen.
@@ -88,6 +90,8 @@ der Tabelle nicht steht, ist der Standardwert.
 | `save_assisted_laps` | aus | **an** | **an** |
 | `drone_trails` | aus | **an** | **an** |
 | `invulnerable_pilots` | aus | aus | aus |
+| `waterproof_drones` | aus | aus | **an** |
+| `allow_reset` | an | an | an |
 
 Realistisch ist genau der Standard (Flüge zählen für Bestenlisten); Training und Arcade verändern die Physik
 (`PhysicsRules#modified`), Flüge zählen dort nicht für die Wertung ohne Flughilfe, werden aber seit dem 08.10. in der
@@ -132,7 +136,7 @@ Voreinstellung.
 | Veränderte Physik-Regeln zählen wie bisher nicht für Bestenlisten; der Server prüft das zusätzlich selbst (`RaceServer#modifiedPhysics`) | Rekorde bleiben über Regeländerungen hinweg vergleichbar | Rekorde je Regelsatz (später möglich) |
 | Bestehende Server-Config-Regeln (`allowSpectating`, `worldCourses`, Rechte, Chunk-Budget …) bleiben in `server.json` | sie sind Betreiber-Technik bzw. Weltgenerierung, nicht Teil dieses Auftrags | alles in Gamerules |
 | Keine API-Erweiterung für die Welt-Regeln | Addons brauchen die Werte (noch) nicht; die Parts-API steigt in 0.5.0 nur wegen neuer Flugschul-Szenen auf 1.5.0 | Lesezugriff in `PropwashApi` |
-| Voreinstellungen legen alle Regeln des Katalogs fest (28), auch Spielregeln wie 3D-Modus, GPS Rescue ohne Pilot und Videokanäle | Vorgabe „alle Gamerules“; nur so ist „passt zu Training“ eindeutig und der Export vollständig. Server-Organisation (Videokanäle, 3D erlaubt, GPS Rescue ohne Pilot, Größe der Freiform-Gates) und Schwerkraft bleiben in allen dreien auf Standard, weil sie keine Schwierigkeit sind | Voreinstellungen nur für Schwierigkeits-Regeln, Rest unverändert lassen – dann passt eine Welt zu mehreren Voreinstellungen zugleich |
+| Voreinstellungen legen alle Regeln des Katalogs fest (30, seit 0.5.2 mit `waterproof_drones` und `allow_reset`), auch Spielregeln wie 3D-Modus, GPS Rescue ohne Pilot und Videokanäle | Vorgabe „alle Gamerules“; nur so ist „passt zu Training“ eindeutig und der Export vollständig. Server-Organisation (Videokanäle, 3D erlaubt, GPS Rescue ohne Pilot, Größe der Freiform-Gates) und Schwerkraft bleiben in allen dreien auf Standard, weil sie keine Schwierigkeit sind | Voreinstellungen nur für Schwierigkeits-Regeln, Rest unverändert lassen – dann passt eine Welt zu mehreren Voreinstellungen zugleich |
 | Training: Wind **mild** (Standard), Turbulenz und Prop-Wash an, Crash-Toleranz 100 %, Absturz entschärft an | Training nimmt die Folgen (Schaden, Propellertreffer, Akku, Spannungseinbruch, Hitzedrosselung), nicht Wind und Luft; Steuerung und Luft fliegen sich wie unter Realistisch, nur die Leistung lässt über den Flug nicht nach (kein Spannungseinbruch, keine Hitzedrosselung). Der Text der Voreinstellung sagt das so („die Drohne behält die volle Leistung“), nicht mehr „das Flugverhalten bleibt wie bei Realistisch“ | Wind aus – Schweben wäre unecht leicht, der Wechsel zu Realistisch ein Bruch |
 | Training: Hardware-Grenzen aus | mit unendlichem Akku fliegt man beliebig lange; Hitzedrosselung wäre dann eine Strafe ohne Lernwert | an lassen |
 | Training: Reichweite bleibt begrenzt, Drohnen prallen weiter an Lebewesen ab | Reichweite und Hindernisse gehören zum Fliegenlernen (Flugschule „Absturz, Reichweite, Signal“) | unendliche Reichweite schon im Training |

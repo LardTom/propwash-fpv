@@ -2,6 +2,7 @@ package de.lardtom.propwash.video.record.path;
 
 import org.joml.Quaterniond;
 import org.joml.Quaterniondc;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,13 +23,17 @@ public final class EulerPath {
         CameraAngles previous = null;
         Quaterniondc previousTrue = null;
         for (Quaterniondc rotation : rotations) {
-            CameraAngles canonical = CameraAngles.of(rotation);
-            CameraAngles chosen = previous == null ? canonical : choose(previous, previousTrue, canonical, rotation);
+            CameraAngles chosen = next(previous, previousTrue, rotation);
             out.add(chosen);
             previous = chosen;
             previousTrue = rotation;
         }
         return out;
+    }
+
+    public static CameraAngles next(@Nullable CameraAngles previous, @Nullable Quaterniondc previousTrue, Quaterniondc rotation) {
+        CameraAngles canonical = CameraAngles.of(rotation);
+        return previous == null || previousTrue == null ? canonical : choose(previous, previousTrue, canonical, rotation);
     }
 
     public static List<CameraAngles> canonical(List<? extends Quaterniondc> rotations) {

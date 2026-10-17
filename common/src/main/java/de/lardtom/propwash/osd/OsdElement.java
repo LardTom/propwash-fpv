@@ -50,7 +50,9 @@ public enum OsdElement {
     GPS_SATS(28, 15, Align.RIGHT, true, true, Group.HOME),
     VTX_CHANNEL(1, 6, Align.LEFT, true, true, Group.LINK),
     RELAY(1, 8, Align.LEFT, true, true, Group.LINK),
-    TRICKS(15, 13, Align.CENTER, true, true, Group.STATUS);
+    TRICKS(15, 13, Align.CENTER, true, true, Group.STATUS),
+    FLASHBACK_BUDGET(28, 3, Align.RIGHT, true, true, Group.STATUS),
+    VTX_POWER(8, 6, Align.LEFT, true, true, Group.LINK);
 
     private final int baseCol;
     private final int baseRow;

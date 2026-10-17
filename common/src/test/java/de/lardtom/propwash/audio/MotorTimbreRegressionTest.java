@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MotorTimbreRegressionTest {
     private static final String EXPECTED = "992b989ebe314acf89ca0b35";
+    private static final String EXPECTED_RACE_PROP = "e7268abcd5fafc39cc4981f2";
 
     private static <T extends PartInfo> List<T> builtins(T[] values) {
         List<T> out = new ArrayList<>();
@@ -33,11 +34,20 @@ class MotorTimbreRegressionTest {
 
     @Test
     void builtinTimbresStayBitIdentical() throws Exception {
+        List<PropType> props040 = builtins(PropType.values()).stream().filter(prop -> prop != PropType.P51_29_3B).toList();
+        List<DroneBuild> presets040 = DroneBuild.PRESETS.stream()
+                .map(preset -> preset == DroneBuild.RACER ? preset.withProp(PropType.P51_3B) : preset).toList();
+        assertEquals(EXPECTED, timbres(props040, presets040), "Motorklang eingebauter Teile hat sich geändert");
+        assertEquals(EXPECTED_RACE_PROP, timbres(List.of(PropType.P51_29_3B), List.of(DroneBuild.RACER)),
+                "Motorklang des Race-Props hat sich geändert");
+    }
+
+    private static String timbres(List<PropType> props, List<DroneBuild> presets) throws Exception {
         StringBuilder dump = new StringBuilder();
         for (FrameType frame : builtins(FrameType.values())) {
             for (StackType stack : builtins(StackType.values())) {
                 for (MotorType motor : builtins(MotorType.values())) {
-                    for (PropType prop : builtins(PropType.values())) {
+                    for (PropType prop : props) {
                         for (BatteryType battery : builtins(BatteryType.values())) {
                             DroneBuild build = new DroneBuild(frame, stack, motor, prop, VideoType.values()[0], battery);
                             if (build.buildable()) {
@@ -48,11 +58,10 @@ class MotorTimbreRegressionTest {
                 }
             }
         }
-        for (DroneBuild preset : DroneBuild.PRESETS) {
+        for (DroneBuild preset : presets) {
             dump.append(MotorTimbre.derive(preset)).append('\n');
         }
-        String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(dump.toString().getBytes(StandardCharsets.UTF_8)))
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(dump.toString().getBytes(StandardCharsets.UTF_8)))
                 .substring(0, 24);
-        assertEquals(EXPECTED, hash, "Motorklang eingebauter Teile hat sich geändert");
     }
 }

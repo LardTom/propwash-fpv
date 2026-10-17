@@ -43,6 +43,7 @@ public final class ExampleAddonClient {
         if (ExampleAddon.showcase()) {
             registerTab();
         }
+        ExampleAccessoriesClient.init();
     }
 
     public static synchronized void registerTab() {

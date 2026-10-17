@@ -19,6 +19,14 @@ class DroneInteractionTest {
     }
 
     @Test
+    void sprayCoatsUnlessAnotherPilotFlies() {
+        assertEquals(Action.COAT, resolve(HeldKind.COATING, false, false, false, false, false));
+        assertEquals(Action.COAT, resolve(HeldKind.COATING, false, false, true, false, false));
+        assertEquals(Action.OCCUPIED, resolve(HeldKind.COATING, false, true, false, false, false));
+        assertEquals(Action.OPEN_SERVICE_MENU, resolve(HeldKind.COATING, true, false, false, false, false));
+    }
+
+    @Test
     void gogglesBindInAnyState() {
         assertEquals(Action.CHECK_GOGGLES, resolve(HeldKind.GOGGLES, false, false, false, false, false));
         assertEquals(Action.CHECK_GOGGLES, resolve(HeldKind.GOGGLES, false, true, false, true, false));

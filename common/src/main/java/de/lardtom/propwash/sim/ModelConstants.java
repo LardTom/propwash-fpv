@@ -40,10 +40,15 @@ final class ModelConstants {
     static final double WIRING_R = 0.003;
     static final double POL_FRACTION = 0.5;
     static final double POL_TAU = 5.0;
+    static final double SAG_FAST_FRACTION = 0.35;
+    static final double SAG_FAST_TAU = 0.5;
     static final double C_RATE_PENALTY = 0.5;
     static final double C_RATE_TAU = 2.0;
-    static final double LOW_SOC_GAIN = 1.0;
-    static final double LOW_SOC_KNEE = 0.25;
+    static final double LOW_SOC_KNEE = 0.15;
+    static final double LOW_SOC_EXPONENT = 1.5;
+    static final double LOW_SOC_OHMIC_GAIN = 1.5;
+    static final double LOW_SOC_FAST_GAIN = 6.0;
+    static final double LOW_SOC_SLOW_GAIN = 4.0;
     static final double AUX_BASE_W = 0.6;
     static final double AUX_PER_GRAM_W = 0.3;
     static final double DENSITY_LIPO = 2.0;
@@ -53,6 +58,7 @@ final class ModelConstants {
     static final double RESTITUTION_OPEN = 0.25;
     static final double RESTITUTION_DUCT = 0.40;
     static final double RESTITUTION_MAX = 0.95;
+    static final double RESTITUTION_BATTERY = 0.15;
     static final double FRICTION_OPEN = 0.50;
     static final double FRICTION_DUCT = 0.30;
     static final double BOUNCE_MIN = 0.4;

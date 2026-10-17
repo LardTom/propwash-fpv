@@ -15,6 +15,7 @@ public final class OsdSampler {
     private static final double NANOS = 1.0E9;
 
     private final OsdData data = new OsdData();
+    private final VoltageDisplay voltage = new VoltageDisplay();
     private final Source live;
     private boolean wasActive;
     private boolean wasArmed;
@@ -46,6 +47,7 @@ public final class OsdSampler {
 
     public void reset() {
         this.data.reset();
+        this.voltage.reset();
         this.wasActive = false;
         this.wasArmed = false;
         this.lastNanos = 0L;
@@ -75,6 +77,7 @@ public final class OsdSampler {
         }
         if (!this.wasActive) {
             this.data.reset();
+            this.voltage.reset();
             this.sessionStartNanos = nowNanos;
             this.lastNanos = nowNanos;
             this.wasArmed = false;
@@ -89,6 +92,7 @@ public final class OsdSampler {
         d.active = true;
         this.clearLiveValues(d);
         source.fill(d);
+        this.voltage.apply(d, dt);
         d.onSeconds = (nowNanos - this.sessionStartNanos) / NANOS;
         d.blinkSeconds = d.onSeconds;
         LocalTime time = LocalTime.now();
@@ -119,12 +123,18 @@ public final class OsdSampler {
         d.recordingPercent = 0;
         d.ledsOff = false;
         d.vtxChannel = "";
+        d.vtxPowerMw = 0;
+        d.vtxPowerAuto = false;
+        d.vtxThrottled = false;
+        d.vtxHot = false;
         d.spectating = false;
         d.clearTricks();
         d.armed = false;
         d.throttle = Double.NaN;
         d.packVoltage = Double.NaN;
         d.cellVoltage = Double.NaN;
+        d.warnCellVoltage = Double.NaN;
+        d.criticalCellVoltage = Double.NaN;
         d.chargeFraction = Double.NaN;
         d.mAhUsed = Double.NaN;
         d.currentA = Double.NaN;

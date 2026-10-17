@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 class HelpKeysTest {
     private static final List<String> OTHER_ITEMS = List.of("drone", "remote", "goggles_analog", "goggles_digital", "goggles_creative",
             "drone_workbench", "battery_charger", "gate_small", "gate_medium", "gate_large", "course_tool", "race_flag", "slalom_pole", "dive_cube",
-            "freeform_gate", "gate_pole");
+            "freeform_gate", "gate_pole", "bando_map");
     private static final List<String> REPLACEMENT_SPELLINGS = List.of("fuer", "ueber", "moeglich", "Groesse", "laedt", "waehrend");
     private static final List<String> SHARP_S = List.of("gross", "Strasse");
     private static final int MAX_LINE = 48;

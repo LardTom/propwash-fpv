@@ -1,6 +1,6 @@
 # Überlebensmodus: Rezepte, Zwischenteile, Truhen-Beute
 
-Ziel: Propwash ist ohne Kreativmodus spielbar. Jedes Propwash-Item außer der Kreativ-Brille und dem Kreativ-Flugcontroller (`creative_fc`, `docs/design/creative-drone.md`) lässt sich herstellen, und
+Ziel: Propwash ist ohne Kreativmodus spielbar. Jedes Propwash-Item außer der Kreativ-Brille, dem Kreativ-Flugcontroller (`creative_fc`, `docs/design/creative-drone.md`) und der Bando-Karte (Kartograf und Truhen, mit einer leeren Karte kopierbar; `docs/design/bandos.md` „Bando-Karte“) lässt sich herstellen, und
 Strukturen enthalten passende Bauteile als besondere Funde. Alle Zahlen stehen in `docs/design/survival-tables.md`
 (erzeugt), die einzige Quelle ist `tools/data/survival.py`.
 

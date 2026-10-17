@@ -5,7 +5,9 @@ import com.mojang.serialization.MapCodec;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.content.client.ThemedPanel;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.input.RadioState;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.rescue.client.RescueState;
 import net.minecraft.client.Minecraft;
@@ -45,8 +47,18 @@ public class RemoteGimbalRenderer implements SpecialModelRenderer<RemoteGimbalRe
         }
 
         public static Pose of(StickPositions sticks) {
+            return of(sticks, InputConfig.get().stickMode());
+        }
+
+        public static Pose of(StickPositions sticks, StickMode mode) {
             StickPositions s = sticks.clamped();
-            return new Pose(quantize(s.yaw()), quantize(s.throttle() * 2.0F - 1.0F), quantize(s.roll()), quantize(s.pitch()));
+            StickMode.Sticks placed = StickMode.orDefault(mode).place(s.roll(), s.pitch(), s.yaw(), s.throttle() * 2.0F - 1.0F);
+            return new Pose(quantize(placed.leftX()), quantize(placed.leftY()), quantize(placed.rightX()), quantize(placed.rightY()));
+        }
+
+        public static Pose ofMode2(float leftX, float leftY, float rightX, float rightY, StickMode mode) {
+            StickMode.Sticks placed = StickMode.orDefault(mode).fromMode2(leftX, leftY, rightX, rightY);
+            return new Pose(placed.leftX(), placed.leftY(), placed.rightX(), placed.rightY());
         }
     }
 

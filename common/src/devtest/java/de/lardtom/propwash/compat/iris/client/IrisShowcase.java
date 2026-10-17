@@ -6,6 +6,7 @@ import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.client.Screenshots;
 import de.lardtom.propwash.drone.client.render.DroneRenderConfig;
 import de.lardtom.propwash.video.ImageFormat;
+import de.lardtom.propwash.video.client.FisheyeSelfTests;
 import de.lardtom.propwash.video.client.Headlight;
 import de.lardtom.propwash.video.client.VideoBreakupProbe;
 import de.lardtom.propwash.video.client.VideoConfig;
@@ -36,6 +37,8 @@ public final class IrisShowcase {
         SelfTest.clientStep("bildschirmfotos: Iris – Shaderpack an", 600, ctx -> shaders(ctx, true, true));
         Screenshots.step("bildschirmfotos: Iris – FPV tief über Wasser, Sonne im Rücken", "iris_fpv_water_shader", 30,
                 new FlightScene(IrisSite.View.FPV, IrisSite.Spot.WATER, IrisSite.MORNING, false, false));
+        Screenshots.step("bildschirmfotos: Iris – FPV tief über Wasser mit Fisheye-Objektiv", "iris_fpv_water_fisheye_shader", 30,
+                FisheyeSelfTests.withFisheye(new FlightScene(IrisSite.View.FPV, IrisSite.Spot.WATER, IrisSite.MORNING, false, false)));
         Screenshots.step("bildschirmfotos: Iris – FPV tief über Wiese, Schatten der eigenen Drohne", "iris_fpv_land_shader", 30,
                 new FlightScene(IrisSite.View.FPV, IrisSite.Spot.LAND, IrisSite.MORNING, false, false));
         Screenshots.step("bildschirmfotos: Iris – Sichtflug von der Seite, Schatten und Prop-Scheiben", "iris_los_land_shader", 30,
@@ -50,6 +53,8 @@ public final class IrisShowcase {
         SelfTest.clientStep("bildschirmfotos: Iris – Shaderpack aus", 600, ctx -> shaders(ctx, false, false));
         Screenshots.step("bildschirmfotos: Iris – FPV tief über Wasser ohne Shaderpack", "iris_fpv_water_vanilla", 30,
                 new FlightScene(IrisSite.View.FPV, IrisSite.Spot.WATER, IrisSite.MORNING, false, false));
+        Screenshots.step("bildschirmfotos: Iris – FPV tief über Wasser mit Fisheye-Objektiv ohne Shaderpack", "iris_fpv_water_fisheye_vanilla", 30,
+                FisheyeSelfTests.withFisheye(new FlightScene(IrisSite.View.FPV, IrisSite.Spot.WATER, IrisSite.MORNING, false, false)));
         Screenshots.step("bildschirmfotos: Iris – FPV tief über Wiese ohne Shaderpack", "iris_fpv_land_vanilla", 30,
                 new FlightScene(IrisSite.View.FPV, IrisSite.Spot.LAND, IrisSite.MORNING, false, false));
         Screenshots.step("bildschirmfotos: Iris – Sichtflug von der Seite ohne Shaderpack", "iris_los_land_vanilla", 30,

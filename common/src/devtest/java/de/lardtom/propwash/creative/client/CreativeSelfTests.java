@@ -384,7 +384,7 @@ public final class CreativeSelfTests {
                     t.loadTemplate();
                     if (!t.draft().basePart(PartKind.FRAME).equals(Optional.of(FrameType.RACE_5.key()))
                             || !t.draft().basePart(PartKind.MOTOR).equals(Optional.of(MotorType.M2306_1860.key()))
-                            || t.draft().basePart(PartKind.PROP).isPresent()) {
+                            || !t.draft().basePart(PartKind.PROP).equals(Optional.of(PropType.P51_29_3B.key()))) {
                         return StepResult.fail("Vorlage Racer nicht geladen: " + t.draft().spec());
                     }
                     double before = t.draft().value(CreativeParam.MOTOR_KV);

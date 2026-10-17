@@ -212,7 +212,99 @@ Import das Modell mit falschen Angaben. Ein erster Schritt ohne Risiko wäre ein
 Blackbox-Tab für Logs, die der Spieler selbst gewogen hat. Verworfen: automatische Änderung der Teile oder des
 Flugmodells aus einem einzelnen Log (zu viele unbekannte Größen pro Log, siehe Grenzen).
 
+## Akku: Spannungseinbruch aus den Logs (Stand 11.10.2026)
+
+Der Bericht hat einen eigenen Abschnitt „Akku: Spannungseinbruch echt gegen Sim“ (`calibration.BatteryFit`,
+`sim.RealLogCalibration.battery`). Er braucht Spannung (`vbatLatest`) und Strom (`amperageLatest`, Hundertstel Ampere).
+
+1. **Reihe bilden**: vom ersten bis zum letzten Wert mit Duty über 8 %, gemittelt auf 50 Hz, Spannung je Zelle.
+   Verwertbar ist der Strom, wenn der p99-Wert mindestens 2 A und das 1,5-Fache des Medians ist – die 1S-Whoop-Logs
+   fallen damit heraus (ihr Stromsensor zeigt unabhängig vom Gas 12–14 A).
+2. **Ersatzschaltbild anpassen**: `U = OCV(q) − R0·I − U1 − U2` mit der Ruhespannung als Polynom dritten Grades der
+   entnommenen Ladung, einem schnellen RC-Glied (τ1 aus 0,06–1 s) und einem langsamen (τ2 aus 2–30 s). Für jedes Paar
+   (τ1, τ2) ist das eine lineare Ausgleichsrechnung; es gewinnt das Paar mit dem kleinsten Rest und nicht negativen
+   Widerständen. Ergebnis: Sofort-Widerstand, schneller und langsamer Anteil je Zelle (Kabel und Stecker inbegriffen),
+   die Zeitkonstanten der Erholung und der Rest in mV.
+3. **Kapazität prüfen**: Aus Anfang und Ende der angepassten Ruhespannung folgt über die Zellkurve die entnommene
+   Ladung in Prozent (ab 15 % Unterschied) und daraus die Kapazität, die der Log „sieht“. Weicht sie um mehr als 10 %
+   vom Akku der Quellentabelle ab, wird der Strom so skaliert, dass sie passt (Spalte „Strom ד) – ein größerer echter
+   Akku oder ein verstellter Sensor wird so bei gleicher C-Rate verglichen. Außerhalb von ×0,4–2,5 entfällt der Log.
+4. **Sim-Akku mit dem echten Strom**: `PowerSystem.forceBatteryCurrent` bekommt den (skalierten) Strom; der
+   Start-Ladezustand ist der, bei dem die mittlere Spannung über den Flug zur gemessenen passt. An die Sim-Spannung
+   wird dasselbe Ersatzschaltbild angepasst. So wird nur der Akku verglichen, ohne Motor, Prop und Gewicht.
+5. **Einbruch je Zelle nach Strom und Ladezustand**: je Flugdrittel die mittlere Spannung bei wenig Strom (bis 25 %
+   des p99-Stroms) minus die bei viel Strom (ab 60 %), echt und Sim, mit C-Rate und Ladezustand des Sim-Akkus.
+6. **Je Größe**: Mediane von Sofort-Widerstand und Summe, das Verhältnis Einbruch Sim/echt und – auch ohne
+   Stromsensor – der Punch-Einbruch aus dem Nachflug mit der echten Duty.
+
+Ergebnis, Widerstände in mΩ je Zelle, „vorher“ = Akku-Modell bis 10.10. (ganzer Pack-Widerstand sofort), „jetzt“ = mit
+schnellem Anteil und Anstieg bei leerem Akku (`docs/design/flight-model-spec.md`, Entscheidung 49):
+
+| Log | Akku (Sim) | Strom × | Sofort echt | Sofort Sim vorher → jetzt | Schnell echt (τ) | Schnell Sim jetzt (τ) | Summe echt | Summe Sim vorher → jetzt | Sim-Verlauf gegen echt, RMS vorher → jetzt |
+|---|---|---|---|---|---|---|---|---|---|
+| nazgul_evoque_f5_a | 6S 1300 | 1,17 | 3,6 | 6,1 → 3,9 | 0,3 (0,5 s) | 1,6 (0,25 s) | 6,0 | 8,6 → 8,2 | 16 → 16 mV |
+| nazgul_evoque_f5_b | 6S 1300 | 1,00 | 3,3 | 6,0 → 4,0 | 0,9 (0,25 s) | 2,0 (0,5 s) | 5,0 | 7,7 → 7,6 | 14 → 13 mV |
+| fifty5_6s | 6S 1300 | 1,00 | 0,2 (Spannung hinkt 0,5 s nach) | 6,0 → 3,8 | 5,6 (0,5 s) | 2,4 (0,5 s) | 12,0 | 9,6 → 9,6 | 22 → 15 mV |
+| rekon7 | 6S 2200 | 0,82 | 3,2 | 4,4 → 2,9 | 2,2 (0,25 s) | 1,5 (0,5 s) | 7,5 | 6,7 → 6,5 | 41 → 41 mV |
+| pavo_pico_all | 2S 450 HV | 1,00 | 28,0 | 36,4 → 20,5 | 0,1 | 13,3 (0,5 s) | 52,9 | 167 → 59,9 | 63 → 59 mV |
+| pavo_pico_timing | 2S 450 HV | 1,00 | 26,8 | 37,7 → 20,8 | 0,4 | 13,8 (0,5 s) | 140 | 200 → 66,1 | 64 → 56 mV |
+| pavo20pro2_fullthrottle | 3S 550 | 0,67 | 20,0 | 20,9 → 13,4 | 4,9 (1 s) | 7,0 (0,5 s) | 42,2 | 34,9 → 31,0 | 49 → 52 mV |
+| firefly25_evening / _long | 3S 650 | 0,45 / 0,59 | 35,7 / 26,0 | 14,9 / 15,5 → 9,4 / 10,4 | 13,5 / 9,2 (1 s) | 6,0 / 4,3 (0,5 s) | 94 / 68 | 24 / 23 → 24 / 24 | 50 / 71 → 51 / 71 mV |
+| lr5_lion_a / _b (Bau geschätzt) | 4S 4000 Li-Ion | 1,00 | 3,5 / 6,5 | 20,7 / – → 13,2 / 20,3 | 4,6 / 3,1 (0,06 s) | 8,6 / 4,6 | 11,7 / 15,9 | 33 / – → 34 / 29 | 86 / 196 → 67 / 147 mV |
+| geprc_cinewhoop3 (Bau geschätzt) | 4S 850 | 2,03 | 0,6 | 11,9 → 7,6 | 2,9 | 4,2 | 7,2 | 18,4 → 18,6 | 81 → 59 mV |
+
+Einbruch je Zelle zwischen wenig und viel Strom, Sim/echt (1 = gleich), Median der Flugdrittel: 5″ 6S 1,56 → 1,31,
+7″ 6S 0,94 → 0,89, Pavo Pico (15–29 % Ladung, 46–57 C) 1,38 → 0,84, Pavo20 Pro 0,95 → 0,85. Punch-Einbruch des ganzen
+Packs im Nachflug mit echter Duty, echt / Sim vorher / Sim jetzt: Meteor75 0,31 / 0,22 / 0,17 V, Meteor75 Pro
+0,67 / 0,46 / 0,38 V, 5″ Li-Ion 1,87 / 2,51 / 2,12 V und 2,55 / 2,74 / 2,40 V.
+
+Stand 14.10.2026 (0.5.2, Ruhespannung nach Tabellen und Anstieg erst unter 15 %, `flight-model-spec.md` Entscheidung 50),
+Sim-Verlauf gegen echt in mV RMS und Spannung am Ende echt / Sim, jeweils vorher → jetzt:
+
+| Log | RMS | Ende echt / Sim |
+|---|---|---|
+| nazgul_evoque_f5_a | 15 → 14 | 3,73 / 3,72 → 3,72 |
+| nazgul_evoque_f5_b | 13 → 32 | 3,94 / 3,94 → 3,92 |
+| fifty5_6s | 15 → 16 | 3,70 / 3,71 → 3,71 |
+| rekon7 | 41 → 41 | 3,70 / 3,71 → 3,71 |
+| geprc_cinewhoop3 | 59 → 46 | 3,73 / 3,71 → 3,72 |
+| pavo20pro2_fullthrottle | 52 → 52 | 3,55 / 3,61 → 3,60 |
+| pavo_pico_all / _timing | 59 / 56 → 64 / 67 | 3,56 / 3,45 → 3,41 und 3,52 / 3,44 → 3,39 |
+| firefly25_evening / _long | 51 / 71 → 44 / 73 | 3,71 / 3,81 → 3,79 und 3,50 / 3,45 → 3,27 |
+| lr5_lion_a / _b | 67 / 147 → 67 / 147 | unverändert |
+
+Die meisten Logs bleiben gleich oder werden besser. Schlechter: nazgul_evoque_f5_b – die neue Kurve ist zwischen 80 und
+100 % flacher (wie die Tabellen), die Kapazitätsprüfung skaliert den Strom deshalb mit ×1,24 statt ×1,0 (ein frisch
+geladener Pack verliert in den ersten Minuten seine Oberflächenladung, die das Modell nicht kennt); die Pavo-Pico-Logs
+enden mit der neuen Kurve bei 11–12 % statt 14–15 % Ladung und damit knapp im Anstieg, echt bleibt der Einbruch bis
+dorthin gleich (Sim/echt im letzten Drittel 0,83–0,99). Ein Li-Ion-Log (lr5_lion_a) fiel mit einer ersten,
+flacheren Li-Ion-Kurve aus dem Vergleich (Kapazität aus der Spannung 950 statt 4000 mAh); die endgültige Kurve ist über
+30 % unverändert und behält ihn.
+
+Was die Daten sagen:
+
+- Der **Sofort-Widerstand** echter Packs liegt bei 55–75 % des Pack-Widerstands im Modell (Median 64 %), der Rest baut
+  sich in 0,25–1 s auf, dazu kommt ein langsamer Anteil mit 2–15 s. Daraus `SAG_FAST_FRACTION = 0,35` und
+  `SAG_FAST_TAU = 0,5 s`; der langsame Anteil (0,5 × Pack-Widerstand, 5 s) passt.
+- Voller Akku und Vollgas brechen auch echt deutlich ein (0,4–0,8 V je Zelle bei 30–55 C). Über den Flug wird der
+  Widerstand echter Packs kleiner (Firefly 43 → 28 mΩ, Pavo20 Pro 40 → 21 mΩ je Zelle), weil sie warm werden – das
+  Modell kennt keine Akkutemperatur.
+- Bis rund 14 % Ladung steigt der Einbruch echt nicht (Pavo Pico: 0,57 / 0,55 / 0,55 V bei 22 / 18 / 14 %). Der
+  Anstieg im Modell setzt deshalb spät ein (`L³`); für die Höhe unter 10 % gibt es in den Logs keine Daten.
+- **1S-Whoops**: Der Punch-Einbruch ist echt 1,8-mal so groß wie im Modell (vorher 1,4-mal), der Stromsensor der Logs
+  ist nicht verwertbar. Die Pack-Widerstände kleiner 1S-Akkus (40 mΩ je Zelle für 300 mAh) samt Stecker sind zu
+  niedrig; sie zu erhöhen verkürzt die Whoop-Flugzeiten um mehrere Prozent und ist deshalb nicht Teil dieser Änderung.
+- Die 2,5″-3S- und Li-Ion-Aufbauten passen nicht zu den Teiledaten (Akku unbekannt bzw. geschätzt).
+
 ## Entscheidungen
+
+- **Akku-Vergleich mit eingeprägtem Strom** statt aus dem Nachflug: trennt den Akku von Motor, Prop und Gewicht, deren
+  Abweichungen (Schub echt/Sim 0,94–2,3) den Einbruch sonst überdecken. Nachteil: braucht einen brauchbaren Stromsensor.
+- **Ladezustand über die mittlere Spannung des ganzen Flugs** statt über die ersten Sekunden: Der echte Akku ist beim
+  Start des Logs schon belastet, der Sim-Akku ausgeruht; der Start-Abgleich schätzte die Ladung zu niedrig.
+- **Strom auf die Kapazität des Sim-Akkus skalieren**, wenn Ladung und Spannungsabfall nicht zusammenpassen: Mehrere
+  Logs haben einen größeren Akku als die Quellentabelle oder einen verstellten Sensor; verglichen wird bei gleicher
+  C-Rate.
 
 - **blackbox_decode als Decoder** statt eines eigenen Parsers: Referenz von Betaflight, robust bei kaputten Frames und
   allen Kodierungen; geprüft mit der Rundreise und gleich dem Java-Test-Decoder. Eigene Umrechnung der Einheiten, weil

@@ -80,5 +80,12 @@ public final class GeneratedArea {
         public boolean generatedWithin(int radius) {
             return this.generatedRadius >= radius;
         }
+
+        public Status within(int radius) {
+            if (this.generatedWithin(radius)) {
+                return Status.GENERATED;
+            }
+            return this.missingWithin(radius) ? Status.MISSING : Status.UNKNOWN;
+        }
     }
 }

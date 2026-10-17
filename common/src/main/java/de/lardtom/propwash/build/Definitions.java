@@ -25,7 +25,7 @@ final class Definitions {
             case PropDefinition d -> new PropDefinition(id, d.basics(), d.diameterMm(), d.pitchInch(), d.blades(), d.thrustCoefficient(),
                     d.powerCoefficient(), d.material(), d.stiffness(), d.mount(), d.reverseThrust());
             case VideoDefinition d -> new VideoDefinition(id, d.basics(), d.link(), d.latencyMs(), d.rangeBlocks(), d.imageQuality(),
-                    d.cameraWidthMm(), d.cameraFovDeg(), d.vtxPowerMw(), d.powerW());
+                    d.cameraWidthMm(), d.cameraFovDeg(), d.vtxPowerMw(), d.powerW(), d.vtxLevelsMw());
             case BatteryDefinition d -> new BatteryDefinition(id, d.basics(), d.cells(), d.capacityMah(), d.cellResistanceOhm(), d.cRating(),
                     d.chemistry(), d.packSize(), d.connector());
             case AccessoryDefinition d -> new AccessoryDefinition(id, d.basics(), d.slot(), d.widthMm(), d.heightMm(), d.depthMm(),

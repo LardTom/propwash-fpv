@@ -5,7 +5,13 @@
       "entries": [
         {
           "type": "minecraft:empty",
-          "weight": 60
+          "weight": 48
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:bando_map",
+          "weight": 12,
+          "modifier": "propwash:bando_map"
         },
         {
           "type": "minecraft:item",

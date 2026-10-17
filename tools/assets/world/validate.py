@@ -12,6 +12,7 @@ from PIL import Image
 import charger
 import course
 import generate as gen
+import maps
 import materials
 import menus
 import remote
@@ -410,9 +411,18 @@ def check_items():
         png(ASSETS / "textures" / "item" / f"gate_{size}.png", (16, 16))
     check_item_definition("course_tool")
     png(ASSETS / "textures" / "item" / "course_tool.png", (16, 16))
+    check_item_definition("waterproof_spray")
+    png(ASSETS / "textures" / "item" / "waterproof_spray.png", (16, 16))
     for name in materials.MATERIALS:
         check_item_definition(name)
         png(ASSETS / "textures" / "item" / f"{name}.png", (16, 16))
+    check_item_definition(maps.ITEM)
+    png(ASSETS / "textures" / "item" / f"{maps.ITEM}.png", maps.SIZES[maps.ITEM])
+    png(ASSETS / "textures" / "map" / "decorations" / f"{maps.DECORATION}.png", maps.SIZES[maps.DECORATION])
+    for name, img in maps.sheets().items():
+        target = ASSETS / "textures" / ("item" if name == maps.ITEM else "map/decorations") / f"{name}.png"
+        if target.exists() and Image.open(target).convert("RGBA").tobytes() != img.tobytes():
+            error(f"{rel(target)} weicht von assets-src/world/pixel/maps.txt ab (generate.py ausführen)")
 
 
 def check_course():

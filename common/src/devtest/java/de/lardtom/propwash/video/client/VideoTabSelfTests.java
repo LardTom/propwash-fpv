@@ -275,7 +275,7 @@ public final class VideoTabSelfTests {
     }
 
     private static boolean same(VideoConfig a, VideoConfig b) {
-        return a.effectStrength == b.effectStrength && a.imageFormat == b.imageFormat && a.cameraShake == b.cameraShake
+        return a.effectStrength == b.effectStrength && a.imageFormat == b.imageFormat && a.cameraShake == b.cameraShake && a.lensStrength == b.lensStrength
                 && a.reduceFlicker == b.reduceFlicker && a.renderer == b.renderer && a.ledLighting == b.ledLighting
                 && a.creativeFovFromModule == b.creativeFovFromModule && a.fovCreative == b.fovCreative
                 && a.creativeLatencyFromModule == b.creativeLatencyFromModule && a.creativeLatencyMs == b.creativeLatencyMs

@@ -27,7 +27,7 @@ import de.lardtom.propwash.video.record.RecordingQuality;
 import de.lardtom.propwash.video.record.Stabilizer;
 import de.lardtom.propwash.video.record.external.FfmpegLocator;
 import de.lardtom.propwash.video.record.external.HardwareEncoders;
-import de.lardtom.propwash.video.record.path.KeyframeDensity;
+import de.lardtom.propwash.video.record.path.Simplification;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -63,6 +63,10 @@ public final class ActionCamTab extends UiTab {
     private int flowTop;
     private int contentHeight;
     private @Nullable FormLayout form;
+    private @Nullable PathPreviewModel pathPreview;
+    private @Nullable Object previewPath;
+    private PathPreviewDraw.View previewView = PathPreviewDraw.View.TOP;
+    private @Nullable PathPreviewWidget previewWidget;
     private @Nullable TextField pathField;
     private HardwareEncoders.@Nullable Status preview;
 
@@ -197,16 +201,46 @@ public final class ActionCamTab extends UiTab {
                         this.markEdited();
                     });
             this.add(form.place(flashbackAuto));
-            CycleButton<KeyframeDensity> density = CycleButton.<KeyframeDensity>builder(value -> Component.translatable(value.translationKey()),
-                            config.flashbackDensity)
-                    .withValues(List.of(KeyframeDensity.EVERY_TICK, KeyframeDensity.REDUCED))
-                    .withTooltip(value -> Tooltip.create(Component.translatable(KEY + "flashback_density.tooltip." + value.key())))
-                    .create(this.left, this.y, columnWidth, Metrics.CONTROL_HEIGHT, Component.translatable(KEY + "flashback_density"),
+            StepSlider simplify = new StepSlider(this.left, this.y, columnWidth, Metrics.CONTROL_HEIGHT, 0, 100, 1,
+                    Math.round(config.flashbackSimplify * 100.0), value -> simplifyLabel(value / 100.0), value -> {
+                        this.working.flashbackSimplify = value / 100.0;
+                        this.markEdited();
+                        this.previewModel().settings(this.working.flashbackSimplify, this.working.flashbackKeyframeLimit);
+                    });
+            simplify.untyped();
+            simplify.setTooltip(Tooltip.create(Component.translatable(KEY + "flashback_simplify.tooltip")));
+            this.add(form.place(simplify));
+            CycleButton<Boolean> limit = CycleButton.onOffBuilder(config.flashbackKeyframeLimit)
+                    .withTooltip(value -> Tooltip.create(Component.translatable(KEY + "flashback_limit.tooltip")))
+                    .create(this.left, this.y, columnWidth, Metrics.CONTROL_HEIGHT, Component.translatable(KEY + "flashback_limit"), (button, value) -> {
+                        this.working.flashbackKeyframeLimit = value;
+                        this.markEdited();
+                        this.previewModel().settings(this.working.flashbackSimplify, this.working.flashbackKeyframeLimit);
+                    });
+            this.add(form.place(limit));
+            PathPreviewWidget preview = new PathPreviewWidget(this.left, this.y, form.width(), this::previewModel, this::openPreview);
+            preview.view(this.previewView);
+            this.previewWidget = preview;
+            this.add(form.placeWide(preview, PathPreviewWidget.HEIGHT));
+            CycleButton<PathPreviewDraw.View> view = CycleButton.<PathPreviewDraw.View>builder(
+                            value -> Component.translatable(SimplificationText.PREVIEW + "view." + value.key()), this.previewView)
+                    .withValues(List.of(PathPreviewDraw.View.values()))
+                    .create(this.left, this.y, columnWidth, Metrics.CONTROL_HEIGHT, Component.translatable(SimplificationText.PREVIEW + "view"),
                             (button, value) -> {
-                                this.working.flashbackDensity = value;
-                                this.markEdited();
+                                this.previewView = value;
+                                preview.view(value);
                             });
-            this.add(form.place(density));
+            this.add(form.place(view));
+            Button bigger = Button.builder(Component.translatable(SimplificationText.PREVIEW + "bigger"), button -> this.openPreview())
+                    .size(columnWidth, Metrics.CONTROL_HEIGHT)
+                    .tooltip(Tooltip.create(Component.translatable(SimplificationText.PREVIEW + "bigger.tooltip")))
+                    .build();
+            this.add(form.place(bigger));
+            Button check = Button.builder(Component.translatable(KEY + "flashback_check"), button -> this.openRescue())
+                    .size(columnWidth, Metrics.CONTROL_HEIGHT)
+                    .tooltip(Tooltip.create(Component.translatable(KEY + "flashback_check.tooltip")))
+                    .build();
+            this.add(form.place(check));
         }
 
         form.section(Component.translatable(KEY + "section.library"));
@@ -553,16 +587,61 @@ public final class ActionCamTab extends UiTab {
             lines.add(Component.translatable(KEY + "status.flashback_waiting"));
         } else if (cam.recording()) {
             lines.add(Component.translatable(KEY + "status.flashback_recording", ClipInfo.duration(Math.round(cam.recordedSeconds()))));
+            FlashbackCam.Budget budget = cam.budget();
+            if (budget != null) {
+                lines.add(Component.translatable(KEY + "status.flashback_budget", budget.keyframes(), budget.maxKeyframes(),
+                        Math.round(budget.fill() * 100.0)));
+            }
         }
         FlashbackCam.Handover last = cam.lastHandover();
         if (last != null) {
             lines.add(Component.translatable(KEY + "status.flashback_last", last.scene(), last.keyframes()));
+            if (last.capped()) {
+                lines.add(Component.translatable(KEY + "status.flashback_thinned", last.keyframes(), SimplificationText.centimetres(last.tolerancePosition()),
+                        SimplificationText.degrees(last.toleranceAngle())));
+            }
         }
     }
 
     private static float cameraChargeOf(DroneContext context) {
         Float stored = context.stack().get(CoreComponents.CAMERA_CHARGE.get());
         return stored == null ? CamPower.FULL : CamPower.clamp(stored);
+    }
+
+    static Component simplifyLabel(double slider) {
+        return Component.translatable(KEY + "flashback_simplify.value", SimplificationText.value(Simplification.ofSlider(slider)));
+    }
+
+    public PathPreviewModel previewModel() {
+        Object path = FlashbackCam.INSTANCE.lastPath();
+        PathPreviewModel current = this.pathPreview;
+        if (current == null || path != this.previewPath) {
+            current = PathPreviewModel.forFlight(this.working.flashbackSimplify, this.working.flashbackKeyframeLimit);
+            this.pathPreview = current;
+            this.previewPath = path;
+        }
+        current.settings(this.working.flashbackSimplify, this.working.flashbackKeyframeLimit);
+        return current;
+    }
+
+    public @Nullable PathPreviewWidget previewWidget() {
+        return this.previewWidget;
+    }
+
+    public void openPreview() {
+        PathPreviewModel model = this.previewModel();
+        PathPreviewScreen screen = new PathPreviewScreen(this.host.screen(), model, (slider, limit) -> {
+            this.working.flashbackSimplify = slider;
+            this.working.flashbackKeyframeLimit = limit;
+            this.markEdited();
+            this.host.rebuild();
+        }, null);
+        screen.view(this.previewView);
+        Minecraft.getInstance().gui.setScreen(screen);
+    }
+
+    public void openRescue() {
+        Minecraft.getInstance().gui.setScreen(new FlashbackRescueScreen(this.host.screen()));
     }
 
     private void openRecordings() {
@@ -581,6 +660,7 @@ public final class ActionCamTab extends UiTab {
     @Override
     public void resetDefaults() {
         this.working = new RecordingConfig();
+        this.working.validate();
         this.probePath = "";
         this.markEdited();
         this.host.rebuild();

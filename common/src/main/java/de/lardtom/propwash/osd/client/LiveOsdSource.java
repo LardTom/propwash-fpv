@@ -20,6 +20,7 @@ import de.lardtom.propwash.video.client.SpectateConfig;
 import de.lardtom.propwash.video.client.SpectateSession;
 import de.lardtom.propwash.trick.client.TrickTracker;
 import de.lardtom.propwash.video.client.VideoState;
+import de.lardtom.propwash.video.client.VtxRuntime;
 import de.lardtom.propwash.video.client.record.ActionCamRecorder;
 import de.lardtom.propwash.video.client.record.FlashbackCam;
 import de.lardtom.propwash.video.record.RecordingJob;
@@ -76,6 +77,7 @@ public class LiveOsdSource implements OsdSampler.Source {
         RescueState rescue = RescueState.INSTANCE;
         d.radioConnected = radio.connected();
         d.linkStrength = OsdSampler.clamp01(session.linkStrength());
+        d.rssiDbm = session.rssiDbm();
         d.rescueActive = rescue.active();
         d.worldEdge = EdgeGuard.INSTANCE.warning();
         Component phase = d.rescueActive ? rescue.phaseLabel() : null;
@@ -92,6 +94,7 @@ public class LiveOsdSource implements OsdSampler.Source {
         d.stickPitch = sticks.pitch();
         d.stickYaw = sticks.yaw();
         d.stickThrottle = !d.rescueActive && PilotSession.INSTANCE.mode3dActive() ? radio.throttle3d() : sticks.throttle();
+        d.turtle = PilotSession.INSTANCE.turtleArmed() || !d.armed && PilotSession.INSTANCE.turtleSelected();
         if (!d.hasSim) {
             d.throttle = sticks.throttle();
         }
@@ -143,6 +146,7 @@ public class LiveOsdSource implements OsdSampler.Source {
         }
         d.radioConnected = true;
         d.linkStrength = 1.0;
+        d.rssiDbm = Double.NaN;
         d.stickRoll = 0.0F;
         d.stickPitch = 0.0F;
         d.stickYaw = 0.0F;
@@ -153,6 +157,9 @@ public class LiveOsdSource implements OsdSampler.Source {
 
     private static void fillRecording(OsdData d) {
         FlashbackCam flashback = FlashbackCam.INSTANCE;
+        FlashbackCam.Budget budget = flashback.budget();
+        d.flashbackFill = budget == null ? Double.NaN : budget.fill();
+        d.flashbackLimit = budget == null || budget.limit();
         if (flashback.recording()) {
             d.recording = flashback.paused() ? OsdData.REC_PAUSED : OsdData.REC_ON;
             d.recordingSeconds = flashback.recordedSeconds();
@@ -186,6 +193,18 @@ public class LiveOsdSource implements OsdSampler.Source {
         d.ledsOff = DroneLeds.switchedOff(drone);
         DroneBuild build = drone.build();
         d.vtxChannel = build == null ? "" : VtxSettings.label(drone.tune().values(), build.video().system);
+        if (build != null) {
+            VtxRuntime.Readout vtx = VtxRuntime.INSTANCE.readout(drone);
+            d.vtxPowerMw = vtx.milliwatts();
+            d.vtxPowerAuto = vtx.auto();
+            d.vtxThrottled = vtx.throttled();
+            d.vtxHot = vtx.hot();
+        } else {
+            d.vtxPowerMw = 0;
+            d.vtxPowerAuto = false;
+            d.vtxThrottled = false;
+            d.vtxHot = false;
+        }
         if (!hasSim && build != null && build.battery() != null) {
             d.cells = build.battery().cells;
             d.capacityMah = build.battery().capacityMah;

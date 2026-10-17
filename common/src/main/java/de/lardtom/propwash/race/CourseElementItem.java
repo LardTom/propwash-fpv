@@ -62,6 +62,7 @@ public class CourseElementItem extends GateItem {
                 .what(id)
                 .use(ItemHelp.PREFIX + "course_element")
                 .args(ItemHelp.PREFIX + "course_element.use.2", Component.keybind(ROTATE_KEY), Component.keybind(ROTATE_KEY))
+                .args(ItemHelp.PREFIX + "course_element.use.5", Component.keybind(GateItem.EDIT_MOUSE_KEY))
                 .specs(out -> out.accept(Component.translatable("propwash.race.element.tooltip." + this.kind.key(),
                         GateMounting.degrees((float) this.kind.defaultWidth()), GateMounting.degrees((float) this.kind.defaultHeight()))
                         .withStyle(ChatFormatting.GRAY)))

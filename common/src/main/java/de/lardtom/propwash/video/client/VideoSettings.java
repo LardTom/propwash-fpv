@@ -4,7 +4,7 @@ import de.lardtom.propwash.config.JsonConfig;
 
 public final class VideoSettings {
     public static final JsonConfig<VideoConfig> CONFIG =
-            JsonConfig.create("video", VideoConfig.class, VideoConfig::new, VideoConfig::validate);
+            JsonConfig.create("video", VideoConfig.class, VideoConfig::new, VideoConfig::validate, VideoConfig::migrate);
 
     private VideoSettings() {
     }

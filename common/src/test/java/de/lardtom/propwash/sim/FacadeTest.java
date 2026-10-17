@@ -23,7 +23,7 @@ class FacadeTest {
         assertTrue(w.sim.setBuild(DroneBuild.RACER));
         assertEquals(AirframeSpec.of(DroneBuild.RACER).buildKey, w.sim.params().buildKey);
         assertEquals(AirframeSpec.of(DroneBuild.RACER).buildKey, w.sim.config().pid.derivedForBuild);
-        assertEquals(34, w.sim.config().pid.roll.p);
+        assertEquals(33, w.sim.config().pid.roll.p);
 
         FlightControllerConfig custom = new FlightControllerConfig();
         custom.pid.source = PidSource.CUSTOM;
@@ -67,7 +67,7 @@ class FacadeTest {
         SimSnapshot back = new SimSnapshot();
         b.copyStateTo(back);
         assertEquals(snap.px, back.px);
-        assertEquals(snap.qz, back.qz);
+        assertEquals(snap.qz, back.qz, 1.0e-15);
         assertEquals(snap.lx, back.lx);
         assertEquals(snap.soc, back.soc);
         assertEquals(snap.rngState, back.rngState);

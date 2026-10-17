@@ -152,6 +152,8 @@ public final class DroneSelfTests {
         SelfTest.clientStep("drone: Brille erneut abgesetzt – weiter im Sichtflug", 100, DroneSelfTests::gogglesOffStep);
         SelfTest.clientStep("drone: Sichtflug – Blick findet die Drohne sofort wieder", 100, PilotLookSelfTests::losResumeStep);
         CrashFallSelfTests.registerPiloted(DRONE_ID::get);
+        LandingSelfTests.registerPiloted(DRONE_ID::get);
+        CrashOutcomeSelfTests.registerPiloted(DRONE_ID::get);
         SelfTest.clientStep("drone: Steuerung beenden", 200, DroneSelfTests::stopStep);
         CrashFallSelfTests.registerUnpiloted(DRONE_ID::get);
         SelfTest.clientStep("drone: Akku tauschen", 200, DroneSelfTests::batteryStep);
@@ -161,7 +163,9 @@ public final class DroneSelfTests {
         PlayLoopSelfTests.register();
         LedSwitchSelfTests.register();
         FlightModeSelfTests.register();
+        ModeSwitchSelfTests.register();
         Mode3dSelfTests.register();
+        WaterproofTurtleSelfTests.register();
         SelfTest.afterLeaveStep("drone: keine Sitzung nach dem Verlassen", 20,
                 ctx -> StepResult.check(!PilotSession.INSTANCE.isActive(), "PilotSession nach dem Verlassen noch aktiv"));
     }
@@ -181,7 +185,7 @@ public final class DroneSelfTests {
     }
 
     private static StepResult topSpeedStep(SelfTest.StepContext ctx) {
-        double[][] ranges = {{130.0, 150.0}, {160.0, 180.0}, {100.0, 120.0}};
+        double[][] ranges = {{130.0, 150.0}, {140.0, 160.0}, {100.0, 120.0}};
         DroneBuild[] builds = {DroneBuild.FREESTYLE, DroneBuild.RACER, DroneBuild.LONG_RANGE};
         for (int k = 0; k < builds.length; k++) {
             double top = BuildAnalysis.of(builds[k]).topSpeedAcroKmh();

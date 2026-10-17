@@ -57,7 +57,7 @@ public final class InputSelfTests {
                 return checkDisconnected();
             } finally {
                 config.keyboardFallback = (Boolean) ctx.state().get("keyboard");
-                TransmitterInput.INSTANCE.setSuppressDevice(false);
+                TransmitterInput.INSTANCE.setSuppressDevice(true);
             }
         });
 
@@ -88,7 +88,7 @@ public final class InputSelfTests {
                 return StepResult.pass();
             } finally {
                 config.keyboardFallback = (Boolean) ctx.state().get("keyboard");
-                TransmitterInput.INSTANCE.setSuppressDevice(false);
+                TransmitterInput.INSTANCE.setSuppressDevice(true);
             }
         });
 
@@ -186,8 +186,8 @@ public final class InputSelfTests {
                 return StepResult.pending();
             }
             if (screen instanceof ReceiverWizardScreen wizard) {
-                if (wizard.page() != ReceiverWizardScreen.Page.DEVICE) {
-                    return StepResult.fail("Assistent startet nicht auf der Geräteseite: " + wizard.page());
+                if (wizard.page() != ReceiverWizardScreen.Page.MODE) {
+                    return StepResult.fail("Assistent startet nicht mit der Wahl des Knüppel-Modes: " + wizard.page());
                 }
                 if (wizard.children().isEmpty()) {
                     return StepResult.fail("Assistent ohne Bedienelemente");
@@ -242,6 +242,7 @@ public final class InputSelfTests {
         OnboardingSelfTests.register();
         ThrottleWizardSelfTests.register();
         WizardRemoteSelfTests.register();
+        StickModeSelfTests.register();
         SwitchCommandSelfTests.register();
         MouseSelfTests.register();
         MacControllerSelfTests.register();

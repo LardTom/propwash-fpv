@@ -39,6 +39,7 @@
   "propwash.parts.tooltip.camera_fov": "Kamera-Sichtfeld (horizontal): %s",
   "propwash.parts.tooltip.vtx_power": "Sendeleistung: %s",
   "propwash.parts.tooltip.milliwatts": "%s mW",
+  "propwash.parts.tooltip.vtx_levels": "%s–%s mW, Auto (Nennleistung %s mW)",
   "propwash.parts.tooltip.durability": "Haltbarkeit: %s",
   "propwash.parts.tooltip.factor": "×%s",
   "propwash.parts.handshake.title": "Deine Propwash-Bauteile passen nicht zu denen des Servers.",

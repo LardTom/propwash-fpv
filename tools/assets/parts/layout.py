@@ -3,12 +3,12 @@ import math
 FRAME_KEYS = ["whoop_65", "cinewhoop_3", "freestyle_5", "race_5", "long_range_7"]
 STACK_KEYS = ["aio_whoop", "aio_20", "stack_30", "creative_fc"]
 MOTOR_KEYS = ["m0802_22000", "m1404_4600", "m2004_3000", "m2207_1750", "m2306_1860", "m2807_1300"]
-PROP_KEYS = ["p31_4b", "p31_3b", "p3_3b", "p51_3b", "p7_2b"]
+PROP_KEYS = ["p31_4b", "p31_3b", "p3_3b", "p51_3b", "p7_2b", "p51_29_3b"]
 BATTERY_KEYS = ["b1s_300_hv", "b4s_650", "b6s_1100", "b6s_1300", "b6s_4000_lion"]
 VIDEO_KEYS = ["analog_nano", "analog_race", "digital_lite", "digital_hd"]
 ACCESSORY_KEYS = ["led_strip", "action_cam_light", "action_cam_heavy", "action_cam_flashback", "gripper"]
 ACCESSORY_BASES = {"top": "mount_top"}
-MOUNT_KEYS = ["top", "bottom"]
+MOUNT_KEYS = ["top", "bottom", "front"]
 
 WHEELBASE_MM = {"whoop_65": 65, "cinewhoop_3": 142, "freestyle_5": 225, "race_5": 215, "long_range_7": 295}
 
@@ -48,7 +48,8 @@ FRAMES = {
         "video": [0.0, 28.3, -38.2],
         "camera_tilt_default": 10.0,
         "accessories": {"top": {"position": [0.0, 44.7, -47.0], "tilt": 10.0},
-                        "bottom": {"position": [0.0, -3.0, -24.0], "tilt": 30.0, "length": 26.0}},
+                        "bottom": {"position": [0.0, -3.0, -24.0], "tilt": 30.0, "length": 26.0},
+                        "front": {"position": [0.0, -3.0, -50.0], "tilt": 0.0}},
         "preset": ("aio_20", "m1404_4600", "p3_3b", "digital_lite", "b4s_650"),
     },
     "freestyle_5": {
@@ -59,12 +60,12 @@ FRAMES = {
         "video": [0.0, 12.5, -50.0],
         "camera_tilt_default": 28.0,
         "accessories": {"top": {"position": [0.0, 34.7, -69.0], "tilt": 22.0},
-                        "bottom": {"position": [0.0, -3.0, -56.0], "tilt": 30.0, "length": 34.0}},
+                        "bottom": {"position": [0.0, -3.0, -56.0], "tilt": 30.0, "length": 34.0},
+                        "front": {"position": [0.0, 0.0, -72.0], "tilt": 0.0}},
         "preset": ("stack_30", "m2207_1750", "p51_3b", "digital_hd", "b6s_1300"),
     },
     "race_5": {
         "motor_y": -0.3,
-        "stretch": 1.2,
         "prop_height": MOTOR_SEAT_MM["m2306_1860"],
         "stack": [0.0, 0.0, 0.0],
         "battery": [0.0, -2.8, 4.0],
@@ -72,8 +73,9 @@ FRAMES = {
         "video": [0.0, 12.5, -44.0],
         "camera_tilt_default": 38.0,
         "accessories": {"top": {"position": [0.0, 26.7, -67.0], "tilt": 20.0},
-                        "bottom": {"position": [0.0, -2.0, -48.0], "tilt": 30.0, "length": 28.0}},
-        "preset": ("stack_30", "m2306_1860", "p51_3b", "analog_race", "b6s_1100"),
+                        "bottom": {"position": [0.0, -2.0, -48.0], "tilt": 30.0, "length": 28.0},
+                        "front": {"position": [0.0, 0.0, -66.0], "tilt": 0.0}},
+        "preset": ("stack_30", "m2306_1860", "p51_29_3b", "analog_race", "b6s_1100"),
     },
     "long_range_7": {
         "motor_y": -0.3,
@@ -83,7 +85,8 @@ FRAMES = {
         "video": [0.0, 14.0, -56.0],
         "camera_tilt_default": 20.0,
         "accessories": {"top": {"position": [0.0, 38.7, -68.0], "tilt": 20.0},
-                        "bottom": {"position": [0.0, -2.5, -60.0], "tilt": 30.0, "length": 36.0}},
+                        "bottom": {"position": [0.0, -2.5, -60.0], "tilt": 30.0, "length": 36.0},
+                        "front": {"position": [0.0, 0.0, -76.0], "tilt": 0.0}},
         "preset": ("stack_30", "m2807_1300", "p7_2b", "digital_hd", "b6s_4000_lion"),
     },
 }

@@ -77,12 +77,22 @@ public final class RacePayloads {
         }
     }
 
-    public record RaceReportC2S(ReportKind kind, int courseId, int lap, long lapNanos, long totalNanos, int flags, long penaltyNanos)
+    public record RaceReportC2S(ReportKind kind, int courseId, int lap, long lapNanos, long totalNanos, int flags, long penaltyNanos,
+                                List<AssistDetail> details)
             implements CustomPacketPayload {
         public static final int FLAG_ASSISTED = 1;
         public static final int ASSIST_SHIFT = 1;
+        public static final int MAX_DETAILS = AssistReasons.MAX_DETAILS;
         public static final Type<RaceReportC2S> TYPE = new Type<>(Constants.id("race_report"));
         public static final StreamCodec<FriendlyByteBuf, RaceReportC2S> CODEC = StreamCodec.of(RaceReportC2S::write, RaceReportC2S::read);
+
+        public RaceReportC2S {
+            details = details == null ? List.of() : List.copyOf(details.size() > MAX_DETAILS ? details.subList(0, MAX_DETAILS) : details);
+        }
+
+        public RaceReportC2S(ReportKind kind, int courseId, int lap, long lapNanos, long totalNanos, int flags, long penaltyNanos) {
+            this(kind, courseId, lap, lapNanos, totalNanos, flags, penaltyNanos, List.of());
+        }
 
         public RaceReportC2S(ReportKind kind, int courseId, int lap, long lapNanos, long totalNanos) {
             this(kind, courseId, lap, lapNanos, totalNanos, 0, 0L);
@@ -105,6 +115,10 @@ public final class RacePayloads {
             return reasons == LapAssist.NONE ? LapAssist.OTHER.bit() : reasons;
         }
 
+        public AssistReasons reasons() {
+            return AssistReasons.of(this.assistMask(), this.details);
+        }
+
         private static void write(FriendlyByteBuf buf, RaceReportC2S payload) {
             buf.writeByte(payload.kind.ordinal());
             buf.writeVarInt(payload.courseId);
@@ -113,17 +127,47 @@ public final class RacePayloads {
             buf.writeVarLong(payload.totalNanos);
             buf.writeVarInt(payload.flags);
             buf.writeVarLong(payload.penaltyNanos);
+            writeDetails(buf, payload.details);
         }
 
         private static RaceReportC2S read(FriendlyByteBuf buf) {
             return new RaceReportC2S(ReportKind.byOrdinal(buf.readByte()), buf.readVarInt(), buf.readVarInt(), buf.readVarLong(), buf.readVarLong(),
-                    buf.readVarInt(), buf.readVarLong());
+                    buf.readVarInt(), buf.readVarLong(), readDetails(buf));
         }
 
         @Override
         public Type<RaceReportC2S> type() {
             return TYPE;
         }
+    }
+
+    static void writeDetails(FriendlyByteBuf buf, List<AssistDetail> details) {
+        int count = Math.min(details.size(), AssistReasons.MAX_DETAILS);
+        buf.writeVarInt(count);
+        for (int i = 0; i < count; i++) {
+            AssistDetail detail = details.get(i);
+            buf.writeByte(detail.reason().ordinal());
+            buf.writeUtf(detail.subject(), AssistDetail.MAX_SUBJECT);
+            buf.writeVarInt(detail.value());
+            buf.writeVarInt(detail.reference());
+        }
+    }
+
+    static List<AssistDetail> readDetails(FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        if (count < 0 || count > AssistReasons.MAX_DETAILS) {
+            throw new DecoderException("Zu viele Flughilfe-Gründe: " + count);
+        }
+        List<AssistDetail> out = new ArrayList<>(count);
+        LapAssist[] reasons = LapAssist.values();
+        for (int i = 0; i < count; i++) {
+            int ordinal = buf.readUnsignedByte();
+            String subject = buf.readUtf(AssistDetail.MAX_SUBJECT);
+            int value = buf.readVarInt();
+            int reference = buf.readVarInt();
+            out.add(new AssistDetail(ordinal < reasons.length ? reasons[ordinal] : LapAssist.OTHER, subject, value, reference));
+        }
+        return out;
     }
 
     public record RaceSettingsS2C(int laps) implements CustomPacketPayload {
@@ -147,13 +191,30 @@ public final class RacePayloads {
         }
     }
 
-    public record BoardRow(String name, String frame, long nanos, long dateMillis, boolean self, int classRank, int overallRank, int assist) {
+    public record BoardRow(String name, String frame, long nanos, long dateMillis, boolean self, int classRank, int overallRank, int assist,
+                           List<AssistDetail> details) {
+        public static final int MAX_DETAILS = AssistReasons.MAX_DETAILS;
+
+        public BoardRow {
+            assist = assist & LapAssist.ALL;
+            List<AssistDetail> kept = AssistReasons.of(assist, details).details();
+            details = kept.size() > MAX_DETAILS ? List.copyOf(kept.subList(0, MAX_DETAILS)) : kept;
+        }
+
+        public BoardRow(String name, String frame, long nanos, long dateMillis, boolean self, int classRank, int overallRank, int assist) {
+            this(name, frame, nanos, dateMillis, self, classRank, overallRank, assist, List.of());
+        }
+
         public BoardRow(String name, String frame, long nanos, long dateMillis, boolean self, int classRank, int overallRank) {
             this(name, frame, nanos, dateMillis, self, classRank, overallRank, LapAssist.NONE);
         }
 
         public boolean assisted() {
             return this.assist != LapAssist.NONE;
+        }
+
+        public AssistReasons reasons() {
+            return AssistReasons.of(this.assist, this.details);
         }
 
         static void write(FriendlyByteBuf buf, BoardRow row) {
@@ -165,11 +226,12 @@ public final class RacePayloads {
             buf.writeVarInt(row.classRank + 1);
             buf.writeVarInt(row.overallRank + 1);
             buf.writeVarInt(row.assist & LapAssist.ALL);
+            writeDetails(buf, row.details);
         }
 
         static BoardRow read(FriendlyByteBuf buf) {
             return new BoardRow(buf.readUtf(Leaderboard.MAX_NAME), buf.readUtf(Leaderboard.MAX_FRAME), buf.readVarLong(), buf.readLong(), buf.readBoolean(),
-                    buf.readVarInt() - 1, buf.readVarInt() - 1, buf.readVarInt() & LapAssist.ALL);
+                    buf.readVarInt() - 1, buf.readVarInt() - 1, buf.readVarInt() & LapAssist.ALL, readDetails(buf));
         }
     }
 

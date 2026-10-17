@@ -41,7 +41,7 @@ public final class MouseDemo {
     public record Frame(float seconds, float mouseX, float mouseY, Cue cue, MouseSticks.Output sticks) {
     }
 
-    public static Frame frame(MouseSettings user, boolean selfLevel, float seconds) {
+    public static Frame frame(MouseSettings user, boolean selfLevel, float seconds, boolean invertPitch) {
         MouseSettings settings = demoSettings(user);
         float t = Float.isFinite(seconds) ? seconds % PERIOD : 0.0F;
         if (t < 0.0F) {
@@ -57,7 +57,7 @@ public final class MouseDemo {
             Phase phase = phaseAt(i * STEP + STEP * 0.5F);
             x += phase.vx() * STEP;
             y += phase.vy() * STEP;
-            out = sticks.update(phase.vx() * STEP * countsPerCm, -phase.vy() * STEP * countsPerCm, STEP, settings, selfLevel);
+            out = sticks.update(phase.vx() * STEP * countsPerCm, -phase.vy() * STEP * countsPerCm, STEP, settings, selfLevel, invertPitch);
         }
         return new Frame(t, x, y, phaseAt(t).cue(), out);
     }

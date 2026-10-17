@@ -20,10 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 class BuiltinRegressionTest {
     static final Set<String> LEGACY_WARNINGS = Set.of("CANNOT_HOVER", "UNDERPOWERED", "SLUGGISH_MOTORS", "HEAVY_SAG", "ESC_CURRENT_LIMITED",
             "BATTERY_OVERLOAD");
@@ -40,14 +36,9 @@ class BuiltinRegressionTest {
             "TAKEOFF", "BATTERY_LOW", "BATTERY_CRITICAL", "PACK_DEPLETED", "BROWNOUT", "ESC_CURRENT_LIMIT", "MOTOR_OVERHEAT", "FAILSAFE",
             "AIRMODE_ACTIVE", "FRAME_HITCH", "SIM_FAULT");
     private static final String FILE = "de/lardtom/propwash/sim/builtin_regression.txt";
-    private static final String REST_FILE = "de/lardtom/propwash/sim/builtin_ground_rest.txt";
-    private static boolean restFlat;
-    private static List<Boolean> flying;
 
     static SimTuning tuning() {
-        SimTuning tuning = new SimTuning();
-        tuning.restFlat = restFlat;
-        return tuning;
+        return new SimTuning();
     }
     private static final double FPS = 144.0;
 
@@ -61,9 +52,20 @@ class BuiltinRegressionTest {
         return out;
     }
 
-    static List<DroneBuild> presetVariants() {
+    static final DroneBuild RACER_040 = DroneBuild.RACER.withProp(PropType.P51_3B);
+
+    static List<DroneBuild> goldenPresets() {
         List<DroneBuild> out = new ArrayList<>();
         for (DroneBuild preset : DroneBuild.PRESETS) {
+            out.add(preset == DroneBuild.RACER ? RACER_040 : preset);
+        }
+        out.add(DroneBuild.RACER);
+        return out;
+    }
+
+    static List<DroneBuild> presetVariants() {
+        List<DroneBuild> out = new ArrayList<>();
+        for (DroneBuild preset : goldenPresets()) {
             for (DroneBuild build : List.of(preset, preset.withAccessory(AccessoryType.LED_STRIP),
                     preset.withAccessory(AccessoryType.ACTION_CAM_HEAVY),
                     preset.withAccessory(AccessoryType.ACTION_CAM_LIGHT).withAccessory(AccessoryType.LED_STRIP))) {
@@ -153,9 +155,6 @@ class BuiltinRegressionTest {
 
     static void frame(StringBuilder out, FlatWorld w) {
         w.frame(1.0 / FPS);
-        if (flying != null) {
-            flying.add(w.sim.arming.armed || w.sim.groundedFrames == 0);
-        }
         StepResult r = w.result;
         GoldenFile.bits(out, r.dx);
         GoldenFile.bits(out, r.dy);
@@ -330,7 +329,7 @@ class BuiltinRegressionTest {
             out.put("angle:" + key, GoldenFile.hash(angleFlight(build)));
             out.put("drop:" + key, GoldenFile.hash(dropAndWall(build)));
         }
-        for (DroneBuild build : DroneBuild.PRESETS) {
+        for (DroneBuild build : goldenPresets()) {
             String key = AirframeSpec.of(build).buildKey;
             out.put("worn:" + key, GoldenFile.hash(acroFlight(build, worn)));
             out.put("full:" + key, GoldenFile.hash(fullThrottleRun(build, false)));
@@ -366,54 +365,5 @@ class BuiltinRegressionTest {
     @Test
     void builtinPartsAnalyseAndFlyBitIdentical() {
         GoldenFile.verify(FILE, collect(), "Eingebaute Teile analysieren oder fliegen anders als in 0.3.2");
-    }
-
-    @Test
-    void groundRestFliesBitIdentical() {
-        Map<String, String> out = new LinkedHashMap<>();
-        restFlat = true;
-        try {
-            for (DroneBuild build : presetVariants()) {
-                String key = AirframeSpec.of(build).buildKey;
-                out.put("acro:" + key, GoldenFile.hash(acroFlight(build, PartWear.PRISTINE)));
-                out.put("angle:" + key, GoldenFile.hash(angleFlight(build)));
-                out.put("drop:" + key, GoldenFile.hash(dropAndWall(build)));
-            }
-        } finally {
-            restFlat = false;
-        }
-        GoldenFile.verify(REST_FILE, out, "Flüge mit flachem Liegen am Boden anders als in 0.5.0");
-    }
-
-    @Test
-    void groundRestLeavesArmedFlightUntouched() {
-        for (DroneBuild build : DroneBuild.PRESETS) {
-            String key = AirframeSpec.of(build).buildKey;
-            List<Boolean> trace = new ArrayList<>();
-            flying = trace;
-            String legacy;
-            try {
-                legacy = acroFlight(build, PartWear.PRISTINE);
-            } finally {
-                flying = null;
-            }
-            String rested;
-            restFlat = true;
-            try {
-                rested = acroFlight(build, PartWear.PRISTINE);
-            } finally {
-                restFlat = false;
-            }
-            String[] a = legacy.split("\n");
-            String[] b = rested.split("\n");
-            assertEquals(trace.size(), a.length, key);
-            assertEquals(a.length, b.length, key);
-            int resting = trace.indexOf(Boolean.FALSE);
-            assertTrue(resting > (int) Math.round(1.5 * FPS), key + ": liegt ab Frame " + resting);
-            for (int k = 0; k < resting; k++) {
-                assertEquals(a[k], b[k], key + " Frame " + k);
-            }
-            assertNotEquals(legacy, rested, key);
-        }
     }
 }

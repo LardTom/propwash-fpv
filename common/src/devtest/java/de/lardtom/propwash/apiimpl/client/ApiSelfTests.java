@@ -128,8 +128,8 @@ public final class ApiSelfTests {
     private static StepResult registryStep() {
         List<String> errors = new ArrayList<>();
         if (!PropwashApi.isCompatible("1.0") || !PropwashApi.isCompatible("1.1") || !PropwashApi.isCompatible("1.2") || !PropwashApi.isCompatible("1.3")
-                || !PropwashApi.isCompatible("1.4") || !PropwashApi.isCompatible("1.5") || PropwashApi.isCompatible("1.6") || PropwashApi.isCompatible("2.0")
-                || !"1.5.0".equals(PropwashApi.API_VERSION)) {
+                || !PropwashApi.isCompatible("1.4") || !PropwashApi.isCompatible("1.5") || !PropwashApi.isCompatible("1.6")
+                || PropwashApi.isCompatible("1.7") || PropwashApi.isCompatible("2.0") || !"1.6.0".equals(PropwashApi.API_VERSION)) {
             errors.add("Versionsprüfung falsch");
         }
         try {

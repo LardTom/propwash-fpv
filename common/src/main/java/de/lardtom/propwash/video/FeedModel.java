@@ -5,7 +5,6 @@ public final class FeedModel {
     public static final long MAX_FREEZE_NANOS = 1_200_000_000L;
     public static final long LOSS_HOLD_NANOS = 300_000_000L;
     public static final long LOSS_HOLD_GENTLE_NANOS = 800_000_000L;
-    public static final long DIGITAL_EXTRA_LATENCY_NANOS = 12_000_000L;
     public static final float DIGITAL_LOSS_ENTER = (float) DigitalBreakup.LOSS_ENTER;
     public static final float DIGITAL_LOSS_EXIT = (float) DigitalBreakup.LOSS_EXIT;
     public static final float DIGITAL_SMOOTH_QUALITY = (float) DigitalBreakup.SMOOTH_ABOVE;
@@ -31,6 +30,7 @@ public final class FeedModel {
     private long lastNanos;
     private double time;
     private boolean lost = true;
+    private boolean lostToStall;
     private long lostChangedNanos;
     private float lossMix = 1.0F;
     private boolean burst;
@@ -115,6 +115,7 @@ public final class FeedModel {
         this.started = false;
         this.time = 0.0;
         this.lost = true;
+        this.lostToStall = false;
         this.lossMix = 1.0F;
         this.burst = false;
         this.lastSlot = NO_SLOT;
@@ -363,12 +364,22 @@ public final class FeedModel {
         p.mode = FeedLook.DIGITAL.shaderMode();
         this.link = q;
         p.link = q;
-        this.digitalPicture(p, q, clamp01(1.0F - input.imageQuality), strength, cosmetic);
-        long latency = base + (long) ((1.0F - q) * DIGITAL_EXTRA_LATENCY_NANOS);
-        this.digitalLink(p, now, dt, input, q, latency);
+        DigitalProfile profile = input.digitalProfile;
+        this.digitalPicture(p, q, clamp01(1.0F - input.imageQuality), strength, cosmetic, profile);
+        long latency = base + profile.extraLatencyNanos(q);
+        this.digitalLink(p, now, dt, input, q, latency, profile);
     }
 
-    private void digitalPicture(EffectParams p, float q, float imageLoss, float strength, float cosmetic) {
+    private void digitalPicture(EffectParams p, float q, float imageLoss, float strength, float cosmetic, DigitalProfile profile) {
+        if (!profile.adaptiveBitrate()) {
+            p.blurPx = imageLoss * 1.5F * cosmetic;
+            p.blockiness = (float) (DigitalBreakup.breakup(q) * 0.45 * (0.4 + 0.6 * strength));
+            p.blockPx = (float) DigitalBreakup.FIXED_RATE_BLOCK_PX;
+            p.posterize = 0.0F;
+            this.resolutionLevel = 0;
+            p.resolution = 1.0F;
+            return;
+        }
         double blocks = DigitalBreakup.blockiness(q);
         p.blurPx = (float) ((imageLoss * 1.5 + DigitalBreakup.blur(q) * 3.5) * cosmetic);
         p.blockiness = (float) (blocks * 0.4 * (0.4 + 0.6 * strength));
@@ -378,13 +389,19 @@ public final class FeedModel {
         p.resolution = (float) DigitalBreakup.resolutionScale(this.resolutionLevel);
     }
 
-    private void digitalLink(EffectParams p, long now, double dt, FeedInput input, float q, long latency) {
-        boolean frozenTooLong = !this.lost && now - this.lastArrivalNanos > MAX_FREEZE_NANOS;
-        boolean wantLoss = !input.connected || q < DIGITAL_LOSS_ENTER || frozenTooLong;
-        boolean wantRecover = input.connected && q > DIGITAL_LOSS_EXIT;
+    private void digitalLink(EffectParams p, long now, double dt, FeedInput input, float q, long latency, DigitalProfile profile) {
+        boolean weak = input.connected && q < DIGITAL_LOSS_ENTER;
+        long freezeLimit = weak ? profile.lossGraceNanos() : MAX_FREEZE_NANOS;
+        boolean frozenTooLong = !this.lost && now - this.lastArrivalNanos > freezeLimit;
+        boolean wantLoss = !input.connected || frozenTooLong;
+        if (this.lost && (weak || !input.connected)) {
+            this.lostToStall = false;
+        }
+        boolean wantRecover = input.connected && q > (this.lostToStall ? DIGITAL_LOSS_ENTER : DIGITAL_LOSS_EXIT);
         long hold = input.reduceFlicker ? LOSS_HOLD_GENTLE_NANOS : LOSS_HOLD_NANOS;
         if (!this.lost && wantLoss) {
             this.lost = true;
+            this.lostToStall = input.connected && !weak;
             this.lostChangedNanos = now;
         } else if (this.lost && wantRecover && now - this.lostChangedNanos >= hold) {
             this.lost = false;
@@ -396,7 +413,7 @@ public final class FeedModel {
         if (this.lost || (q >= DIGITAL_SMOOTH_QUALITY && !this.burst)) {
             this.continuous(now, latency);
         } else {
-            this.advanceClock(now, q, latency);
+            this.advanceClock(now, q, latency, weak ? 0.0 : profile.frameArrival(q));
         }
         float target = this.lost ? 1.0F : 0.0F;
         if (input.reduceFlicker) {
@@ -430,7 +447,7 @@ public final class FeedModel {
         p.displayedCaptureNanos = this.displayedCaptureNanos;
     }
 
-    private void advanceClock(long now, float q, long latency) {
+    private void advanceClock(long now, float q, long latency, double arrive) {
         EffectParams p = this.params;
         long slot = Math.floorDiv(now - latency, DIGITAL_FRAME_NANOS);
         boolean advanced = false;
@@ -442,7 +459,6 @@ public final class FeedModel {
             long count = Math.min(slot - this.lastSlot, 64L);
             double goodToBad = DigitalBreakup.burstStart(q);
             double badToGood = DigitalBreakup.burstEnd(q);
-            double arrive = DigitalBreakup.frameArrival(q);
             long arrived = NO_SLOT;
             for (long i = slot - count + 1; i <= slot; i++) {
                 if (this.burst) {

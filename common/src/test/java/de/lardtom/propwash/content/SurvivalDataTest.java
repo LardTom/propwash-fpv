@@ -129,7 +129,7 @@ class SurvivalDataTest {
                 items.add(part.key());
             }
         }
-        items.addAll(List.of("drone", "remote", "goggles_analog", "goggles_digital", "battery_charger"));
+        items.addAll(List.of("drone", "remote", "goggles_analog", "goggles_digital", "battery_charger", "bando_map"));
         return items;
     }
 
@@ -297,6 +297,8 @@ class SurvivalDataTest {
             List<JsonObject> functions = new ArrayList<>();
             if (modifier.isJsonArray()) {
                 modifier.getAsJsonArray().forEach(e -> functions.add(e.getAsJsonObject()));
+            } else if (modifier.isJsonPrimitive()) {
+                assertEquals("propwash:" + key, modifier.getAsString(), table + ": " + key + " mit fremder Funktion");
             } else {
                 functions.add(modifier.getAsJsonObject());
             }

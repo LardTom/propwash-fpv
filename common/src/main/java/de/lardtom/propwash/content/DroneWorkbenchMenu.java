@@ -1,6 +1,8 @@
 package de.lardtom.propwash.content;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.accessory.AccessoryComponents;
+import de.lardtom.propwash.accessory.AccessoryContents;
 import de.lardtom.propwash.api.build.DroneData;
 import de.lardtom.propwash.api.build.TuneGroup;
 import de.lardtom.propwash.api.build.TuneSpec;
@@ -205,6 +207,14 @@ public class DroneWorkbenchMenu extends AbstractContainerMenu {
             return;
         }
         List<ItemStack> stacks = DroneAssembly.disassemble(drone);
+        List<ItemStack> loaded = drone.getOrDefault(AccessoryComponents.CONTENTS.get(), AccessoryContents.EMPTY).all();
+        if (!loaded.isEmpty()) {
+            this.access.execute((level, pos) -> {
+                for (ItemStack stack : loaded) {
+                    this.player.getInventory().placeItemBackInInventory(stack.copy(), Prediction.SERVER_ONLY);
+                }
+            });
+        }
         if (this.player instanceof ServerPlayer serverPlayer && PropwashEvents.DRONE_DISASSEMBLED.hasListeners()) {
             DroneData data = DroneDataReader.read(drone);
             fireSafely(() -> PropwashEvents.DRONE_DISASSEMBLED.fire(listener -> listener.onDroneDisassembled(serverPlayer, data)));

@@ -367,8 +367,20 @@ public final class SpectateSelfTests {
                 return StepResult.pending();
             }
             case RELEASED -> {
-                if (!s.serverOk) {
-                    return finish(ctx, s, StepResult.fail("Server führt den Spieler nach Esc noch als Zuschauer"));
+                if (!s.releaseConfirmed) {
+                    if (s.serverOk) {
+                        s.releaseConfirmed = true;
+                        s.enter(Phase.RELEASED, ctx.tick());
+                        return StepResult.pending();
+                    }
+                    if (inPhase > 60) {
+                        return finish(ctx, s, StepResult.fail("Server führt den Spieler nach Esc noch als Zuschauer"));
+                    }
+                    s.future = ctx.onServer(server -> {
+                        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                        s.serverOk = SpectateServer.watching(player) == null;
+                    });
+                    return StepResult.pending();
                 }
                 if (inPhase == 10) {
                     s.future = ctx.onServer(server -> {
@@ -609,6 +621,7 @@ public final class SpectateSelfTests {
         private boolean equipRequested;
         private boolean pressedOff;
         private boolean escaped;
+        private boolean releaseConfirmed;
         private boolean ruleProbe;
         private int ruleTick;
         private double moved;

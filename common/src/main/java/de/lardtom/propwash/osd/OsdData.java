@@ -31,8 +31,10 @@ public final class OsdData {
     public double armedSeconds;
     public StabMode mode = StabMode.ACRO;
     public boolean mode3d;
+    public boolean turtle;
     public HoldMode holdMode = HoldMode.OFF;
     public boolean posHoldDenied;
+    public String assistLabel;
     public boolean worldEdge;
     public boolean gpsKnown;
     public int gpsSatellites;
@@ -47,6 +49,9 @@ public final class OsdData {
     public double throttle = Double.NaN;
     public double packVoltage = Double.NaN;
     public double cellVoltage = Double.NaN;
+    public double warnCellVoltage = Double.NaN;
+    public double criticalCellVoltage = Double.NaN;
+    public int voltageAlert;
     public int cells;
     public double chargeFraction = Double.NaN;
     public double mAhUsed = Double.NaN;
@@ -64,6 +69,7 @@ public final class OsdData {
     public double onSeconds;
     public boolean radioConnected;
     public double linkStrength;
+    public double rssiDbm = Double.NaN;
     public double videoSignal;
     public double videoShift;
     public boolean videoLost;
@@ -99,9 +105,15 @@ public final class OsdData {
     public int recording = REC_OFF;
     public double recordingSeconds;
     public int recordingPercent;
+    public double flashbackFill = Double.NaN;
+    public boolean flashbackLimit = true;
     public boolean ledsOff;
     public boolean motorDerating;
     public String vtxChannel = "";
+    public int vtxPowerMw;
+    public boolean vtxPowerAuto;
+    public boolean vtxThrottled;
+    public boolean vtxHot;
     public int relayHops;
     public final double[] relayHopQuality = new double[MAX_RELAY_HOPS];
     public boolean spectating;
@@ -131,8 +143,10 @@ public final class OsdData {
         this.armed = t.armed;
         this.mode = t.mode == null ? StabMode.ACRO : t.mode;
         this.mode3d = t.mode3d;
+        this.turtle = t.turtle;
         this.holdMode = t.holdMode == null ? HoldMode.OFF : t.holdMode;
         this.posHoldDenied = t.posHoldDenied;
+        this.assistLabel = t.assistLabel;
         this.gpsKnown = true;
         this.gpsSatellites = t.gpsSatellites;
         this.gpsFix = t.gpsFix;
@@ -158,6 +172,9 @@ public final class OsdData {
 
     public void applySim(DroneSim sim) {
         this.applyTelemetry(sim.telemetry());
+        boolean alarms = sim.params().chemistry != null && !sim.tuning().infiniteBattery;
+        this.warnCellVoltage = alarms ? sim.params().chemistry.emptyCellVoltage : Double.NaN;
+        this.criticalCellVoltage = alarms ? sim.params().chemistry.cutoffCellVoltage : Double.NaN;
         DroneBuild build = sim.params().build;
         if (build != null && build.battery() != null) {
             this.cells = build.battery().cells;
@@ -232,8 +249,10 @@ public final class OsdData {
         dst.armedSeconds = this.armedSeconds;
         dst.mode = this.mode;
         dst.mode3d = this.mode3d;
+        dst.turtle = this.turtle;
         dst.holdMode = this.holdMode;
         dst.posHoldDenied = this.posHoldDenied;
+        dst.assistLabel = this.assistLabel;
         dst.worldEdge = this.worldEdge;
         dst.gpsKnown = this.gpsKnown;
         dst.gpsSatellites = this.gpsSatellites;
@@ -248,6 +267,9 @@ public final class OsdData {
         dst.throttle = this.throttle;
         dst.packVoltage = this.packVoltage;
         dst.cellVoltage = this.cellVoltage;
+        dst.warnCellVoltage = this.warnCellVoltage;
+        dst.criticalCellVoltage = this.criticalCellVoltage;
+        dst.voltageAlert = this.voltageAlert;
         dst.cells = this.cells;
         dst.chargeFraction = this.chargeFraction;
         dst.mAhUsed = this.mAhUsed;
@@ -265,6 +287,7 @@ public final class OsdData {
         dst.onSeconds = this.onSeconds;
         dst.radioConnected = this.radioConnected;
         dst.linkStrength = this.linkStrength;
+        dst.rssiDbm = this.rssiDbm;
         dst.videoSignal = this.videoSignal;
         dst.videoShift = this.videoShift;
         dst.videoLost = this.videoLost;
@@ -300,9 +323,15 @@ public final class OsdData {
         dst.recording = this.recording;
         dst.recordingSeconds = this.recordingSeconds;
         dst.recordingPercent = this.recordingPercent;
+        dst.flashbackFill = this.flashbackFill;
+        dst.flashbackLimit = this.flashbackLimit;
         dst.ledsOff = this.ledsOff;
         dst.motorDerating = this.motorDerating;
         dst.vtxChannel = this.vtxChannel;
+        dst.vtxPowerMw = this.vtxPowerMw;
+        dst.vtxPowerAuto = this.vtxPowerAuto;
+        dst.vtxThrottled = this.vtxThrottled;
+        dst.vtxHot = this.vtxHot;
         dst.relayHops = this.relayHops;
         System.arraycopy(this.relayHopQuality, 0, dst.relayHopQuality, 0, MAX_RELAY_HOPS);
         dst.spectating = this.spectating;
@@ -386,7 +415,10 @@ public final class OsdData {
         d.stats.samples = 1;
         d.recording = REC_ON;
         d.recordingSeconds = 83.0;
+        d.flashbackFill = 0.43;
+        d.flashbackLimit = true;
         d.vtxChannel = "R1";
+        d.vtxPowerMw = 400;
         d.relayHops = 2;
         d.relayHopQuality[0] = 0.97;
         d.relayHopQuality[1] = 0.91;

@@ -74,6 +74,9 @@ class SaveFormatGoldenTest {
                 }
                 for (MotorType m : MotorType.values()) {
                     for (PropType p : PropType.values()) {
+                        if (p == PropType.P51_29_3B) {
+                            continue;
+                        }
                         for (VideoType v : VideoType.values()) {
                             for (BatteryType b : BatteryType.values()) {
                                 builds.add(new DroneBuild(f, s, m, p, v, b));
@@ -83,7 +86,8 @@ class SaveFormatGoldenTest {
                 }
             }
         }
-        for (DroneBuild preset : DroneBuild.PRESETS) {
+        for (DroneBuild current : DroneBuild.PRESETS) {
+            DroneBuild preset = current == DroneBuild.RACER ? current.withProp(PropType.P51_3B) : current;
             for (AccessoryType t : ACCESSORIES_032) {
                 DroneBuild b = preset.withAccessory(t);
                 builds.add(b);
@@ -99,7 +103,8 @@ class SaveFormatGoldenTest {
         }
         for (PartCategory c : PartCategory.values()) {
             for (PartInfo p : c.parts()) {
-                if (p == AccessoryType.GRIPPER || p == AccessoryType.ACTION_CAM_FLASHBACK || p == StackType.CREATIVE_FC) {
+                if (p == AccessoryType.GRIPPER || p == AccessoryType.ACTION_CAM_FLASHBACK || p == StackType.CREATIVE_FC
+                        || p == PropType.P51_29_3B) {
                     continue;
                 }
                 this.both("part", PartRef.of(p), PartRef.CODEC, PartRef.STREAM_CODEC);

@@ -1,0 +1,44 @@
+# Bando map: flat 16x16 item icon (item atlas) and the 8x8 map decoration (map_decorations atlas).
+# Folded parchment with a dashed flight route, the bando symbol in front like the vanilla explorer maps.
+
+== bando_map
+@1 5c4222
+@2 f0e4c4
+@3 d8c698
+@4 aa8c5c
+@5 c43a2e
+@6 e4d4aa
+@a b0aaa0
+@b 807b73
+@c 2e2a28
+@d be6834
+................
+.11111.....1111.
+.14462111112441.
+.12222534332521.
+.15225335335221.
+.12522333532221.
+.122KK333KKK221.
+.162KaK3KKdK621.
+.122KaaKKadK221.
+.142KbbaaaaK241.
+.142KbcbcbaK241.
+.122KbcbcbaK221.
+.122KbbbbbbK261.
+.111KKKKKKKK111.
+......11111.....
+................
+
+== bando
+@a b0aaa0
+@b 807b73
+@c 2e2a28
+@d be6834
+KK...KKK
+KaK.KKdK
+KaaKKadK
+KbbaaaaK
+KbcbcbaK
+KbcbcbaK
+KbbbbbbK
+KKKKKKKK

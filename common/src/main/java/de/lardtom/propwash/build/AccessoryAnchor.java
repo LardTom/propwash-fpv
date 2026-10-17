@@ -19,6 +19,7 @@ public record AccessoryAnchor(double x, double y, double z, double tiltDegrees, 
         return switch (mount) {
             case TOP -> new AccessoryAnchor(0.0, 0.16 * wheelbase, -0.23 * wheelbase, 15.0, 0.0);
             case BOTTOM -> new AccessoryAnchor(0.0, -3.0, -0.25 * wheelbase, 30.0, 0.15 * wheelbase);
+            case FRONT -> new AccessoryAnchor(0.0, 0.0, -0.3 * wheelbase, 0.0, 0.0);
         };
     }
 

@@ -55,6 +55,11 @@ public record Lesson(String id, String chapter, int number, String icon, List<Ri
         return PREFIX + this.id + ".description";
     }
 
+    public List<String> mouseTipKeys(boolean invertPitch) {
+        String mouse = this.tipKey() + "_mouse";
+        return invertPitch ? List.of(mouse + "_inverted", mouse) : List.of(mouse);
+    }
+
     public String tipKey() {
         return PREFIX + this.id + ".tip";
     }

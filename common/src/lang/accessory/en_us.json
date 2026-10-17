@@ -1,0 +1,12 @@
+{
+  "key.propwash.accessory_action_1": "Accessory action 1",
+  "key.propwash.accessory_action_2": "Accessory action 2",
+  "key.propwash.accessory_action_3": "Accessory action 3",
+  "key.propwash.accessory_action_4": "Accessory action 4",
+  "propwash.accessory.menu.title": "Accessories",
+  "propwash.accessory.menu.load": "Load %s g",
+  "propwash.accessory.menu.hint": "The load adds weight in flight.",
+  "propwash.accessory.service.button": "Accessories",
+  "propwash.accessory.service.tooltip": "Open the accessory inventory, for example to load ammunition",
+  "propwash.accessory.assist.failed": "An add-on flight assist was switched off (error, see log)"
+}

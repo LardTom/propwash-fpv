@@ -235,6 +235,89 @@ public final class RealLogReport {
         return sb.toString();
     }
 
+    static final String[] BATTERY_PARTS = {"Anfang", "Mitte", "Ende"};
+
+    static String ohms(RealLogCalibration.Row r, String key) {
+        double a = r.real(key) * 1000.0;
+        double b = r.sim(key) * 1000.0;
+        return Double.isNaN(a) ? "–" : n(a, 1) + " / " + n(b, 1);
+    }
+
+    static String withTau(RealLogCalibration.Row r, String key, String tau) {
+        double a = r.real(key) * 1000.0;
+        double b = r.sim(key) * 1000.0;
+        return Double.isNaN(a) ? "–" : n(a, 1) + " (" + n(r.real(tau), 2) + " s) / " + n(b, 1) + " (" + n(r.sim(tau), 2) + " s)";
+    }
+
+    static String batteryTables(List<RealLogCalibration.Row> all) {
+        List<RealLogCalibration.Row> rows = all.stream().filter(r -> r.status.equals("verwendet") && !Double.isNaN(r.real("bat_amps_peak"))).toList();
+        StringBuilder sb = new StringBuilder("## Akku: Spannungseinbruch echt gegen Sim\n\n");
+        if (rows.isEmpty()) {
+            return sb.append("Kein Log mit verwertbarem Strom.\n").toString();
+        }
+        sb.append("Für jeden Log mit verwertbarem Stromsensor: Das Akku-Modell von Propwash bekommt den gemessenen Strom und startet bei dem "
+                + "Ladezustand, bei dem die mittlere Spannung über den Flug zur gemessenen passt. An echte und simulierte Spannung wird dasselbe Ersatzschaltbild "
+                + "angepasst (Ruhespannung als Polynom der entnommenen Ladung, Sofort-Widerstand, ein schnelles und ein langsames RC-Glied). Widerstände "
+                + "in mΩ je Zelle, echt / Sim; beim echten Akku sind Kabel und Stecker enthalten. Der Sim-Akku ist der aus der Quellentabelle. "
+                + "„Strom ד: Passt die entnommene Ladung um mehr als 10 % nicht zum Abfall der Ruhespannung (ab 15 % Ladung), wird der gemessene "
+                + "Strom so skaliert, dass sie zur Kapazität des Sim-Akkus passt – ein größerer echter Akku oder ein verstellter Stromsensor wird so "
+                + "bei gleicher C-Rate verglichen.\n\n");
+        sb.append("| Log | Akku | Strom × | Strom Median / p99 [A] | Sofort | Schnell (τ) | Langsam (τ) | Summe | Fit-Rest echt [mV] | Sim-Verlauf gegen echt [mV RMS] | "
+                + "Spannung am Ende echt / Sim [V/Zelle] |\n|---|---|---|---|---|---|---|---|---|---|---|\n");
+        for (RealLogCalibration.Row r : rows) {
+            sb.append("| ").append(r.source.id()).append(" | ").append(n(r.real("bat_cells"), 0)).append("S ").append(n(r.real("bat_capacity"), 0))
+                    .append(" mAh | ").append(n(r.real("bat_scale"), 2)).append(" | ").append(n(r.real("bat_amps_mid"), 1)).append(" / ").append(n(r.real("bat_amps_peak"), 1)).append(" | ")
+                    .append(ohms(r, "bat_r0")).append(" | ").append(withTau(r, "bat_r1", "bat_tau1")).append(" | ")
+                    .append(withTau(r, "bat_r2", "bat_tau2")).append(" | ").append(ohms(r, "bat_sum")).append(" | ")
+                    .append(n(r.real("bat_fit_rms") * 1000.0, 1)).append(" | ").append(n(r.sim("bat_trace_rms") * 1000.0, 0)).append(" | ")
+                    .append(n(r.real("bat_v_end"), 2)).append(" / ").append(n(r.sim("bat_v_end"), 2)).append(" |\n");
+        }
+        sb.append("\nEinbruch je Zelle zwischen wenig Strom (bis 25 % des p99-Stroms) und viel Strom (ab 60 %), je Flugdrittel. Ladezustand aus dem "
+                + "Sim-Akku.\n\n| Log | Drittel | Ladung Sim [%] | Strom wenig → viel [A] | C-Rate viel | Einbruch echt [V/Zelle] | Einbruch Sim [V/Zelle] | "
+                + "Sim/echt |\n|---|---|---|---|---|---|---|---|\n");
+        for (RealLogCalibration.Row r : rows) {
+            for (int part = 1; part <= BATTERY_PARTS.length; part++) {
+                String key = "bat_sag" + part;
+                if (Double.isNaN(r.real(key))) {
+                    continue;
+                }
+                sb.append("| ").append(r.source.id()).append(" | ").append(BATTERY_PARTS[part - 1]).append(" | ")
+                        .append(n(r.sim(key + "_soc") * 100.0, 0)).append(" | ").append(n(r.real(key + "_lo"), 1)).append(" → ")
+                        .append(n(r.real(key + "_hi"), 1)).append(" | ").append(n(r.real(key + "_hi") / (r.real("bat_capacity") / 1000.0), 0))
+                        .append(" C | ").append(n(r.real(key), 2)).append(" | ").append(n(r.sim(key), 2)).append(" | ")
+                        .append(n(r.sim(key) / r.real(key), 2)).append(" |\n");
+            }
+        }
+        sb.append("\nJe Größe (Median über die Logs): Sofort-Widerstand und Summe echt / Sim in mΩ je Zelle, Einbruch Sim/echt über alle Drittel, "
+                + "Punch-Einbruch des ganzen Packs echt / Sim aus dem Nachflug mit der echten Duty (auch ohne Stromsensor).\n\n"
+                + "| Größe | Logs mit Strom | Sofort | Summe | Einbruch Sim/echt | Punch-Einbruch [V] |\n|---|---|---|---|---|---|\n");
+        for (Map.Entry<String, String> c : CLASSES.entrySet()) {
+            List<RealLogCalibration.Row> used = all.stream().filter(r -> r.status.equals("verwendet") && r.source.sizeClass().equals(c.getKey())).toList();
+            List<RealLogCalibration.Row> amps = used.stream().filter(r -> !Double.isNaN(r.real("bat_r0"))).toList();
+            double punchReal = classMedian(used, r -> r.real("punch_sag_v"));
+            if (amps.isEmpty() && Double.isNaN(punchReal)) {
+                continue;
+            }
+            List<Double> ratios = new ArrayList<>();
+            for (RealLogCalibration.Row r : amps) {
+                for (int part = 1; part <= BATTERY_PARTS.length; part++) {
+                    double ratio = r.sim("bat_sag" + part) / r.real("bat_sag" + part);
+                    if (!Double.isNaN(ratio)) {
+                        ratios.add(ratio);
+                    }
+                }
+            }
+            ratios.sort(Double::compare);
+            double ratio = ratios.isEmpty() ? Double.NaN : ratios.get(ratios.size() / 2);
+            sb.append("| ").append(c.getValue()).append(" | ").append(amps.size()).append(" | ")
+                    .append(n(classMedian(amps, r -> r.real("bat_r0")) * 1000.0, 1)).append(" / ").append(n(classMedian(amps, r -> r.sim("bat_r0")) * 1000.0, 1))
+                    .append(" | ").append(n(classMedian(amps, r -> r.real("bat_sum")) * 1000.0, 1)).append(" / ")
+                    .append(n(classMedian(amps, r -> r.sim("bat_sum")) * 1000.0, 1)).append(" | ").append(n(ratio, 2)).append(" | ")
+                    .append(n(punchReal, 2)).append(" / ").append(n(classMedian(used, r -> r.sim("punch_sag_v")), 2)).append(" |\n");
+        }
+        return sb.toString();
+    }
+
     public static String markdown(List<RealLogCalibration.Row> rows, List<Summary> sums, String header) {
         StringBuilder sb = new StringBuilder();
         sb.append("# Echte Blackbox-Logs gegen Propwash\n\n").append(header).append("\n\n");
@@ -242,6 +325,7 @@ public final class RealLogReport {
                 + "Abschnitt bei gleicher Motor-Duty und gleicher Akkuspannung (über 1 = echte Drohne stärker bzw. schneller).\n\n");
         sb.append(summaryTable(sums)).append('\n');
         sb.append(axialTable(rows)).append('\n');
+        sb.append(batteryTables(rows)).append('\n');
         sb.append("## Vorschläge für das Flugmodell\n\n");
         for (String s : suggestions(sums)) {
             sb.append("- ").append(s).append('\n');

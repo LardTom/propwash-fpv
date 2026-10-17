@@ -54,6 +54,20 @@ public final class Mode3dSelector {
         return this.source == Source.SWITCH && this.set(false, Source.DEFAULT);
     }
 
+    public boolean preview(boolean device, int active, int readable) {
+        if (!device) {
+            return this.selected;
+        }
+        Boolean fromSwitch = fromSwitches(active, readable);
+        if (fromSwitch == null ? this.lastSwitch == null : fromSwitch.equals(this.lastSwitch)) {
+            return this.selected;
+        }
+        if (fromSwitch != null) {
+            return fromSwitch;
+        }
+        return this.source != Source.SWITCH && this.selected;
+    }
+
     public boolean toggle() {
         this.set(!this.selected, Source.KEY);
         return this.selected;
@@ -61,7 +75,7 @@ public final class Mode3dSelector {
 
     public boolean keyOverridesSwitch(boolean device, int active, int readable) {
         Boolean fromSwitch = device ? fromSwitches(active, readable) : null;
-        return this.source == Source.KEY && fromSwitch != null && fromSwitch != this.selected;
+        return this.source == Source.KEY && fromSwitch != null && fromSwitch.equals(this.lastSwitch) && fromSwitch != this.selected;
     }
 
     public void reset() {

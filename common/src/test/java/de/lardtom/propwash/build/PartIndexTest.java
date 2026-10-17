@@ -39,7 +39,7 @@ class PartIndexTest {
         assertEquals(List.of("WHOOP_65", "CINEWHOOP_3", "FREESTYLE_5", "RACE_5", "LONG_RANGE_7"), names(FrameType.values()));
         assertEquals(List.of("AIO_WHOOP", "AIO_20", "STACK_30", "CREATIVE_FC"), names(StackType.values()));
         assertEquals(List.of("M0802_22000", "M1404_4600", "M2004_3000", "M2207_1750", "M2306_1860", "M2807_1300"), names(MotorType.values()));
-        assertEquals(List.of("P31_4B", "P31_3B", "P3_3B", "P51_3B", "P7_2B"), names(PropType.values()));
+        assertEquals(List.of("P31_4B", "P31_3B", "P3_3B", "P51_3B", "P7_2B", "P51_29_3B"), names(PropType.values()));
         assertEquals(List.of("ANALOG_NANO", "ANALOG_RACE", "DIGITAL_LITE", "DIGITAL_HD"), names(VideoType.values()));
         assertEquals(List.of("B1S_300_HV", "B4S_650", "B6S_1100", "B6S_1300", "B6S_4000_LION"), names(BatteryType.values()));
         assertEquals(List.of("LED_STRIP", "ACTION_CAM_LIGHT", "ACTION_CAM_HEAVY", "ACTION_CAM_FLASHBACK", "GRIPPER"), names(AccessoryType.values()));

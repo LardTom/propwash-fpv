@@ -2,9 +2,13 @@ package de.lardtom.propwash.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.platform.Services;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -25,10 +29,11 @@ public final class JsonConfig<T> {
     private final Class<T> type;
     private final Supplier<T> defaults;
     private final Consumer<T> validator;
+    private final @Nullable Consumer<JsonObject> migration;
     private T value;
     private boolean loaded;
 
-    private JsonConfig(String name, Class<T> type, Supplier<T> defaults, Consumer<T> validator) {
+    private JsonConfig(String name, Class<T> type, Supplier<T> defaults, Consumer<T> validator, @Nullable Consumer<JsonObject> migration) {
         if (!name.matches("[a-z0-9_\\-]+")) {
             throw new IllegalArgumentException("Ungültiger Config-Name: " + name);
         }
@@ -36,15 +41,31 @@ public final class JsonConfig<T> {
         this.type = type;
         this.defaults = defaults;
         this.validator = validator;
+        this.migration = migration;
         this.value = defaults.get();
     }
 
     public static <T> JsonConfig<T> create(String name, Class<T> type, Supplier<T> defaults) {
-        return new JsonConfig<>(name, type, defaults, v -> { });
+        return new JsonConfig<>(name, type, defaults, v -> { }, null);
     }
 
     public static <T> JsonConfig<T> create(String name, Class<T> type, Supplier<T> defaults, Consumer<T> validator) {
-        return new JsonConfig<>(name, type, defaults, validator);
+        return new JsonConfig<>(name, type, defaults, validator, null);
+    }
+
+    public static <T> JsonConfig<T> create(String name, Class<T> type, Supplier<T> defaults, Consumer<T> validator, Consumer<JsonObject> migration) {
+        return new JsonConfig<>(name, type, defaults, validator, migration);
+    }
+
+    public static <T> @Nullable T read(Reader reader, Class<T> type, @Nullable Consumer<JsonObject> migration) {
+        if (migration == null) {
+            return GSON.fromJson(reader, type);
+        }
+        JsonElement json = JsonParser.parseReader(reader);
+        if (json.isJsonObject()) {
+            migration.accept(json.getAsJsonObject());
+        }
+        return GSON.fromJson(json, type);
     }
 
     public Path path() {
@@ -64,7 +85,7 @@ public final class JsonConfig<T> {
         T result = null;
         if (Files.isRegularFile(path)) {
             try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-                result = GSON.fromJson(reader, this.type);
+                result = read(reader, this.type, this.migration);
             } catch (JsonParseException | IOException e) {
                 Constants.LOG.error("Config {} ist beschädigt, verwende Standardwerte: {}", path, e.toString());
                 this.moveBroken(path);

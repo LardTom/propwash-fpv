@@ -8,14 +8,18 @@ import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.video.EffectParams;
+import de.lardtom.propwash.video.DigitalProfile;
 import de.lardtom.propwash.video.FeedInput;
 import de.lardtom.propwash.video.FeedLook;
 import de.lardtom.propwash.video.FeedModel;
+import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.DisplayLatency;
 import de.lardtom.propwash.video.FovMath;
+import de.lardtom.propwash.video.ImageArea;
 import de.lardtom.propwash.video.LatencyChain;
 import de.lardtom.propwash.video.PoseHistory;
 import de.lardtom.propwash.video.LinkBudget;
+import de.lardtom.propwash.video.VtxTables;
 import de.lardtom.propwash.video.Multipath;
 import de.lardtom.propwash.video.link.ObstructionScan;
 import de.lardtom.propwash.relay.client.RelayClient;
@@ -77,6 +81,8 @@ public final class VideoState {
     private float rawQuality;
     private double distance;
     private double obstructionDb;
+    private double ratedMarginDb = Double.NaN;
+    private double powerGainDb;
     private double scanLossDb;
     private double scanCenterLossDb;
     private int representativeCount;
@@ -212,6 +218,18 @@ public final class VideoState {
         return this.status == LinkStatus.INACTIVE ? 0.0 : this.obstructionDb;
     }
 
+    public double pathLossDb(@Nullable QuadcopterEntity drone) {
+        return drone == null || this.status == LinkStatus.INACTIVE || drone != this.source ? Double.NaN : this.scanLossDb;
+    }
+
+    public double ratedMarginDb(@Nullable QuadcopterEntity drone) {
+        return drone == null || this.status == LinkStatus.INACTIVE || drone != this.source ? Double.NaN : this.ratedMarginDb;
+    }
+
+    public double powerGainDb() {
+        return this.status == LinkStatus.INACTIVE ? 0.0 : this.powerGainDb;
+    }
+
     public boolean noSignal() {
         return this.status != LinkStatus.INACTIVE && this.feed.params().noSignal >= 0.999F;
     }
@@ -264,14 +282,41 @@ public final class VideoState {
     }
 
     public float fpvFov() {
+        return this.fov(false);
+    }
+
+    public float cameraFov() {
+        return this.fov(true);
+    }
+
+    public float displayFov() {
+        FisheyeLens lens = FpvLens.INSTANCE.rendered();
+        return lens != null ? (float) lens.centreEquivalentVerticalDeg() : this.fpvFov();
+    }
+
+    private float fov(boolean latch) {
         if (!PilotSession.INSTANCE.isFpv() && !FpvView.spectating()) {
+            if (latch) {
+                FpvLens.INSTANCE.latch(null);
+            }
             return -1.0F;
         }
         Minecraft minecraft = Minecraft.getInstance();
         int width = minecraft.getWindow().getWidth();
         int height = minecraft.getWindow().getHeight();
-        double aspect = height > 0 ? FpvImage.area(width, height).spanAspect() : 16.0 / 9.0;
-        return FovMath.verticalFromHorizontal(this.horizontalFov(), aspect);
+        double horizontal = this.horizontalFov();
+        if (width <= 0 || height <= 0) {
+            if (latch) {
+                FpvLens.INSTANCE.latch(null);
+            }
+            return FovMath.verticalFromHorizontal(horizontal, 16.0 / 9.0);
+        }
+        ImageArea area = FpvImage.area(width, height);
+        FisheyeLens lens = FpvLens.INSTANCE.lens(horizontal, area);
+        if (latch) {
+            FpvLens.INSTANCE.latch(lens);
+        }
+        return lens != null ? (float) lens.renderVerticalDeg() : FovMath.verticalFromHorizontal(horizontal, area.spanAspect());
     }
 
     public double horizontalFov() {
@@ -412,6 +457,10 @@ public final class VideoState {
         double range = this.range(config, type);
         this.distance = player.getEyePosition().distanceTo(antenna(drone));
         this.obstructionDb = this.obstructs(config) ? this.scanLossDb : 0.0;
+        double gain = this.creative ? 0.0 : VtxRuntime.INSTANCE.gainDb(drone);
+        this.powerGainDb = gain;
+        double reach = gain == 0.0 ? range : range * Math.pow(10.0, gain / 20.0);
+        double directMargin = LinkBudget.marginDb(this.distance, range) - Math.max(0.0, this.obstructionDb);
         boolean connected = this.status == LinkStatus.CONNECTED;
         boolean forced = this.testQuality >= 0.0F;
         this.relayUsed = false;
@@ -424,9 +473,10 @@ public final class VideoState {
             this.directQuality = this.testQuality;
             this.quality = this.testQuality;
         } else {
-            this.directQuality = (float) LinkBudget.quality(transmitter, this.distance, range, this.obstructionDb);
+            this.directQuality = (float) LinkBudget.quality(transmitter, this.distance, reach, this.obstructionDb);
             this.rawQuality = this.directQuality;
-            if (this.relay.solve(player.getEyePosition(), antenna(drone), transmitter, range, this.obstructs(config))) {
+            if (this.relay.solve(player.getEyePosition(), antenna(drone), transmitter, reach, this.obstructs(config))) {
+                directMargin = Math.max(directMargin, this.relay.marginDb() - gain);
                 float relayed = (float) this.relay.quality(transmitter);
                 if (relayed > this.directQuality) {
                     this.rawQuality = relayed;
@@ -436,8 +486,10 @@ public final class VideoState {
             float alpha = (float) (1.0 - Math.exp(-dt / QUALITY_TAU_SECONDS));
             this.quality += (this.rawQuality - this.quality) * alpha;
         }
+        this.ratedMarginDb = directMargin;
         FeedInput in = this.input;
         in.look = this.creative && Double.isInfinite(range) ? FeedLook.CLEAN : FeedLook.of(transmitter);
+        in.digitalProfile = type.system == VideoSystem.DIGITAL ? DigitalProfile.of(type.latencyMs) : DigitalProfile.ADAPTIVE;
         in.connected = connected;
         in.snowOnLoss = goggles == VideoSystem.ANALOG || (goggles == VideoSystem.CREATIVE && transmitter == VideoSystem.ANALOG);
         in.quality = this.quality;
@@ -580,6 +632,8 @@ public final class VideoState {
         this.rawQuality = 0.0F;
         this.distance = 0.0;
         this.obstructionDb = 0.0;
+        this.ratedMarginDb = Double.NaN;
+        this.powerGainDb = 0.0;
         this.multipath = 0.0F;
         this.relay.clear();
         this.relayUsed = false;
@@ -595,7 +649,7 @@ public final class VideoState {
     }
 
     private double scanRange(VideoConfig config, VideoType type) {
-        return this.creative ? Math.max(type.rangeBlocks, config.creativeRangeBlocks) : type.rangeBlocks;
+        return this.creative ? Math.max(type.rangeBlocks, config.creativeRangeBlocks) : type.rangeBlocks * VtxTables.of(type).maxReachFactor();
     }
 
     private double range(VideoConfig config, VideoType type) {
@@ -613,7 +667,7 @@ public final class VideoState {
         return config.obstructs(this.creative ? VideoSystem.CREATIVE : null);
     }
 
-    private static Vec3 antenna(QuadcopterEntity drone) {
+    static Vec3 antenna(QuadcopterEntity drone) {
         return drone.position().add(0.0, drone.getBbHeight() * 0.5, 0.0);
     }
 

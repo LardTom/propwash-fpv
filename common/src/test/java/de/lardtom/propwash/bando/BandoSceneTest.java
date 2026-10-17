@@ -68,7 +68,13 @@ class BandoSceneTest {
             Set<String> keys = new HashSet<>(scene.translationKeys());
             keys.add(scene.titleKey());
             keys.add(scene.descriptionKey());
-            assertEquals(keys, texts.keySet(), language + ": Schlüssel passen nicht zur Szene");
+            Set<String> sceneTexts = new HashSet<>();
+            for (String key : texts.keySet()) {
+                if (key.startsWith("propwash.guide.")) {
+                    sceneTexts.add(key);
+                }
+            }
+            assertEquals(keys, sceneTexts, language + ": Schlüssel passen nicht zur Szene");
             for (String key : scene.translationKeys()) {
                 String text = texts.get(key).getAsString();
                 int limit = key.contains(".step.") && key.endsWith(".text") ? 150 : key.contains(".step.") ? 34 : key.contains(".hint.") ? 28 : 90;

@@ -15,6 +15,7 @@ import de.lardtom.propwash.content.CraftingMaterial;
 import de.lardtom.propwash.content.DronePresets;
 import de.lardtom.propwash.content.MaterialItem;
 import de.lardtom.propwash.content.PropRepairRecipe;
+import de.lardtom.propwash.drone.coating.WaterproofCoatingRecipe;
 import de.lardtom.propwash.content.TooltipShift;
 import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.core.PartCategory;
@@ -38,6 +39,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.MapItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -81,7 +83,7 @@ public final class SurvivalSelfTests {
     private static final List<Identifier> OTHER_CRAFTABLE = List.of(ContentIds.DRONE_WORKBENCH, ContentIds.BATTERY_CHARGER,
             ContentIds.GOGGLES_ANALOG, ContentIds.GOGGLES_DIGITAL, ContentIds.REMOTE, ContentIds.GATE_SMALL, ContentIds.GATE_MEDIUM,
             ContentIds.GATE_LARGE, ContentIds.RACE_FLAG, ContentIds.SLALOM_POLE, ContentIds.DIVE_CUBE, ContentIds.FREEFORM_GATE,
-            ContentIds.GATE_POLE, ContentIds.COURSE_TOOL, ContentIds.SIGNAL_REPEATER);
+            ContentIds.GATE_POLE, ContentIds.COURSE_TOOL, ContentIds.SIGNAL_REPEATER, Constants.id("waterproof_spray"));
     private static final List<Identifier> NOT_CRAFTABLE = List.of(ContentIds.GOGGLES_CREATIVE, ContentIds.DRONE, StackType.CREATIVE_FC.id());
 
     private SurvivalSelfTests() {
@@ -240,7 +242,8 @@ public final class SurvivalSelfTests {
         }
         for (RecipeHolder<?> holder : recipes.getRecipes()) {
             Identifier id = holder.id().identifier();
-            if (Constants.MOD_ID.equals(id.getNamespace()) && !expected.contains(id) && !holder.id().equals(PropRepairRecipe.KEY)) {
+            if (Constants.MOD_ID.equals(id.getNamespace()) && !expected.contains(id) && !holder.id().equals(PropRepairRecipe.KEY)
+                    && !holder.id().equals(WaterproofCoatingRecipe.KEY)) {
                 problems.add("unerwartetes Rezept " + id);
             }
         }
@@ -284,6 +287,9 @@ public final class SurvivalSelfTests {
             Set<Identifier> seen = new TreeSet<>();
             for (int seed = 1; seed <= INJECT_ROLLS; seed++) {
                 for (ItemStack stack : loot.getRandomItems(params, seed)) {
+                    if (stack.isEmpty() || stack.getItem() instanceof MapItem) {
+                        continue;
+                    }
                     seen.add(BuiltInRegistries.ITEM.getKey(stack.getItem()));
                     checkStack(table, stack, problems);
                 }
@@ -365,7 +371,10 @@ public final class SurvivalSelfTests {
                 for (JsonElement entry : pool.getAsJsonObject().getAsJsonArray("entries")) {
                     JsonObject object = entry.getAsJsonObject();
                     if ("minecraft:item".equals(object.get("type").getAsString())) {
-                        items.add(Identifier.parse(object.get("name").getAsString()));
+                        Identifier id = Identifier.parse(object.get("name").getAsString());
+                        if (!(BuiltInRegistries.ITEM.getValue(id) instanceof MapItem)) {
+                            items.add(id);
+                        }
                     }
                 }
             }

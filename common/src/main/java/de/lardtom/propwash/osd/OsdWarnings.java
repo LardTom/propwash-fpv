@@ -46,8 +46,14 @@ public final class OsdWarnings {
         if (data.motorDerating) {
             out.add(Warning.MOTOR_HOT);
         }
+        if (data.vtxHot) {
+            out.add(Warning.VTX_HOT);
+        }
         if (data.radioConnected && data.linkStrength < WEAK_LINK) {
             out.add(Warning.WEAK_SIGNAL);
+        }
+        if (!data.flashbackLimit && data.flashbackFill > 1.0) {
+            out.add(Warning.FLASHBACK_FULL);
         }
         if (data.videoSystem != null && (data.videoLost || data.videoSignal < NO_VIDEO)) {
             out.add(Warning.NO_VIDEO);
@@ -150,6 +156,7 @@ public final class OsdWarnings {
         CAMERA_DAMAGE(Severity.WARNING, false),
         BATTERY_PUFFED(Severity.WARNING, true),
         MOTOR_HOT(Severity.WARNING, true),
+        VTX_HOT(Severity.WARNING, true),
         ARM_SWITCH(Severity.INFO, false),
         ARM_THROTTLE(Severity.INFO, false),
         ARM_ANGLE(Severity.INFO, false),
@@ -158,7 +165,9 @@ public final class OsdWarnings {
         ARM_FLUID(Severity.INFO, false),
         ARM_REBOOT(Severity.INFO, false),
         ARM_HARDWARE(Severity.INFO, false),
-        ARM_THROTTLE_3D(Severity.INFO, false);
+        ARM_THROTTLE_3D(Severity.INFO, false),
+        FLASHBACK_FULL(Severity.WARNING, true),
+        ARM_TURTLE(Severity.INFO, false);
 
         private final Severity severity;
         private final boolean blinks;
@@ -193,6 +202,7 @@ public final class OsdWarnings {
                 case IN_FLUID -> ARM_FLUID;
                 case HARDWARE_FAULT -> ARM_HARDWARE;
                 case THROTTLE_NOT_CENTERED -> ARM_THROTTLE_3D;
+                case TURTLE_AIRBORNE -> ARM_TURTLE;
             };
         }
     }

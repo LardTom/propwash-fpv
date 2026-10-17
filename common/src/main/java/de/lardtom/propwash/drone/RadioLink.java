@@ -13,6 +13,10 @@ public final class RadioLink {
     public static final double FADE_RANGE = 400.0;
     public static final double START_RANGE = 800.0;
     public static final double RELEASE_RANGE = 1250.0;
+    public static final double CONTROL_BAND_FACTOR = 0.6;
+    public static final double RSSI_AT_FADE_END_DBM = -105.0;
+    public static final double RSSI_MAX_DBM = -30.0;
+    public static final double RSSI_MIN_DBM = -130.0;
     private static final double SERVER_FADE_START = 0.8;
     private static final double SERVER_FADE_END = 0.95;
 
@@ -65,6 +69,32 @@ public final class RadioLink {
         }
         double fade = (distance - creativeRange) / (creativeRange * FADE_RANGE / FULL_RANGE);
         return Math.min(base, (float) Math.max(0.0, Math.min(1.0, 1.0 - fade)));
+    }
+
+    public static float quality(double distance, double serverLimit, boolean freeRange, double creativeRange, double videoObstructionDb) {
+        float base = quality(distance, serverLimit, freeRange, creativeRange);
+        if (freeRange || !(controlObstructionDb(videoObstructionDb) > 0.0)) {
+            return base;
+        }
+        return Math.min(base, quality(shadedDistance(distance, videoObstructionDb), Double.POSITIVE_INFINITY, false));
+    }
+
+    public static double controlObstructionDb(double videoObstructionDb) {
+        return Double.isFinite(videoObstructionDb) && videoObstructionDb > 0.0 ? videoObstructionDb * CONTROL_BAND_FACTOR : 0.0;
+    }
+
+    public static double shadedDistance(double distance, double videoObstructionDb) {
+        double db = controlObstructionDb(videoObstructionDb);
+        return db > 0.0 ? distance * Math.pow(10.0, db / 20.0) : distance;
+    }
+
+    public static double rssiDbm(double distance, double videoObstructionDb) {
+        if (Double.isNaN(distance)) {
+            return RSSI_MIN_DBM;
+        }
+        double effective = Math.max(shadedDistance(distance, videoObstructionDb), 1.0);
+        double dbm = RSSI_AT_FADE_END_DBM + 20.0 * Math.log10((FULL_RANGE + FADE_RANGE) / effective);
+        return Math.clamp(dbm, RSSI_MIN_DBM, RSSI_MAX_DBM);
     }
 
     public static double startRange(double serverLimit) {

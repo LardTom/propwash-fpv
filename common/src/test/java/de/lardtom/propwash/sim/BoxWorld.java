@@ -128,6 +128,14 @@ final class BoxWorld {
         return -this.clip(1, -SUPPORT_PROBE);
     }
 
+    double lowest() {
+        return this.y + this.sim.ground.lowest(this.sim.params(), this.sim.body);
+    }
+
+    double restGap() {
+        return Math.max(0.0, this.supportGap() - (this.bottom() - this.lowest()));
+    }
+
     private void shift(int axis, double d) {
         if (axis == 0) {
             this.x += d;

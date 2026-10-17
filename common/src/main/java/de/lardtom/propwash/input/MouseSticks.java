@@ -57,7 +57,7 @@ public final class MouseSticks {
         this.pendingY += dy;
     }
 
-    public Output update(float dx, float dy, float dt, MouseSettings settings, boolean selfLevel) {
+    public Output update(float dx, float dy, float dt, MouseSettings settings, boolean selfLevel, boolean invertPitch) {
         if (!(dt > 0.0F) || !Float.isFinite(dt)) {
             return this.last;
         }
@@ -69,10 +69,10 @@ public final class MouseSticks {
                 this.motion(start + step * (2L * i + 1L) / (2L * SPREAD), dx / SPREAD, dy / SPREAD);
             }
         }
-        return this.update(this.clock, dt, settings, selfLevel);
+        return this.update(this.clock, dt, settings, selfLevel, invertPitch);
     }
 
-    public Output update(long nowNanos, float dt, MouseSettings settings, boolean selfLevel) {
+    public Output update(long nowNanos, float dt, MouseSettings settings, boolean selfLevel, boolean invertPitch) {
         if (!(dt > 0.0F) || !Float.isFinite(dt)) {
             return this.last;
         }
@@ -80,7 +80,7 @@ public final class MouseSticks {
         float frameY = this.pendingY;
         this.pendingX = 0.0F;
         this.pendingY = 0.0F;
-        float sign = settings.invertY ? 1.0F : -1.0F;
+        float sign = invertPitch ? 1.0F : -1.0F;
         float window = settings.smoothingMs / 1000.0F;
         float rateX;
         float rateY;

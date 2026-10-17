@@ -1,6 +1,9 @@
 package de.lardtom.propwash.drone;
 
 import de.lardtom.propwash.drone.bind.ReceiverBinds;
+import de.lardtom.propwash.drone.coating.CoatingModule;
+import de.lardtom.propwash.drone.coating.CoatingRules;
+import de.lardtom.propwash.drone.coating.WaterproofSprayItem;
 import de.lardtom.propwash.registry.PropwashRegistries;
 import de.lardtom.propwash.registry.RegHolder;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -19,6 +22,9 @@ public final class DroneModule {
 
     public static final RegHolder<RemoteItem> REMOTE = PropwashRegistries.item("remote", RemoteItem::new, p -> p.stacksTo(1));
 
+    public static final RegHolder<WaterproofSprayItem> WATERPROOF_SPRAY = PropwashRegistries.item("waterproof_spray", WaterproofSprayItem::new,
+            p -> p.durability(CoatingRules.DURABILITY));
+
     public static final RegHolder<MenuType<DroneServiceMenu>> DRONE_SERVICE_MENU = PropwashRegistries.extendedMenu("drone_service",
             DroneServiceMenu::new, ByteBufCodecs.VAR_INT);
 
@@ -35,5 +41,6 @@ public final class DroneModule {
         DronePiloting.init();
         DroneWear.init();
         ReceiverBinds.init();
+        CoatingModule.init();
     }
 }

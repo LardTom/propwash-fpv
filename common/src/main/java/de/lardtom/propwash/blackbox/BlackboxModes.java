@@ -43,6 +43,9 @@ public final class BlackboxModes {
         if (s.mode3d) {
             flags |= MODE_3D;
         }
+        if (s.turtle) {
+            flags |= FLIP_OVER_AFTER_CRASH;
+        }
         return flags;
     }
 

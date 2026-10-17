@@ -59,7 +59,7 @@ PARTS = (
     "whoop_65", "cinewhoop_3", "freestyle_5", "race_5", "long_range_7",
     "aio_whoop", "aio_20", "stack_30",
     "m0802_22000", "m1404_4600", "m2004_3000", "m2207_1750", "m2306_1860", "m2807_1300",
-    "p31_4b", "p31_3b", "p3_3b", "p51_3b", "p7_2b",
+    "p31_4b", "p31_3b", "p3_3b", "p51_3b", "p7_2b", "p51_29_3b",
     "b1s_300_hv", "b4s_650", "b6s_1100", "b6s_1300", "b6s_4000_lion",
     "analog_nano", "analog_race", "digital_lite", "digital_hd",
     "led_strip", "action_cam_light", "action_cam_heavy", "action_cam_flashback", "gripper",
@@ -67,9 +67,10 @@ PARTS = (
 BATTERIES = ("b1s_300_hv", "b4s_650", "b6s_1100", "b6s_1300", "b6s_4000_lion")
 OTHER_ITEMS = ("drone_workbench", "battery_charger", "goggles_analog", "goggles_digital", "remote",
                "gate_small", "gate_medium", "gate_large", "gate_pole", "race_flag", "slalom_pole", "dive_cube", "freeform_gate", "course_tool",
-               "signal_repeater")
+               "signal_repeater", "waterproof_spray")
 NOT_CRAFTABLE = ("goggles_creative", "creative_fc", "drone")
-PROPWASH_ITEMS = set(MATERIALS) | set(PARTS) | set(OTHER_ITEMS) | set(NOT_CRAFTABLE)
+MAPS = ("bando_map",)
+PROPWASH_ITEMS = set(MATERIALS) | set(PARTS) | set(OTHER_ITEMS) | set(NOT_CRAFTABLE) | set(MAPS)
 
 FOUND_CHARGE = 0.4
 WHOOP_BUILD = {"frame": "whoop_65", "stack": "aio_whoop", "motor": "m0802_22000", "prop": "p31_4b",
@@ -186,6 +187,8 @@ RECIPES = [
            {"K": mc("dried_kelp"), "N": mc("iron_nugget")}, count=4),
     shaped("p7_2b", "equipment", "propwash_prop", ["K  ", " C ", "  K"],
            {"K": mc("dried_kelp"), "C": p("carbon_plate")}, count=4),
+    shaped("p51_29_3b", "equipment", "propwash_prop", ["K K", " G ", " K "],
+           {"K": mc("dried_kelp"), "G": mc("gold_nugget")}, count=4),
 
     shapeless("b1s_300_hv", "equipment", "propwash_battery",
               [p("lipo_cell"), mc("redstone"), mc("copper_nugget")]),
@@ -249,6 +252,8 @@ RECIPES = [
            {"G": mc("glowstone_dust"), "R": mc("redstone")}),
     shaped("course_tool", "equipment", None, ["R", "P", "S"],
            {"R": mc("redstone"), "P": mc("paper"), "S": mc("stick")}),
+    shaped("waterproof_spray", "equipment", None, [" N ", "NHN", "NRN"],
+           {"N": mc("iron_nugget"), "H": mc("honeycomb"), "R": mc("resin_clump")}),
     shaped("signal_repeater", "building", None, [" A ", "LBL", " I "],
            {"A": mc("lightning_rod"), "L": p("copper_coil"), "B": p("circuit_board"), "I": mc("iron_ingot")}, count=2),
 ]
@@ -291,11 +296,21 @@ SPECIAL_RECIPES = {
         "text": "zwei beschädigte Props derselben Sorte im 2×2- oder 3×3-Raster → ein Prop, Zustand addiert + 5 %, höchstens "
                 "100 %, Komponenten vom ersten; dasselbe am Schleifstein (`mixin.content.GrindstoneMenuMixin`)",
     },
+    "waterproof_coating": {
+        "type": p("waterproof_coating"),
+        "code": "drone.coating.WaterproofCoatingRecipe",
+        "text": "Drohne ohne Beschichtung + Wasserschutz-Spray im Raster → dieselbe Drohne wasserdicht beschichtet; das Spray "
+                "bleibt mit 10 Haltbarkeit weniger im Raster (nach zehn Drohnen leer)",
+    },
 }
 
 
 def empty(weight):
     return {"type": mc("empty"), "weight": weight}
+
+
+def bando_map(weight):
+    return {"type": mc("item"), "name": p("bando_map"), "weight": weight, "modifier": p("bando_map")}
 
 
 LOOT = {
@@ -314,7 +329,7 @@ LOOT = {
     },
     "village_cartographer": {
         "targets": ["chests/village/village_cartographer"],
-        "entries": [empty(60), part("analog_nano", 12), part("circuit_board", 10, (1, 2)), part("carbon_plate", 8, (1, 2)),
+        "entries": [empty(48), bando_map(12), part("analog_nano", 12), part("circuit_board", 10, (1, 2)), part("carbon_plate", 8, (1, 2)),
                     part("analog_race", 6), part("goggles_analog", 4), part("action_cam_light", 3)],
     },
     "abandoned_mineshaft": {
@@ -429,7 +444,7 @@ def short(ref):
 def count_text(entry):
     modifiers = entry.get("modifier", [])
     for modifier in modifiers if isinstance(modifiers, list) else [modifiers]:
-        if modifier["type"] == mc("set_count"):
+        if isinstance(modifier, dict) and modifier["type"] == mc("set_count"):
             count = modifier["count"]
             return str(count) if isinstance(count, int) else f"{count['min']}–{count['max']}"
     return "1"
@@ -478,6 +493,8 @@ def overview():
             name = short(entry["name"])
             if name == "pw:drone":
                 name = "pw:drone (fertige Whoop-Drohne)"
+            if name == "pw:bando_map":
+                name = "pw:bando_map (Bando-Karte zum nächsten unerkundeten Bando, ohne Bauwerke nichts)"
             lines.append(f"| {name} | {count_text(entry)} | {100.0 * entry['weight'] / total:.1f} % |")
         lines.append("")
     return "\n".join(lines)

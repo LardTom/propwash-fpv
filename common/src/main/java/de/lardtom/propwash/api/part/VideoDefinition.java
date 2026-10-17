@@ -2,14 +2,24 @@ package de.lardtom.propwash.api.part;
 
 import net.minecraft.resources.Identifier;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.OptionalDouble;
 
 public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, int latencyMs, int rangeBlocks, double imageQuality,
-                              double cameraWidthMm, OptionalDouble cameraFovDeg, int vtxPowerMw, OptionalDouble powerW) implements PartDefinition {
+                              double cameraWidthMm, OptionalDouble cameraFovDeg, int vtxPowerMw, OptionalDouble powerW,
+                              List<Integer> vtxLevelsMw) implements PartDefinition {
+    public static final int MAX_VTX_LEVELS = 8;
+
     public VideoDefinition(Identifier id, PartBasics basics, VideoLink link, int latencyMs, int rangeBlocks, double imageQuality,
                            double cameraWidthMm, OptionalDouble cameraFovDeg, int vtxPowerMw) {
         this(id, basics, link, latencyMs, rangeBlocks, imageQuality, cameraWidthMm, cameraFovDeg, vtxPowerMw, OptionalDouble.empty());
+    }
+
+    public VideoDefinition(Identifier id, PartBasics basics, VideoLink link, int latencyMs, int rangeBlocks, double imageQuality,
+                           double cameraWidthMm, OptionalDouble cameraFovDeg, int vtxPowerMw, OptionalDouble powerW) {
+        this(id, basics, link, latencyMs, rangeBlocks, imageQuality, cameraWidthMm, cameraFovDeg, vtxPowerMw, powerW, List.of());
     }
 
     public VideoDefinition {
@@ -39,6 +49,25 @@ public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, 
         if (powerW.isPresent() && !(powerW.getAsDouble() >= 0.1 && powerW.getAsDouble() <= 60.0)) {
             throw new IllegalArgumentException(id + ": Leistungsaufnahme muss zwischen 0,1 und 60 W liegen: " + powerW.getAsDouble());
         }
+        vtxLevelsMw = vtxLevelsMw == null ? List.of() : List.copyOf(vtxLevelsMw);
+        if (!vtxLevelsMw.isEmpty()) {
+            if (vtxPowerMw <= 0) {
+                throw new IllegalArgumentException(id + ": Leistungsstufen brauchen eine Sendeleistung (vtx_power_mw)");
+            }
+            if (vtxLevelsMw.size() > MAX_VTX_LEVELS) {
+                throw new IllegalArgumentException(id + ": höchstens " + MAX_VTX_LEVELS + " Leistungsstufen: " + vtxLevelsMw);
+            }
+            int previous = 0;
+            for (int level : vtxLevelsMw) {
+                if (level <= previous || level > 10000) {
+                    throw new IllegalArgumentException(id + ": Leistungsstufen müssen aufsteigend zwischen 1 und 10000 mW liegen: " + vtxLevelsMw);
+                }
+                previous = level;
+            }
+            if (!vtxLevelsMw.contains(vtxPowerMw)) {
+                throw new IllegalArgumentException(id + ": Leistungsstufen müssen die Sendeleistung " + vtxPowerMw + " mW enthalten: " + vtxLevelsMw);
+            }
+        }
     }
 
     @Override
@@ -61,6 +90,7 @@ public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, 
         private OptionalDouble cameraFovDeg = OptionalDouble.empty();
         private int vtxPowerMw;
         private OptionalDouble powerW = OptionalDouble.empty();
+        private List<Integer> vtxLevelsMw = List.of();
 
         private Builder(Identifier id) {
             this.id = Objects.requireNonNull(id, "id");
@@ -116,12 +146,17 @@ public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, 
             return this;
         }
 
+        public Builder vtxLevels(int... milliwatts) {
+            this.vtxLevelsMw = Arrays.stream(milliwatts).boxed().toList();
+            return this;
+        }
+
         public VideoDefinition build() {
             if (this.basics == null || this.link == null || this.latencyMs < 0 || this.rangeBlocks < 0 || this.imageQuality < 0.0) {
                 throw new IllegalArgumentException(this.id + ": Masse, System, Latenz, Reichweite und Bildqualität sind Pflicht");
             }
             return new VideoDefinition(this.id, this.basics, this.link, this.latencyMs, this.rangeBlocks, this.imageQuality,
-                    this.cameraWidthMm, this.cameraFovDeg, this.vtxPowerMw, this.powerW);
+                    this.cameraWidthMm, this.cameraFovDeg, this.vtxPowerMw, this.powerW, this.vtxLevelsMw);
         }
     }
 }

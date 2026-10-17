@@ -12,6 +12,8 @@ import de.lardtom.propwash.guide.training.StarRule;
 import de.lardtom.propwash.guide.training.TrainingSample;
 import de.lardtom.propwash.guide.training.TrainingScale;
 import de.lardtom.propwash.osd.client.OsdText;
+import de.lardtom.propwash.race.AssistReasons;
+import de.lardtom.propwash.race.client.AssistText;
 import de.lardtom.propwash.trick.TrickType;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
@@ -156,6 +158,14 @@ public final class TrainingHud {
         lines.add(new Line(clock + "   " + next, Palette.TEXT_MUTED, 1.0F));
         if (run.assisted()) {
             lines.add(new Line(Component.translatable("propwash.guide.training.hud.assisted").getString(), Palette.WARNING, 1.0F));
+            assistReasons(lines);
+        }
+    }
+
+    private static void assistReasons(List<Line> lines) {
+        AssistReasons reasons = TrainingSession.INSTANCE.runAssist();
+        if (reasons.any()) {
+            lines.add(new Line(AssistText.reasons(reasons).getString(), Palette.TEXT_MUTED, 1.0F));
         }
     }
 
@@ -250,6 +260,7 @@ public final class TrainingHud {
             }
             if (banner.assisted()) {
                 lines.add(new Line(Component.translatable("propwash.guide.training.result.assisted").getString(), Palette.WARNING, 1.0F));
+                assistReasons(lines);
             }
         } else {
             lines.add(new Line(Component.translatable("propwash.guide.training.result.failed").getString(), Palette.ERROR, 2.0F));

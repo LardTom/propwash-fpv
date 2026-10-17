@@ -1,6 +1,12 @@
 package de.lardtom.propwash.api;
 
+import de.lardtom.propwash.accessory.AccessoryBehaviors;
+import de.lardtom.propwash.accessory.DroneQueries;
+import de.lardtom.propwash.accessory.FlightHooks;
+import de.lardtom.propwash.api.accessory.AccessoryRegistry;
 import de.lardtom.propwash.api.build.BuildAccess;
+import de.lardtom.propwash.api.drone.DroneAccess;
+import de.lardtom.propwash.api.flight.FlightExtensions;
 import de.lardtom.propwash.api.part.PartRegistry;
 import de.lardtom.propwash.api.registry.CreativeEntries;
 import de.lardtom.propwash.api.registry.ExtensionTab;
@@ -19,7 +25,7 @@ import java.util.Optional;
 
 public final class PropwashApi {
     public static final String MOD_ID = "propwash";
-    public static final String API_VERSION = "1.5.0";
+    public static final String API_VERSION = "1.6.0";
     public static final ApiVersion VERSION = ApiVersion.parse(API_VERSION);
 
     private PropwashApi() {
@@ -62,6 +68,18 @@ public final class PropwashApi {
 
     public static LootInjections loot() {
         return LootInjectionsImpl.INSTANCE;
+    }
+
+    public static AccessoryRegistry accessories() {
+        return AccessoryBehaviors.INSTANCE;
+    }
+
+    public static DroneAccess drones() {
+        return DroneQueries.INSTANCE;
+    }
+
+    public static FlightExtensions flight() {
+        return FlightHooks.INSTANCE;
     }
 
     public static Optional<String> text(String languageCode, String key) {

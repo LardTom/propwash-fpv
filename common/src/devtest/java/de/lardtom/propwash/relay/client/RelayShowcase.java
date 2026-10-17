@@ -36,6 +36,7 @@ import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -48,7 +49,7 @@ public final class RelayShowcase {
     private static final BlockPos FLOOR = new BlockPos(2, 1, 3);
     private static final BlockPos WALL = new BlockPos(4, 2, 5);
     private static final BlockPos CEILING = new BlockPos(5, 4, 4);
-    private static final Vec3 DRONE_ON_FLOOR = new Vec3(4.5, 11.0, 4.5);
+    private static final Vec3 DRONE_ON_FLOOR = new Vec3(4.5, 26.0, 4.5);
     private static final AtomicLong CLOCK = new AtomicLong(-1L);
 
     private RelayShowcase() {
@@ -63,7 +64,7 @@ public final class RelayShowcase {
         Screenshots.step("bildschirmfotos: Signal-Repeater – am Boden, an der Wand und unter der Decke (Nacht, Status-LED)",
                 "signal_repeater_mounts_night", 30, new MountScene(ClockTimeMarkers.MIDNIGHT, false));
         Screenshots.step("bildschirmfotos: Signal-Repeater – in der Hand", "signal_repeater_in_hand", 30, new MountScene(ClockTimeMarkers.NOON, true));
-        Screenshots.step("bildschirmfotos: Signal-Repeater – FPV im Betonbau zwei Etagen über dem Piloten, ohne Repeater", "signal_repeater_fpv_without", 30,
+        Screenshots.step("bildschirmfotos: Signal-Repeater – FPV im Betonbau fünf Etagen über dem Piloten, ohne Repeater", "signal_repeater_fpv_without", 30,
                 new FpvScene(false));
         Screenshots.step("bildschirmfotos: Signal-Repeater – FPV im Betonbau über zwei Repeater, RPT im OSD", "signal_repeater_fpv_with", 30, new FpvScene(true));
         SelfTest.clientStep("bildschirmfotos: Signal-Repeater aufräumen", 600, RelayShowcase::cleanupStep);
@@ -117,6 +118,9 @@ public final class RelayShowcase {
         DronePiloting.pilotedBy(player.getUUID()).ifPresent(DronePiloting::release);
         BlockPos o = RelaySelfTests.origin(player);
         RelaySelfTests.build(level, o);
+        for (BlockPos mount : List.of(FLOOR, WALL, CEILING)) {
+            RelaySelfTests.unmount(level, RelaySelfTests.CORNER.offset(mount));
+        }
         if (repeaters) {
             RelaySelfTests.mount(level, RelaySelfTests.LOWER, AttachFace.FLOOR, Direction.NORTH);
             RelaySelfTests.mount(level, RelaySelfTests.UPPER, AttachFace.CEILING, Direction.NORTH);
@@ -249,7 +253,10 @@ public final class RelayShowcase {
                     && video.status() == VideoState.LinkStatus.CONNECTED && video.relay().settled();
             if (!ready) {
                 state.remove(ROUNDS);
-                return (int) state.get(SINCE) + 400 < ctx.tick() ? StepResult.fail("FPV im Betonbau startet nicht") : StepResult.pending();
+                return (int) state.get(SINCE) + 400 < ctx.tick() ? StepResult.fail("FPV im Betonbau startet nicht (FPV " + session.isFpv()
+                        + ", Drohne " + (drone == null ? "keine" : drone.getId() + "/" + RelaySelfTests.DRONE.get()) + ", Video " + video.status()
+                        + ", Repeater-Strecken fertig " + video.relay().settled() + ", " + video.relay().edgeCount() + " Strecken, "
+                        + video.relay().cellsLastTick() + " Zellen im letzten Tick)") : StepResult.pending();
             }
             if (!state.containsKey(ROUNDS)) {
                 state.put(ROUNDS, ctx.tick());

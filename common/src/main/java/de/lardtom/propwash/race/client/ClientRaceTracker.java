@@ -4,9 +4,8 @@ import de.lardtom.propwash.audio.client.AudioHooks;
 import de.lardtom.propwash.audio.client.Beep;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
-import de.lardtom.propwash.input.RadioState;
-import de.lardtom.propwash.input.SwitchFunction;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.CourseData;
 import de.lardtom.propwash.race.CourseElement;
 import de.lardtom.propwash.race.CourseLaps;
@@ -16,7 +15,6 @@ import de.lardtom.propwash.race.GateMounting;
 import de.lardtom.propwash.race.GhostLook;
 import de.lardtom.propwash.race.GhostRecorder;
 import de.lardtom.propwash.race.GhostTrack;
-import de.lardtom.propwash.race.LapAssist;
 import de.lardtom.propwash.race.LapTracker;
 import de.lardtom.propwash.race.RaceClock;
 import de.lardtom.propwash.race.RaceFormat;
@@ -24,7 +22,6 @@ import de.lardtom.propwash.race.RacePayloads;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
@@ -50,14 +47,13 @@ public final class ClientRaceTracker {
     private final GhostRecorder recorder = new GhostRecorder();
     private final GhostLibrary ghosts = new GhostLibrary();
     private final RaceClock clock = new RaceClock();
-    private @Nullable KeyMapping restartKey;
     private @Nullable Consumer<LapTracker.Event> eventListener;
     private boolean wasArmed;
     private @Nullable Vec3 lastPosition;
-    private boolean restartSwitchActive;
-    private int lapAssist;
-    private int assistNow;
-    private int lastLapAssist;
+    private boolean resetStart;
+    private AssistReasons lapAssist = AssistReasons.NONE;
+    private AssistReasons assistNow = AssistReasons.NONE;
+    private AssistReasons lastLapAssist = AssistReasons.NONE;
     private String frame = "";
     private @Nullable GhostLook look;
     private int referenceVersion = -1;
@@ -91,10 +87,6 @@ public final class ClientRaceTracker {
 
     public boolean paused() {
         return this.clock.paused();
-    }
-
-    void setRestartKey(KeyMapping key) {
-        this.restartKey = key;
     }
 
     public void setEventListener(@Nullable Consumer<LapTracker.Event> listener) {
@@ -141,18 +133,30 @@ public final class ClientRaceTracker {
     }
 
     public boolean lapAssisted() {
-        return this.lapAssist != LapAssist.NONE;
+        return this.lapAssist.any();
     }
 
     public int lapAssist() {
-        return this.lapAssist;
+        return this.lapAssist.mask();
     }
 
     public int assistNow() {
-        return this.assistNow;
+        return this.assistNow.mask();
     }
 
     public int lastLapAssist() {
+        return this.lastLapAssist.mask();
+    }
+
+    public AssistReasons lapReasons() {
+        return this.lapAssist;
+    }
+
+    public AssistReasons reasonsNow() {
+        return this.assistNow;
+    }
+
+    public AssistReasons lastLapReasons() {
         return this.lastLapAssist;
     }
 
@@ -189,9 +193,9 @@ public final class ClientRaceTracker {
         this.recorder.reset();
         this.ghosts.clear();
         this.wasArmed = false;
-        this.restartSwitchActive = false;
-        this.lapAssist = LapAssist.NONE;
-        this.lastLapAssist = LapAssist.NONE;
+        this.resetStart = false;
+        this.lapAssist = AssistReasons.NONE;
+        this.lastLapAssist = AssistReasons.NONE;
         this.referenceVersion = -1;
         this.goAt = Long.MIN_VALUE;
         this.clearLobby();
@@ -212,7 +216,6 @@ public final class ClientRaceTracker {
             return;
         }
         long now = this.now();
-        boolean restart = this.restartRequested();
         PilotSession session = PilotSession.INSTANCE;
         QuadcopterEntity drone = session.isActive() ? session.drone() : null;
         if (drone == null) {
@@ -222,7 +225,7 @@ public final class ClientRaceTracker {
             }
             this.tracker.resetPosition();
             this.wasArmed = false;
-            this.assistNow = LapAssist.NONE;
+            this.assistNow = AssistReasons.NONE;
             if (this.lobbyMember) {
                 this.leaveLobby();
             }
@@ -243,22 +246,17 @@ public final class ClientRaceTracker {
         this.syncGhosts(minecraft);
         LapTracker.Phase phase = this.tracker.phase();
         boolean active = phase == LapTracker.Phase.RACING || phase == LapTracker.Phase.COUNTDOWN;
-        if (restart) {
-            if (active) {
-                this.tracker.abort(now, LapTracker.AbortReason.RESTART);
-            } else if (this.lobbyMember) {
-                this.leaveLobby();
-            } else if (this.nearStart(position)) {
+        if (armed && !this.wasArmed) {
+            if (this.standingStart(config) && !active && !this.lobbyMember && this.nearStart(position)) {
                 this.requestStart(now, config);
             }
-        } else if (config.countdown && armed && !this.wasArmed && !active && !this.lobbyMember && this.nearStart(position)) {
-            this.requestStart(now, config);
+            this.resetStart = false;
         }
         this.wasArmed = armed;
-        if (this.tracker.racing() && this.assistNow != LapAssist.NONE) {
-            int fresh = this.assistNow & ~this.lapAssist;
-            this.lapAssist |= this.assistNow;
-            if (fresh != LapAssist.NONE) {
+        if (this.tracker.racing() && this.assistNow.any()) {
+            AssistReasons fresh = this.assistNow.without(this.lapAssist.mask());
+            this.lapAssist = this.lapAssist.plus(this.assistNow);
+            if (fresh.any()) {
                 String key = savesAssisted() ? "propwash.race.msg.assist_now_saved" : "propwash.race.msg.assist_now";
                 RaceHud.message(Component.translatable(key, AssistText.reasons(fresh)), RaceHud.YELLOW, 4_000_000_000L);
             }
@@ -365,19 +363,29 @@ public final class ClientRaceTracker {
         this.tracker.setLapTarget(CourseLaps.resolve(course == null ? CourseLaps.UNSET : course.laps(), RaceConfig.CONFIG.get().laps));
     }
 
-    private boolean restartRequested() {
-        boolean requested = false;
-        if (this.restartKey != null) {
-            while (this.restartKey.consumeClick()) {
-                requested = true;
-            }
+    private boolean standingStart(RaceConfig config) {
+        boolean lobbyOpen = !this.lobbyPilots.isEmpty() && this.lobbyCourse == this.tracker.courseId();
+        return config.countdown || this.resetStart || lobbyOpen;
+    }
+
+    void onHomeReset(QuadcopterEntity drone) {
+        long now = this.now();
+        LapTracker.Phase phase = this.tracker.phase();
+        if (phase == LapTracker.Phase.RACING || phase == LapTracker.Phase.COUNTDOWN) {
+            this.tracker.abort(now, LapTracker.AbortReason.RESET);
         }
-        boolean switchActive = RadioState.INSTANCE.isActive(SwitchFunction.RACE_RESTART);
-        if (switchActive && !this.restartSwitchActive) {
-            requested = true;
+        if (this.lobbyMember) {
+            this.leaveLobby();
         }
-        this.restartSwitchActive = switchActive;
-        return requested;
+        this.tracker.resetPosition();
+        this.lastPosition = null;
+        this.wasArmed = false;
+        this.resetStart = true;
+        this.dispatch();
+    }
+
+    public boolean resetStartPending() {
+        return this.resetStart;
     }
 
     public boolean nearStart(Vec3 position) {
@@ -442,7 +450,7 @@ public final class ClientRaceTracker {
             return;
         }
         for (LapTracker.Event event : events) {
-            int assisted = this.lapAssist;
+            AssistReasons assisted = this.lapAssist;
             boolean newGhost = this.recordGhost(event, assisted);
             this.present(event, assisted, newGhost);
             this.report(event, assisted);
@@ -452,13 +460,13 @@ public final class ClientRaceTracker {
         }
     }
 
-    private boolean recordGhost(LapTracker.Event event, int assisted) {
+    private boolean recordGhost(LapTracker.Event event, AssistReasons assisted) {
         boolean newGhost = false;
         switch (event.type()) {
             case START, GO -> {
                 this.recorder.onLapStart(this.tracker.courseId(), event.nanos());
                 this.lapAssist = this.assistNow;
-                this.ghosts.useAssisted(this.lapAssist != LapAssist.NONE && savesAssisted());
+                this.ghosts.useAssisted(this.lapAssist.any() && savesAssisted());
                 if (event.type() == LapTracker.EventType.GO) {
                     this.goAt = event.nanos();
                 }
@@ -475,14 +483,14 @@ public final class ClientRaceTracker {
                     track = track.withLook(this.look);
                 }
                 if (track != null && course != null
-                        && this.ghosts.offerLap(Minecraft.getInstance(), course, track, assisted != LapAssist.NONE, savesAssisted())) {
+                        && this.ghosts.offerLap(Minecraft.getInstance(), course, track, assisted.any(), savesAssisted())) {
                     newGhost = true;
                     this.referenceVersion = this.ghosts.version();
                     this.tracker.setReference(this.ghosts.referenceSplits());
                 }
                 this.lastLapAssist = assisted;
                 this.lapAssist = this.assistNow;
-                this.ghosts.useAssisted(this.lapAssist != LapAssist.NONE && savesAssisted());
+                this.ghosts.useAssisted(this.lapAssist.any() && savesAssisted());
             }
             case FINISH, ABORT -> this.recorder.stop();
             default -> {
@@ -491,7 +499,7 @@ public final class ClientRaceTracker {
         return newGhost;
     }
 
-    private void present(LapTracker.Event event, int assisted, boolean newGhost) {
+    private void present(LapTracker.Event event, AssistReasons assisted, boolean newGhost) {
         int course = this.tracker.courseId();
         int gates = this.tracker.gates().size();
         switch (event.type()) {
@@ -536,12 +544,12 @@ public final class ClientRaceTracker {
                         : Component.translatable("propwash.race.msg.lap", event.lap(), RaceFormat.time(event.valueNanos(), HUD_DECIMALS));
                 RaceHud.message(text, event.hasDelta() ? deltaColor(event.deltaNanos()) : RaceHud.WHITE, 4_000_000_000L);
                 if (newGhost) {
-                    String key = assisted != LapAssist.NONE ? "propwash.race.msg.personal_best_assisted" : "propwash.race.msg.personal_best";
+                    String key = assisted.any() ? "propwash.race.msg.personal_best_assisted" : "propwash.race.msg.personal_best";
                     RaceHud.message(Component.translatable(key), RaceHud.GOLD, 4_000_000_000L);
                 } else if (event.best() && event.hasDelta()) {
                     RaceHud.message(Component.translatable("propwash.race.msg.best"), RaceHud.GOLD, 4_000_000_000L);
                 }
-                if (assisted != LapAssist.NONE) {
+                if (assisted.any()) {
                     String key = savesAssisted() ? "propwash.race.msg.assisted_saved" : "propwash.race.msg.assisted_because";
                     RaceHud.message(Component.translatable(key, AssistText.reasons(assisted)), RaceHud.GRAY, 4_000_000_000L);
                 }
@@ -587,7 +595,7 @@ public final class ClientRaceTracker {
     }
 
     private void announceStartAssist() {
-        if (this.lapAssist != LapAssist.NONE) {
+        if (this.lapAssist.any()) {
             String key = savesAssisted() ? "propwash.race.msg.assist_start_saved" : "propwash.race.msg.assist_start";
             RaceHud.message(Component.translatable(key, AssistText.reasons(this.lapAssist)), RaceHud.YELLOW, 5_000_000_000L);
         }
@@ -616,16 +624,17 @@ public final class ClientRaceTracker {
         return delta < 0L ? RaceHud.GREEN : delta > 0L ? RaceHud.RED : RaceHud.WHITE;
     }
 
-    private void report(LapTracker.Event event, int assisted) {
+    private void report(LapTracker.Event event, AssistReasons assisted) {
         if (!RaceConfig.CONFIG.get().reportResults || !ClientNet.canSend(RacePayloads.RaceReportC2S.TYPE)) {
             return;
         }
         int course = this.tracker.courseId();
-        int flags = RacePayloads.RaceReportC2S.assistFlags(assisted);
+        int flags = RacePayloads.RaceReportC2S.assistFlags(assisted.mask());
         long penalty = event.lap() == 1 ? this.tracker.penaltyNanos() : 0L;
         RacePayloads.RaceReportC2S payload = switch (event.type()) {
             case START, GO -> new RacePayloads.RaceReportC2S(RacePayloads.ReportKind.START, course, 0, 0L, 0L);
-            case LAP -> new RacePayloads.RaceReportC2S(RacePayloads.ReportKind.LAP, course, event.lap(), event.valueNanos(), 0L, flags, penalty);
+            case LAP -> new RacePayloads.RaceReportC2S(RacePayloads.ReportKind.LAP, course, event.lap(), event.valueNanos(), 0L, flags, penalty,
+                    assisted.details());
             case FINISH -> new RacePayloads.RaceReportC2S(RacePayloads.ReportKind.FINISH, course, event.lap(), 0L, event.valueNanos());
             case ABORT -> new RacePayloads.RaceReportC2S(RacePayloads.ReportKind.ABORT, course, 0, 0L, 0L);
             default -> null;

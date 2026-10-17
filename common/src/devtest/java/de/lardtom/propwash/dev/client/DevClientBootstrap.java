@@ -33,24 +33,35 @@ import de.lardtom.propwash.drone.client.render.GroundContactSelfTests;
 import de.lardtom.propwash.drone.client.trail.TrailSelfTests;
 import de.lardtom.propwash.guide.client.GuideSelfTests;
 import de.lardtom.propwash.input.client.InputSelfTests;
+import de.lardtom.propwash.input.client.TransmitterInput;
+import de.lardtom.propwash.interact.client.AddonApiSelfTests;
 import de.lardtom.propwash.interact.client.BlockBreakSelfTests;
 import de.lardtom.propwash.interact.client.GlassFeelSelfTests;
+import de.lardtom.propwash.interact.client.SnagSelfTests;
 import de.lardtom.propwash.interact.client.InteractSelfTests;
 import de.lardtom.propwash.join.client.JoinSelfTests;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.osd.client.BatterySagSelfTests;
+import de.lardtom.propwash.osd.client.OsdOverlapSelfTests;
 import de.lardtom.propwash.osd.client.OsdSelfTests;
+import de.lardtom.propwash.osd.client.StickOverlaySelfTests;
 import de.lardtom.propwash.parts.client.PartsSelfTests;
+import de.lardtom.propwash.race.client.AssistCheckSelfTests;
 import de.lardtom.propwash.race.client.AssistedLapSelfTests;
+import de.lardtom.propwash.race.client.GateEditor;
 import de.lardtom.propwash.race.client.RaceSelfTests;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
 import de.lardtom.propwash.relay.client.RelaySelfTests;
 import de.lardtom.propwash.rescue.client.RescueSelfTests;
 import de.lardtom.propwash.server.client.ServerSelfTests;
 import de.lardtom.propwash.trick.client.TrickSelfTests;
+import de.lardtom.propwash.ui.client.FirstUseHints;
 import de.lardtom.propwash.ui.client.OverlayMessageSelfTests;
 import de.lardtom.propwash.ui.client.UiSelfTests;
+import de.lardtom.propwash.video.client.FisheyeSelfTests;
 import de.lardtom.propwash.video.client.VideoSelfTests;
 import de.lardtom.propwash.video.client.record.FlashbackCamSelfTests;
+import de.lardtom.propwash.zone.client.ZoneSelfTests;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
@@ -97,6 +108,20 @@ public final class DevClientBootstrap {
                 FpvFeelSelfTests.muteShake();
                 return SelfTest.StepResult.pass();
             });
+            SelfTest.baseStep("dev: Hinweis zur freien Maus im Gate-Editor gilt als bekannt, Start-Hinweis aus (eigene Schritte schalten beides ein)", 1,
+                    ctx -> {
+                        FirstUseHints.learned(GateEditor.MOUSE_HINT, GateEditor.MOUSE_HINT_TIMES);
+                        GateEditor.muteStartNotice(true);
+                        return SelfTest.StepResult.pass();
+                    });
+            SelfTest.baseStep("dev: angeschlossene Funken und Gamepads ausgeblendet (Selbsttest wie ohne Gerät)", 1, ctx -> {
+                TransmitterInput.INSTANCE.setSuppressDevice(true);
+                return SelfTest.StepResult.pass();
+            });
+            SelfTest.baseStep("dev: Objektiv flach (eigene Schritte schalten Fisheye ein)", 1, ctx -> {
+                FisheyeSelfTests.flatForOtherSteps();
+                return SelfTest.StepResult.pass();
+            });
             SelfTest.baseStep("dev: Blackbox-Logs früherer Läufe entfernen", 5, ctx -> {
                 Path directory = BlackboxSession.directory(Minecraft.getInstance());
                 int removed = 0;
@@ -136,6 +161,8 @@ public final class DevClientBootstrap {
             PartFreedomSelfTests.register();
             RaceSelfTests.register();
             AssistedLapSelfTests.register();
+            AssistCheckSelfTests.register();
+            ZoneSelfTests.register();
             ServerSelfTests.register();
             RescueSelfTests.register();
             PilotBodySelfTests.register();
@@ -147,15 +174,20 @@ public final class DevClientBootstrap {
             UiSelfTests.register();
             OverlayMessageSelfTests.register();
             OsdSelfTests.register();
+            StickOverlaySelfTests.register();
+            OsdOverlapSelfTests.register();
+            BatterySagSelfTests.register();
             TrickSelfTests.register();
             BlackboxSelfTests.register();
             InteractSelfTests.register();
             BlockBreakSelfTests.register();
             GlassFeelSelfTests.register();
+            SnagSelfTests.register();
             CreativeSelfTests.register();
             GuideSelfTests.register();
             ApiSelfTests.register();
             ApiLootSelfTests.register();
+            AddonApiSelfTests.register();
             WorldAssetsSelfTests.register();
             UiScaleSelfTests.register();
             ShowcaseTour.register();

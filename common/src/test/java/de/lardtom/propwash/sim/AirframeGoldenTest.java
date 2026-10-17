@@ -69,7 +69,7 @@ class AirframeGoldenTest {
                 }
             }
         }
-        for (DroneBuild preset : DroneBuild.PRESETS) {
+        for (DroneBuild preset : BuiltinRegressionTest.goldenPresets()) {
             for (DroneBuild build : List.of(preset, preset.withAccessory(AccessoryType.LED_STRIP), preset.withAccessory(AccessoryType.ACTION_CAM_HEAVY),
                     preset.withAccessory(AccessoryType.ACTION_CAM_LIGHT).withAccessory(AccessoryType.LED_STRIP))) {
                 if (!build.buildable() && build != preset) {

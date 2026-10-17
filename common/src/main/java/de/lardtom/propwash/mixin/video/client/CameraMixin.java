@@ -1,5 +1,6 @@
 package de.lardtom.propwash.mixin.video.client;
 
+import de.lardtom.propwash.video.client.FpvLens;
 import de.lardtom.propwash.video.client.VideoState;
 import net.minecraft.client.Camera;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,9 +13,10 @@ public abstract class CameraMixin {
     @Inject(method = "calculateFov", at = @At("RETURN"), cancellable = true)
     private void propwash$fpvFov(float partialTicks, CallbackInfoReturnable<Float> cir) {
         if (((Camera) (Object) this).isPanoramicMode()) {
+            FpvLens.INSTANCE.clear();
             return;
         }
-        float fov = VideoState.INSTANCE.fpvFov();
+        float fov = VideoState.INSTANCE.cameraFov();
         if (fov > 0.0F) {
             cir.setReturnValue(fov);
         }

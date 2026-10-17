@@ -200,7 +200,7 @@ class ManualAssignmentTest {
         arm.invert = true;
         arm.toggle = true;
         p.setBinding(SwitchFunction.ARM, arm);
-        p.setBinding(SwitchFunction.RACE_RESTART, SwitchAssignment.button(23, false));
+        p.setBinding(SwitchFunction.RESET, SwitchAssignment.button(23, false));
         p.assignAxis(StickChannel.YAW, 7);
         config.profiles.put("boxer", p);
         config.sanitize();
@@ -212,7 +212,7 @@ class ManualAssignmentTest {
         assertEquals(arm, loaded.binding(SwitchFunction.ARM));
         assertTrue(loaded.binding(SwitchFunction.ARM).invert);
         assertEquals(1225, loaded.binding(SwitchFunction.ARM).highMicros());
-        assertEquals(23, loaded.binding(SwitchFunction.RACE_RESTART).index);
+        assertEquals(23, loaded.binding(SwitchFunction.RESET).index);
         assertEquals(7, loaded.yaw.axis);
         assertArrayEquals(new int[]{3, 4, 5, 6}, loaded.auxAxes(AXES));
     }

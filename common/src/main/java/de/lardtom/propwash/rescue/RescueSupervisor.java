@@ -50,6 +50,7 @@ public final class RescueSupervisor {
     private @Nullable Abort abort;
     private boolean setHomeOnArm;
     private boolean setHomeManual;
+    private boolean armedNow;
 
     public RescueSupervisor() {
     }
@@ -75,6 +76,7 @@ public final class RescueSupervisor {
         this.abort = null;
         this.setHomeOnArm = false;
         this.setHomeManual = false;
+        this.armedNow = false;
     }
 
     public void forget() {
@@ -87,7 +89,8 @@ public final class RescueSupervisor {
         this.start = null;
         this.abort = null;
         this.setHomeOnArm = false;
-        if (f.armed && !this.wasArmed) {
+        this.armedNow = f.armed && !this.wasArmed;
+        if (this.armedNow) {
             boolean first = !this.armedOnce;
             this.armedOnce = true;
             this.setHomeOnArm = switch (cfg.homeMode) {
@@ -167,6 +170,10 @@ public final class RescueSupervisor {
 
     public boolean setHomeManual() {
         return this.setHomeManual;
+    }
+
+    public boolean armedNow() {
+        return this.armedNow;
     }
 
     public boolean linkLost() {

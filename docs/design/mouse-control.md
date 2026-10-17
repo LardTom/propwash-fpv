@@ -11,7 +11,8 @@ sicher und in Acro sauber fliegen können, ohne Flughilfe und mit derselben Late
   `keyboardSelected()` ist auch bei der Maus wahr (die Tastatur gehört zur Quelle), `mouseSelected()` nur bei der Maus.
 - Einstellungen in `InputConfig.mouse` (`input.MouseSettings`, persönlich, Datei `input`): Modus (`MouseMode`
   AUTO/RATE/HOLD), `xAxis` (`MouseAxis` ROLL/YAW), Empfindlichkeit, DPI, Glättung (ms), Totzone, Expo, Rückstellung
-  (1/s), `invertY`, Mausrad-Schritt (0 = aus). `sanitize()` repariert fehlende Enums, NaN und Bereiche.
+  (1/s), Mausrad-Schritt (0 = aus). `sanitize()` repariert fehlende Enums, NaN und Bereiche. Die Nick-Richtung steht
+  seit dem 11.10. nicht mehr hier, sondern als `InputConfig.invertPitch` für Maus und Tastatur gemeinsam (Abschnitt 4a).
 - Veröffentlicht wird wie beim Tastaturflug `RadioFrame(RadioSource.KEYBOARD, „Maus + Tastatur“, "mouse", …)`. Alles,
   was für die Tastatur gilt, gilt damit auch für die Maus: Start in Angle (`keyboard.startInAngle`), Modus-Tasten,
   Arm-Taste, Eigene Befehle der Tastatur, kein Funkverlust im OSD. Eine eigene `RadioSource.MOUSE` gibt es bewusst
@@ -40,7 +41,9 @@ sicher und in Acro sauber fliegen können, ohne Flughilfe und mit derselben Late
 - Danach Totzone (Bereich um 0 wird 0, Rest neu skaliert) und Expo (`(1−e)·x + e·x³`), beides je Achse, Ergebnis auf
   ±1 begrenzt (`MouseSticks.shape`).
 - Vorzeichen: Maus nach rechts = Roll bzw. Gieren rechts (+). Maus vom Körper weg (SDL `yrel < 0`) = Nick vorwärts (+,
-  Nase runter, wie ein Knüppel); `invertY` dreht das (Maus vor = Nase hoch wie Hochschauen im Shooter).
+  Nase runter, wie ein Knüppel); der Parameter `invertPitch` von `MouseSticks#update` dreht das (Maus vor = Nase hoch
+  wie Hochschauen im Shooter). Das Vorzeichen wirkt vor Halteposition, Totzone und Expo, das Ergebnis ist deshalb exakt
+  das negierte (JUnit `MouseSticksTest#forwardIsPitchForwardUnlessInverted`, auch im Modus Halten).
 
 ## 3. Mausereignisse im Spiel (`input.client.MouseCapture`, Mixin `SDLEventHandlerMixin`)
 
@@ -74,10 +77,48 @@ sicher und in Acro sauber fliegen können, ohne Flughilfe und mit derselben Late
 - Keine Flughilfe: Die Maus erzeugt nur Knüppelwerte, Rates, PIDs, Flugmodi und Physik bleiben unverändert;
   `AssistText`/`LapAssist` kennen die Eingabequelle nicht, Runden zählen normal. Nichts davon wird übertragen.
 
+## 4a. Nick (Pitch) umkehren – ein Schalter für Maus und Tastatur
+
+Anlass war eine Rückmeldung aus dem ersten Spieltest: Die Nick-Richtung der Maus war andersherum als erwartet. Der
+Standard bleibt (Maus vor = Nase runter, wie ein Knüppel), dazu gibt es genau einen Schalter.
+
+- `InputConfig.invertPitch` (persönlich, Datei `input`, Standard aus) gilt für beide Quellen ohne Gerät: „Maus +
+  Tastatur“ und den reinen Tastaturflug. `TransmitterInput` reicht ihn an `MouseFlight#update` (→ `MouseSticks#update`)
+  und an `KeyboardFlight#update` weiter; dort kehrt `input.PitchDirection#apply` die Nick-Tasten um (`kb_pitch_forward`
+  zieht dann die Nase hoch). Funke und Gamepad bleiben unberührt, sie haben „Invertiert“ je Kanal.
+- Übernahme der alten Einstellung: `mouse.invertY` aus Vorabständen von 0.5.0 wird beim Laden zu `invertPitch`.
+  `InputConfig#migrate(JsonObject)` läuft vor dem Einlesen (`JsonConfig.create(…, migration)` → `JsonConfig.read`),
+  entfernt den alten Schlüssel aus dem Block `mouse` und setzt `invertPitch` nur, wenn der neue Schlüssel noch fehlt und
+  der alte `true` war. Nach dem ersten Laden steht der alte Schlüssel nicht mehr in der Datei. Die Umkehr galt vorher
+  nur für die Maus; nach der Übernahme gilt sie auch für die Nick-Tasten.
+- `mergeReceiverFrom` und `copy` tragen den Schalter mit, „Standard“ im Empfänger-Tab stellt ihn zurück.
+- Oberfläche: Im Empfänger-Tab steht „Nick (Pitch) umkehren“ direkt unter dem Eingabegerät, sobald Maus oder Tastatur
+  fliegen können (`InputConfig#pitchSwitchApplies`: kein Gerät offen und Maus gewählt, Tastatur gewählt oder
+  „Tastaturflug“ an), im Maus-Schritt des Assistenten an der Stelle des früheren „Maus-Y umkehren“. Testfläche
+  (`MousePreview`), Vorführung (`MouseDemo#frame`, Beschriftung „… Nase hoch (Nick umgekehrt)“) und Tastentabelle
+  („Maus zurück/vor“, Nick-Tasten in umgekehrter Reihenfolge) lesen die Arbeitskopie und zeigen die Umkehrung sofort.
+  Die Knüppelanzeige im OSD zeigt sie im Flug, weil sie die veröffentlichten Knüppel liest.
+- Suche: Suchbegriffe `propwash.input.invert_pitch.search` („umkehren“, „invertieren“, „Pitch“, „Nick“, „Maus-Y“ bzw.
+  „invert“, „reverse“, „pitch“, „mouse Y“), dazu die Maus-Begriffe.
+- Entscheidungen: Ablage oben in `InputConfig` statt im Block `mouse` (der Schalter gilt auch ohne Maus; verworfen:
+  `mouse.invertY` behalten und von der Tastatur mitlesen). Übernahme am JSON-Baum statt über ein Altfeld in der Klasse
+  (die Datei schreibt `null`-Felder mit, das Altfeld bliebe für immer als `"invertY": null` stehen). Der Schalter wird
+  als Parameter durchgereicht statt in `MouseSettings` gespiegelt (zwei Wahrheiten wären auseinandergelaufen). Im
+  Assistenten gibt es ihn nur im Schritt „Maus + Tastatur“; für den reinen Tastaturflug hat der Assistent keinen eigenen
+  Schritt, dort steht er im Empfänger-Tab. Die Tastentabelle tauscht die Reihenfolge, statt „(umgekehrt)“ anzuhängen –
+  der Zusatz hätte die Zeile bei 427 × 240 umbrochen und die Tabelle über ihre feste Höhe gedrückt.
+- Tests: JUnit `InvertPitchTest` (Vorzeichen, Übernahme samt kaputter Werte, Kopie, Geltungsbereich, Vorführung),
+  `InvertPitchSearchTest` (Suche in beiden Sprachen, alter Schlüssel entfernt), `MouseSticksTest`; Selbsttest
+  „input: Maus + Tastatur – Maus wird Knüppel, …“ (im Flug: 6 cm Maus vor führt von +50 % auf −50 %, Taste „Nase runter“
+  zieht bis −100 %, ohne Umkehr wieder +10 % und +50 %) und „… – Empfänger-Tab, Testfläche, Suche und Assistent“
+  (Schalter direkt unter dem Gerät bei Maus und bei Tastatur, Arbeitskopie statt Datei, Testfläche negativ,
+  Tastentabelle, Suche „invert“/„pitch“/„reverse“, Verwerfen speichert nicht, Vorführung im Assistenten vor und nach
+  dem Umschalten).
+
 ## 5. Oberfläche
 
-- Empfänger-Tab (`ReceiverTab`, bei gewählter Maus ohne Gerät): scrollbar (`ScrollPanel`), links Gerät, Abschnitt
-  „Maus“ (zehn Einstellungen, alle mit Suchbegriff „Maus“), Abschnitt „Tastatur“; rechts bzw. darunter
+- Empfänger-Tab (`ReceiverTab`, bei gewählter Maus ohne Gerät): scrollbar (`ScrollPanel`), links Gerät, darunter
+  „Nick (Pitch) umkehren“, Abschnitt „Maus“ (neun Einstellungen, alle mit Suchbegriff „Maus“), Abschnitt „Tastatur“; rechts bzw. darunter
   „Virtuelle Knüppel“ (`MousePreview`: zwei Knüppelfelder, Modus-Zeile, Testfläche mit Klick-und-Ziehen und Umschalter
   Angle/Acro für „Automatisch“) und die Tastenübersicht. Die Testfläche liest dieselben rohen SDL-Schritte
   (`MouseCapture.Frame#previewX/Y`), auch ohne gefangenen Zeiger.
@@ -85,7 +126,7 @@ sicher und in Acro sauber fliegen können, ohne Flughilfe und mit derselben Late
   2. Maus + Tastatur“): links die Vorführung (`MouseDemoView`, Ablauf `input.MouseDemo`: Maus rechts, Pause, links,
   Pause, vor, Pause, zurück; die Funke wird über `RemoteGimbalRenderer`/`RemoteDemoRenderState` gezeichnet, die
   Knüppel kommen aus `MouseSticks` mit den gewählten Einstellungen bei fester Empfindlichkeit), rechts Modus,
-  Maus links/rechts, Empfindlichkeit, Y umkehren und die Testfläche. Wer in der Testfläche zieht, sieht 1,5 s lang
+  Maus links/rechts, Empfindlichkeit, „Nick (Pitch) umkehren“ und die Testfläche. Wer in der Testfläche zieht, sieht 1,5 s lang
   seine eigene Maus auf der Funke. „Fertig“ speichert wie der Assistent.
 - Flugtraining: Mit gewählter Maus zeigen acht Lektionen einen eigenen Tipp (`…lesson.<id>.tip_mouse`).
 - Testfläche (`MousePreview#drawPad`): Der Anleitungstext läuft nie unter den Umschalter Angle/Acro. Er wird neben dem
@@ -95,7 +136,7 @@ sicher und in Acro sauber fliegen können, ohne Flughilfe und mit derselben Late
 - Geräteliste: kurze Bezeichnung `propwash.input.mouse_keyboard.short` („Mouse + keys“, deutsch „Maus + Tastatur“), damit
   sie bei 1920 × 1080 nicht gekürzt wird. Die Tastenübersicht gibt der Beschriftung mehr als die halbe Breite, wenn die
   Tastenspalte schmal ist (vorher „Scharf schalten / en…“).
-- Einstellungssuche: Die zehn Maus-Einstellungen findet die Suche nur, wenn „Maus + Tastatur“ gewählt ist – der Index
+- Einstellungssuche: Die neun Maus-Einstellungen findet die Suche nur, wenn „Maus + Tastatur“ gewählt ist – der Index
   liest jeden Tab in seinem aktuellen Zustand, und ein Treffer springt zu einer Zeile, die es im offenen Tab geben muss.
   Sonst führt die Suche über die Suchbegriffe des Geräte-Umschalters („Maus … DPI Mausrad“) dorthin, wo man die Maus
   wählt. Verworfen: den Maus-Abschnitt immer mit indexieren (Treffer zeigten auf Zeilen, die es nicht gibt) oder beim

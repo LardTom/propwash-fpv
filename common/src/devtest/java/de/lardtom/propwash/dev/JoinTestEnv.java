@@ -15,6 +15,8 @@ public final class JoinTestEnv {
     public static final String HOLD = "PROPWASH_JOINTEST_HOLD";
     public static final String PILOT = "PROPWASH_JOINTEST_PILOT";
     public static final String TRAIL = "PROPWASH_JOINTEST_TRAIL";
+    public static final String ASSIST = "PROPWASH_JOINTEST_ASSIST";
+    public static final String ZONES = "PROPWASH_JOINTEST_ZONES";
     public static final String STOP_FILE = "jointest.stop";
     public static final String JOINED = "joined";
 
@@ -64,6 +66,14 @@ public final class JoinTestEnv {
 
     public static int trailSeconds() {
         return integer(TRAIL, 0);
+    }
+
+    public static boolean assist() {
+        return integer(ASSIST, 0) > 0;
+    }
+
+    public static boolean zones() {
+        return integer(ZONES, 0) > 0;
     }
 
     private static int integer(String name, int fallback) {

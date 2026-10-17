@@ -20,6 +20,7 @@ public final class SimSnapshot {
     public double soc;
     public double mAhUsed;
     public double polarizationVoltage;
+    public double fastPolarizationVoltage;
     public double lastBatteryCurrent;
     public double batteryHeatCurrent;
     public double lastBusVoltage;
@@ -54,6 +55,7 @@ public final class SimSnapshot {
         dst.soc = this.soc;
         dst.mAhUsed = this.mAhUsed;
         dst.polarizationVoltage = this.polarizationVoltage;
+        dst.fastPolarizationVoltage = this.fastPolarizationVoltage;
         dst.lastBatteryCurrent = this.lastBatteryCurrent;
         dst.batteryHeatCurrent = this.batteryHeatCurrent;
         dst.lastBusVoltage = this.lastBusVoltage;

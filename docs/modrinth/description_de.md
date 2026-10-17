@@ -10,6 +10,19 @@ spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spi
 
 ---
 
+## Neu in 0.5.2
+
+- **Ein echtes FPV-Objektiv:** Das FPV-Bild sieht durch ein Fisheye wie eine echte FPV-Kamera – der Regler *Fisheye*
+  im Tab *Video* stellt die Stärke ein, 0 % bringt das alte flache Bild zurück
+- **Wasserdichte Drohnen und Turtle-Modus:** Mit dem neuen Spray fliegt eine Drohne im Wasser; liegt sie auf dem Kopf,
+  dreht sie sich mit den eigenen Props wieder um
+- **Zonen:** Ein Bereich der Welt bekommt eigene Simulationswerte – rennfrei oder als Flughilfe gewertet
+- **VTX-Leistung, Bando-Karten, Spinnweben und Glocken:** Sendeleistung (Standard *Auto*) mit Reichweite, Wärme und
+  Akkuverbrauch, Entdeckerkarten zum nächsten Bando, Drohnen verfangen sich in Spinnweben und läuten Glocken
+- **Akkus wie echte Packs, bessere Landungen und echte Abstürze:** eine flache Entladekurve mit steilem Ende, das man in
+  jedem Punch spürt; nach einer Landung setzen Drohnen auf ihrem echten Rahmen auf, nach einem harten Absturz können sie
+  auch auf dem Kopf liegen
+
 ## Neu in 0.5.1
 
 - **Drohnen-Trails auf Servern:** Die Trails anderer Piloten erscheinen jetzt im Mehrspieler, nicht nur während GPS
@@ -84,7 +97,7 @@ spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spi
 - **Eigener Kreativ-Tab je Addon** direkt hinter dem Propwash-FPV-Tab, z. B. *Propwash: Just More Parts*
 - **Drohnen als Wand-Trophäe:** Im Item-Rahmen hängen Drohnen, Rahmen und Props flach an der Wand, Kameraseite nach
   vorn und Nase oben, und drehen sich mit dem Rahmen; im Regal sind sie zum Betrachter geneigt
-- **„Props im Kamerabild“ stimmt mit dem FPV-Bild überein** und folgt Rahmen und Kamerahalter (Race-Rahmen zeigen
+- **„Props im Kamerabild“ stimmt mit dem FPV-Bild überein** und folgt Rahmen und Kamerahalter (gestreckte Rahmen zeigen
   mehr Prop als ein True-X, Deadcats keine), der eingebaute Cinewhoop erreicht realistische 89 km/h, und
   die Werkbank bleibt in jeder Sprache und GUI-Größe lesbar
 - **Fehlerbehebungen:** kein Röntgenblick mehr durchs Wasser hinter drehenden Props, keine periodischen OSD-/HUD-Hänger
@@ -145,7 +158,7 @@ spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spi
 
 ### Eigene Drohnen bauen
 - Fünf Rahmen: vom 65-mm-Whoop über 3-Zoll-Cinewhoop, 5-Zoll-Freestyle- und Race-Rahmen bis zum 7-Zoll-Long-Range
-- Flight-Controller, sechs Motoren, fünf Propeller, Akkus und Videoeinheiten mit echten Kennwerten
+- Flight-Controller, sechs Motoren, sechs Propeller, Akkus und Videoeinheiten mit echten Kennwerten
 - Echte Wahl innerhalb eines Rahmens: leichte 1404- oder kräftige 2004-Motoren am Cinewhoop, Vier- oder Dreiblatt am
   Whoop, 30×30-Stack oder leichtes 20×20-AIO an Race- und Long-Range-Rahmen, 2807- oder 2207-Motoren am 7-Zöller
 - Gib deiner Drohne einen Namen – im Konfigurator, mit Namensschild oder Amboss; OSD, Funke und Brille zeigen ihn
@@ -156,7 +169,9 @@ spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spi
 ### Mit der echten Funke fliegen
 - EdgeTX-/OpenTX-Funken per USB, Gamepads und Tastaturflug als Ersatz
 - Empfänger-Assistent für Kanäle, Kalibrierung und Schalter; freie Schalterbelegung für Scharfschalten, Flugmodi,
-  Aufrichten, Heimflug, Homepoint, Suchpiepser, Rennneustart und Action-Cam-Aufnahme
+  Aufrichten, Heimflug, Homepoint, Suchpiepser, Reset zum Homepoint und Action-Cam-Aufnahme
+- Knüppel-Mode 1–4 (Standard Mode 2), als erster Schritt im Empfänger-Assistenten gewählt; Knüppelanzeige im OSD,
+  Flugschule und FPV-Funke folgen ihm
 - Die **FPV-Funke** im Spiel bewegt ihre Knüppel mit deinen
 
 ### FPV oder Sichtflug
@@ -168,9 +183,12 @@ spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spi
 ### Analoges und digitales Video
 - **Analog:** kaum Verzögerung; mit Entfernung und Hindernissen zerfällt das Bild in Stufen – verrissene Zeilen,
   verblassende Farben, Schnee mit Bildsprüngen und zuletzt volles Rauschen
-- **Digital:** klares HD-Bild mit etwas mehr Latenz, am Rand der Reichweite Unschärfe, Blockartefakte, Ruckler,
-  Standbild und dann „KEIN SIGNAL“ – nie analoger Schnee
-- Signalmodell mit Reichweite je Videoeinheit und Dämpfung durch Blöcke, Laub und Wasser
+- **Digital:** klares HD-Bild mit etwas mehr Latenz; am Rand wird es weicher, blockiger und träger, ruckelt und bleibt
+  auf dem letzten Bild stehen, bevor „KEIN SIGNAL“ kommt – nie analoger Schnee; HDZero-artige Systeme bleiben scharf
+  und zerfallen stattdessen in Blöcke
+- Signalmodell mit Reichweite je Videoeinheit: Ein Block Stein, Ziegel, Bretter oder Beton dämpft wie eine Hauswand,
+  Laub und Glas viel weniger, Hügel, Höhlen, tiefes Wasser und Metall trennen die Verbindung weiterhin – auch die der
+  Fernsteuerung
 - Bildformat 16:9 oder 4:3 (schwarze Ränder wie in 4:3-Brillen, gleiches horizontales Sichtfeld, OSD im Bild) oder
   Auto nach dem Videosystem
 - Die **Kreativ-FPV-Brille** empfängt jedes System; Latenz, Reichweite und Rauschen sind frei einstellbar; im
@@ -315,7 +333,7 @@ Tooltip.
 | GPS Rescue an/aus | J |
 | Homepoint setzen | , (Komma) |
 | Suchpiepser an/aus | . (Punkt) |
-| Rennen neu starten | Rücktaste |
+| Reset (zurück zum Homepoint) | Rücktaste |
 | Gate drehen (Gate oder Kurs-Werkzeug in der Hand; Schleichen: Lage wechseln) | R (geteilt mit „Flugmodus wechseln“) |
 | Action-Cam: Aufnahme starten/stoppen | F9 |
 | Konfigurator | K |

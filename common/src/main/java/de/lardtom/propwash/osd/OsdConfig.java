@@ -7,8 +7,9 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class OsdConfig {
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
     private static final int LAYOUT_VERSION = 2;
+    private static final int PARKING_VERSION = 4;
     public static final float MIN_SCALE = 0.5F;
     public static final float MAX_SCALE = 2.0F;
     public static final float STEPS_PER_UNIT = 10.0F;
@@ -55,6 +56,7 @@ public final class OsdConfig {
     public static void sanitize(OsdConfig config) {
         boolean legacy = config.version < LAYOUT_VERSION;
         boolean topRow = config.version == LAYOUT_VERSION;
+        boolean parking = config.version < PARKING_VERSION;
         if (legacy && config.elements != null) {
             migrateLegacyRow(config.elements, OsdElement.ARMED_STATUS, LEGACY_ARMED_STATUS_ROW);
             migrateLegacyRow(config.elements, OsdElement.WARNINGS, LEGACY_WARNINGS_ROW);
@@ -107,6 +109,43 @@ public final class OsdConfig {
         if (topRow) {
             migrateTopRow(config);
         }
+        if (parking) {
+            migrateParking(config);
+        }
+    }
+
+    private static void migrateParking(OsdConfig config) {
+        OsdPreset preset = config.preset;
+        for (OsdElement element : OsdElement.values()) {
+            Slot slot = config.slot(element);
+            if (preset.parked(element) && !slot.enabled && slot.col == element.baseCol() && slot.row == element.baseRow()) {
+                slot.col = preset.col(element);
+                slot.row = preset.row(element);
+            }
+        }
+        for (OsdElement element : OsdElement.values()) {
+            Slot slot = config.slot(element);
+            if (!preset.parked(element) || !slot.enabled || slot.col != element.baseCol() || slot.row != element.baseRow()) {
+                continue;
+            }
+            if (anchorTaken(config, element, slot.col, slot.row) && !anchorTaken(config, element, preset.col(element), preset.row(element))) {
+                slot.col = preset.col(element);
+                slot.row = preset.row(element);
+            }
+        }
+    }
+
+    private static boolean anchorTaken(OsdConfig config, OsdElement self, int col, int row) {
+        for (OsdElement other : OsdElement.values()) {
+            if (other == self || !other.movable() || other == OsdElement.POST_FLIGHT_STATS) {
+                continue;
+            }
+            Slot slot = config.slot(other);
+            if (slot.enabled && slot.col == col && slot.row == row) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void migrateTopRow(OsdConfig config) {

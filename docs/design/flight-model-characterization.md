@@ -136,9 +136,9 @@ Topspeed = ACRO, geflogen.
 | FREESTYLE | Schub/Gewicht | 8–12 | 10,64 | 10,64 | ok |
 | FREESTYLE | Schwebegas [%] | 20–30 | 23,4 | 23,4 | ok |
 | FREESTYLE | Topspeed [km/h] | 130–150 | 164 | 141 | ok |
-| RACER | leichter / mehr Schub/Gewicht / weniger Schwebegas als FREESTYLE | ja | ja | 430 g · 13,3 · 19,1 % | ok |
-| RACER | Topspeed [km/h] | 160–180 | 193 | 168 | ok |
-| RACER | schneller, mehr Punch, mehr Rollbeschleunigung (50 % Gas) als FREESTYLE | ja | – | 168 km/h · 44,1 m/s · +8 % | ok |
+| RACER | leichter / mehr Schub/Gewicht / weniger Schwebegas als FREESTYLE | ja | ja | 431 g · 13,1 · 19,0 % | ok |
+| RACER | Topspeed [km/h] | 140–160 (bis 10.10.2026 mit dem 4,6″-Prop: 160–180) | 193 | 147 (4,6″-Prop: 168) | ok |
+| RACER | schneller, mehr Punch, mehr Rollbeschleunigung (50 % Gas) als FREESTYLE | ja | – | 147 km/h · 41,1 m/s · +8 % | ok |
 | LONG_RANGE | Schwebegas [%] | 25–35 | 28,1 | 27,6 | ok |
 | LONG_RANGE | Topspeed [km/h] | 100–120 | 122 | 109 | ok |
 | LONG_RANGE | Flugzeit Schweben [min] / 50 % Gas im Verhältnis zu FREESTYLE | ≥ 20 / ≥ 2× | 31,9 / – | 32,4 / 3,2× | ok |
@@ -202,6 +202,9 @@ Nichts liegt außerhalb eines Zielbands. Knapp oder bewusst so:
   130–150 km/h, 5″-Racer 160–180, 7″-Long-Range 100–120, Cinewhoop 80–100 seit 0.4.3, 65-mm-Whoop 30–40). „vorher“
   in der Tabelle oben ist bei den Topspeeds der Stand vor dieser Kalibrierung. Mit frischem Akku (`infiniteBattery`,
   ohne `batterySag`) fliegen die Presets 39 / 94 / 147 / 175 / 113 km/h, im Vollgas-Sturzflug 44 / 107 / 153 / 182 / 121.
+  Seit dem 11.10.2026 fliegt der RACER mit dem flachen 5,1×2,9×3-Prop: Zielband 140–160 km/h (Race-Quads real
+  130–160 km/h, `realism/builds.md` §7), gemessen 147 km/h, mit frischem Akku 153, im Sturzflug 166; mit dem
+  4,6″-Prop auf demselben Rahmen bleiben es 168 / 175 / 192 km/h (`realism/motors-props.md` §12).
 - **CINEWHOOP**: Schwebegas 36,3 % (Untergrenze 35 %, bei vollem Akku 32 %). Topspeed seit 0.4.3 90 km/h statt 62 km/h:
   Der Rahmen `cinewhoop_3` hat jetzt eine realistische Draufsicht (0,020 statt 0,050 m², Stirnfläche 0,012 statt
   0,020 m²; `realism/calibration.md` §0.4) – der Luftwiderstand der Ducts begrenzte die Geschwindigkeit vorher auf

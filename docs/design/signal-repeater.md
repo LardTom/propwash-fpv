@@ -144,9 +144,11 @@ Selbsttest „content: Item-Größen …“).
   - „Repeater an Boden, Wand und Decke setzen, Verzeichnis und Abbau“: Rechtsklick wie ein Spieler auf Boden, Wand und
     Decke, Lage und Antennenpunkt im Verzeichnis von Client und Server, funkdurchlässig, Wand-Repeater fällt ohne Halt
     ab, Verzeichnis nach dem Abbau.
-  - „Betonbau mit drei Etagen – Bild nur über Repeater, Grenze aus der Welt-Regel“: geschlossener Würfel aus weißem
-    Beton (17 × 17 × 16, Decken in 5 Blöcken Abstand, Treppenhaus 5 × 5 in einer Ecke), Pilot im Erdgeschoss, Drohne in
-    der dritten Etage. Ohne Repeater und mit nur dem unteren Repeater ist das Bild weg; mit Repeater unten am Treppenhaus
+  - „Betonbau mit sechs Etagen – Bild nur über Repeater, Grenze aus der Welt-Regel“: geschlossener Würfel aus weißem
+    Beton (17 × 17 × 31, Decken in 5 Blöcken Abstand, Treppenhaus 5 × 5 in einer Ecke), Pilot im Erdgeschoss, Drohne in
+    der obersten Etage (bis zur Nachbesserung der Abschattung in 0.5.2 drei Etagen; seit ein Betonblock wie eine
+    Hauswand zählt, 9 dB, kommen zwei Decken bei 11 m noch klar durch – erst fünf Decken, 45 dB, schneiden das Bild ab,
+    [`vtx-obstruction.md`](vtx-obstruction.md#nachbesserung-in-052-spieltest-hauswand-statt-bunker)). Ohne Repeater und mit nur dem unteren Repeater ist das Bild weg; mit Repeater unten am Treppenhaus
     und unter dem Dach klar über zwei Repeater (jede Teilstrecke frei); Welt-Regel 1 und 0 schneiden die Kette ab;
     Drohne in zwei anderen Ecken, Wand-Repeater statt Decke, Digitalbild; Kosten je Tick; Funk unverändert.
   - „Runde mit Kreativ-Brille zählt, Latenz unter dem Sender nennt den Grund“: echte FPV-Sitzung mit getragener
@@ -158,6 +160,14 @@ Selbsttest „content: Item-Größen …“).
   Mit nur einem erlaubten Repeater bleibt der Weg Pilot → Dach-Repeater durch beide Decken (31 dB Beugung am Rand des
   Treppenhauses), Bild 0,01. Kosten der Teilstrecken je Tick im Mittel 0,14 ms, höchstens 1,7 ms (beim Aufbau, wenn
   alle Strecken neu sind). Der Funk bleibt bei 1,00.
+- Messwerte nach der Nachbesserung der Abschattung (15.10.2026, Fabric und NeoForge, Gebäude mit sechs Etagen): direkt
+  45,5 dB durch fünf Decken (Ecken 48,1 dB), kein Bild; über Boden-Repeater und Dach-Repeater drei freie Teilstrecken
+  mit 14,2 m, 28,3 m und 13,0 m, je 0,0 dB, Bild 1,00; mit dem Wand-Repeater 14,2 m, 27,2 m und 14,4 m. Mit nur dem
+  unteren Repeater oder einem erlaubten Repeater kein Bild. Kosten der Teilstrecken je Tick im Mittel 0,22 ms,
+  höchstens 1,8 ms (Fabric) bzw. 5,5 ms (NeoForge, ein einzelner Ausreißer). Strahlen durch Beton enden jetzt nicht mehr
+  nach zwei Blöcken am Deckel von 60 dB; mit vielen Repeatern rund um einen geschlossenen Betonbau erreicht die Abtastung
+  deshalb öfter ihr Budget von 24 000 Zellen je Tick und verteilt eine Runde auf zwei Ticks. Der Funk bleibt bei 1,00
+  (Steuerstrecke 0,6 × 45,5 dB ≈ 27 dB bei 25 m, volle LQ).
 - Bildschirmfotos (`-PpropwashScreenshots=true`): `signal_repeater_mounts_day`, `signal_repeater_mounts_night` (Boden,
   Wand, Decke; nachts nur die LEDs), `signal_repeater_in_hand`, `signal_repeater_fpv_without` (FPV zwei Decken über dem
   Piloten: Rauschen) und `signal_repeater_fpv_with` (über zwei Repeater klar, „RPT2“ im OSD).

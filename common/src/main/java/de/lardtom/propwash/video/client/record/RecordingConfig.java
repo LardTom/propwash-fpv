@@ -8,6 +8,8 @@ import de.lardtom.propwash.video.record.RecordingResources;
 import de.lardtom.propwash.video.record.Stabilizer;
 import de.lardtom.propwash.video.record.external.FfmpegLocator;
 import de.lardtom.propwash.video.record.path.KeyframeDensity;
+import de.lardtom.propwash.video.record.path.Simplification;
+import org.jspecify.annotations.Nullable;
 
 public final class RecordingConfig {
     public static final JsonConfig<RecordingConfig> CONFIG =
@@ -32,7 +34,9 @@ public final class RecordingConfig {
     public int bufferMb = 0;
     public int encoderThreads = 0;
     public boolean flashbackAutoRecord = true;
-    public KeyframeDensity flashbackDensity = KeyframeDensity.EVERY_TICK;
+    public double flashbackSimplify = -1.0;
+    public boolean flashbackKeyframeLimit = true;
+    public @Nullable KeyframeDensity flashbackDensity;
 
     public static RecordingConfig get() {
         return CONFIG.get();
@@ -54,7 +58,8 @@ public final class RecordingConfig {
         copy.bufferMb = this.bufferMb;
         copy.encoderThreads = this.encoderThreads;
         copy.flashbackAutoRecord = this.flashbackAutoRecord;
-        copy.flashbackDensity = this.flashbackDensity;
+        copy.flashbackSimplify = this.flashbackSimplify;
+        copy.flashbackKeyframeLimit = this.flashbackKeyframeLimit;
         return copy;
     }
 
@@ -81,9 +86,11 @@ public final class RecordingConfig {
         }
         this.bufferMb = this.bufferMb <= 0 ? 0 : Math.max(MIN_MEMORY_MB, Math.min(MAX_MEMORY_MB, this.bufferMb));
         this.encoderThreads = Math.max(0, Math.min(MAX_THREADS, this.encoderThreads));
-        if (this.flashbackDensity == null) {
-            this.flashbackDensity = KeyframeDensity.EVERY_TICK;
+        if (!(this.flashbackSimplify >= 0.0)) {
+            this.flashbackSimplify = this.flashbackDensity == null ? Simplification.DEFAULT_SLIDER : Simplification.sliderOf(this.flashbackDensity);
         }
+        this.flashbackSimplify = Math.min(1.0, this.flashbackSimplify);
+        this.flashbackDensity = null;
     }
 
     public int threads() {
@@ -99,6 +106,10 @@ public final class RecordingConfig {
         }
         long heap = Runtime.getRuntime().maxMemory();
         return RecordingResources.autoBuffer(RecordingResources.physicalMemory(), heap == Long.MAX_VALUE ? 0L : heap);
+    }
+
+    public Simplification flashbackSimplification() {
+        return Simplification.ofSlider(this.flashbackSimplify);
     }
 
     public float strength() {

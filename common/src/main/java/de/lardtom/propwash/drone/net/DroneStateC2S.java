@@ -8,7 +8,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 public record DroneStateC2S(int entityId, int epoch, double x, double y, double z, float qx, float qy, float qz, float qw,
                             float vx, float vy, float vz, boolean armed, float battery, int motors,
-                            boolean physicsModified, boolean ledsOff) implements CustomPacketPayload {
+                            boolean physicsModified, boolean ledsOff, boolean beeper) implements CustomPacketPayload {
     public static final Type<DroneStateC2S> TYPE = new Type<>(Constants.id("flight_state"));
     public static final StreamCodec<ByteBuf, DroneStateC2S> CODEC = CustomPacketPayload.codec(DroneStateC2S::write, DroneStateC2S::read);
 
@@ -30,12 +30,13 @@ public record DroneStateC2S(int entityId, int epoch, double x, double y, double 
         buf.writeInt(this.motors);
         buf.writeBoolean(this.physicsModified);
         buf.writeBoolean(this.ledsOff);
+        buf.writeBoolean(this.beeper);
     }
 
     private static DroneStateC2S read(ByteBuf buf) {
         return new DroneStateC2S(VarInt.read(buf), VarInt.read(buf), buf.readDouble(), buf.readDouble(), buf.readDouble(),
                 buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(),
-                buf.readBoolean(), buf.readFloat(), buf.readInt(), buf.readBoolean(), buf.readBoolean());
+                buf.readBoolean(), buf.readFloat(), buf.readInt(), buf.readBoolean(), buf.readBoolean(), buf.readBoolean());
     }
 
     @Override

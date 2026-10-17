@@ -40,7 +40,7 @@ class BandoDataTest {
     private static final Set<String> UNDERGROUND = Set.of("minecraft:mineshafts", "minecraft:buried_treasures", "minecraft:ancient_cities",
             "minecraft:trial_chambers", "minecraft:strongholds", "minecraft:nether_complexes", "minecraft:nether_fossils", "minecraft:end_cities");
 
-    private static Path root() {
+    static Path root() {
         for (Path candidate : List.of(Path.of("."), Path.of(".."))) {
             if (Files.isDirectory(candidate.resolve("common/src/main/resources/data/propwash"))) {
                 return candidate;
@@ -50,11 +50,11 @@ class BandoDataTest {
         return Path.of(".");
     }
 
-    private static Path data() {
+    static Path data() {
         return root().resolve("common/src/main/resources/data/propwash");
     }
 
-    private static JsonObject read(Path path) throws IOException {
+    static JsonObject read(Path path) throws IOException {
         try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader).getAsJsonObject();
         }
@@ -146,7 +146,7 @@ class BandoDataTest {
         JsonObject loot = read(data().resolve("loot_table/chests/bando.json"));
         assertEquals("minecraft:chest", loot.get("type").getAsString());
         JsonArray pools = loot.getAsJsonArray("pools");
-        assertEquals(2, pools.size());
+        assertEquals(3, pools.size());
         int parts = 0;
         int worn = 0;
         for (JsonElement entry : pools.get(0).getAsJsonObject().getAsJsonArray("entries")) {
@@ -173,7 +173,7 @@ class BandoDataTest {
         }
     }
 
-    private static Path vanilla() throws IOException {
+    static Path vanilla() throws IOException {
         URL probe = BandoDataTest.class.getClassLoader().getResource(VANILLA_PROBE);
         assertNotNull(probe, "Vanilla-Daten fehlen auf dem Klassenpfad: " + VANILLA_PROBE);
         try {

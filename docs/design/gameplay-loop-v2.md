@@ -571,8 +571,8 @@ zugänglich gemachten `ID_MAPPER` (`fabric-transitive-access-wideners-v1.classtw
     Schalter liegen nicht mehr in `remote_body.json` (`docs/ASSETS.md` „Funke“).
   - `extractArgument(ItemStack stack)`: nur wenn `mc.player != null` und `stack == mc.player.getMainHandItem()`
     (Identität, also die Funke in **der eigenen** Hand — erste Person, dritte Person und der eingefrorene Körper im
-    FPV) **und** eine Funke/ein Gamepad verbunden ist (`RadioState.INSTANCE.connected()`): Mode 2 —
-    links X = Yaw, links Y = Gas (0..1 → −1..1), rechts X = Roll, rechts Y = Pitch (`StickPositions.pitch` +1 = Knüppel nach
+    FPV) **und** eine Funke/ein Gamepad verbunden ist (`RadioState.INSTANCE.connected()`): im Knüppel-Mode des
+    Spielers (`StickMode.place`, ab 0.5.2), in Mode 2 links X = Yaw, links Y = Gas (0..1 → −1..1), rechts X = Roll, rechts Y = Pitch (`StickPositions.pitch` +1 = Knüppel nach
     vorn = nach oben im Modell; korrigiert, vorher stand hier „−Pitch“ im Widerspruch zur Klammer); bei aktivem Rescue
     `RescueState.commandedSticks()`. Sonst `null` → Knüppel mittig, Gas unten.
   - Geometrie: eigenes `LayerDefinition` `drone.client.render.RemoteGimbalModel.LAYER`
@@ -812,6 +812,7 @@ die steckt jetzt in der Kurzzeile).
 | `p3_3b` | 3"-Dreiblatt für Cinewhoops | 3" tri-blade for cinewhoops |
 | `p51_3b` | 5,1"-Dreiblatt – Standard für 5" | 5.1" tri-blade – the 5" standard |
 | `p7_2b` | 7"-Zweiblatt – sparsam für Long Range | 7" two-blade – efficient long range |
+| `p51_29_3b` (seit 0.5.0) | 5,1"-Dreiblatt, PC – flache Steigung fürs Rennen | 5.1" tri-blade, PC – low pitch for racing |
 | `b1s_300_hv` | 1S-LiHV-Akku, 300 mAh – nur für Whoops | 1S LiHV pack, 300 mAh – whoops only |
 | `b4s_650` | 4S-LiPo, 650 mAh – für Cinewhoops | 4S LiPo, 650 mAh – for cinewhoops |
 | `b6s_1100` | 6S-LiPo, 1100 mAh – leicht, für Race | 6S LiPo, 1100 mAh – light, for racing |

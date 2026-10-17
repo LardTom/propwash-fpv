@@ -27,11 +27,16 @@ class MouseSticksTest {
 
     private static MouseSticks.Output run(MouseSticks sticks, MouseSettings s, float cmPerSecondX, float cmPerSecondForward, float seconds, float fps,
                                           boolean selfLevel) {
+        return run(sticks, s, cmPerSecondX, cmPerSecondForward, seconds, fps, selfLevel, false);
+    }
+
+    private static MouseSticks.Output run(MouseSticks sticks, MouseSettings s, float cmPerSecondX, float cmPerSecondForward, float seconds, float fps,
+                                          boolean selfLevel, boolean invertPitch) {
         float dt = 1.0F / fps;
         int frames = Math.round(seconds * fps);
         MouseSticks.Output out = sticks.last();
         for (int i = 0; i < frames; i++) {
-            out = sticks.update(counts(cmPerSecondX * dt, s.dpi), -counts(cmPerSecondForward * dt, s.dpi), dt, s, selfLevel);
+            out = sticks.update(counts(cmPerSecondX * dt, s.dpi), -counts(cmPerSecondForward * dt, s.dpi), dt, s, selfLevel, invertPitch);
         }
         return out;
     }
@@ -87,7 +92,7 @@ class MouseSticksTest {
         MouseSettings s = plain(MouseMode.HOLD);
         s.returnSpeed = 0.5F;
         MouseSticks sticks = new MouseSticks();
-        sticks.update(counts(-3.0F, s.dpi), 0.0F, 0.01F, s, true);
+        sticks.update(counts(-3.0F, s.dpi), 0.0F, 0.01F, s, true, false);
         assertEquals(-0.5F, sticks.last().roll(), 1.0E-3F);
         MouseSticks.Output out = run(sticks, s, 0.0F, 0.0F, 0.5F, 100.0F, true);
         assertEquals(-0.25F, out.roll(), 1.0E-3F);
@@ -102,7 +107,7 @@ class MouseSticksTest {
         run(sticks, s, 6.0F, 6.0F, 0.5F, 60.0F, true);
         assertTrue(sticks.last().roll() > 0.4F);
         sticks.center();
-        MouseSticks.Output out = sticks.update(0.0F, 0.0F, 1.0F / 60.0F, s, true);
+        MouseSticks.Output out = sticks.update(0.0F, 0.0F, 1.0F / 60.0F, s, true, false);
         assertEquals(0.0F, out.roll(), EPS);
         assertEquals(0.0F, out.pitch(), EPS);
     }
@@ -136,8 +141,8 @@ class MouseSticksTest {
             for (int i = 0; i < 300; i++) {
                 float cm = (float) Math.sin(i * 0.05) * 0.3F;
                 float forward = i < 150 ? 0.08F : 0.0F;
-                MouseSticks.Output oa = a.update(counts(cm, 400), -counts(forward, 400), dt, low, i % 100 < 50);
-                MouseSticks.Output ob = b.update(counts(cm, 1600), -counts(forward, 1600), dt, high, i % 100 < 50);
+                MouseSticks.Output oa = a.update(counts(cm, 400), -counts(forward, 400), dt, low, i % 100 < 50, false);
+                MouseSticks.Output ob = b.update(counts(cm, 1600), -counts(forward, 1600), dt, high, i % 100 < 50, false);
                 assertEquals(oa.roll(), ob.roll(), 1.0E-4F, mode + " Bild " + i);
                 assertEquals(oa.pitch(), ob.pitch(), 1.0E-4F, mode + " Bild " + i);
             }
@@ -148,10 +153,18 @@ class MouseSticksTest {
     void forwardIsPitchForwardUnlessInverted() {
         MouseSettings s = plain(MouseMode.RATE);
         MouseSticks sticks = new MouseSticks();
-        assertTrue(run(sticks, s, 0.0F, 10.0F, 0.1F, 100.0F, false).pitch() > 0.3F);
-        s.invertY = true;
+        MouseSticks.Output normal = run(sticks, s, 3.0F, 10.0F, 0.1F, 100.0F, false);
+        assertTrue(normal.pitch() > 0.3F);
         MouseSticks inverted = new MouseSticks();
-        assertTrue(run(inverted, s, 0.0F, 10.0F, 0.1F, 100.0F, false).pitch() < -0.3F);
+        MouseSticks.Output flipped = run(inverted, s, 3.0F, 10.0F, 0.1F, 100.0F, false, true);
+        assertEquals(-normal.pitch(), flipped.pitch());
+        assertEquals(normal.roll(), flipped.roll());
+        MouseSettings hold = plain(MouseMode.HOLD);
+        MouseSticks.Output held = run(new MouseSticks(), hold, 0.0F, 4.0F, 0.5F, 100.0F, true);
+        MouseSticks.Output heldFlipped = run(new MouseSticks(), hold, 0.0F, 4.0F, 0.5F, 100.0F, true, true);
+        assertTrue(held.pitch() > 0.1F);
+        assertEquals(-held.pitch(), heldFlipped.pitch());
+        assertTrue(heldFlipped.holdY());
     }
 
     @Test
@@ -243,7 +256,7 @@ class MouseSticksTest {
                 sticks.motion(nextPoll + jitter, countsPerPoll, 0.0F);
                 nextPoll += poll;
             }
-            MouseSticks.Output out = sticks.update(now, frame / 1.0E9F, s, false);
+            MouseSticks.Output out = sticks.update(now, frame / 1.0E9F, s, false, false);
             if (i > fps / 2) {
                 min = Math.min(min, out.roll());
                 max = Math.max(max, out.roll());
@@ -257,9 +270,9 @@ class MouseSticksTest {
         MouseSettings s = plain(MouseMode.RATE);
         MouseSticks sticks = new MouseSticks();
         MouseSticks.Output before = run(sticks, s, 15.0F, 0.0F, 0.1F, 100.0F, false);
-        assertEquals(before, sticks.update(5.0F, 5.0F, 0.0F, s, false));
-        assertEquals(before, sticks.update(5.0F, 5.0F, Float.NaN, s, false));
-        MouseSticks.Output nan = sticks.update(Float.NaN, Float.POSITIVE_INFINITY, 0.01F, s, false);
+        assertEquals(before, sticks.update(5.0F, 5.0F, 0.0F, s, false, false));
+        assertEquals(before, sticks.update(5.0F, 5.0F, Float.NaN, s, false, false));
+        MouseSticks.Output nan = sticks.update(Float.NaN, Float.POSITIVE_INFINITY, 0.01F, s, false, false);
         assertTrue(Float.isFinite(nan.roll()) && Float.isFinite(nan.pitch()));
         sticks.reset();
         assertEquals(MouseSticks.Output.CENTER, sticks.last());

@@ -154,7 +154,8 @@ Plattformdienst `IPlatformHelper#readModResources`).
 | `image_quality` | Zahl (0, 1] | **Pflicht** |
 | `camera_width_mm` | Zahl 8–40 | 19 |
 | `camera_fov_deg` | Zahl 60–180 | leer = Standard des Systems (analog 120°, digital 130°); **horizontales** Sichtfeld der Kamera, seit API 1.4 das FPV-Sichtfeld und das Sichtfeld der Analyse (gezeichnet höchstens 160°) |
-| `vtx_power_mw` | ganze Zahl | 0 |
+| `vtx_power_mw` | ganze Zahl 0–10000 | 0 = 200 mW; Nennleistung des Senders (ab API 1.6 wirksam): bei ihr gelten `range_blocks` und `power_w`; Drohnen ohne eigene Einstellung senden mit Auto |
+| `vtx_levels_mw` | Liste ganzer Zahlen | leer = aus `vtx_power_mw` abgeleitet; einstellbare Stufen in mW, aufsteigend, 1–10000, höchstens 8, muss `vtx_power_mw` enthalten (dann ist `vtx_power_mw` Pflicht), ab API 1.6 (`docs/design/vtx-power.md`) |
 | `power_w` | Zahl 0,1–60 | aus Verbindung, Masse und Sendeleistung (Flugmodell-Spezifikation 18.1); Leistungsaufnahme des Videosystems in W für die Energiebilanz, ab API 1.2 |
 
 ### 3.8 `accessory`

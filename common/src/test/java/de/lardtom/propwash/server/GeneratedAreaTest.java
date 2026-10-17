@@ -69,4 +69,13 @@ class GeneratedAreaTest {
         assertEquals(3, scan.missingDistance());
         assertFalse(scan.complete());
     }
+
+    @Test
+    void wholeFootprintDecidesTheStatus() {
+        assertEquals(Status.GENERATED, GeneratedArea.scan((x, z) -> Status.GENERATED, 0, 0, 3).within(3));
+        assertEquals(Status.MISSING, GeneratedArea.scan((x, z) -> x == 3 ? Status.MISSING : Status.GENERATED, 0, 0, 3).within(3));
+        assertEquals(Status.UNKNOWN, GeneratedArea.scan((x, z) -> z == -2 ? Status.UNKNOWN : Status.GENERATED, 0, 0, 3).within(3));
+        assertEquals(Status.MISSING, GeneratedArea.scan((x, z) -> z == -2 ? Status.UNKNOWN : x == 3 ? Status.MISSING : Status.GENERATED,
+                0, 0, 3).within(3));
+    }
 }

@@ -14,8 +14,9 @@ cd "$ROOT" || exit 2
 PROPWASH_CALIBRATION_ADDON="$RESOURCES" PROPWASH_CALIBRATION_OUT="$OUT" tools/fastcheck.sh test \
   --select-class de.lardtom.propwash.sim.CalibrationHarnessTest --select-class de.lardtom.propwash.sim.FlightTimeOrderTest \
   --select-class de.lardtom.propwash.sim.MotionFingerprintTest --select-class de.lardtom.propwash.sim.FallCharacterizationTest \
-  --select-class de.lardtom.propwash.sim.ThrottleDropCharacterizationTest \
+  --select-class de.lardtom.propwash.sim.ThrottleDropCharacterizationTest --select-class de.lardtom.propwash.sim.BatterySagTest \
   | grep -E 'tests (successful|failed|aborted)|FASTCHECK'
 status=${PIPESTATUS[0]}
 cat "$OUT/calibration.txt"
+cat "$OUT/battery_sag.txt"
 exit "$status"

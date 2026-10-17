@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "N": "minecraft:iron_nugget",
+    "H": "minecraft:honeycomb",
+    "R": "minecraft:resin_clump"
+  },
+  "pattern": [
+    " N ",
+    "NHN",
+    "NRN"
+  ],
+  "result": {
+    "id": "propwash:waterproof_spray"
+  }
+}

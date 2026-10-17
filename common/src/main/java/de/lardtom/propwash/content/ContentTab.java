@@ -5,6 +5,7 @@ import de.lardtom.propwash.api.PropwashApi;
 import de.lardtom.propwash.api.build.DronePreset;
 import de.lardtom.propwash.api.part.PartKind;
 import de.lardtom.propwash.api.registry.ExtensionTab;
+import de.lardtom.propwash.bando.BandoModule;
 import de.lardtom.propwash.api.registry.TabSection;
 import de.lardtom.propwash.apiimpl.ApiExtensions;
 import de.lardtom.propwash.apiimpl.ExtensionTabs;
@@ -76,6 +77,9 @@ public final class ContentTab {
             }
         }
         ContentIds.item(ContentIds.DRONE).ifPresent(listed::add);
+        if (BandoModule.MAP.isBound()) {
+            listed.add(BandoModule.MAP.get());
+        }
         for (RegHolder<PartItem> part : ContentItems.parts().values()) {
             add(stacks, listed, new ItemStack(part.get()));
         }

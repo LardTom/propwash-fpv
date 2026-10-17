@@ -1,14 +1,18 @@
 package de.lardtom.propwash.rescue;
 
+import de.lardtom.propwash.accessory.AccessoryPayload;
+import de.lardtom.propwash.accessory.FlightHooks;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.PartWear;
 import de.lardtom.propwash.drone.DroneWear;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.WaterSurface;
 import de.lardtom.propwash.drone.TuneMapping;
 import de.lardtom.propwash.drone.WindModel;
 import de.lardtom.propwash.drone.net.StateValidation;
-import de.lardtom.propwash.interact.CargoMass;
+import de.lardtom.propwash.interact.DroneSnags;
 import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.server.rules.PhysicsRules;
 import de.lardtom.propwash.sim.AirframeSpec;
 import de.lardtom.propwash.sim.CrashDamage;
@@ -26,6 +30,11 @@ import de.lardtom.propwash.sim.SimTuning;
 import de.lardtom.propwash.sim.StabMode;
 import de.lardtom.propwash.sim.StepResult;
 import de.lardtom.propwash.sim.Telemetry;
+import de.lardtom.propwash.video.VtxTables;
+import de.lardtom.propwash.video.vtx.VtxPowerSettings;
+import de.lardtom.propwash.video.vtx.VtxTable;
+import de.lardtom.propwash.zone.ZoneField;
+import de.lardtom.propwash.zone.ZoneServer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
@@ -47,6 +56,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 final class ServerReturnFlight {
     static final long TICK_NANOS = 50_000_000L;
@@ -56,6 +66,7 @@ final class ServerReturnFlight {
     private static final double SLICE_DISTANCE = 0.3;
     private static final double DISARM_GRACE = 0.5;
     private static final double GROUND_PROBE = 5.0;
+    private static final double SOLID_PROBE = 1.0;
     private static final double SUPPORT_PROBE = 0.05;
     private static final double HIT_EPSILON = 1.0E-7;
     private static final double RESYNC_DISTANCE = 0.75;
@@ -79,10 +90,12 @@ final class ServerReturnFlight {
     private final Quaternionf body = new Quaternionf();
     private final List<ImpactSample> impacts = new ArrayList<>();
     private final float[] motors = new float[QuadcopterEntity.MOTORS];
+    private final DroneSnags.Flight snags = new DroneSnags.Flight();
     private DroneSim sim;
     private AirframeSpec params;
     private DroneBuild build;
     private RescueSettings cfg;
+    private final ZoneField zones = new ZoneField();
     private double simTime;
     private double disarmAt = -1.0;
     private boolean landNowApplied;
@@ -95,18 +108,31 @@ final class ServerReturnFlight {
         this.world = world;
     }
 
+    DroneSim sim() {
+        return this.sim;
+    }
+
+    static double videoPowerDelta(Map<String, Float> tune, DroneBuild build) {
+        VtxTable table = VtxTables.of(build.video());
+        VtxPowerSettings.Selection selection = VtxPowerSettings.selection(tune, table);
+        return selection.auto() ? 0.0 : table.extraW(selection.index());
+    }
+
     static ServerReturnFlight start(QuadcopterEntity drone, ReturnPlan plan, ServerLevel level, ServerRescueWorld world) {
         ServerReturnFlight flight = new ServerReturnFlight(world);
         flight.cfg = plan.settings();
-        flight.build = CargoMass.withPayload(drone.build(), drone.cargoGrams());
+        flight.build = AccessoryPayload.flightBuild(drone);
         flight.params = AirframeSpec.of(flight.build);
         PhysicsRules rules = WorldRules.physics(level.getServer());
-        SimTuning tuning = rules.toSimTuning();
-        tuning.partCompatibility = WorldRules.partCompatibility(level.getServer()).enforced();
+        flight.zones.update(ZoneServer.zones(level), ZoneServer.dimension(level), rules, drone.getX(), drone.getY(), drone.getZ(), 0.0);
+        SimTuning tuning = flight.tuning(level);
         long seed = drone.getUUID().getLeastSignificantBits() ^ level.getGameTime();
         flight.sim = new DroneSim(flight.params, TuneMapping.toConfig(drone.tune().values(), flight.params), tuning, seed);
         flight.sim.setBatteryCharge(drone.batteryCharge());
         flight.sim.setWear(drone.wear());
+        flight.sim.setWaterproof(drone.waterproof() || WorldRules.on(level.getServer(), WorldRuleSpecs.WATERPROOF_DRONES));
+        flight.sim.setVideoPowerDelta(videoPowerDelta(drone.tune().values(), flight.build));
+        FlightHooks.INSTANCE.attachForces(flight.sim, flight.build);
         flight.place(drone, drone.getDeltaMovement().scale(20.0));
         flight.input.mode = StabMode.ANGLE;
         flight.input.armSwitch = true;
@@ -123,8 +149,26 @@ final class ServerReturnFlight {
         this.written = drone.position();
     }
 
+    private SimTuning tuning(ServerLevel level) {
+        SimTuning tuning = this.zones.apply(this.zones.rules().toSimTuning());
+        tuning.partCompatibility = WorldRules.partCompatibility(level.getServer()).enforced();
+        return tuning;
+    }
+
+    private void followZones(QuadcopterEntity drone, ServerLevel level) {
+        boolean wasInfinite = this.zones.rules().infiniteBattery();
+        if (this.zones.update(ZoneServer.zones(level), ZoneServer.dimension(level), WorldRules.physics(level.getServer()), drone.getX(), drone.getY(),
+                drone.getZ(), TICK_NANOS * 1.0E-9)) {
+            this.sim.setTuning(this.tuning(level));
+            if (wasInfinite && !this.zones.rules().infiniteBattery()) {
+                this.sim.keepBatteryCharge();
+            }
+        }
+    }
+
     Outcome tick(QuadcopterEntity drone, ServerLevel level, ReturnPlan plan, @Nullable ServerPlayer owner) {
         this.world.bind(level);
+        this.followZones(drone, level);
         this.world.exempt(SectionPos.blockToSectionCoord(drone.getBlockX()), SectionPos.blockToSectionCoord(drone.getBlockZ()));
         this.lastTick = level.getGameTime();
         if (this.written != null && drone.position().distanceToSqr(this.written) > RESYNC_DISTANCE * RESYNC_DISTANCE) {
@@ -166,6 +210,7 @@ final class ServerReturnFlight {
                 }
             }
             this.fillEnvironment(level, drone);
+            this.snags.fill(level, this.sim, this.env, dt);
             this.sim.step(part, this.input, this.env, this.result);
             this.move(drone);
             this.collectImpacts();
@@ -175,6 +220,7 @@ final class ServerReturnFlight {
                 break;
             }
         }
+        this.snags.applyWear(level, drone, this.sim);
         this.applyWear(level, drone);
         this.write(drone);
         if (this.sim.telemetry().armed) {
@@ -206,7 +252,9 @@ final class ServerReturnFlight {
         double y = drone.getY() + com;
         double z = drone.getZ();
         this.env.groundDistance = groundDistance(level, drone, x, y, z);
+        this.env.solidDistance = this.env.groundDistance < SOLID_PROBE ? solidDistance(level, drone, x, y, z) : Double.POSITIVE_INFINITY;
         this.env.fluid = fluidAt(level, x, y, z);
+        this.env.waterSurface = WaterSurface.relative(level, x, y, z);
         this.env.airDensity = 1.225 * Math.exp(-Math.max(0.0, y - level.getSeaLevel()) / 8500.0);
         this.env.ambientTempC = 20.0;
         this.env.skyView = 1.0;
@@ -228,6 +276,12 @@ final class ServerReturnFlight {
             return probeEnd <= floor ? y - floor : Double.POSITIVE_INFINITY;
         }
         return Math.max(0.0, y - hit.getLocation().y);
+    }
+
+    private static double solidDistance(Level level, QuadcopterEntity drone, double x, double y, double z) {
+        BlockHitResult hit = level.clip(new ClipContext(new Vec3(x, y, z), new Vec3(x, y - SOLID_PROBE, z), ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE, drone));
+        return hit.getType() == HitResult.Type.MISS ? Double.POSITIVE_INFINITY : Math.max(0.0, y - hit.getLocation().y);
     }
 
     private static Fluid fluidAt(Level level, double x, double y, double z) {

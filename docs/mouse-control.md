@@ -28,6 +28,20 @@ Zurück geht es mit **Eingabegerät: Automatisch** oder dem Namen des Geräts.
 Alle Tasten änderst du im Tab **Tasten**; die Pfeiltasten wirken zusätzlich auf Nick und Rollen. Mit „Maus + Tastatur“
 startest du wie beim Tastaturflug im Angle-Modus.
 
+## Nick (Pitch) umkehren
+
+Im Standard neigt „Maus nach vorn“ die Nase nach unten, wie ein nach vorn gedrückter Knüppel: Die Drohne fliegt
+vorwärts. Wer es andersherum erwartet (Maus nach vorn = Nase hoch, wie Hochschauen in einem Shooter), stellt
+**Nick (Pitch) umkehren** auf „An“. Der Schalter steht im Tab **Empfänger** direkt unter dem Eingabegerät und im
+Schritt „Maus + Tastatur“ des Empfänger-Assistenten.
+
+- Er gilt für **beide Eingaben ohne Gerät**: für „Maus + Tastatur“ und für den reinen Tastaturflug. Umgekehrt werden
+  die Maus vor/zurück und die beiden Nick-Tasten (Standard: Pfeil hoch/runter).
+- Die Testfläche, die Vorführung im Assistenten und die Tastentabelle zeigen die Umkehrung sofort („Maus zurück/vor“).
+- Funke und Gamepad betrifft der Schalter nicht; dort kehrst du einen Kanal mit „Invertiert“ am Kanal um.
+- Die Suche im Konfigurator findet ihn unter „umkehren“, „invertieren“, „Pitch“ oder „Nick“.
+- Die frühere Einstellung „Maus-Y umkehren“ wird beim ersten Start übernommen.
+
 ## Die zwei Arten, wie die Maus lenkt
 
 - **Tempo:** Wie schnell du die Maus bewegst, so weit ist der Knüppel ausgeschlagen. Steht die Maus, federt der Knüppel
@@ -49,7 +63,7 @@ Gieren mit der Maus („Maus links/rechts: Gieren“) folgt immer dem Tempo der 
 | Maus links/rechts | Rollen | Rollen oder Gieren |
 | Maus-Empfindlichkeit | 100 % | bei 100 % Vollausschlag bei 30 cm/s (Tempo) bzw. nach 6 cm Weg (Halten) |
 | Maus-DPI | 800 | die DPI deiner Maus; dann bedeutet die Empfindlichkeit für jede Maus denselben Weg auf dem Tisch |
-| Maus-Y umkehren | aus | aus: Maus vor = Nase runter (wie ein Knüppel); an: Maus vor = Nase hoch (wie Hochschauen) |
+| Nick (Pitch) umkehren | aus | aus: Maus vor = Nase runter (wie ein Knüppel); an: Maus vor = Nase hoch (wie Hochschauen); gilt auch für die Nick-Tasten und den reinen Tastaturflug |
 | Maus-Glättung | 20 ms | mittelt das Maustempo über diese Zeit (nur Tempo und Gieren); 0 ms nimmt jedes Bild für sich |
 | Maus-Totzone | 3 % | kleinste Bewegungen um die Mitte lösen nichts aus |
 | Maus-Expo | 25 % | feinere Mitte, außen trotzdem Vollausschlag; wirkt zusätzlich zu den Rates der Drohne |

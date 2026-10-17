@@ -10,8 +10,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DroneStateC2STest {
     private static DroneStateC2S state(boolean armed, boolean physicsModified, boolean ledsOff) {
+        return state(armed, physicsModified, ledsOff, false);
+    }
+
+    private static DroneStateC2S state(boolean armed, boolean physicsModified, boolean ledsOff, boolean beeper) {
         return new DroneStateC2S(4711, 3, 12.5, 70.25, -340.75, 0.1F, 0.2F, 0.3F, 0.9F, 1.5F, -0.25F, 3.0F, armed, 0.62F,
-                StateValidation.packMotors(0.4F, 0.5F, 0.6F, 0.7F), physicsModified, ledsOff);
+                StateValidation.packMotors(0.4F, 0.5F, 0.6F, 0.7F), physicsModified, ledsOff, beeper);
     }
 
     private static DroneStateC2S roundTrip(DroneStateC2S payload) {
@@ -38,5 +42,12 @@ class DroneStateC2STest {
         }
         assertTrue(roundTrip(state(true, false, true)).ledsOff());
         assertFalse(roundTrip(state(true, true, false)).ledsOff());
+    }
+
+    @Test
+    void beeperSwitchTravelsWithTheFlightState() {
+        assertTrue(roundTrip(state(false, false, false, true)).beeper());
+        assertFalse(roundTrip(state(false, false, true, false)).beeper());
+        assertTrue(roundTrip(state(true, true, true, true)).ledsOff());
     }
 }

@@ -42,13 +42,16 @@ public final class SceneKit {
     public static final String KEY_BEEPER = "key.propwash.beeper";
     public static final String KEY_RESCUE = "key.propwash.rescue";
     public static final String KEY_SET_HOME = "key.propwash.set_home";
-    public static final String KEY_RACE_RESTART = "key.propwash.race_restart";
+    public static final String KEY_RESET = "key.propwash.reset";
     public static final String KEY_GATE_ROTATE = "key.propwash.gate_rotate";
+    public static final String KEY_GATE_EDIT_MOUSE = "key.propwash.gate_edit_cursor";
     public static final String KEY_CONFIGURATOR = "key.propwash.configurator";
     public static final String KEY_RECORD = "key.propwash.action_cam_record";
     public static final String KEY_ALT_HOLD = "key.propwash.drone_alt_hold";
     public static final String KEY_POS_HOLD = "key.propwash.drone_pos_hold";
     public static final String KEY_MODE_3D = "key.propwash.drone_mode_3d";
+    public static final String KEY_TURTLE = "key.propwash.drone_turtle";
+    public static final String KEY_ROLL_RIGHT = "key.propwash.kb_roll_right";
     public static final String KEY_CARGO_DROP = "key.propwash.drone_cargo_drop";
     public static final String KEY_INVENTORY = "key.inventory";
 

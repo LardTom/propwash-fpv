@@ -35,8 +35,8 @@ Freiform-Gates. Grundlage bleiben `docs/design/gate-free-transform.md`, `course-
   Grund. Linksklick tut im Modus nichts (kein Abbauen aus Versehen).
 - **Esc:** abbrechen, Änderungen verwerfen („Änderung verworfen“), ohne das Spielmenü zu öffnen; ein zweites Esc öffnet
   es wie gewohnt.
-- **Maus frei:** Solange die Taste „Gate einstellen: Maus frei (halten)“ gedrückt ist (Standard **linke Alt-Taste**,
-  in den Steuerungs-Einstellungen änderbar), öffnet sich `race.client.GateEditCursorScreen`: dasselbe Panel mit echten
+- **Maus frei:** Solange die Taste „Gate einstellen: Maus benutzen (halten)“ gedrückt ist (Standard **linke
+  Alt-Taste**, auf dem Mac die linke Wahltaste ⌥; in den Steuerungs-Einstellungen änderbar), öffnet sich `race.client.GateEditCursorScreen`: dasselbe Panel mit echten
   Bedienelementen, der Mauszeiger ist frei. Regler ziehen, −/+ in der Dreh-Schrittweite bzw. 0,5 Block, Rechtsklick auf
   einen Regler = Ausgangswert, Pfeiltasten am gewählten Regler (Shift ×10), Mausrad über einer Zeile ändert diese Zeile,
   Tooltips erklären jede Zeile. Unten Knöpfe „Zurücksetzen“ (beim Freiform-Gate „Neu abtasten“), „Übernehmen“, „Aus dem
@@ -44,8 +44,12 @@ Freiform-Gates. Grundlage bleiben `docs/design/gate-free-transform.md`, `course-
   freier Maus weiter. Loslassen der Taste schließt das Panel wieder, ebenso ein Fokusverlust des Fensters (Alt+Tab).
 - **Tastenhilfe:** Mausrad und Strg, Schleichen + Mausrad, Enter/Rechtsklick, Esc; beim Freiform-Gate mit nur einer Zeile
   stattdessen „Mausrad oder R: Flugrichtung umkehren“.
-- **Tipp-Zeile:** Unter der Tastenhilfe steht immer gelb „Alt links halten: Maus frei“ bzw. mit freier Maus
-  „Alt links loslassen: Maus wieder zum Umsehen“ (Tastennamen aus der aktuellen Belegung).
+- **Hinweis zur freien Maus:** Direkt unter dem Kopf des Panels steht immer ein unterlegtes Feld „Alt links halten:
+  Maus benutzen“ bzw. mit freier Maus „Alt links loslassen: umsehen“ (Tastenname aus der aktuellen Belegung, auf dem
+  Mac „Linke ⌥ Wahltaste“). Die ersten drei Male, die ein Spieler den Modus öffnet, ist das Feld hervorgehoben (heller
+  Grund, Rahmen, weiße Schrift) und pulsiert; sobald die Taste einmal benutzt wurde, bleibt es ruhig. Beim Start nennt
+  außerdem sechs Sekunden lang ein Feld links neben dem Panel die Taste („Gate einstellen – Alt links halten, um die
+  Maus zu benutzen“). Einzelheiten in Abschnitt 4a.
 - **F1** blendet das Panel mit dem übrigen HUD aus – für den freien Blick aufs Gate.
 - Der Modus endet von selbst, wenn das Gate verschwindet, der Spieler die Welt wechselt, stirbt, zuschaut, eine Drohne
   steuert, weder Gate noch Kurs-Werkzeug in der Hand hält („Gate einstellen beendet: kein Gate …“) oder sich mehr als
@@ -93,6 +97,56 @@ Freiform-Gates. Grundlage bleiben `docs/design/gate-free-transform.md`, `course-
   Öffnen übernimmt er gehaltene Lauftasten (Vanilla lässt beim Öffnen eines Screens alle Tasten los), Lauf-, Sprung-,
   Schleich- und Sprinttasten setzt er auch mit freier Maus.
 - Taste: `KeyDefaults.GATE_EDIT_CURSOR` (`key.propwash.gate_edit_cursor`, linke Alt-Taste, keine Vanilla-Belegung).
+
+## 4a. Hinweis zur freien Maus (11.10.)
+
+Anlass war eine Rückmeldung aus dem ersten Spieltest: Das Panel war gefunden, aber nicht, wie man darin die Maus
+benutzt – die Zeile dazu stand als letzte von fünf unter der Tastenhilfe.
+
+- **Feld oben im Panel** (`GateEditPanel#mouseTip`): erste Zeile unter dem Kopf, dunkelgelb unterlegt mit Akzentstreifen,
+  Text „… halten: Maus benutzen“ (`propwash.race.edit.mouse.hold`) bzw. „… loslassen: umsehen“
+  (`…mouse.release`). Die Zeile unter der Tastenhilfe entfällt, das Panel wird dadurch nur 5 GUI-Pixel höher; in der
+  gedrängten Darstellung (z. B. 320 × 240) gar nicht. Passt der Text nicht in 212 GUI-Pixel, wird das Panel bis 234
+  breit (`panelWidth`), danach bricht der Text um.
+- **Hervorhebung die ersten drei Male:** `ui.HintMemory` (reines Java) zählt je Spieler und Hinweis, wie oft er gezeigt
+  wurde; `ui.client.FirstUseHints` legt das in `config/propwash/hints.json` ab (Schlüssel: UUID des Spielers, höchstens
+  32 Spieler, die zuletzt benutzten bleiben). `GateEditor.start` fragt `fresh(MOUSE_HINT, 3)` und zählt weiter; solange
+  der Hinweis frisch ist, mischt `GateEditor.tipGlow()` (`HintMemory.pulse`, Periode 1,4 s) Grund, Rahmen und Schrift
+  zwischen ruhig und hell. Öffnet die Taste das Panel mit freier Maus, gilt der Hinweis als gelernt
+  (`GateEditor.mouseUsed` → `learned`), die Hervorhebung endet sofort und kommt nicht wieder.
+- **Start-Hinweis:** `GateEditor.extractNotice` zeichnet 6 s lang (die letzten 0,6 s ausblendend) ein Hinweis-Feld im
+  Propwash-Stil in die Mitte der freien Fläche links vom Panel, 68 GUI-Pixel über dem unteren Rand (Höhe der
+  Vanilla-Zeile über der Schnellleiste), umbrochen auf die freie Breite. Bleiben links weniger als 110 GUI-Pixel
+  (320 × 240), entfällt es; das Feld im Panel steht immer da. Es verschwindet, sobald die freie Maus benutzt wird.
+- **Tastenname:** `input.client.KeyNames` nennt die Wahltasten des Mac „Linke ⌥ Wahltaste“ / „Left ⌥ Option“ (Vanilla:
+  „Wahltaste links“). Das Zeichen ⌥ kommt aus dem eigenen Font `propwash:keys` (`assets/propwash/font/keys.json`:
+  eine 8 × 8-Glyphe, sonst Verweis auf `minecraft:default`), den `KeyNames` nur diesem Tastennamen mitgibt.
+- **Hilfetexte:** Shift-Tooltips von Gate, Kurs-Element und Kurs-Werkzeug nennen die Taste in der Zeile zum
+  Einstellen (`… einstellen, <Taste>: Maus`), die Flugschul-Szene „Gates frei drehen“ zeigt sie als zweiten
+  Tastenhinweis („Halten: Maus benutzen“) und im Text; Spieler-Doku `docs/RELEASE-NOTES.md`.
+- **Entscheidungen:**
+  - Feld oben statt hervorgehobener Zeile unten: Man liest das Panel von oben, und unten stand die Zeile zwischen vier
+    grauen. Verworfen: die Zeile nur einfärben (war schon gelb und wurde übersehen).
+  - Eigenes Feld links vom Panel statt der Vanilla-Zeile über der Schnellleiste: Die ist auf die Bildmitte zentriert und
+    lief bei 640 × 360 unter das Panel, bei 480 × 270 beginnt das Panel genau in der Bildmitte.
+  - Start-Hinweis bei jedem Öffnen, Hervorhebung nur die ersten drei Male: Der kurze Hinweis stört nicht, das Pulsieren
+    auf Dauer schon. Verworfen: Hinweis nur die ersten Male (wer nach Wochen wieder baut, hat die Taste vergessen).
+  - Zählung je Spieler in eigener Datei statt eines Feldes in den Renn-Einstellungen: Die Einstellungen werden als
+    Arbeitskopie bearbeitet und gespeichert, ein Zähler darin ginge beim Speichern verloren; die Datei hat Platz für
+    weitere Hinweise.
+  - Es bleibt bei der linken Alt-Taste allein; der Name nennt die Seite. Verworfen: beide Alt-Tasten annehmen (AltGr
+    meldet sich unter Windows zusätzlich als Strg, und Strg ist im Modus der Feinschritt).
+  - Eigene Glyphe für ⌥: Die Unifont-Glyphe aus dem Vanilla-Font war bei GUI-Skala 3 ein unlesbarer Fleck.
+  - In den Flugschul- und Tooltip-Texten ohne das Zeichen ⌥ („Mac: Wahltaste“), weil diese Texte im Vanilla-Font
+    stehen.
+- **Tests:** JUnit `ui.HintMemoryTest` (Zählung je Spieler, Lernen, Vergessen, kaputte Datei, Obergrenzen, Puls),
+  `input.client.KeyNamesTest` (Wahltasten mit Zeichen in beiden Sprachen); Selbsttest „race: Gate einstellen im Spiel
+  …“ prüft dazu: beim ersten Öffnen hervorgehoben und gezählt, Start-Hinweis nennt Titel und Taste und liegt links
+  vom Panel über der Schnellleiste, Feld unter dem Kopf und über den Zeilen bei 480 × 270 (nicht gedrängt, einzeilig)
+  und 320 × 240, nach dem ersten Gebrauch der Taste ruhig, drei Mal frisch und beim vierten nicht mehr. Der
+  Rahmen-Schritt „dev: Hinweis zur freien Maus im Gate-Editor gilt als bekannt, Start-Hinweis aus …“ sorgt dafür, dass
+  alle anderen Schritte und Bildschirmfotos den ruhigen Zustand zeigen. Bildschirmfotos `gate_edit_mouse_tip` und
+  `gate_edit_mouse_tip_de` zeigen den hervorgehobenen Zustand mit Start-Hinweis.
 
 ## 5. Tests
 

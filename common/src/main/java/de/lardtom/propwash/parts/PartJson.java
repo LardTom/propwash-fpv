@@ -675,11 +675,12 @@ public final class PartJson {
         OptionalDouble fov = f.optDouble("camera_fov_deg");
         int power = f.intOr("vtx_power_mw", 0);
         OptionalDouble watts = f.optDouble("power_w");
+        int[] levels = f.optIntList("vtx_levels_mw").orElse(new int[0]);
         if (f.problems().hasErrors()) {
             return null;
         }
         VideoDefinition.Builder b = VideoDefinition.builder(id).basics(basics.resolve(1.0)).link(link).latency(latency).range(range)
-                .imageQuality(quality).vtxPower(power);
+                .imageQuality(quality).vtxPower(power).vtxLevels(levels);
         width.ifPresent(b::cameraWidth);
         fov.ifPresent(b::cameraFov);
         watts.ifPresent(b::powerWatts);
@@ -697,6 +698,11 @@ public final class PartJson {
             json.addProperty("vtx_power_mw", video.vtxPowerMw());
         }
         video.powerW().ifPresent(v -> json.addProperty("power_w", v));
+        if (!video.vtxLevelsMw().isEmpty()) {
+            JsonArray levels = new JsonArray();
+            video.vtxLevelsMw().forEach(levels::add);
+            json.add("vtx_levels_mw", levels);
+        }
     }
 
     private static AccessoryDefinition accessory(Identifier id, Basics basics, JsonFields f) {

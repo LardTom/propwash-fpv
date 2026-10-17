@@ -51,6 +51,7 @@ public enum RulePreset {
         out.put(WorldRuleSpecs.INFINITE_RANGE_DIGITAL.name(), 1);
         out.put(WorldRuleSpecs.DRONE_HITS_ENTITIES.name(), 0);
         out.put(WorldRuleSpecs.PART_COMPATIBILITY.name(), 0);
+        out.put(WorldRuleSpecs.WATERPROOF_DRONES.name(), 1);
         return out;
     }
 

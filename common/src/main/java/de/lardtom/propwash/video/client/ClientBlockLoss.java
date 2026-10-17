@@ -211,7 +211,8 @@ final class ClientBlockLoss implements ObstructionTracer.World, Multipath.Reflec
         }
         if (state.is(BlockTags.BASE_STONE_OVERWORLD) || state.is(BlockTags.BASE_STONE_NETHER) || state.is(BlockTags.SUBSTRATE_OVERWORLD)
                 || state.is(BlockTags.NYLIUM) || state.is(ORES) || state.is(Blocks.CLAY) || state.is(Blocks.BEDROCK)
-                || state.is(Blocks.FARMLAND) || state.is(Blocks.DIRT_PATH) || EARTH_SOUNDS.contains(sound)) {
+                || state.is(Blocks.FARMLAND) || state.is(Blocks.DIRT_PATH) || state.is(BlockTags.TERRACOTTA) || state.is(Blocks.SANDSTONE)
+                || state.is(Blocks.RED_SANDSTONE) || state.is(Blocks.END_STONE) || EARTH_SOUNDS.contains(sound)) {
             return RfMaterial.EARTH;
         }
         if (state.is(BlockTags.PLANKS) || state.is(BlockTags.WOODEN_STAIRS) || state.is(BlockTags.WOODEN_SLABS)

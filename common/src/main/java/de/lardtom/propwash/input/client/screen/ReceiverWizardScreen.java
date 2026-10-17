@@ -14,6 +14,7 @@ import de.lardtom.propwash.input.SetupStatus;
 import de.lardtom.propwash.input.StickChannel;
 import de.lardtom.propwash.input.StickDetector;
 import de.lardtom.propwash.input.StickMapper;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.input.SwitchAssignment;
 import de.lardtom.propwash.input.SwitchDetector;
@@ -26,6 +27,7 @@ import de.lardtom.propwash.input.client.DeviceInfo;
 import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.input.client.MacControllers;
 import de.lardtom.propwash.input.client.RawInput;
+import de.lardtom.propwash.input.client.StickModes;
 import de.lardtom.propwash.input.client.TransmitterInput;
 import de.lardtom.propwash.input.client.screen.remote.RemoteDemoView;
 import de.lardtom.propwash.ui.TextFit;
@@ -70,7 +72,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
     private static final int MIN_WINDOW = 140;
     private static final StickChannel[] CHANNELS = StickChannel.values();
     private static final SwitchFunction[] ALL_FUNCTIONS = SwitchFunction.flightFunctions().stream()
-            .filter(f -> f != SwitchFunction.BLACKBOX).toArray(SwitchFunction[]::new);
+            .filter(f -> f != SwitchFunction.BLACKBOX && f != SwitchFunction.VTX_POWER && !f.accessoryAction()).toArray(SwitchFunction[]::new);
     private static final SwitchFunction[] FUNCTIONS_WITHOUT_3D = Arrays.stream(ALL_FUNCTIONS)
             .filter(f -> f != SwitchFunction.MODE_3D).toArray(SwitchFunction[]::new);
     private static final long STATUS_MILLIS = 4000L;
@@ -105,7 +107,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
     private String previewGuid;
     private boolean finished;
     private boolean steppingAside;
-    private Page page = Page.DEVICE;
+    private Page page = Page.MODE;
     private String activeGuid = "";
     private String deviceSignature = "";
 
@@ -145,6 +147,8 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
 
     private final ScrollArea deviceArea = new ScrollArea();
     private boolean deviceAreaShown;
+    private final EnumMap<StickMode, int[]> modeCards = new EnumMap<>(StickMode.class);
+    private int[] modeStepBounds = new int[0];
 
     public ReceiverWizardScreen(@Nullable Screen parent, InputConfig base, Consumer<InputConfig> onDone) {
         super(Component.translatable("propwash.input.wizard.title"));
@@ -152,6 +156,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         this.working = base.copy();
         this.onDone = onDone;
         this.previewGuid = this.working.selectedGuid;
+        this.demo.mode(this.working.stickMode());
     }
 
     public static ReceiverWizardScreen forDevice(@Nullable Screen parent, String guid, Consumer<InputConfig> onDone, Runnable onCancel) {
@@ -182,6 +187,25 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
 
     public Page page() {
         return this.page;
+    }
+
+    public StickMode chosenMode() {
+        return this.working.stickMode();
+    }
+
+    public void chooseMode(StickMode mode) {
+        InputConfig.StickModeChange change = this.working.changeStickMode(mode);
+        this.demo.mode(change.to());
+        this.previewMapper.reset();
+        this.rebuildWidgets();
+    }
+
+    public int @Nullable [] modeCard(StickMode mode) {
+        return this.modeCards.get(mode);
+    }
+
+    public Component channelPrompt(StickChannel channel) {
+        return StickModes.prompt(channel, this.working.stickMode());
     }
 
     public @Nullable StickChannel currentChannel() {
@@ -247,6 +271,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         this.contentTop = this.windowTop + HEADER_SPACE;
         this.footerY = this.windowBottom - FOOTER_SPACE + 6;
         switch (this.page) {
+            case MODE -> this.initMode(raw, profile);
             case DEVICE -> this.initDevice(raw, profile);
             case CHANNELS -> this.initChannels(profile);
             case CALIBRATE -> this.initCalibrate(profile);
@@ -280,6 +305,108 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         int w = (this.panelWidth - 4 - FOOTER_GROUP_GAP) / 3;
         int x = slot == 0 ? this.left : this.left + this.panelWidth - (3 - slot) * w - (2 - slot) * 4;
         return this.addRenderableWidget(Button.builder(label, press).bounds(x, this.footerY, w, Metrics.BUTTON_HEIGHT).build());
+    }
+
+    private void initMode(@Nullable RawInput raw, @Nullable DeviceProfile profile) {
+        StickMode mode = this.working.stickMode();
+        if (this.padCustomised(raw, profile)) {
+            Button apply = this.footer(0, Component.translatable("propwash.input.wizard.mode.apply_pad", StickModes.name(mode)), b -> this.applyPadSticks());
+            apply.setTooltip(Tooltip.create(Component.translatable("propwash.input.wizard.mode.apply_pad.tooltip", StickModes.name(mode))));
+        }
+        this.footer(1, CommonComponents.GUI_CANCEL, b -> this.onClose());
+        this.footer(2, Component.translatable("propwash.input.wizard.next"), b -> this.goTo(Page.DEVICE));
+    }
+
+    private boolean padCustomised(@Nullable RawInput raw, @Nullable DeviceProfile profile) {
+        return raw != null && profile != null && raw.usesGamepadLayout(profile) && !ProfileDefaults.padSticksMatch(profile, this.working.stickMode());
+    }
+
+    private void applyPadSticks() {
+        RawInput raw = TransmitterInput.INSTANCE.raw();
+        DeviceProfile profile = this.profile(raw);
+        if (raw == null || profile == null) {
+            return;
+        }
+        StickMode mode = this.working.stickMode();
+        ProfileDefaults.applyPadSticks(profile, mode);
+        this.previewMapper.reset();
+        this.setStatus(Component.translatable("propwash.input.wizard.mode.pad_applied", StickModes.name(mode)), InputGui.GOOD);
+        this.rebuildWidgets();
+    }
+
+    private Component modeNote(@Nullable RawInput raw, @Nullable DeviceProfile profile) {
+        if (raw != null && profile != null && raw.usesGamepadLayout(profile)) {
+            return Component.translatable(this.padCustomised(raw, profile) ? "propwash.input.wizard.mode.gamepad_custom" : "propwash.input.wizard.mode.gamepad");
+        }
+        return Component.translatable("propwash.input.wizard.mode.radio");
+    }
+
+    private void drawMode(GuiGraphicsExtractor g, @Nullable RawInput raw, @Nullable DeviceProfile profile, int mouseX, int mouseY) {
+        StickMode chosen = this.working.stickMode();
+        int y = this.contentTop;
+        int bottom = this.footerY - STATUS_SPACE - 2;
+        Component intro = Component.translatable("propwash.input.wizard.mode.intro");
+        Component line = Component.translatable("propwash.input.stick_mode.line", StickModes.name(chosen), StickModes.layout(chosen));
+        Component note = this.modeNote(raw, profile);
+        int textHeight = ThemeText.wrappedHeight(this.font, intro, this.panelWidth) + ThemeText.wrappedHeight(this.font, line, this.panelWidth)
+                + ThemeText.wrappedHeight(this.font, note, this.panelWidth);
+        y += InputGui.wrapped(g, this.font, intro, this.left, y, this.panelWidth, InputGui.HIGHLIGHT) + 6;
+        StickMode[] modes = StickMode.values();
+        int gap = 6;
+        int columns = (this.panelWidth - 3 * gap) / 4 >= StickModeDiagram.CARD_MIN_WIDTH ? 4 : 2;
+        int rows = modes.length / columns;
+        int cardWidth = (this.panelWidth - (columns - 1) * gap) / columns;
+        int room = bottom - y - textHeight - 16 - (rows - 1) * gap;
+        int cardHeight = Math.clamp(Math.min(room / rows, StickModeDiagram.cardHeight(cardWidth)), StickModeDiagram.CARD_MIN_HEIGHT, 104);
+        this.modeCards.clear();
+        for (int i = 0; i < modes.length; i++) {
+            int x0 = this.left + (i % columns) * (cardWidth + gap);
+            int y0 = y + (i / columns) * (cardHeight + gap);
+            int x1 = x0 + cardWidth;
+            int y1 = y0 + cardHeight;
+            boolean hovered = mouseX >= x0 && mouseX < x1 && mouseY >= y0 && mouseY < y1;
+            StickModeDiagram.extractCard(g, this.font, modes[i], x0, y0, x1, y1, modes[i] == chosen, hovered);
+            this.modeCards.put(modes[i], new int[]{x0, y0, x1, y1});
+        }
+        y += rows * cardHeight + (rows - 1) * gap + 6;
+        y += InputGui.wrapped(g, this.font, line, this.left, y, this.panelWidth, InputGui.ACCENT) + 4;
+        y += InputGui.wrapped(g, this.font, note, this.left, y, this.panelWidth, InputGui.DIM) + 6;
+        if (this.footerY - 18 - y >= RemoteDemoView.MIN_HEIGHT) {
+            this.demo.show(RemoteDemo.Motion.TOUR);
+            this.extractBottomDemo(g, y);
+        }
+    }
+
+    private boolean clickMode(double mouseX, double mouseY) {
+        for (var entry : this.modeCards.entrySet()) {
+            int[] r = entry.getValue();
+            if (mouseX >= r[0] && mouseX < r[2] && mouseY >= r[1] && mouseY < r[3]) {
+                if (entry.getKey() != this.working.stickMode()) {
+                    this.chooseMode(entry.getKey());
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean keyMode(int key) {
+        StickMode current = this.working.stickMode();
+        StickMode next = null;
+        if (key >= InputConstants.KEY_1 && key <= InputConstants.KEY_4) {
+            next = StickMode.byNumber(key - InputConstants.KEY_1 + 1);
+        } else if (key == InputConstants.KEY_LEFT) {
+            next = StickMode.byNumber(Math.max(1, current.number() - 1));
+        } else if (key == InputConstants.KEY_RIGHT) {
+            next = StickMode.byNumber(Math.min(4, current.number() + 1));
+        }
+        if (next == null) {
+            return false;
+        }
+        if (next != current) {
+            this.chooseMode(next);
+        }
+        return true;
     }
 
     private void initDevice(@Nullable RawInput raw, @Nullable DeviceProfile profile) {
@@ -369,7 +496,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
     }
 
     private int throttleFeedbackTop(StickChannel channel, int width) {
-        int y = this.contentTop + ThemeText.wrappedHeight(this.font, Component.translatable(channel.promptKey()), width) + 4;
+        int y = this.contentTop + ThemeText.wrappedHeight(this.font, this.channelPrompt(channel), width) + 4;
         if (channel == StickChannel.THROTTLE) {
             y += TRAVEL_ROW + END_LABEL_ROW;
         }
@@ -421,8 +548,12 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         return ChannelMath.throttleMicros(fraction);
     }
 
-    private static SwitchFunction[] functions() {
-        return InputConfig.get().mode3dUnlocked ? ALL_FUNCTIONS : FUNCTIONS_WITHOUT_3D;
+    private SwitchFunction[] functions() {
+        SwitchFunction[] all = InputConfig.get().mode3dUnlocked ? ALL_FUNCTIONS : FUNCTIONS_WITHOUT_3D;
+        if (all.length * SWITCH_ROW_MIN <= this.footerY - 26 - this.contentTop) {
+            return all;
+        }
+        return Arrays.stream(all).filter(f -> f != SwitchFunction.TURTLE).toArray(SwitchFunction[]::new);
     }
 
     private void initCalibrate(@Nullable DeviceProfile profile) {
@@ -629,7 +760,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         if (raw == null || profile == null) {
             return;
         }
-        DeviceProfile fresh = gamepadLayout ? ProfileDefaults.gamepad(profile.name) : ProfileDefaults.radio(profile.name, raw.axisCount());
+        DeviceProfile fresh = gamepadLayout ? ProfileDefaults.gamepad(profile.name, this.working.stickMode()) : ProfileDefaults.radio(profile.name, raw.axisCount());
         this.working.profiles.put(raw.device().guid(), fresh);
         this.previewMapper.reset();
         this.previewSwitches.reset();
@@ -650,7 +781,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
             return;
         }
         this.resetConfirmUntil = 0L;
-        DeviceProfile fresh = ProfileDefaults.reset(profile, raw.gamepadCapable(), raw.axisCount());
+        DeviceProfile fresh = ProfileDefaults.reset(profile, raw.gamepadCapable(), raw.axisCount(), this.working.stickMode());
         fresh.keepCommandsFrom(profile);
         this.working.profiles.put(raw.device().guid(), fresh);
         this.previewMapper.reset();
@@ -864,7 +995,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         RawInput raw = TransmitterInput.INSTANCE.raw();
         String guid = raw == null ? "" : raw.device().guid();
         if (!guid.equals(this.activeGuid)) {
-            if (raw == null && this.page != Page.DEVICE) {
+            if (raw == null && this.page != Page.DEVICE && this.page != Page.MODE) {
                 this.setStatus(Component.translatable("propwash.input.wizard.device_lost"), InputGui.BAD);
                 this.page = Page.DEVICE;
                 this.confirmNoArm = false;
@@ -891,6 +1022,9 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         if (event.isEscape() && NumberInput.cancelEditing(this.getFocused())) {
             return true;
         }
+        if (this.page == Page.MODE && this.keyMode(event.key())) {
+            return true;
+        }
         return super.keyPressed(event) || this.deviceAreaShown && this.deviceArea.key(event.key());
     }
 
@@ -898,6 +1032,15 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         NumberInput.releaseOnClickAway(this, event.x(), event.y());
         if (this.deviceAreaShown && event.button() == InputConstants.MOUSE_BUTTON_LEFT && this.deviceArea.mouseClicked(event.x(), event.y())) {
+            return true;
+        }
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && this.page != Page.MODE && this.listening == null && this.modeStepBounds.length == 4
+                && event.x() >= this.modeStepBounds[0] && event.x() < this.modeStepBounds[2] && event.y() >= this.modeStepBounds[1]
+                && event.y() < this.modeStepBounds[3]) {
+            this.goTo(Page.MODE);
+            return true;
+        }
+        if (this.page == Page.MODE && event.button() == InputConstants.MOUSE_BUTTON_LEFT && this.clickMode(event.x(), event.y())) {
             return true;
         }
         return super.mouseClicked(event, doubleClick);
@@ -958,8 +1101,9 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         int titleX = ThemeDraw.brand(g, this.font, wx0 + 8, wy0 + 6) + 10;
         ThemeDraw.verticalSeparator(g, titleX - 5, wy0 + 3, wy0 + 16);
         ThemeText.text(g, this.font, this.title, titleX, wy0 + 6, Palette.TEXT);
-        this.drawSteps(g, wx0 + 8);
+        this.drawSteps(g, wx0 + 8, mouseX, mouseY);
         switch (this.page) {
+            case MODE -> this.drawMode(g, raw, profile, mouseX, mouseY);
             case DEVICE -> this.drawDevice(g, raw, profile, mouseX, mouseY);
             case CHANNELS -> this.drawChannels(g, raw, profile, nanos);
             case CALIBRATE -> this.drawCalibrate(g, raw, profile);
@@ -1030,29 +1174,54 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         }
     }
 
-    private void drawSteps(GuiGraphicsExtractor g, int left) {
-        if (this.page == Page.DEVICE && this.working.mouseSelected()) {
-            Component device = Page.DEVICE.label(1);
-            g.text(this.font, device, left, this.windowTop + 19, InputGui.HIGHLIGHT, false);
-            int x = left + this.font.width(device);
-            Component separator = Component.literal("  ›  ");
-            g.text(this.font, separator, x, this.windowTop + 19, InputGui.FAINT, false);
-            x += this.font.width(separator);
-            g.text(this.font, Component.translatable("propwash.input.mouse.wizard.step", 2), x, this.windowTop + 19, InputGui.FAINT, false);
-            return;
-        }
-        Page[] pages = Page.values();
-        Component separator = Component.literal("  ›  ");
-        int x = left;
-        for (int i = 0; i < pages.length; i++) {
-            if (i > 0) {
-                g.text(this.font, separator, x, this.windowTop + 19, InputGui.FAINT, false);
-                x += this.font.width(separator);
+    private void drawSteps(GuiGraphicsExtractor g, int left, int mouseX, int mouseY) {
+        List<Component> labels = new ArrayList<>();
+        List<Integer> colors = new ArrayList<>();
+        if (this.page.ordinal() <= Page.DEVICE.ordinal() && this.working.mouseSelected()) {
+            labels.add(Page.MODE.label(1));
+            colors.add(this.page == Page.MODE ? InputGui.HIGHLIGHT : InputGui.GOOD);
+            labels.add(Page.DEVICE.label(2));
+            colors.add(this.page == Page.DEVICE ? InputGui.HIGHLIGHT : InputGui.FAINT);
+            labels.add(Component.translatable("propwash.input.mouse.wizard.step", 3));
+            colors.add(InputGui.FAINT);
+        } else {
+            Page[] pages = Page.values();
+            for (int i = 0; i < pages.length; i++) {
+                labels.add(pages[i].label(i + 1));
+                colors.add(pages[i] == this.page ? InputGui.HIGHLIGHT : (pages[i].ordinal() < this.page.ordinal() ? InputGui.GOOD : InputGui.FAINT));
             }
-            Component label = pages[i].label(i + 1);
-            int color = pages[i] == this.page ? InputGui.HIGHLIGHT : (pages[i].ordinal() < this.page.ordinal() ? InputGui.GOOD : InputGui.FAINT);
-            g.text(this.font, label, x, this.windowTop + 19, color, false);
-            x += this.font.width(label);
+        }
+        Component separator = Component.literal("  ›  ");
+        int total = 0;
+        for (int i = 0; i < labels.size(); i++) {
+            total += this.font.width(labels.get(i)) + (i > 0 ? this.font.width(separator) : 0);
+        }
+        boolean compact = total > this.panelWidth;
+        int current = this.page == Page.MODE ? 0 : this.page == Page.DEVICE ? 1 : this.page.ordinal();
+        int x = left;
+        int y = this.windowTop + 19;
+        this.modeStepBounds = new int[0];
+        for (int i = 0; i < labels.size(); i++) {
+            if (i > 0) {
+                Component sep = compact ? Component.literal(" › ") : separator;
+                g.text(this.font, sep, x, y, InputGui.FAINT, false);
+                x += this.font.width(sep);
+            }
+            Component label = compact && i != current ? Component.literal(String.valueOf(i + 1)) : labels.get(i);
+            int width = this.font.width(label);
+            boolean back = i == 0 && this.page != Page.MODE && this.listening == null;
+            boolean hovered = back && mouseX >= x - 2 && mouseX < x + width + 2 && mouseY >= y - 2 && mouseY < y + Metrics.LINE_HEIGHT;
+            g.text(this.font, label, x, y, hovered ? InputGui.HIGHLIGHT : colors.get(i), false);
+            if (back) {
+                g.fill(x, y + 9, x + width, y + 10, hovered ? InputGui.HIGHLIGHT : InputGui.FAINT);
+            }
+            if (i == 0) {
+                this.modeStepBounds = new int[]{x - 2, y - 2, x + width + 2, y + Metrics.LINE_HEIGHT};
+            }
+            if (hovered) {
+                ThemeText.tooltip(g, this.font, Component.translatable("propwash.input.wizard.mode.change", StickModes.name(this.working.stickMode())), mouseX, mouseY);
+            }
+            x += width;
         }
     }
 
@@ -1083,7 +1252,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         y += InputGui.wrapped(g, this.font, Component.translatable("propwash.input.wizard.device_info", device.guid(), raw.axisCount(), raw.buttonCount(),
                 raw.hatCount(), device.usbId()), this.left, y, this.panelWidth, InputGui.DIM) + 3;
         boolean done = this.working.setupStatus(device.guid()) == SetupStatus.COMPLETED;
-        y += InputGui.wrapped(g, this.font, setupLine(done, raw.usesGamepadLayout(profile)), this.left, y, this.panelWidth, done ? InputGui.GOOD : InputGui.ACCENT) + 4;
+        y += InputGui.wrapped(g, this.font, setupLine(done, raw.usesGamepadLayout(profile), this.working.stickMode()), this.left, y, this.panelWidth, done ? InputGui.GOOD : InputGui.ACCENT) + 4;
         boolean pad = raw.usesGamepadLayout(profile);
         float[] axes = raw.axes(profile);
         boolean[] buttons = raw.buttons(profile);
@@ -1113,10 +1282,17 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
     }
 
     public static Component setupLine(boolean done, boolean gamepadLayout) {
+        return setupLine(done, gamepadLayout, StickModes.current());
+    }
+
+    public static Component setupLine(boolean done, boolean gamepadLayout, StickMode mode) {
         if (done) {
             return Component.translatable("propwash.input.wizard.setup_done");
         }
-        return Component.translatable(gamepadLayout ? "propwash.input.wizard.prefill_gamepad" : "propwash.input.wizard.prefill_radio");
+        if (gamepadLayout) {
+            return Component.translatable("propwash.input.wizard.prefill_gamepad", StickModes.name(mode), StickModes.layout(mode));
+        }
+        return Component.translatable("propwash.input.wizard.prefill_radio");
     }
 
     static Component axisLabel(DeviceProfile profile, int index, boolean pad) {
@@ -1142,7 +1318,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
         if (this.channelIndex < CHANNELS.length) {
             StickChannel channel = CHANNELS[this.channelIndex];
             this.demo.show(RemoteDemo.forChannel(channel));
-            y += InputGui.wrapped(g, this.font, Component.translatable(channel.promptKey()), this.left, y, half, InputGui.HIGHLIGHT) + 4;
+            y += InputGui.wrapped(g, this.font, this.channelPrompt(channel), this.left, y, half, InputGui.HIGHLIGHT) + 4;
             if (channel == StickChannel.THROTTLE) {
                 y = this.drawThrottleTravel(g, current instanceof ThrottleDetector throttle ? throttle : null, axes, pad, y, half);
             }
@@ -1662,6 +1838,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
     }
 
     public enum Page {
+        MODE,
         DEVICE,
         CHANNELS,
         CALIBRATE,

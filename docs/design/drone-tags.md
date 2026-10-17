@@ -91,6 +91,21 @@ beim nächsten Platzieren bzw. Flugstart.
   seine Sitzung.
 - Aufheben mit Schleichen + Rechtsklick gibt die Drohne als Item zurück, wie bisher.
 
+### Homepoint in den Entity-Daten (ab Propwash 0.5.2)
+
+Neben den Tags trägt jede Drohne ihren GPS-Rescue-Homepoint als `HomePoint` (Position, Dimension, Spielzeit beim Setzen,
+Herkunft `arm`/`manual`/`pilot`/`command`; Einzelheiten in [`home-point.md`](home-point.md)). Admins lesen und setzen
+ihn mit `/data`; ein Punkt in einer anderen Dimension, außerhalb der Weltgrenze oder weit unter bzw. über der Welt lässt
+den Befehl mit einer Meldung scheitern, ein neuer Punkt bekommt `source: "command"` und erreicht einen fliegenden Piloten
+sofort.
+
+```
+/data get entity @e[type=propwash:drone,limit=1,sort=nearest] HomePoint
+/execute as @e[type=propwash:drone,tag=pw_owner_Steve] run data get entity @s HomePoint
+/data merge entity @e[type=propwash:drone,limit=1,sort=nearest] {HomePoint:{x:100.5d,y:64d,z:-20.5d}}
+/data remove entity @e[type=propwash:drone,limit=1,sort=nearest] HomePoint
+```
+
 ## 6. Tests
 
 - JUnit `DroneTagRulesTest`: Tag-Namen, Schreibweise, Ersatzzeichen, Ersetzen alter Besitzer- und Pilot-Tags ohne fremde

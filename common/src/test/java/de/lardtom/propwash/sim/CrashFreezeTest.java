@@ -28,8 +28,8 @@ class CrashFreezeTest {
         double maxBottom = Double.NEGATIVE_INFINITY;
 
         String describe(BoxWorld w) {
-            return String.format(Locale.ROOT, "hang %.3f s, gap %.3f m, bottom %.3f m, speed %.3f m/s, grounded %s, sleeping %s, armed %s, crash %s",
-                    this.maxHang, w.supportGap(), w.bottom(), w.speed(), w.sim.telemetry().grounded, w.sim.telemetry().sleeping,
+            return String.format(Locale.ROOT, "hang %.3f s, gap %.3f m, lowest %.3f m, speed %.3f m/s, grounded %s, sleeping %s, armed %s, crash %s",
+                    this.maxHang, w.restGap(), w.lowest(), w.speed(), w.sim.telemetry().grounded, w.sim.telemetry().sleeping,
                     w.sim.telemetry().armed, this.crashed);
         }
     }
@@ -59,11 +59,11 @@ class CrashFreezeTest {
             t.time += DT;
             t.crashed |= w.sim.events().contains(SimEventType.CRASH);
             t.hitX |= w.report.hitX || w.report.hitZ;
-            t.hitY |= w.report.hitY;
+            t.hitY |= w.report.hitY || w.sim.telemetry().grounded;
             t.hitCeiling |= w.report.hitY && w.report.requestedY > 0.0;
             t.everGrounded |= w.sim.telemetry().grounded;
             t.maxBottom = Math.max(t.maxBottom, w.bottom());
-            boolean unsupported = w.supportGap() > UNSUPPORTED_GAP;
+            boolean unsupported = w.restGap() > UNSUPPORTED_GAP;
             boolean stalled = Math.abs(w.sim.body.vy) < 0.05;
             if (unsupported && stalled && !thrusting(w)) {
                 t.hang += DT;
@@ -83,7 +83,7 @@ class CrashFreezeTest {
     private static void assertRestsOnSomething(BoxWorld w, Track t, String label) {
         String info = label + ": " + t.describe(w);
         assertTrue(t.maxHang < HANG_LIMIT_S, "hängt in der Luft – " + info);
-        assertTrue(w.supportGap() <= 0.01, "liegt nicht auf – " + info);
+        assertTrue(w.restGap() <= 0.01, "liegt nicht auf – " + info);
         assertTrue(w.speed() < 0.1, "kommt nicht zur Ruhe – " + info);
     }
 
@@ -109,7 +109,7 @@ class CrashFreezeTest {
             w.launch(v, 0.0, 0.0);
             Track t = run(w, 4.0, null);
             assertRestsOnSomething(w, t, "Kante " + v + " m/s");
-            assertTrue(w.bottom() < 0.01, "nicht am Boden unter der Kante: " + t.describe(w));
+            assertTrue(w.lowest() < 0.01, "nicht am Boden unter der Kante: " + t.describe(w));
         }
     }
 
@@ -136,7 +136,7 @@ class CrashFreezeTest {
                     String label = String.format(Locale.ROOT, "Mauerkrone %.0f m/s, sinkend %.1f m/s, Crash-Disarm %s, Prop-Strikes %s", v[0], -v[1], disarm, strikes);
                     assertTrue(t.hitY, label + ": Mauerkrone nicht getroffen");
                     assertRestsOnSomething(w, t, label);
-                    assertTrue(w.bottom() < 0.01, label + ": nicht am Boden: " + t.describe(w));
+                    assertTrue(w.lowest() < 0.01, label + ": nicht am Boden: " + t.describe(w));
                 }
             }
         }
@@ -164,7 +164,7 @@ class CrashFreezeTest {
                         assertTrue(t.hitX, label + ": Wand nicht getroffen");
                         assertTrue(t.crashed, label + ": kein Absturz erkannt");
                         assertRestsOnSomething(w, t, label);
-                        assertTrue(w.bottom() < 0.01, label + ": nicht am Boden: " + t.describe(w));
+                        assertTrue(w.lowest() < 0.01, label + ": nicht am Boden: " + t.describe(w));
                     }
                 }
             }
@@ -188,7 +188,7 @@ class CrashFreezeTest {
             String label = "Decke, Crash-Disarm " + disarm;
             assertTrue(t.hitCeiling, label + ": Decke nicht getroffen");
             assertRestsOnSomething(w, t, label);
-            assertTrue(w.bottom() < 0.01, label + ": nicht am Boden: " + t.describe(w));
+            assertTrue(w.lowest() < 0.01, label + ": nicht am Boden: " + t.describe(w));
         }
     }
 
@@ -227,7 +227,7 @@ class CrashFreezeTest {
         w.boxes.remove(platform);
         Track t = run(w, 2.0, null);
         assertRestsOnSomething(w, t, "Podest entfernt");
-        assertTrue(w.bottom() < 0.01, "fällt nicht nach dem Entfernen: " + t.describe(w));
+        assertTrue(w.lowest() < 0.01, "fällt nicht nach dem Entfernen: " + t.describe(w));
     }
 
     @Test
@@ -252,7 +252,7 @@ class CrashFreezeTest {
             Track t = run(w, 3.0, null);
             String label = String.format(Locale.ROOT, "Server-Reset %+.1f m neben das Podest", drop);
             assertRestsOnSomething(w, t, label);
-            assertTrue(w.bottom() < 0.01, label + ": nicht am Boden: " + t.describe(w));
+            assertTrue(w.lowest() < 0.01, label + ": nicht am Boden: " + t.describe(w));
         }
     }
 

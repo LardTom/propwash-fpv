@@ -1,0 +1,12 @@
+{
+  "key.propwash.accessory_action_1": "Zubehör-Aktion 1",
+  "key.propwash.accessory_action_2": "Zubehör-Aktion 2",
+  "key.propwash.accessory_action_3": "Zubehör-Aktion 3",
+  "key.propwash.accessory_action_4": "Zubehör-Aktion 4",
+  "propwash.accessory.menu.title": "Zubehör",
+  "propwash.accessory.menu.load": "Beladung %s g",
+  "propwash.accessory.menu.hint": "Die Beladung wiegt im Flug mit.",
+  "propwash.accessory.service.button": "Zubehör",
+  "propwash.accessory.service.tooltip": "Inventar des Zubehörs öffnen, zum Beispiel Munition laden",
+  "propwash.accessory.assist.failed": "Flughilfe eines Add-ons abgeschaltet (Fehler, siehe Log)"
+}

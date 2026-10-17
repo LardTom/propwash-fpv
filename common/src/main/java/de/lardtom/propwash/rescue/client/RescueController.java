@@ -8,11 +8,16 @@ import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.input.SwitchFunction;
 import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.rescue.HomeMode;
+import de.lardtom.propwash.rescue.HomePoint;
+import de.lardtom.propwash.rescue.HomePointCodecs;
+import de.lardtom.propwash.rescue.HomeSync;
 import de.lardtom.propwash.rescue.RescueAutopilot;
 import de.lardtom.propwash.rescue.RescuePhase;
 import de.lardtom.propwash.rescue.RescueSettings;
 import de.lardtom.propwash.rescue.RescueSupervisor;
 import de.lardtom.propwash.rescue.WorldProbe;
+import de.lardtom.propwash.rescue.net.HomePointC2S;
+import de.lardtom.propwash.rescue.net.HomePointS2C;
 import de.lardtom.propwash.rescue.net.RescueStatusC2S;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.sim.DisarmReason;
@@ -29,6 +34,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public final class RescueController {
@@ -39,6 +48,7 @@ public final class RescueController {
     private static final int HOME_GROUND_DEPTH = 96;
     private static final double REPORT_MOVE = 0.5;
     private static final long REPORT_INTERVAL_MS = 250L;
+    private static final int PENDING_HOMES = 16;
 
     private final RescueAutopilot autopilot = new RescueAutopilot();
     private final RescueSupervisor supervisor = new RescueSupervisor();
@@ -46,6 +56,8 @@ public final class RescueController {
     private final LevelRescueWorld world = new LevelRescueWorld();
     private final KeyRepeatFilter rescueKey = new KeyRepeatFilter();
     private final KeyRepeatFilter setHomeKey = new KeyRepeatFilter();
+    private final HomeSync homeSync = new HomeSync();
+    private final Map<Integer, HomePointS2C> pendingHomes = new LinkedHashMap<>();
     private @Nullable Vec3 home;
     private @Nullable ResourceKey<Level> homeDimension;
     private boolean homeManual;
@@ -190,8 +202,12 @@ public final class RescueController {
         this.supervisor.update(f, cfg);
 
         if (this.supervisor.setHomeOnArm() || this.supervisor.setHomeManual()) {
-            this.setHome(this.groundedPoint(level, pos), level.dimension(), this.supervisor.setHomeManual());
+            boolean manual = this.supervisor.setHomeManual();
+            this.setHome(this.groundedPoint(level, pos), level.dimension(), manual);
+            this.push(drone, manual ? HomePoint.Source.MANUAL : HomePoint.Source.ARM);
             this.message(mc, Component.translatable("propwash.rescue.home_set"));
+        } else if (this.supervisor.armedNow() && cfg.homeMode == HomeMode.PILOT) {
+            this.push(drone, HomePoint.Source.PILOT);
         }
         RescueSupervisor.Abort abort = this.supervisor.abort();
         if (abort != null && this.autopilot.active()) {
@@ -274,6 +290,7 @@ public final class RescueController {
         this.sessionDrone = null;
         this.supervisor.forget();
         this.pendingSetHome = false;
+        this.pendingHomes.clear();
         this.world.release();
     }
 
@@ -286,6 +303,68 @@ public final class RescueController {
         this.supervisor.beginSession(sim.telemetry().armed, sameDrone);
         this.sessionDrone = drone.getUUID();
         this.sessionActive = true;
+        this.homeSync.beginSession();
+        HomePointS2C pending = this.pendingHomes.remove(drone.getId());
+        if (pending != null) {
+            drone.setHomePoint(pending.home());
+        }
+        this.applyStored(drone, false);
+    }
+
+    public void onServerHome(Minecraft mc, HomePointS2C payload) {
+        if (mc.level == null) {
+            return;
+        }
+        if (!(mc.level.getEntity(payload.entityId()) instanceof QuadcopterEntity drone)) {
+            this.pendingHomes.remove(payload.entityId());
+            this.pendingHomes.put(payload.entityId(), payload);
+            Iterator<Integer> oldest = this.pendingHomes.keySet().iterator();
+            while (this.pendingHomes.size() > PENDING_HOMES && oldest.hasNext()) {
+                oldest.next();
+                oldest.remove();
+            }
+            return;
+        }
+        this.pendingHomes.remove(payload.entityId());
+        drone.setHomePoint(payload.home());
+        if (this.sessionActive && drone.getUUID().equals(this.sessionDrone) && this.homeSync.accepts(payload.ack())) {
+            this.applyStored(drone, payload.edited());
+        }
+    }
+
+    private void applyStored(QuadcopterEntity drone, boolean edited) {
+        HomePoint stored = drone.homePoint();
+        ResourceKey<Level> dimension = drone.level().dimension();
+        boolean storedHere = stored != null && stored.dimension().equals(HomePointCodecs.dimension(drone.level()));
+        Vec3 own = this.home;
+        if (!edited) {
+            boolean ownHere = this.homeManual && own != null && dimension.equals(this.homeDimension);
+            boolean storedIsOwn = ownHere && storedHere && stored.samePlace(own.x, own.y, own.z, stored.dimension());
+            switch (HomeSync.onStart(ownHere, storedHere, storedIsOwn)) {
+                case PUSH_OWN -> this.push(drone, HomePoint.Source.MANUAL);
+                case ADOPT_STORED -> this.setHome(new Vec3(stored.x(), stored.y(), stored.z()), dimension, false);
+                case KEEP -> {
+                }
+            }
+            return;
+        }
+        Vec3 before = own != null && dimension.equals(this.homeDimension) ? own : null;
+        if (storedHere) {
+            this.setHome(new Vec3(stored.x(), stored.y(), stored.z()), dimension, false);
+        } else {
+            this.clearHome();
+        }
+        if (!Objects.equals(before, this.home)) {
+            this.message(Minecraft.getInstance(), Component.translatable("propwash.rescue.home_changed"));
+        }
+    }
+
+    private void push(QuadcopterEntity drone, HomePoint.Source source) {
+        Vec3 h = this.home;
+        if (h == null || !drone.level().dimension().equals(this.homeDimension)) {
+            return;
+        }
+        ClientNet.sendToServer(new HomePointC2S(drone.getId(), this.homeSync.push(), h.x, h.y, h.z, source));
     }
 
     private void endSession() {

@@ -45,19 +45,22 @@ class LinkBudgetTest {
     }
 
     @Test
-    void digitalHoldsCleanThenFallsOffACliff() {
+    void digitalHoldsCleanThenDegradesInStagesBeforeItIsLost() {
         VideoType type = VideoType.DIGITAL_HD;
-        assertEquals(1.0, LinkBudget.quality(type, type.rangeBlocks * 0.6, 0.0), 1.0E-9);
+        assertEquals(1.0, LinkBudget.quality(type, type.rangeBlocks * 0.44, 0.0), 1.0E-9);
+        assertEquals(DigitalBreakup.Stage.CLEAN, DigitalBreakup.stage(LinkBudget.quality(type, type.rangeBlocks * 0.6, 0.0)));
         double atRange = LinkBudget.quality(type, type.rangeBlocks, 0.0);
-        assertTrue(atRange > 0.15 && atRange < 0.4, "at range " + atRange);
-        assertEquals(0.0, LinkBudget.quality(type, type.rangeBlocks * 1.3, 0.0), 1.0E-9);
+        assertEquals(DigitalBreakup.Stage.BLOCKY, DigitalBreakup.stage(atRange), "at range " + atRange);
+        assertEquals(DigitalBreakup.Stage.FREEZES, DigitalBreakup.stage(LinkBudget.quality(type, type.rangeBlocks * 1.3, 0.0)));
+        assertEquals(DigitalBreakup.Stage.LOST, DigitalBreakup.stage(LinkBudget.quality(type, type.rangeBlocks * 1.5, 0.0)));
+        assertEquals(0.0, LinkBudget.quality(type, type.rangeBlocks * 1.8, 0.0), 1.0E-9);
     }
 
     @Test
     void digitalTransitionIsNarrowerThanAnalog() {
         double analogWidth = width(VideoSystem.ANALOG);
         double digitalWidth = width(VideoSystem.DIGITAL);
-        assertTrue(digitalWidth < analogWidth * 0.5, "digital " + digitalWidth + " analog " + analogWidth);
+        assertTrue(digitalWidth < analogWidth * 0.75, "digital " + digitalWidth + " analog " + analogWidth);
     }
 
     private static double width(VideoSystem system) {

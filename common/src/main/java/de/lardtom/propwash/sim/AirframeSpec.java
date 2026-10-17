@@ -7,6 +7,7 @@ import de.lardtom.propwash.build.DroneBuild;
 public final class AirframeSpec {
     public static final int MOTORS = 4;
     public static final int HULL_POINTS = 12;
+    public static final int GROUND_POINTS = HULL_POINTS + 8;
     public static final double LEGACY_LENS_UP = 0.015;
     public static final double LEGACY_LENS_FORWARD_FACTOR = 0.7;
 
@@ -127,6 +128,11 @@ public final class AirframeSpec {
     private final double[] hullX = new double[HULL_POINTS];
     private final double[] hullY = new double[HULL_POINTS];
     private final double[] hullZ = new double[HULL_POINTS];
+    private final int groundCount;
+    private final int groundMask;
+    private final double[] groundX = new double[GROUND_POINTS];
+    private final double[] groundY = new double[GROUND_POINTS];
+    private final double[] groundZ = new double[GROUND_POINTS];
 
     AirframeSpec(ParamDerivation.Draft d) {
         this.build = d.build;
@@ -244,6 +250,11 @@ public final class AirframeSpec {
         System.arraycopy(d.hullX, 0, this.hullX, 0, HULL_POINTS);
         System.arraycopy(d.hullY, 0, this.hullY, 0, HULL_POINTS);
         System.arraycopy(d.hullZ, 0, this.hullZ, 0, HULL_POINTS);
+        this.groundCount = d.groundCount;
+        this.groundMask = d.groundMask;
+        System.arraycopy(d.groundX, 0, this.groundX, 0, GROUND_POINTS);
+        System.arraycopy(d.groundY, 0, this.groundY, 0, GROUND_POINTS);
+        System.arraycopy(d.groundZ, 0, this.groundZ, 0, GROUND_POINTS);
     }
 
     public static AirframeSpec of(DroneBuild build) {
@@ -308,6 +319,26 @@ public final class AirframeSpec {
 
     public double hullZ(int k) {
         return this.hullZ[k];
+    }
+
+    public int groundCount() {
+        return this.groundCount;
+    }
+
+    public boolean groundUsed(int k) {
+        return (this.groundMask & (1 << k)) != 0;
+    }
+
+    public double groundX(int k) {
+        return this.groundX[k];
+    }
+
+    public double groundY(int k) {
+        return this.groundY[k];
+    }
+
+    public double groundZ(int k) {
+        return this.groundZ[k];
     }
 
     public int hullMotor(int k) {

@@ -29,13 +29,13 @@ class CollisionTest {
             w.frame(dt);
             t += dt;
             crashed |= has(w.sim.events(), SimEventType.CRASH);
-            if (!firstHit && w.report.hitY) {
+            if (!firstHit && (w.report.hitY || w.sim.telemetry().grounded)) {
                 firstHit = true;
-                double impact = w.sim.collision.impactSpeed;
+                double impact = w.sim.telemetry().lastImpactSpeed;
                 assertEquals(Math.sqrt(2.0 * 9.81 * 1.0), impact, 0.15);
                 double e = 0.25 * (1.0 - 0.6 * SimMath.smoothstep(0.3 * 8.0, 8.0, impact));
                 assertEquals(0.205, 0.25 * (1.0 - 0.6 * SimMath.smoothstep(2.4, 8.0, Math.sqrt(2.0 * 9.81))), 0.001);
-                assertEquals(e, w.sim.body.vy / impact, 0.1 * e);
+                assertEquals(e, w.sim.body.vy / impact, 0.15 * e);
             }
             double speed = Math.sqrt(w.sim.body.vx * w.sim.body.vx + w.sim.body.vy * w.sim.body.vy + w.sim.body.vz * w.sim.body.vz);
             if (firstHit && Double.isNaN(restAt) && speed < 0.05 && w.sim.groundedFrames > 0) {

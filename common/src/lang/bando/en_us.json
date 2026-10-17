@@ -1,7 +1,9 @@
 {
+  "item.propwash.bando_map": "Bando Map",
   "propwash.guide.scene.bandos.callout.chest": "Used props, motors, cells",
   "propwash.guide.scene.bandos.callout.gap": "Between the beams",
   "propwash.guide.scene.bandos.callout.locate": "/locate structure #propwash:bandos",
+  "propwash.guide.scene.bandos.callout.map": "Cartographer: 10 emeralds + compass",
   "propwash.guide.scene.bandos.callout.roof": "Out through the roof",
   "propwash.guide.scene.bandos.callout.ruin": "Every bando is built differently",
   "propwash.guide.scene.bandos.callout.window": "Windows and doors",
@@ -14,5 +16,14 @@
   "propwash.guide.scene.bandos.step.fly.title": "Fly through the gaps",
   "propwash.guide.scene.bandos.step.locate.text": "With cheats, /locate structure #propwash:bandos shows the nearest bando. They only exist when the world generates structures.",
   "propwash.guide.scene.bandos.step.locate.title": "Search on purpose",
-  "propwash.guide.scene.bandos.title": "Bandos: abandoned spots"
+  "propwash.guide.scene.bandos.step.map.text": "In survival, journeyman cartographers sell a bando map to the nearest unexplored bando. Sometimes one lies in a chest.",
+  "propwash.guide.scene.bandos.step.map.title": "Bando map",
+  "propwash.guide.scene.bandos.title": "Bandos: abandoned spots",
+  "propwash.help.bando_map.status.blank": "Blank – shows no bando yet",
+  "propwash.help.bando_map.summary": "Leads to the nearest unexplored bando",
+  "propwash.help.bando_map.use.1": "Journeyman cartographer: 10 emeralds + compass",
+  "propwash.help.bando_map.use.2": "Sometimes in bando and cartographer chests",
+  "propwash.help.bando_map.use.3": "Copy it with an empty map",
+  "propwash.help.bando_map.what.1": "Explorer map to an abandoned building",
+  "propwash.help.bando_map.what.2": "for freestyle flying."
 }

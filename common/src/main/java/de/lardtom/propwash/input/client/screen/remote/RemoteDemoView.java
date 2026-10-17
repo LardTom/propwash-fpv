@@ -3,7 +3,9 @@ package de.lardtom.propwash.input.client.screen.remote;
 import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.client.render.RemoteGimbalModel;
 import de.lardtom.propwash.drone.client.render.RemoteGimbalRenderer;
+import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.input.RemoteDemo;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.input.client.screen.InputGui;
 import de.lardtom.propwash.ui.client.theme.GuiLayerAccess;
 import de.lardtom.propwash.ui.client.theme.Metrics;
@@ -43,6 +45,7 @@ public final class RemoteDemoView {
     private @Nullable Set<RemoteDemo.Cue> cues;
     private int captionWidth = -1;
     private int captionLines = 1;
+    private @Nullable StickMode mode;
 
     public void show(RemoteDemo.Target next) {
         if (!next.equals(this.target)) {
@@ -55,6 +58,14 @@ public final class RemoteDemoView {
 
     public void show(RemoteDemo.Motion motion) {
         this.show(new RemoteDemo.Target(motion, 0));
+    }
+
+    public void mode(@Nullable StickMode next) {
+        this.mode = next;
+    }
+
+    public StickMode mode() {
+        return this.mode != null ? this.mode : InputConfig.get().stickMode();
     }
 
     public RemoteDemo.Target target() {
@@ -96,7 +107,7 @@ public final class RemoteDemoView {
         if (!fits(x1 - x0, y1 - y0)) {
             return;
         }
-        RemoteDemo.Frame frame = RemoteDemo.frame(this.target, this.seconds());
+        RemoteDemo.Frame frame = RemoteDemo.frame(this.target, this.seconds(), this.mode());
         this.lastFrame = frame;
         ThemeDraw.previewStage(g, x0, y0, x1, y1);
         Component title = Component.translatable("propwash.input.demo.title");

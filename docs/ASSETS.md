@@ -115,8 +115,9 @@ Rahmen-Anbaupunkt; X nach rechts, Y nach oben, Z nach hinten (Nase = −Z).
 ```
 
 - `motors`: Motor-Anbaupunkte (Reihenfolge vorne links, vorne rechts, hinten links, hinten rechts). Die Diagonale ist
-  immer der Radstand; `race_5` ist ein gestreckter X-Rahmen (`stretch` 1,2 in `tools/assets/parts/layout.py`: ±68,8 mm
-  seitlich, ±82,6 mm längs), alle anderen Rahmen sind quadratisch.
+  immer der Radstand; alle eingebauten Rahmen sind quadratisch (True-X). `race_5` war bis zum 10.10.2026 gestreckt
+  gezeichnet (`stretch` 1,2: ±68,8 mm seitlich, ±82,6 mm längs) und ist seit dem Playtest True-X (±76,0 mm); der
+  Generator kennt `stretch` in `tools/assets/parts/layout.py` weiter, kein eingebauter Rahmen nutzt es.
 - `prop_height`: Höhe der Prop-Nabe über dem Motor-Anbaupunkt für den Vorlagenmotor des Rahmens.
 - `motor_seat`: Sitzhöhe der Props je Motor; mit einem anderen Motor verschiebt der Renderer die Nabe um
   `motor_seat[Motor] − motor_seat[Vorlagenmotor]` (z. B. 2207 am 7-Zöller 1,5 mm tiefer). Seit 0.4.1 liest auch die
@@ -639,6 +640,30 @@ eingebaut tragen ihn `whoop_65` (Halteschiene, kein Riemen) und `race_5` unten, 
   Schwebeflug von unten, `race_battery_hover_below_freestyle.png` zum Vergleich), `race_battery_jmp_slim.png` (Race-Rahmen
   5″ Slim aus Just More Parts, nur mit dessen Jar in `fabric/runs/selftest-client/mods`) und `workbench_racer.png`.
 
+## Race-Preset: True-X-Rahmen und Race-Prop (seit 0.5.0)
+
+Nach der Rückmeldung eines Rennpiloten aus dem Playtest (5″-Racer fliegen True-X, flache Props wie der „5129“ sind am
+beliebtesten) ist der eingebaute Race-Rahmen True-X gezeichnet, und es gibt ein sechstes eingebautes Prop.
+
+- **Rahmen** (`layout.py`, `frames.py` `build_race`): Motoren bei ±76,01 / ±76,01 mm (Radstand 215 mm), Arme, Guards und
+  Motorpads folgen der Lage; Bodenplatte, Deckplatte, Kamerakäfig, Riemenschlitze und Gummipad sind dieselben wie
+  vorher. Die Textur des Rahmens ist unverändert, neu sind nur Modell, Lack-Variante und Quelle
+  (`assets-src/parts/frame/race_5.bbmodel`). Das Flugmodell rechnet den Rahmen ohne eigene Arme schon immer so – Bild
+  und Physik stimmen jetzt überein.
+- **Prop** `p51_29_3b` (`props.py`): 5,1″ mit 2,9″ Steigung, drei breite, flach angestellte Blätter (Blatttiefe 11,5 /
+  18,5 / 15 / 9,5 mm, Anstellwinkel 14 / 11 / 9 / 8°), Nabe 12,6 × 6,7 mm mit Stoppmutter, rot `#f2463a`. Wie bei jedem
+  Prop: `_ccw`, `_blur`, je drei Schadensbilder (`_worn`, `_damaged`, `_broken`, auch `_ccw`) und Lack-Varianten, zusammen
+  18 Modelle, 16 Texturen, 9 Quellen. In `layout.PROP_KEYS` steht er hinter dem 7″-Prop (neue Teile hängen an), die
+  Vorlage des Race-Rahmens (`FRAMES["race_5"]["preset"]`) nennt ihn.
+- **Daten**: `data/propwash/propwash_parts/prop/p51_29_3b.json`, Rezept und Fortschritt aus `tools/data/survival.py`
+  (Seetang wie der 5,1″-Prop, Goldnugget als Nabe), Tag `propwash:parts/prop`, Texte in `common/src/lang/content`.
+- **Prüfungen**: `validate.py` (Modelle, Lack, Prop-Freigang am True-X-Rahmen, Zubehör-Freigang), JUnit
+  `build.RacePresetTest`, Selbsttest „drone-render: Race-Preset“ (True-X im Bild und im Flugmodell; Prop mit Modellen,
+  Item und Lack; flache Steigung kostet Topspeed, nicht Standschub). Bildschirmfotos `race_preset_top.png` (von oben),
+  `workbench_racer.png`, `fpv_props_race.png`, `race_battery_closeup.png`, `race_battery_side.png`,
+  `race_battery_front.png`, `race_battery_hover_below.png`; Übersicht `docs/asset-sheets/parts_preview.png`.
+- Herleitung der Flugdaten und Quellen: `docs/design/realism/motors-props.md` §12.
+
 ## Akkus je Rahmen
 
 Quelle im Code: `build.BatteryFit` (Werkbank, Akkutausch, Tooltips und Wartungsmenü benutzen dieselbe Regel). Prüfreihenfolge:
@@ -669,7 +694,7 @@ python3 tools/assets/world/preview.py    # docs/asset-sheets/world_preview.png (
 ```
 
 Module unter `tools/assets/world/`: `generate.py` (Werkbank, Brillen, Gates, Werkzeug, Slot-Symbole, Werkbank-GUI,
-Icons), `remote.py` (Funke), `charger.py` (Ladegerät), `menus.py` (GUI Ladegerät/Wartung), `guikit.py` (gemeinsame
+Icons, Tasten-Font), `remote.py` (Funke), `charger.py` (Ladegerät), `menus.py` (GUI Ladegerät/Wartung), `guikit.py` (gemeinsame
 GUI-Palette und Zeichenhelfer), `modelrender.py` + `views.py` (Vorschau-Renderer; `views.py` bildet die Vanilla-Transformationen
 für GUI, erste Person — `FirstPersonHandsAndItemsRenderer`, HUD-FOV 70° — und dritte Person — `ItemInHandLayer` — nach),
 `preview_gameplay.py` (Vorschau-Abschnitte Funke, Ladegerät, GUIs).
@@ -689,8 +714,10 @@ der Special-Typ `propwash:remote_gimbals` aufgelöst, alle Blockzustände des La
 | Gate-Items | `items/gate_{small,medium,large}.json`, `models/item/gate_*.json`, `textures/item/gate_*.png` | flache 16×16-Icons (Frontansicht, Seitenverhältnis wie das Gate) |
 | Kurs-Werkzeug | `items/course_tool.json`, `models/item/course_tool.json` (`item/handheld`), `textures/item/course_tool.png` | Zielflagge am Stab |
 | Zwischenteile | `items/<id>.json`, `models/item/<id>.json` (`item/generated`), `textures/item/<id>.png` (16×16) für `carbon_plate`, `copper_coil`, `circuit_board`, `lipo_cell`, `hd_chip` | Pixel-Art in `assets-src/world/pixel/materials.txt`, erzeugt von `tools/assets/world/materials.py` (Teil von `generate.py`, geprüft von `validate.py`): Carbonplatte mit Köperbindung und vier Bohrungen, Kupferspule mit Eisenkern, grüne Platine mit Leiterbahnen und Chip, LiPo-Pouchzelle mit zwei Anschlussfahnen, HD-Videochip mit Amethyst-Die und Goldkontakten |
+| Bando-Karte | `items/bando_map.json`, `models/item/bando_map.json` (`item/generated`), `textures/item/bando_map.png` (16×16), `textures/map/decorations/bando.png` (8×8) | Pixel-Art in `assets-src/world/pixel/maps.txt`, erzeugt von `tools/assets/world/maps.py` (Teil von `generate.py`, geprüft von `validate.py`): gefaltete Pergamentkarte mit gestrichelter Flugroute und dem Bando-Symbol davor wie bei den Vanilla-Entdeckerkarten; das 8×8-Kartensymbol (verfallene Halle mit Dachloch und rostigem Schornstein, schwarzer Umriss wie die Vanilla-Symbole) liest der Vanilla-Atlas `map_decorations` aus `textures/map/decorations` jedes Namensraums, Asset-Id `propwash:bando` |
 | Werkbank-GUI | `textures/gui/drone_workbench.png` | siehe Abschnitt „Werkbank-GUI“ |
 | Slot-Symbole | `textures/gui/sprites/gui/slot/{frame,stack,motor,prop,video,battery,drone,accessory_top,accessory_bottom}.png` | GUI-Atlas-Sprite-Id `propwash:gui/slot/<category>` (der Pfad unter `gui/sprites/` ist die Id, deshalb `gui/slot/…` doppelt). `drone` = Zerlege-Slot. 16×16, einfarbig `#555555` wie die Vanilla-Leerslot-Symbole, lesbar auf Vanilla-Grau und auf dem dunklen Slot `#1B1E23`. Keine eigene Atlas-Registrierung nötig (Vanilla-`atlases/gui.json` liest `gui/sprites` aus allen Namespaces). |
+| Tasten-Font | `font/keys.json`, `textures/font/option_key.png` | Font `propwash:keys` für Tastennamen: eine 8 × 8-Glyphe für das Zeichen der Mac-Wahltaste (U+2325, weiß, Grundlinie nach Zeile 7 wie der Vanilla-Font), alle anderen Zeichen über einen Verweis auf `minecraft:default`. Quelle `assets-src/world/pixel/font.txt`, erzeugt von `gen_key_font()`; `input.client.KeyNames` gibt den Font nur den Namen der Wahltasten mit („Linke ⌥ Wahltaste“). Die Unifont-Glyphe des Vanilla-Fonts war bei GUI-Skala 3 nicht lesbar. |
 | Mod-Icon | `icon.png` (256×256), `pack.png` im Ressourcen-Stamm (128×128) | Quad-Draufsicht + Schriftzug PROPWASH |
 | Funke | `items/remote.json`, `models/item/remote.json`, `models/item/remote_body.json`, `textures/item/remote.png` (64×64), `textures/entity/remote/gimbal.png` (16×16) | siehe Abschnitt „Funke“ |
 | Ladegerät | `blockstates/battery_charger.json` (multipart), `models/block/battery_charger_{idle,charging,done}.json`, `models/block/battery_charger_bay_<0..3>_{empty,charging,full}.json`, `models/block/battery_charger_inventory.json`, `textures/block/battery_charger_{top,side,bottom,front_idle,front_charging,front_done,pack}.png` (32×32), `items/battery_charger.json` | siehe Abschnitt „Ladegerät“ |

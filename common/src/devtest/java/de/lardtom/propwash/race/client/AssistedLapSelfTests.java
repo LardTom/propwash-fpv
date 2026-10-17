@@ -13,6 +13,8 @@ import de.lardtom.propwash.drone.PilotMode;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.input.StickPositions;
+import de.lardtom.propwash.race.AssistDetail;
+import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.CourseData;
 import de.lardtom.propwash.race.CourseRegistry;
 import de.lardtom.propwash.race.CourseToolItem;
@@ -29,6 +31,7 @@ import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.sim.DroneSim;
+import de.lardtom.propwash.sim.HoldMode;
 import de.lardtom.propwash.sim.StabMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -278,8 +281,10 @@ public final class AssistedLapSelfTests {
         long now = System.currentTimeMillis();
         board.submit(new UUID(77L, 1L), "Swift", "race_5", 9_310L * MS, now - 86_400_000L);
         board.submit(new UUID(77L, 2L), "Heron", "freestyle_5", 10_870L * MS, now - 3L * 86_400_000L);
-        board.submitAssisted(new UUID(77L, 3L), "Lark", "whoop_65", 11_420L * MS, now - 7_200_000L, HOLD);
-        board.submitAssisted(new UUID(77L, 4L), "Wren", "freestyle_5", 12_050L * MS, now, PHYSICS | HOLD);
+        board.submitAssisted(new UUID(77L, 3L), "Lark", "whoop_65", 11_420L * MS, now - 7_200_000L,
+                AssistReasons.of(List.of(AssistDetail.hold(HoldMode.POSHOLD))));
+        board.submitAssisted(new UUID(77L, 4L), "Wren", "freestyle_5", 12_050L * MS, now,
+                AssistReasons.of(List.of(AssistDetail.rule(WorldRuleSpecs.GRAVITY_SCALE, 130), AssistDetail.hold(HoldMode.ALTHOLD))));
     }
 
     private static StepResult screenStep(SelfTest.StepContext ctx) {
@@ -594,7 +599,7 @@ public final class AssistedLapSelfTests {
                         ServerPlayer player = player(server);
                         board.submit(player.getUUID(), player.getGameProfile().name(), "freestyle_5", 10_120L * MS, System.currentTimeMillis());
                         board.submitAssisted(player.getUUID(), player.getGameProfile().name(), "freestyle_5", 9_940L * MS, System.currentTimeMillis(),
-                                HOLD | RESCUE);
+                                AssistReasons.of(List.of(AssistDetail.hold(HoldMode.ALTHOLD), AssistDetail.rescue(AssistDetail.SWITCH))));
                         fill(board);
                     }
                 }));

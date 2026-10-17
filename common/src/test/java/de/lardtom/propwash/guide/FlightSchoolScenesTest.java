@@ -52,8 +52,8 @@ class FlightSchoolScenesTest {
     private static final float SAMPLE = 1.0F;
     private static final Set<String> KNOWN_KEYS = Set.of("key.use", "key.attack", "key.sneak", "key.inventory", SceneKit.KEY_ARM,
             SceneKit.KEY_FLIGHT_MODE, SceneKit.KEY_FLIP, SceneKit.KEY_EXIT, SceneKit.KEY_BEEPER, SceneKit.KEY_RESCUE, SceneKit.KEY_SET_HOME,
-            SceneKit.KEY_RACE_RESTART, SceneKit.KEY_CONFIGURATOR, SceneKit.KEY_RECORD, SceneKit.KEY_ALT_HOLD, SceneKit.KEY_POS_HOLD,
-            SceneKit.KEY_GATE_ROTATE, SceneKit.KEY_CARGO_DROP, SceneKit.KEY_MODE_3D);
+            SceneKit.KEY_RESET, SceneKit.KEY_CONFIGURATOR, SceneKit.KEY_RECORD, SceneKit.KEY_ALT_HOLD, SceneKit.KEY_POS_HOLD,
+            SceneKit.KEY_GATE_ROTATE, SceneKit.KEY_GATE_EDIT_MOUSE, SceneKit.KEY_CARGO_DROP, SceneKit.KEY_MODE_3D, SceneKit.KEY_TURTLE, SceneKit.KEY_ROLL_RIGHT);
 
     private static Path guideLang() {
         for (Path candidate : List.of(Path.of("common/src/lang/guide"), Path.of("src/lang/guide"))) {

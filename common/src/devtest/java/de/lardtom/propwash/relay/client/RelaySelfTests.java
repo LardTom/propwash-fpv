@@ -88,12 +88,12 @@ public final class RelaySelfTests {
     static final int SIZE = 16;
     static final int HOLE_FROM = 11;
     static final int HOLE_TO = 15;
-    static final int[] SLABS = {0, 5, 10, 15};
+    static final int[] SLABS = {0, 5, 10, 15, 20, 25, 30};
     static final BlockPos PILOT = new BlockPos(3, 1, 3);
-    static final Vec3 DRONE_FEET = new Vec3(4.5, 12.0, 4.5);
+    static final Vec3 DRONE_FEET = new Vec3(4.5, 27.0, 4.5);
     static final BlockPos LOWER = new BlockPos(13, 1, 13);
-    static final BlockPos UPPER = new BlockPos(13, 14, 13);
-    static final BlockPos SIDE = new BlockPos(15, 13, 13);
+    static final BlockPos UPPER = new BlockPos(13, 29, 13);
+    static final BlockPos SIDE = new BlockPos(15, 28, 13);
     static final BlockPos CORNER = new BlockPos(30, 0, 0);
     static final BlockPos COURSE = new BlockPos(40, 0, 30);
     private static final String FUTURE = "relay_future";
@@ -122,7 +122,7 @@ public final class RelaySelfTests {
 
     public static void register() {
         SelfTest.clientStep("relay: Repeater an Boden, Wand und Decke setzen, Verzeichnis und Abbau", 900, RelaySelfTests::placeStep);
-        SelfTest.clientStep("relay: Betonbau mit drei Etagen – Bild nur über Repeater, Grenze aus der Welt-Regel", 6000, RelaySelfTests::buildingStep);
+        SelfTest.clientStep("relay: Betonbau mit sechs Etagen – Bild nur über Repeater, Grenze aus der Welt-Regel", 6000, RelaySelfTests::buildingStep);
         SelfTest.clientStep("relay: Runde mit Kreativ-Brille zählt, Latenz unter dem Sender nennt den Grund", 2400, RelaySelfTests::creativeLapStep);
         SelfTest.clientStep("relay: Aufräumen", 600, RelaySelfTests::cleanupStep);
     }
@@ -137,8 +137,8 @@ public final class RelaySelfTests {
         list.add(new Probe("Welt-Regel: höchstens 1 Repeater", world -> { }, 1, VideoSystem.ANALOG, DRONE_FEET, false, -1));
         list.add(new Probe("Welt-Regel: Repeater aus", world -> { }, 0, VideoSystem.ANALOG, DRONE_FEET, false, 0));
         list.add(new Probe("Welt-Regel wieder 4", world -> { }, 4, VideoSystem.ANALOG, DRONE_FEET, true, 2));
-        list.add(new Probe("Drohne in der Nordost-Ecke der dritten Etage", world -> { }, 4, VideoSystem.ANALOG, new Vec3(12.5, 12.0, 3.5), true, 2));
-        list.add(new Probe("Drohne in der Südwest-Ecke der dritten Etage", world -> { }, 4, VideoSystem.ANALOG, new Vec3(3.5, 12.0, 12.5), true, 2));
+        list.add(new Probe("Drohne in der Nordost-Ecke der obersten Etage", world -> { }, 4, VideoSystem.ANALOG, new Vec3(12.5, 27.0, 3.5), true, 2));
+        list.add(new Probe("Drohne in der Südwest-Ecke der obersten Etage", world -> { }, 4, VideoSystem.ANALOG, new Vec3(3.5, 27.0, 12.5), true, 2));
         list.add(new Probe("Wand-Repeater statt Decke", world -> {
             unmount(world, UPPER);
             mount(world, SIDE, AttachFace.WALL, Direction.WEST);
@@ -385,7 +385,7 @@ public final class RelaySelfTests {
                 }
             }
             if (video.directQuality() > 0.05F) {
-                return failVideo(probe.name + ": direktes Bild durch zwei Betondecken nicht verloren: " + video.directQuality());
+                return failVideo(probe.name + ": direktes Bild durch fünf Betondecken nicht verloren: " + video.directQuality());
             }
         } else if (quality > 0.05F || probe.hops >= 0 && hops != probe.hops || hops > Math.max(0, probe.limit)) {
             return failVideo(String.format(Locale.ROOT, "%s: Bild %.2f über %d Repeater, erwartet verloren", probe.name, quality, hops));
@@ -861,14 +861,14 @@ public final class RelaySelfTests {
                 for (int y = 0; y <= SLABS[SLABS.length - 1]; y++) {
                     boolean wall = x == 0 || x == SIZE || z == 0 || z == SIZE;
                     boolean slab = y % 5 == 0;
-                    boolean hole = (y == 5 || y == 10) && x >= HOLE_FROM && x <= HOLE_TO && z >= HOLE_FROM && z <= HOLE_TO;
+                    boolean hole = y > 0 && y < SLABS[SLABS.length - 1] && x >= HOLE_FROM && x <= HOLE_TO && z >= HOLE_FROM && z <= HOLE_TO;
                     if ((wall || slab) && !hole) {
                         put(level, o.offset(x, y, z), concrete);
                     }
                 }
             }
         }
-        for (int floor = 0; floor < 3; floor++) {
+        for (int floor = 0; floor < SLABS.length - 1; floor++) {
             for (int[] spot : new int[][]{{4, 4}, {12, 4}, {4, 12}, {8, 8}}) {
                 put(level, o.offset(spot[0], floor * 5 + 4, spot[1]), light);
             }

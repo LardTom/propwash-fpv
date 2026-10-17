@@ -66,13 +66,13 @@ class BatteryWarningTest {
 
     @Test
     void punchOnAFullPackWarnsOnlyWhileTheVoltageSags() {
-        Bench bench = new Bench(tuning(false), 1.0).run(1.0, 6.0);
+        Bench bench = new Bench(tuning(false), 1.0).run(1.0, 7.5);
         assertTrue(bench.minCell < 3.5, "Testaufbau sackt nicht unter die Warnschwelle: " + bench.minCell);
         assertEquals(List.of(SimEventType.BATTERY_LOW), bench.events);
         assertEquals(BatteryState.LOW, bench.state());
         bench.run(0.1, 6.0);
         assertEquals(BatteryState.OK, bench.state(), "Warnung bleibt nach dem Schubstoß stehen");
-        assertTrue(bench.sim.telemetry().batteryCharge > 0.85);
+        assertTrue(bench.sim.telemetry().batteryCharge > 0.8);
     }
 
     @Test

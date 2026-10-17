@@ -186,6 +186,29 @@ Spannungseinbruch unter Last:
 Abgeleitet (S): Der über 1–5 s wirksame Widerstand liegt bei ≈ 1,5–2,5 × Ladegerät-IR; für einen modernen
 6S 1300 also 3–6 mΩ je Zelle, passend zu ≈ 0,4–0,6 V Einbruch je Zelle bei 100 A plus OCV-Abfall.
 
+### 2.4b Entladekurve und Ruhespannung
+
+![Entladekurven: 6S bei 15 C gegen den Playtest, C-Raten, Ruhespannung je Chemie, Punch am Ende des Packs](battery-discharge.svg)
+
+Bild aus `BatteryCurvePlot` (neu erzeugen: `PROPWASH_BATTERY_PLOT=docs/design/realism/battery-discharge.svg
+tools/fastcheck.sh test --select-class de.lardtom.propwash.sim.BatteryCurvePlot`), Werte und Toleranzen als Fixtures in
+`common/src/test/resources/de/lardtom/propwash/sim/discharge_curves.txt` (`DischargeCurveTest`).
+
+| Bezug | Wert | Güte | Quelle |
+|---|---|---|---|
+| Entladetest 15 C, rund 20 6S-LiPos 1200–1800 mAh | 25,2 V Start, ≈ 24 V nach 5 %, lange flach bis ≈ 21,5 V, in den letzten ≈ 10 % steil auf 18,6 V (3,1 V je Zelle) | M | Rückmeldung eines Playtesters (Diagramm, 11.10.2026) |
+| Gasstoß kurz vor Schluss | 2–3 V (6S) mehr Einbruch, kommt nach dem Stoß zurück | M | ebenda |
+| LiPo-Ruhespannung (verbreitete Tabelle) | 4,20 / 4,11 / 4,02 / 3,95 / 3,87 / 3,84 / 3,80 / 3,77 / 3,73 / 3,69 / 3,61 V bei 100 / 90 / … / 10 / 5 % | M | Hobby-Tabellen, vgl. [Q138] |
+| LiPo-Ruhespannung nach Entladung bis 3 V | 4,20 V 100 %, 4,03 V 76 %, 3,86 V 52 %, 3,79 V 30 %, 3,70 V 11 % | M | [Q138] |
+| Li-Ion (NMC/NCA-Rundzellen) | ≈ 3,64 V bei 50 %, 3,4–3,5 V bei 10–20 %, ≈ 3,3 V bei 5 %; bei 1 C ≥ Nennkapazität bis 2,5 V | S | Zelldatenblätter, Richtwerte |
+| Betaflight-Anzeige | Spannung mit `vbat_display_lpf_period` 30 geglättet (Grenzfrequenz 1/3 Hz, τ ≈ 0,48 s), Warnstufen aus diesem Wert | A | [Q131] |
+
+Propwash 0.5.2 (`flight-model-spec.md` 4.5, Entscheidung 50): Ruhespannung von LiPo wie die Tabelle (höchstens 0,04 V
+darunter, bei 50 % unverändert 3,80 V), LiHV und Li-Ion unter 50 % angehoben; Widerstandsanstieg erst unter 15 % Ladung.
+Der 6S 1300 erreicht bei 15 C 23,9 V nach 5 %, 21,1 V bei 90 % und 18,6 V bei 96 % der Nennkapazität – Form wie im
+Diagramm, die flache Mitte liegt rund 0,4 V tiefer (der Pack im Spiel erwärmt sich nicht und hat 5,5 mΩ je Zelle).
+Semi-Solid (`justmoreparts:lihv_ss`, Just More Parts 1.1.1) folgt der neuen LiPo-Form; ihre Leerspannung von 3,5 V (2.3b) bleibt offen.
+
 ### 2.5 C-Rating: Aufdruck gegen Messung
 
 | Größe | Wert | Güte | Quelle |
@@ -223,7 +246,9 @@ Warnschwelle, geht er zurück auf „OK“ [Q131]. Ein Schubstoß mit vollem Akk
 die nach dem Stoß verschwindet. Propwash (`sim.BatteryAlarm`, `flight-model-spec.md` §5.10) macht es genauso, mit
 2 s Dauer und 0,1 V Rückweg-Hysterese (die Simulation filtert mit 1 Hz und kennt keine Messspannung mit Rauschen). Abweichend
 hält Propwash die Stufe, sobald auch die Ruhespannung des Akkus an der Schwelle liegt – dann ist der Akku wirklich leer,
-und die Warnung soll bis zur Landung bleiben. Mit „unendlicher Akku“ (Kreativ) gibt es keine Warnungen; der
+und die Warnung soll bis zur Landung bleiben. Das OSD zeigt die Spannung seit 0.5.2 wie Betaflight geglättet (τ ≈ 0,48 s) und lässt sie gelb
+bzw. rot blinken, solange dieser Wert unter Warn- bzw. Abschaltspannung liegt (`osd.VoltageDisplay`, ohne Verzögerung,
+0,03 V Rückweg) – am Ende des Packs blinkt sie bei jedem Punch, die Warnstufen selbst bleiben wie oben. Mit „unendlicher Akku“ (Kreativ) gibt es keine Warnungen; der
 Spannungseinbruch unter Last wirkt weiter auf den Punch.
 
 ## 3. Power-Stacks, AIOs, ESCs
@@ -475,6 +500,8 @@ Stand: `integration` (Propwash 0.4.1) und Just More Parts im Nachbarprojekt. Nur
 | OCV-Kurve LiPo | SoC 0 = 3,5 V, 20 % Rest = 3,70 V | 20 % Rest ≈ 3,60 V, 10 % ≈ 3,50 V, 0 % ≈ 3,30 V [Q41] | Modell setzt „leer“ bei 3,5 V Ruhe; real sind dort noch ≈ 10 % drin |
 | `WIRING_R` | 3 mΩ | Stecker XT30/XT60/XT90 0,3–0,7 mΩ, PH2.0 ≈ 20 mΩ [Q38, Q46] | für XT-Stecker plausibel (Kabel inbegriffen); PH2.0-Packs bräuchten ≈ 20 mΩ mehr |
 | `POL_FRACTION` 0,5, τ 5 s | Polarisation = 50 % des Ohmschen Anteils | 10-s-DC ≈ 3,3 × 1-kHz-AC [Q37]; 1–5 s ≈ 1,5–2,5 × Ladegerät-IR | Größenordnung stimmt, wenn `cell_resistance_ohm` ≈ 1–1,7 × Ladegerät-IR ist |
+| `SAG_FAST_FRACTION` 0,35, τ 0,5 s (0.5.0) | 35 % von `R_pack` bauen sich erst in 0,5 s auf, sofort wirken 65 % | Sofort-Widerstand aus Blackbox-Logs mit Stromsensor: 3,3–3,6 mΩ je Zelle (5″ 6S 1300), 3,2 mΩ (7″ 6S 2200), 27–28 mΩ (2S 450 HV), schneller Anteil τ 0,25–1 s | Modell jetzt 3,9–4,0 / 2,9 / 21 mΩ (vorher 6,0 / 4,4 / 36–38); `docs/tools/blackbox-calibration.md`, Abschnitt Akku |
+| Anstieg unter 25 % Ladung (0.5.0) | `1 + Gain·L³`, ohmsch ×2,5, schnell ×7, langsam ×5 bei leer | Ersatzschaltbilder für Lithium-Polymer-Zellen: Serien- und Übergangswiderstand steigen exponentiell unter ~15 % Ladung; eigene Logs reichen nur bis ~14 % und zeigen bis dorthin keinen Anstieg | Form passt, Höhe unter 10 % nicht mit eigenen Daten belegt |
 | `ESC_R_BASE + ESC_R_PER_A/I` | 3 mΩ + 0,15 V/I: 5 A → 33 mΩ, 20 A → 10,5 mΩ, 55 A → 5,7 mΩ | Whoop 1S ≈ 75–95 mΩ, 30–33 A 2,4–6,2 mΩ, 55–60 A 1,4–1,5 mΩ (+ Leiterbahn) [Q68, Q69] | Whoop-ESC ≈ 2,5 × zu niedrig, große ESCs ≈ 2–3 × zu hoch |
 | `ESC_BURST` | 1,3 | 1,2–1,42 [Abschnitt 3.2] | passend |
 | `AUX_BASE_W + AUX_PER_GRAM_W × Video-Masse` | 0,6 W + 0,3 W/g | Grundlast 0,5–1,5 W; Video siehe 6.3 | analog passend, digital klein zu niedrig (Leistung hängt nicht an der Masse) |
@@ -784,3 +811,5 @@ Q132–Q137 (Abschnitt 4.5): Zugriff am 03.10.2026.
 - [Q137] G. Durgin, T. S. Rappaport, H. Xu: Measurements and Models for Radio Path Loss and Penetration Loss In and Around
   Homes and Trees at 5.85 GHz, IEEE Transactions on Communications 46 (11), 1998, S. 1484–1496 –
   https://propagation.ece.gatech.edu/ECE3065/tutorials/Project05/TransCom98.pdf
+- [Q138] R/C Tech Forums, „Lowest voltage per cell (LiPo)“: Tabelle Ruhespannung gegen Restkapazität einer LiPo-Zelle nach
+  Entladung bis 3 V – https://www.rctech.net/forum/radio-electronics/927696-lowest-voltage-per-cell-lipo-printthread.html

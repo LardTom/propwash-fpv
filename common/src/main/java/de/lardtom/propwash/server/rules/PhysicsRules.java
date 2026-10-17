@@ -37,6 +37,50 @@ public record PhysicsRules(int gravityPercent, int batteryPercent, int wind, boo
         return !this.equals(DEFAULT);
     }
 
+    public int value(RuleSpec spec) {
+        if (spec == GRAVITY_SCALE) {
+            return this.gravityPercent;
+        }
+        if (spec == BATTERY_SCALE) {
+            return this.batteryPercent;
+        }
+        if (spec == WIND) {
+            return this.wind;
+        }
+        if (spec == CRASH_TOLERANCE) {
+            return this.crashTolerancePercent;
+        }
+        boolean on;
+        if (spec == PROP_WASH) {
+            on = this.propWash;
+        } else if (spec == GROUND_EFFECT) {
+            on = this.groundEffect;
+        } else if (spec == BATTERY_SAG) {
+            on = this.batterySag;
+        } else if (spec == CRASH_DISARM) {
+            on = this.crashDisarm;
+        } else if (spec == PROP_STRIKES) {
+            on = this.propStrikes;
+        } else if (spec == TURBULENCE) {
+            on = this.turbulence;
+        } else if (spec == HARDWARE_LIMITS) {
+            on = this.hardwareLimits;
+        } else {
+            return spec.defaultValue();
+        }
+        return on ? 1 : 0;
+    }
+
+    public List<RuleSpec> changedSpecs() {
+        List<RuleSpec> out = new ArrayList<>();
+        for (RuleSpec spec : SPECS) {
+            if (this.value(spec) != spec.defaultValue()) {
+                out.add(spec);
+            }
+        }
+        return out;
+    }
+
     public static List<RuleSpec> changed(RuleValues values) {
         List<RuleSpec> out = new ArrayList<>();
         for (RuleSpec spec : SPECS) {

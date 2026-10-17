@@ -319,5 +319,13 @@
   "propwash.osd.mode_3d.angle": "ANGL 3D",
   "propwash.osd.mode_3d.horizon": "HOR 3D",
   "propwash.osd.warning.arm_throttle_3d": "THROTTLE NOT CENTERED",
-  "propwash.osd.warning.world_edge": "WORLD EDGE"
+  "propwash.osd.warning.world_edge": "WORLD EDGE",
+  "propwash.osd.element.flashback_budget": "Flashback timeline",
+  "propwash.osd.label.flashback": "FB",
+  "propwash.osd.warning.flashback_full": "FLASHBACK FULL",
+  "propwash.osd.element.vtx_power": "Transmit power (VTX)",
+  "propwash.osd.label.vtx_auto": "AUTO",
+  "propwash.osd.warning.vtx_hot": "VTX OVERHEAT",
+  "propwash.osd.warning.arm_turtle": "TURTLE: LAND FIRST",
+  "propwash.osd.mode.turtle": "TURTLE"
 }

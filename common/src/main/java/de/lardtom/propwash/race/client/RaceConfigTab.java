@@ -1,5 +1,6 @@
 package de.lardtom.propwash.race.client;
 
+import de.lardtom.propwash.race.AssistChecklist;
 import de.lardtom.propwash.race.GateMounting;
 import de.lardtom.propwash.race.GatePlacement;
 import de.lardtom.propwash.race.RaceLine;
@@ -11,6 +12,7 @@ import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.ui.client.theme.ThemeStats;
 import de.lardtom.propwash.ui.client.theme.ThemeText;
 import de.lardtom.propwash.ui.client.widget.FlatButton;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -21,6 +23,8 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.Util;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,12 +41,18 @@ public final class RaceConfigTab extends ConfigTab {
     private static final int HEADER_HEIGHT = Metrics.SECTION_HEIGHT;
     private static final int LINE_HEIGHT = Metrics.LINE_HEIGHT;
     private static final int TOOLTIP_WIDTH = 260;
+    private static final int DOT_INDENT = 9;
+    private static final long CHECK_MILLIS = 250L;
 
     private RaceConfig working;
     private final List<FormattedCharSequence> helpLines = new ArrayList<>();
     private boolean helpTruncated;
     private int helpTop;
     private int helpBottom;
+    private int checkTop;
+    private AssistPreflight.@Nullable Result check;
+    private long checkAt;
+    private int checkRows;
 
     @Override
     public String id() {
@@ -130,6 +140,8 @@ public final class RaceConfigTab extends ConfigTab {
         this.layoutHelp(Integer.MAX_VALUE / 2);
         int top = this.y + HEADER_HEIGHT + this.helpLines.size() * LINE_HEIGHT + (this.helpLines.isEmpty() ? 0 : GAP);
         int left = this.x;
+        this.checkTop = top + widgetsHeight + 2 * GAP;
+        this.reportBottom(this.checkTop + HEADER_HEIGHT + LINE_HEIGHT);
         if (columns == 2) {
             this.column(race, left, top, row);
             this.column(display, left + columnWidth + GAP, top, row);
@@ -192,10 +204,63 @@ public final class RaceConfigTab extends ConfigTab {
             ThemeText.text(graphics, font, line, left, lineY, Palette.TEXT_MUTED);
             lineY += LINE_HEIGHT;
         }
+        this.reportBottom(this.extractCheck(graphics, font, left));
         boolean overHelp = mouseX >= left && mouseX < left + this.innerWidth() && mouseY >= this.y && mouseY < this.helpBottom;
         if (this.helpTruncated && overHelp) {
             ThemeText.tooltipWrapped(graphics, font, Component.translatable("propwash.race.config.help"), TOOLTIP_WIDTH, mouseX, mouseY);
         }
+    }
+
+    public AssistPreflight.Result assistCheck() {
+        long now = Util.getMillis();
+        AssistPreflight.Result result = this.check;
+        if (result == null || now - this.checkAt >= CHECK_MILLIS || now < this.checkAt) {
+            result = AssistPreflight.check(Minecraft.getInstance());
+            this.check = result;
+            this.checkAt = now;
+        }
+        return result;
+    }
+
+    public int checkTop() {
+        return this.checkTop;
+    }
+
+    public int checkRowsDrawn() {
+        return this.checkRows;
+    }
+
+    private int extractCheck(GuiGraphicsExtractor graphics, Font font, int left) {
+        AssistPreflight.Result result = this.assistCheck();
+        int width = this.innerWidth();
+        int y = this.checkTop;
+        ThemeDraw.sectionTitle(graphics, font, Component.translatable("propwash.race.preflight.title"), left, y, width);
+        y += HEADER_HEIGHT;
+        y += ThemeText.wrapped(graphics, font, Component.translatable("propwash.race.preflight.intro"), left, y, width, Palette.TEXT_FAINT) + 2;
+        y += ThemeText.wrapped(graphics, font, result.summary(), left, y, width, result.clean() ? Palette.SUCCESS : Palette.WARNING) + GAP / 2;
+        int labelWidth = 0;
+        for (AssistPreflight.Row row : result.rows()) {
+            labelWidth = Math.max(labelWidth, font.width(row.label()));
+        }
+        labelWidth = Math.min(labelWidth, Math.max(40, width / 3));
+        int textLeft = left + DOT_INDENT + labelWidth + GAP;
+        int textWidth = Math.max(40, left + width - textLeft);
+        int drawn = 0;
+        for (AssistPreflight.Row row : result.rows()) {
+            int color = switch (row.status()) {
+                case OK -> Palette.SUCCESS;
+                case FLAGGED -> Palette.WARNING;
+                case INFO -> Palette.TEXT_FAINT;
+            };
+            ThemeDraw.dot(graphics, left + 3, y + 3, color);
+            int labelHeight = ThemeText.wrapped(graphics, font, row.label(), left + DOT_INDENT, y, labelWidth, Palette.TEXT);
+            int height = ThemeText.wrapped(graphics, font, row.detail(), textLeft, y, textWidth,
+                    row.status() == AssistChecklist.Status.FLAGGED ? Palette.WARNING : Palette.TEXT_MUTED);
+            y += Math.max(LINE_HEIGHT, Math.max(labelHeight, height)) + 2;
+            drawn++;
+        }
+        this.checkRows = drawn;
+        return y;
     }
 
     @Override

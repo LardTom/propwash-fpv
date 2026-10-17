@@ -28,8 +28,9 @@ class ApiContractTest {
         assertTrue(PropwashApi.isCompatible("1.3"));
         assertTrue(PropwashApi.isCompatible("1.4"));
         assertTrue(PropwashApi.isCompatible("1.5"));
-        assertFalse(PropwashApi.isCompatible("1.6"));
-        assertEquals("1.5.0", PropwashApi.API_VERSION);
+        assertTrue(PropwashApi.isCompatible("1.6"));
+        assertFalse(PropwashApi.isCompatible("1.7"));
+        assertEquals("1.6.0", PropwashApi.API_VERSION);
         assertFalse(PropwashApi.isCompatible("2.0"));
         assertFalse(PropwashApi.isCompatible("0.9"));
         assertTrue(ApiVersion.parse("1.4.2").satisfies(ApiVersion.parse("1.3")));

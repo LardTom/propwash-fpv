@@ -73,7 +73,9 @@ public final class VideoSelfTests {
         ShadowSelfTests.register();
         CameraFovSelfTests.register();
         AspectSelfTests.register();
+        FisheyeSelfTests.register();
         VideoTabSelfTests.register();
+        VtxPowerSelfTests.register();
     }
 
     private static StepResult retryButtonStep(SelfTest.StepContext ctx) {
@@ -302,7 +304,7 @@ public final class VideoSelfTests {
         }
     }
 
-    private static final int BREAKUP_CASE_TICKS = 14;
+    private static final int BREAKUP_CASE_TICKS = 24;
     private static final BreakupCase[] BREAKUP_CASES = {
             new BreakupCase(0.95F, VideoSystem.ANALOG, "Analog klar"),
             new BreakupCase(0.70F, VideoSystem.ANALOG, "Analog Stufe 2"),

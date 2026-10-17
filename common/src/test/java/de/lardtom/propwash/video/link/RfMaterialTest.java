@@ -49,12 +49,46 @@ class RfMaterialTest {
     }
 
     @Test
-    void wallsMatchMeasuredSingleWallLossesAt585GHz() {
-        assertEquals(10.2, RfMaterial.MASONRY.straightBlockDb(), 0.6);
-        double timber = RfMaterial.TIMBER.straightBlockDb();
-        assertTrue(timber > 3.6 && timber < 6.0, "wooden wall " + timber);
-        double concrete = RfMaterial.CONCRETE.straightBlockDb();
-        assertTrue(concrete > 25.0 && concrete < 40.0, "concrete wall " + concrete);
+    void oneBlockOfBuildingMaterialCountsLikeOneHouseWall() {
+        assertEquals(4.5, RfMaterial.TIMBER.straightBlockDb(), 1.0E-9);
+        assertEquals(7.0, RfMaterial.MASONRY.straightBlockDb(), 1.0E-9);
+        assertEquals(9.0, RfMaterial.CONCRETE.straightBlockDb(), 1.0E-9);
+        assertEquals(8.0, RfMaterial.EARTH.straightBlockDb(), 1.0E-9);
+        assertEquals(8.0, RfMaterial.SAND.straightBlockDb(), 1.0E-9);
+        assertEquals(12.0, RfMaterial.TRUNK.straightBlockDb(), 1.0E-9);
+        for (RfMaterial wall : new RfMaterial[]{RfMaterial.TIMBER, RfMaterial.MASONRY, RfMaterial.CONCRETE, RfMaterial.EARTH, RfMaterial.SAND}) {
+            assertTrue(wall.straightBlockDb() >= 4.0 && wall.straightBlockDb() <= 12.0, wall + " " + wall.straightBlockDb());
+            assertTrue(wall.dbPerMeter() > 0.0 && wall.dbPerCrossing() > 0.0, wall.name());
+        }
+        assertTrue(RfMaterial.CLOTH.straightBlockDb() < RfMaterial.GLASS.straightBlockDb());
+    }
+
+    @Test
+    void runsOfBuildingMaterialCountAtMostTwoWallsButTerrainKeepsAddingUp() {
+        RayLoss loss = new RayLoss();
+        for (int i = 0; i < 7; i++) {
+            loss.add(RfMaterial.MASONRY, 1.0);
+        }
+        assertEquals(RfMaterial.MASONRY.dbPerCrossing() + 2.0 * RfMaterial.MASONRY.dbPerMeter(), loss.linearDb(), 1.0E-9);
+        loss.reset();
+        loss.add(RfMaterial.CONCRETE, 1.0);
+        loss.breakRun();
+        loss.add(RfMaterial.CONCRETE, 1.0);
+        loss.breakRun();
+        loss.add(RfMaterial.CONCRETE, 1.0);
+        assertEquals(3.0 * RfMaterial.CONCRETE.straightBlockDb(), loss.linearDb(), 1.0E-9);
+        loss.reset();
+        for (int i = 0; i < 8; i++) {
+            loss.add(RfMaterial.EARTH, 1.0);
+        }
+        assertTrue(loss.linearDb() > 40.0, "8 blocks of ground " + loss.linearDb());
+        for (int i = 0; i < 4; i++) {
+            loss.add(RfMaterial.EARTH, 1.0);
+        }
+        assertTrue(loss.linearDb() > 59.0, "12 blocks of ground " + loss.linearDb());
+        for (RfMaterial terrain : new RfMaterial[]{RfMaterial.EARTH, RfMaterial.SAND, RfMaterial.WATER, RfMaterial.METAL, RfMaterial.GLASS}) {
+            assertTrue(!terrain.wallScale(), terrain.name());
+        }
     }
 
     @Test
@@ -74,8 +108,8 @@ class RfMaterialTest {
     }
 
     @Test
-    void oneBlockOfEarthWaterOrMetalIsOpaque() {
-        for (RfMaterial opaque : new RfMaterial[]{RfMaterial.EARTH, RfMaterial.WATER, RfMaterial.METAL, RfMaterial.TRUNK}) {
+    void oneBlockOfWaterOrMetalIsOpaque() {
+        for (RfMaterial opaque : new RfMaterial[]{RfMaterial.WATER, RfMaterial.METAL}) {
             assertTrue(opaque.straightBlockDb() >= 35.0, opaque + " " + opaque.straightBlockDb());
         }
     }
@@ -91,8 +125,9 @@ class RfMaterialTest {
 
     @Test
     void orderingFromLightToHeavy() {
-        RfMaterial[] order = {RfMaterial.AIR, RfMaterial.SNOW, RfMaterial.PLANT, RfMaterial.ICE, RfMaterial.FOLIAGE, RfMaterial.GLASS,
-                RfMaterial.TIMBER, RfMaterial.MASONRY, RfMaterial.CONCRETE, RfMaterial.EARTH, RfMaterial.WATER, RfMaterial.METAL};
+        RfMaterial[] order = {RfMaterial.AIR, RfMaterial.SNOW, RfMaterial.PLANT, RfMaterial.ICE, RfMaterial.FOLIAGE, RfMaterial.CLOTH,
+                RfMaterial.GLASS, RfMaterial.TIMBER, RfMaterial.MASONRY, RfMaterial.EARTH, RfMaterial.CONCRETE, RfMaterial.TRUNK, RfMaterial.WATER,
+                RfMaterial.METAL};
         for (int i = 1; i < order.length; i++) {
             assertTrue(order[i].straightBlockDb() > order[i - 1].straightBlockDb(), order[i - 1] + " < " + order[i]);
         }

@@ -177,7 +177,9 @@ fremde Schlüssel und Werte außerhalb der Grenzen werden abgelehnt bzw. begrenz
   gesperrte, die für die Prüfung kurz frei sind) bekommt den Fokus; geprüft werden die SDL-Texteingabe, das Tippen
   der ferneren Grenze (sonst der anderen oder der Mitte, wenn eine Grenze ein Wort wie „Aus“ zeigt oder an einen
   anderen Wert gekoppelt ist) mit der Zahl in der Beschriftung, das Begrenzen mit Hinweis und Esc. Regler ohne
-  Texteingabe (auch Vanilla-Regler) und Tabs mit zu wenigen geprüften Reglern sind Fehler. Im Lauf: 90 Werte
+  Texteingabe (auch Vanilla-Regler) und Tabs mit zu wenigen geprüften Reglern sind Fehler. Ausgenommen ist nur, was
+  bewusst ohne Eingabe ist, weil die Beschriftung nicht den Reglerwert zeigt: „Vereinfachung“ im Tab Action-Cam (nur
+  mit Flashback sichtbar, zeigt cm und Grad); der Lauf protokolliert ihn als „bewusst ohne Eingabe“. Im Lauf: 90 Werte
   (37 `ValueSlider`, 30 `StepSlider`, 21 `NumberSpinner`, 2 `MicrosField`); ohne Kreativ-Flugcontroller fehlt der
   Drohnen-Editor, dessen Felder `NumberSpinner` wie im Rates-Tab sind.
 - `ui: Regler tippen – Sprung aus der Suche, Klick und Tab auf Regler` (Suche „Return altitude“, sofort tippen, Tab

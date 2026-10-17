@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.input.client.KeyDefaults;
+import de.lardtom.propwash.input.client.KeyNames;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.race.CourseElement;
 import de.lardtom.propwash.race.CourseToolItem;
@@ -18,22 +19,33 @@ import de.lardtom.propwash.race.GateSignalTarget;
 import de.lardtom.propwash.race.GateStacking;
 import de.lardtom.propwash.race.RacePayloads;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
+import de.lardtom.propwash.ui.HintMemory;
+import de.lardtom.propwash.ui.client.FirstUseHints;
+import de.lardtom.propwash.ui.client.theme.Metrics;
+import de.lardtom.propwash.ui.client.theme.Palette;
+import de.lardtom.propwash.ui.client.theme.ThemeDraw;
+import de.lardtom.propwash.ui.client.theme.ThemeText;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.ScrollWheelHandler;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.Util;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector2i;
 import org.jspecify.annotations.Nullable;
+
+import java.util.List;
 
 public final class GateEditor {
     public static final double LEAVE_REACH = 2.0 * GateMounting.EDIT_REACH;
@@ -44,11 +56,25 @@ public final class GateEditor {
     private static final double SIGNAL_LIFT = 0.006;
     private static final int RECHECK_TICKS = 10;
     private static final int NO_KEY = Integer.MIN_VALUE;
+    public static final String MOUSE_HINT = "gate_edit_mouse";
+    public static final int MOUSE_HINT_TIMES = 3;
+    public static final long NOTICE_MILLIS = 6000L;
+    private static final long NOTICE_FADE_MILLIS = 600L;
+    private static final int NOTICE_MARGIN = 6;
+    private static final int NOTICE_PAD = 4;
+    private static final int NOTICE_STRIPE = 3;
+    private static final int NOTICE_MIN_ROOM = 110;
+    private static final int NOTICE_ABOVE_HOTBAR = 68;
     private static final ScrollWheelHandler WHEEL = new ScrollWheelHandler();
     private static @Nullable GateEditor current;
     private static @Nullable KeyMapping cursorKey;
     private static int swallowed = NO_KEY;
     private static @Nullable GateEditPanel hudPanel;
+    private static boolean tipFresh;
+    private static float frozenGlow = Float.NaN;
+    private static long noticeUntil;
+    private static boolean noticeMuted;
+    private static int @Nullable [] noticeBox;
 
     public enum Status {
         SAME,
@@ -84,7 +110,96 @@ public final class GateEditor {
     }
 
     public static Component cursorKeyName() {
-        return Component.keybind(KeyDefaults.GATE_EDIT_CURSOR.mappingName());
+        KeyMapping key = cursorKey;
+        return key == null ? Component.keybind(KeyDefaults.GATE_EDIT_CURSOR.mappingName()) : KeyNames.of(key);
+    }
+
+    public static Component startNotice(CourseElement kind) {
+        return Component.translatable("propwash.race.edit.mouse.started", GateEditPanel.title(kind), ThemeText.accent(cursorKeyName()));
+    }
+
+    public static boolean tipHighlighted() {
+        return tipFresh;
+    }
+
+    public static float tipGlow() {
+        if (!tipFresh) {
+            return 0.0F;
+        }
+        return Float.isNaN(frozenGlow) ? HintMemory.pulse(Util.getMillis()) : frozenGlow;
+    }
+
+    public static void freezeTipGlow(float glow) {
+        frozenGlow = glow;
+    }
+
+    public static void mouseUsed() {
+        tipFresh = false;
+        noticeUntil = 0L;
+        FirstUseHints.learned(MOUSE_HINT, MOUSE_HINT_TIMES);
+    }
+
+    public static void showStartNotice() {
+        noticeUntil = noticeMuted ? 0L : Util.getMillis() + NOTICE_MILLIS;
+    }
+
+    public static void muteStartNotice(boolean muted) {
+        noticeMuted = muted;
+        if (muted) {
+            noticeUntil = 0L;
+        }
+    }
+
+    public static boolean startNoticeShown() {
+        return current != null && Util.getMillis() < noticeUntil;
+    }
+
+    public static int @Nullable [] startNoticeBox() {
+        return noticeBox == null ? null : noticeBox.clone();
+    }
+
+    static int @Nullable [] noticeBounds(int panelLeft, int guiHeight, int textWidth, int lines) {
+        int room = panelLeft - 2 * NOTICE_MARGIN;
+        if (room < NOTICE_MIN_ROOM || lines <= 0) {
+            return null;
+        }
+        int width = Math.min(room, textWidth + 2 * NOTICE_PAD + NOTICE_STRIPE);
+        int height = lines * Metrics.LINE_HEIGHT + 2 * NOTICE_PAD - 2;
+        int x0 = (panelLeft - width) / 2;
+        int y1 = guiHeight - NOTICE_ABOVE_HOTBAR;
+        return new int[] {x0, y1 - height, x0 + width, y1};
+    }
+
+    private static void extractNotice(GuiGraphicsExtractor g, GateEditor editor, GateEditPanel panel) {
+        noticeBox = null;
+        long left = noticeUntil - Util.getMillis();
+        if (left <= 0L) {
+            return;
+        }
+        Font font = Minecraft.getInstance().font;
+        Component text = startNotice(editor.gate.kind());
+        int wrap = panel.left() - 2 * NOTICE_MARGIN - 2 * NOTICE_PAD - NOTICE_STRIPE;
+        if (wrap <= 0) {
+            return;
+        }
+        List<FormattedCharSequence> lines = font.split(text, wrap);
+        int widest = 0;
+        for (FormattedCharSequence line : lines) {
+            widest = Math.max(widest, font.width(line));
+        }
+        int[] box = noticeBounds(panel.left(), g.guiHeight(), widest, lines.size());
+        if (box == null || box[1] < 0) {
+            return;
+        }
+        float alpha = Math.min(1.0F, left / (float) NOTICE_FADE_MILLIS);
+        ThemeDraw.notice(g, box[0], box[1], box[2], box[3], Palette.ACCENT, alpha);
+        int color = Palette.withAlpha(Palette.TEXT, Math.max(16, Math.round(alpha * 255.0F)));
+        int y = box[1] + NOTICE_PAD;
+        for (FormattedCharSequence line : lines) {
+            ThemeText.text(g, font, line, box[0] + NOTICE_STRIPE + NOTICE_PAD, y, color);
+            y += Metrics.LINE_HEIGHT;
+        }
+        noticeBox = box;
     }
 
     public static void start(GateEntity gate) {
@@ -98,6 +213,9 @@ public final class GateEditor {
         GateEditor editor = new GateEditor(gate);
         current = editor;
         hudPanel = null;
+        tipFresh = FirstUseHints.fresh(MOUSE_HINT, MOUSE_HINT_TIMES);
+        FirstUseHints.shown(MOUSE_HINT, MOUSE_HINT_TIMES);
+        showStartNotice();
         editor.refresh();
     }
 
@@ -301,6 +419,8 @@ public final class GateEditor {
         if (current == this) {
             current = null;
             hudPanel = null;
+            noticeUntil = 0L;
+            noticeBox = null;
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.gui.screen() instanceof GateEditCursorScreen) {
@@ -348,6 +468,7 @@ public final class GateEditor {
         }
         drain(key);
         if (key != null && key.isDown() && minecraft.gui.screen() == null && minecraft.gui.overlay() == null) {
+            mouseUsed();
             minecraft.gui.setScreen(new GateEditCursorScreen(editor));
         }
     }
@@ -492,5 +613,6 @@ public final class GateEditor {
             hudPanel = panel;
         }
         panel.extractHud(graphics, deltaTracker.getGameTimeDeltaPartialTick(false));
+        extractNotice(graphics, editor, panel);
     }
 }

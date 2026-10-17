@@ -18,7 +18,7 @@ final class MouseFlight {
         }
     }
 
-    MouseSticks.Output update(boolean flying, MouseCapture.Frame frame, float dt, MouseSettings settings, boolean selfLevel) {
+    MouseSticks.Output update(boolean flying, MouseCapture.Frame frame, float dt, MouseSettings settings, boolean selfLevel, boolean invertPitch) {
         boolean center = InputKeys.pressed(InputKeys.MOUSE_CENTER, this.centerKey);
         if (!flying) {
             this.reset();
@@ -34,6 +34,6 @@ final class MouseFlight {
             long clamped = time > now || time <= 0L ? now : Math.max(time, now - MAX_EVENT_AGE_NANOS);
             this.sticks.motion(clamped, frame.xs()[i], frame.ys()[i]);
         }
-        return this.sticks.update(now, dt, settings, selfLevel);
+        return this.sticks.update(now, dt, settings, selfLevel, invertPitch);
     }
 }

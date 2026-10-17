@@ -1,15 +1,14 @@
 package de.lardtom.propwash.video.record.path;
 
-import org.joml.Quaterniond;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public record CameraTrack(int startTick, int endTick, List<PathKeyframe> camera, List<FovKeyframe> fov) {
     public static final int MAX_SPAN_TICKS = 10;
     public static final double FOV_STEP_DEGREES = 0.05;
     public static final CameraTrack EMPTY = new CameraTrack(0, 0, List.of(), List.of());
+    public static final double MAX_COARSE_FACTOR = 1024.0;
+    public static final int COARSE_SEARCH_STEPS = 6;
 
     public CameraTrack {
         camera = List.copyOf(camera);
@@ -21,27 +20,98 @@ public record CameraTrack(int startTick, int endTick, List<PathKeyframe> camera,
     }
 
     public static CameraTrack of(List<TickPose> poses, KeyframeDensity density) {
-        if (poses.size() < 2) {
-            return EMPTY;
-        }
-        List<Quaterniond> rotations = new ArrayList<>(poses.size());
-        for (TickPose pose : poses) {
-            rotations.add(pose.rotation());
-        }
-        List<CameraAngles> angles = EulerPath.continuous(rotations);
-        boolean[] keep = density == KeyframeDensity.EVERY_TICK ? all(poses.size()) : thin(poses, rotations, angles, density);
-        List<PathKeyframe> camera = new ArrayList<>();
-        for (int i = 0; i < poses.size(); i++) {
-            if (keep[i]) {
-                TickPose pose = poses.get(i);
-                CameraAngles a = angles.get(i);
-                camera.add(new PathKeyframe(pose.tick(), pose.x(), pose.y(), pose.z(), (float) a.yaw(), (float) a.pitch(), (float) a.roll()));
-            }
-        }
-        return new CameraTrack(poses.getFirst().tick(), poses.getLast().tick(), camera, fovKeys(poses));
+        return build(poses, density == KeyframeDensity.EVERY_TICK ? Simplification.OFF : Simplification.ofPosition(density.positionTolerance()),
+                Integer.MAX_VALUE).track();
     }
 
-    static List<FovKeyframe> fovKeys(List<TickPose> poses) {
+    public static Built build(List<TickPose> poses, Simplification wanted, int maxKeyframes) {
+        return build(PathFrames.of(poses), wanted, maxKeyframes);
+    }
+
+    public static Built build(PathFrames frames, Simplification wanted, int maxKeyframes) {
+        if (frames.size() < 2) {
+            return new Built(EMPTY, wanted, wanted, 0, maxKeyframes);
+        }
+        List<FovKeyframe> fov = fovKeys(frames.poses());
+        int[] keys = thin(frames, wanted);
+        int wantedCount = keys.length;
+        if (wantedCount <= maxKeyframes) {
+            return new Built(assemble(frames, keys, fov), wanted, wanted, wantedCount, maxKeyframes);
+        }
+        int limit = Math.max(2, maxKeyframes);
+        double failing = wanted.off() ? 0.0 : 1.0;
+        double fitting = Double.NaN;
+        int[] fitKeys = null;
+        for (double factor = wanted.off() ? 1.0 : 2.0; factor <= MAX_COARSE_FACTOR; factor *= 2.0) {
+            int[] candidate = thin(frames, wanted.coarser(factor));
+            if (candidate.length <= limit) {
+                fitting = factor;
+                fitKeys = candidate;
+                break;
+            }
+            failing = factor;
+        }
+        if (fitKeys == null) {
+            int[] uniform = uniform(frames.size(), limit);
+            return new Built(assemble(frames, uniform, fov), wanted, wanted.coarser(MAX_COARSE_FACTOR), wantedCount, maxKeyframes);
+        }
+        if (failing > 0.0) {
+            for (int i = 0; i < COARSE_SEARCH_STEPS; i++) {
+                double middle = Math.sqrt(failing * fitting);
+                int[] candidate = thin(frames, wanted.coarser(middle));
+                if (candidate.length <= limit) {
+                    fitting = middle;
+                    fitKeys = candidate;
+                } else {
+                    failing = middle;
+                }
+            }
+        }
+        return new Built(assemble(frames, fitKeys, fov), wanted, wanted.coarser(fitting), wantedCount, maxKeyframes);
+    }
+
+    public static double smallestFittingSlider(PathFrames frames, int maxKeyframes) {
+        if (frames.size() <= maxKeyframes) {
+            return 0.0;
+        }
+        if (thin(frames, Simplification.ofSlider(1.0)).length > maxKeyframes) {
+            return 1.0;
+        }
+        int failing = 0;
+        int fitting = 100;
+        while (fitting - failing > 1) {
+            int middle = (failing + fitting) / 2;
+            if (thin(frames, Simplification.ofSlider(middle / 100.0)).length <= maxKeyframes) {
+                fitting = middle;
+            } else {
+                failing = middle;
+            }
+        }
+        return fitting / 100.0;
+    }
+
+    static int[] thin(PathFrames frames, Simplification tolerance) {
+        TrackThinner thinner = new TrackThinner(frames, tolerance);
+        return thinner.finish(true);
+    }
+
+    static int[] uniform(int n, int count) {
+        int[] keys = new int[Math.min(n, Math.max(2, count))];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = (int) Math.round(i * (n - 1) / (double) (keys.length - 1));
+        }
+        return keys;
+    }
+
+    static CameraTrack assemble(PathFrames frames, int[] keys, List<FovKeyframe> fov) {
+        List<PathKeyframe> camera = new ArrayList<>(keys.length);
+        for (int index : keys) {
+            camera.add(frames.keyframe(index));
+        }
+        return new CameraTrack(frames.firstTick(), frames.lastTick(), camera, fov);
+    }
+
+    public static List<FovKeyframe> fovKeys(List<TickPose> poses) {
         List<FovKeyframe> keys = new ArrayList<>();
         float current = (float) poses.getFirst().fov();
         keys.add(new FovKeyframe(poses.getFirst().tick(), current));
@@ -59,55 +129,6 @@ public record CameraTrack(int startTick, int endTick, List<PathKeyframe> camera,
         return keys;
     }
 
-    private static boolean[] all(int n) {
-        boolean[] keep = new boolean[n];
-        Arrays.fill(keep, true);
-        return keep;
-    }
-
-    static boolean[] thin(List<TickPose> poses, List<Quaterniond> rotations, List<CameraAngles> angles, KeyframeDensity density) {
-        int n = poses.size();
-        boolean[] keep = new boolean[n];
-        keep[0] = true;
-        keep[n - 1] = true;
-        int anchor = 0;
-        while (anchor < n - 1) {
-            int reach = anchor + 1;
-            for (int j = anchor + 2; j < n && j - anchor <= MAX_SPAN_TICKS; j++) {
-                if (!fits(poses, rotations, angles, anchor, j, density)) {
-                    break;
-                }
-                reach = j;
-            }
-            keep[reach] = true;
-            anchor = reach;
-        }
-        return keep;
-    }
-
-    private static boolean fits(List<TickPose> poses, List<Quaterniond> rotations, List<CameraAngles> angles, int from, int to,
-                                KeyframeDensity density) {
-        TickPose a = poses.get(from);
-        TickPose b = poses.get(to);
-        double span = to - from;
-        double positionLimit = density.positionTolerance() * density.positionTolerance();
-        for (int k = from + 1; k < to; k++) {
-            double t = (k - from) / span;
-            TickPose truth = poses.get(k);
-            double dx = a.x() + (b.x() - a.x()) * t - truth.x();
-            double dy = a.y() + (b.y() - a.y()) * t - truth.y();
-            double dz = a.z() + (b.z() - a.z()) * t - truth.z();
-            if (dx * dx + dy * dy + dz * dz > positionLimit) {
-                return false;
-            }
-            Quaterniond guess = angles.get(from).lerpShortest(angles.get(to), t).rotation();
-            if (CameraAngles.degreesBetween(guess, rotations.get(k)) > density.angleTolerance()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public boolean usable() {
         return this.camera.size() >= 2 && this.endTick > this.startTick;
     }
@@ -118,5 +139,11 @@ public record CameraTrack(int startTick, int endTick, List<PathKeyframe> camera,
 
     public double durationSeconds() {
         return this.durationTicks() / 20.0;
+    }
+
+    public record Built(CameraTrack track, Simplification wanted, Simplification used, int wantedKeyframes, int maxKeyframes) {
+        public boolean capped() {
+            return this.track.camera().size() < this.wantedKeyframes;
+        }
     }
 }

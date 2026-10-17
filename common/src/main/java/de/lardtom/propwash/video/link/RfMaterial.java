@@ -4,28 +4,34 @@ public enum RfMaterial {
     AIR(0.0, 0.0, 0.0),
     FOLIAGE(0.0, 0.0, 1.0),
     PLANT(0.0, 0.0, Wall.PLANT_DENSITY),
-    TRUNK(Wall.WOOD.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), Wall.WOOD.interfaceLossDb(), 0.0),
-    TIMBER(Wall.WOOD.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ) * Wall.TIMBER_WALL_M, Wall.WOOD.interfaceLossDb(), 0.0),
-    MASONRY(Wall.BRICK.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ) * Wall.MASONRY_WALL_M, Wall.BRICK.interfaceLossDb(), 0.0),
-    CONCRETE(Wall.CONCRETE.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ) * Wall.CONCRETE_WALL_M, Wall.CONCRETE.interfaceLossDb(), 0.0),
-    EARTH(Wall.MEDIUM_DRY_GROUND.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), Wall.MEDIUM_DRY_GROUND.interfaceLossDb(), 0.0),
-    SAND(Wall.VERY_DRY_GROUND.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), Wall.VERY_DRY_GROUND.interfaceLossDb(), 0.0),
+    TRUNK(Wall.perMeter(Wall.LOG_BLOCK_DB, Wall.WOOD), Wall.WOOD.interfaceLossDb(), 0.0, Wall.MAX_WALL_RUN_M),
+    TIMBER(Wall.perMeter(Wall.PLANK_BLOCK_DB, Wall.WOOD), Wall.WOOD.interfaceLossDb(), 0.0, Wall.MAX_WALL_RUN_M),
+    MASONRY(Wall.perMeter(Wall.MASONRY_BLOCK_DB, Wall.BRICK), Wall.BRICK.interfaceLossDb(), 0.0, Wall.MAX_WALL_RUN_M),
+    CONCRETE(Wall.perMeter(Wall.CONCRETE_BLOCK_DB, Wall.CONCRETE), Wall.CONCRETE.interfaceLossDb(), 0.0, Wall.MAX_WALL_RUN_M),
+    EARTH(Wall.perMeter(Wall.GROUND_BLOCK_DB, Wall.MEDIUM_DRY_GROUND), Wall.MEDIUM_DRY_GROUND.interfaceLossDb(), 0.0),
+    SAND(Wall.perMeter(Wall.SAND_BLOCK_DB, Wall.VERY_DRY_GROUND), Wall.VERY_DRY_GROUND.interfaceLossDb(), 0.0),
     GLASS(0.0, Wall.GLASS.thinSlabLossDb(Wall.WINDOW_PANE_M, RadioBand.FREQUENCY_GHZ), 0.0),
     METAL(Wall.METAL.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), 0.0, 0.0),
     METAL_MESH(0.0, Wall.METAL_MESH_DB, 0.0),
     WATER(Wall.WATER.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), Wall.WATER.interfaceLossDb(), 0.0),
     ICE(Wall.ICE.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), Wall.ICE.interfaceLossDb(), 0.0),
     SNOW(Wall.SNOW.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), Wall.SNOW.interfaceLossDb(), 0.0),
-    CLOTH(Wall.FIBRE.attenuationDbPerMeter(RadioBand.FREQUENCY_GHZ), Wall.FIBRE.interfaceLossDb(), 0.0);
+    CLOTH(Wall.perMeter(Wall.CLOTH_BLOCK_DB, Wall.FIBRE), Wall.FIBRE.interfaceLossDb(), 0.0, Wall.MAX_WALL_RUN_M);
 
     private final double dbPerMeter;
     private final double dbPerCrossing;
     private final double foliageDensity;
+    private final double maxRunMeters;
 
     RfMaterial(double dbPerMeter, double dbPerCrossing, double foliageDensity) {
+        this(dbPerMeter, dbPerCrossing, foliageDensity, Double.POSITIVE_INFINITY);
+    }
+
+    RfMaterial(double dbPerMeter, double dbPerCrossing, double foliageDensity, double maxRunMeters) {
         this.dbPerMeter = dbPerMeter;
         this.dbPerCrossing = dbPerCrossing;
         this.foliageDensity = foliageDensity;
+        this.maxRunMeters = maxRunMeters;
     }
 
     public double dbPerMeter() {
@@ -34,6 +40,14 @@ public enum RfMaterial {
 
     public double dbPerCrossing() {
         return this.dbPerCrossing;
+    }
+
+    public double maxRunMeters() {
+        return this.maxRunMeters;
+    }
+
+    public boolean wallScale() {
+        return this.maxRunMeters < Double.POSITIVE_INFINITY;
     }
 
     public double foliageDensity() {
@@ -52,9 +66,14 @@ public enum RfMaterial {
     }
 
     public static final class Wall {
-        public static final double TIMBER_WALL_M = 0.15;
-        public static final double MASONRY_WALL_M = 0.35;
-        public static final double CONCRETE_WALL_M = 0.25;
+        public static final double LOG_BLOCK_DB = 12.0;
+        public static final double PLANK_BLOCK_DB = 4.5;
+        public static final double MASONRY_BLOCK_DB = 7.0;
+        public static final double CONCRETE_BLOCK_DB = 9.0;
+        public static final double GROUND_BLOCK_DB = 8.0;
+        public static final double SAND_BLOCK_DB = 8.0;
+        public static final double CLOTH_BLOCK_DB = 2.0;
+        public static final double MAX_WALL_RUN_M = 2.0;
         public static final double WINDOW_PANE_M = 0.006;
         public static final double PLANT_DENSITY = 0.5;
         public static final double METAL_MESH_DB = 6.0;
@@ -74,6 +93,10 @@ public enum RfMaterial {
         public static final Dielectric SNOW = Dielectric.drySnow(SNOW_DENSITY, RadioBand.FREQUENCY_GHZ, ICE_CELSIUS);
 
         private Wall() {
+        }
+
+        static double perMeter(double blockDb, Dielectric material) {
+            return Math.max(0.0, blockDb - material.interfaceLossDb());
         }
     }
 }

@@ -5,7 +5,8 @@ import java.util.Optional;
 
 public enum AccessorySlot {
     TOP("top"),
-    BOTTOM("bottom");
+    BOTTOM("bottom"),
+    FRONT("front");
 
     private final String key;
 

@@ -15,11 +15,10 @@ import de.lardtom.propwash.guide.training.StarRule;
 import de.lardtom.propwash.guide.training.TrainingProgress;
 import de.lardtom.propwash.guide.training.TrainingSample;
 import de.lardtom.propwash.guide.training.TrainingScale;
+import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.RaceFormat;
-import de.lardtom.propwash.rescue.client.RescueState;
-import de.lardtom.propwash.server.client.ClientWorldRules;
+import de.lardtom.propwash.race.client.AssistText;
 import de.lardtom.propwash.sim.DroneSim;
-import de.lardtom.propwash.sim.HoldMode;
 import de.lardtom.propwash.sim.Telemetry;
 import de.lardtom.propwash.trick.TrickType;
 import de.lardtom.propwash.ui.client.theme.Palette;
@@ -68,6 +67,8 @@ public final class TrainingSession {
 
     private final Deque<Message> messages = new ArrayDeque<>();
     private final TrainingSample sample = new TrainingSample();
+    private AssistReasons assistNow = AssistReasons.NONE;
+    private AssistReasons runAssist = AssistReasons.NONE;
     private final Vector3d velocity = new Vector3d();
     private final Quaterniond attitude = new Quaterniond();
     private @Nullable Lesson lesson;
@@ -110,6 +111,10 @@ public final class TrainingSession {
 
     public TrainingScale scale() {
         return this.scale;
+    }
+
+    public AssistReasons runAssist() {
+        return this.runAssist;
     }
 
     public @Nullable Banner banner() {
@@ -234,7 +239,13 @@ public final class TrainingSession {
             return;
         }
         LessonRun active = this.run;
+        LessonRun.State before = active.state();
         active.update(this.sample);
+        if (before == LessonRun.State.READY && active.state() != LessonRun.State.READY) {
+            this.runAssist = this.assistNow;
+        } else if (active.state() == LessonRun.State.RUNNING) {
+            this.runAssist = this.runAssist.plus(this.assistNow);
+        }
         for (LessonRun.Event event : active.drainEvents()) {
             this.handle(minecraft, current, active, event, now);
         }
@@ -279,6 +290,7 @@ public final class TrainingSession {
         }
         TrainingProgress progress = TrainingStore.progress();
         this.run = new LessonRun(placed, progress.referenceSplits(current.id(), this.scale));
+        this.runAssist = AssistReasons.NONE;
         this.runs++;
     }
 
@@ -306,8 +318,8 @@ public final class TrainingSession {
         s.impactCount = t.impactCount;
         s.throttle = t.throttleOut;
         s.radius = drone.getBbWidth() * 0.5;
-        s.assisted = PilotSession.INSTANCE.holdMode() != HoldMode.OFF || RescueState.INSTANCE.active() || ClientWorldRules.INSTANCE.physics().modified()
-                || !drone.build().buildable() || drone.build().isCreative();
+        this.assistNow = AssistText.evaluate(PilotSession.INSTANCE, drone);
+        s.assisted = this.assistNow.any();
     }
 
     private void message(Component text, int color) {

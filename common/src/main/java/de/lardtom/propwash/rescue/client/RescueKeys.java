@@ -7,6 +7,7 @@ import net.minecraft.client.KeyMapping;
 public final class RescueKeys {
     public static final KeyMapping RESCUE = ClientRegistrar.keyMapping("rescue", InputConstants.KEY_J);
     public static final KeyMapping SET_HOME = ClientRegistrar.keyMapping("set_home", InputConstants.KEY_COMMA);
+    public static final KeyMapping RESET = ClientRegistrar.keyMapping("reset", InputConstants.KEY_BACKSPACE);
 
     private RescueKeys() {
     }

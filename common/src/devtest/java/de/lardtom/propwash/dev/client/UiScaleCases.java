@@ -64,6 +64,7 @@ import de.lardtom.propwash.race.RacePayloads;
 import de.lardtom.propwash.race.RaceServer;
 import de.lardtom.propwash.race.client.BoardFixture;
 import de.lardtom.propwash.race.client.ClientLeaderboards;
+import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.widget.FlatButton;
 import de.lardtom.propwash.ui.client.widget.ScrollArea;
 import de.lardtom.propwash.input.client.screen.ReceiverTab;
@@ -391,7 +392,7 @@ final class UiScaleCases {
 
         @Override
         public void close(SelfTest.StepContext ctx) {
-            DeviceOnboarding.INSTANCE.simulate(null);
+            DeviceOnboarding.INSTANCE.simulate(List.of());
             Minecraft.getInstance().gui.setScreen(null);
             Minecraft.getInstance().gui.toastManager().clear();
         }
@@ -428,12 +429,12 @@ final class UiScaleCases {
 
         @Override
         public int pages(Screen screen) {
-            return this.radio ? ReceiverWizardScreen.Page.values().length : 1;
+            return this.radio ? ReceiverWizardScreen.Page.values().length : 2;
         }
 
         @Override
         public String page(Screen screen, int index) {
-            if (!(screen instanceof ReceiverWizardScreen wizard) || !this.radio) {
+            if (!(screen instanceof ReceiverWizardScreen wizard)) {
                 return "";
             }
             ReceiverWizardScreen.Page page = ReceiverWizardScreen.Page.values()[index];
@@ -757,9 +758,25 @@ final class UiScaleCases {
             }
         }
 
+        private static @Nullable String zones(WorldRulesTab tab) {
+            FlatButton button = tab.zones().newButton();
+            int bottom = button != null ? button.getY() + button.getHeight() : tab.zonesTop() + Metrics.SECTION_HEIGHT;
+            if (tab.zonesTop() >= tab.viewTop() && bottom <= tab.clipBottom()) {
+                return null;
+            }
+            return (button != null ? "Überschrift und Knopf „Neue Zone hier“" : "Überschrift") + " ohne Scrollen nicht sichtbar: Abschnitt y "
+                    + tab.zonesTop() + ", unten " + bottom + ", sichtbar " + tab.viewTop() + "–" + tab.clipBottom();
+        }
+
         @Override
         public List<Finding> audit(Minecraft mc, Screen screen) {
             List<Finding> findings = new ArrayList<>(LayoutProbe.audit(mc, screen));
+            if (screen instanceof ConfiguratorScreen open && open.activeTab() instanceof WorldRulesTab rules && rules.atTop()) {
+                String problem = zones(rules);
+                if (problem != null) {
+                    findings.add(new Finding(LayoutAudit.Kind.HIDDEN, "Tab Welt-Regeln, Abschnitt Zonen", problem));
+                }
+            }
             if (this.sidebarChecked || !(screen instanceof ConfiguratorScreen configurator) || !configurator.sidebarScroll().scrollable()) {
                 return findings;
             }

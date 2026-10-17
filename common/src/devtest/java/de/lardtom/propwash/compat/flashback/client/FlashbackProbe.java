@@ -230,6 +230,147 @@ public final class FlashbackProbe {
         return type("combo_options.Sizing").getMethod("valueOf", String.class).invoke(null, "UNDERLAY");
     }
 
+    public static int[] drawListVertices() throws ReflectiveOperationException {
+        ClassLoader loader = FlashbackProbe.class.getClassLoader();
+        Class<?> imgui = Class.forName("imgui.moulberry90.ImGui", false, loader);
+        Class<?> contextType = Class.forName("imgui.moulberry90.internal.ImGuiContext", false, loader);
+        Field own = type("editor.ui.ReplayUI").getDeclaredField("imGuiContext");
+        own.setAccessible(true);
+        Object flashbackContext = own.get(null);
+        if (flashbackContext == null || contextType.getField("ptr").getLong(flashbackContext) == 0L) {
+            return new int[0];
+        }
+        Method current = imgui.getMethod("getCurrentContext");
+        Method setCurrent = imgui.getMethod("setCurrentContext", contextType);
+        Field ptr = contextType.getField("ptr");
+        long previous = ptr.getLong(current.invoke(null));
+        setCurrent.invoke(null, flashbackContext);
+        try {
+            Object data = imgui.getMethod("getDrawData").invoke(null);
+            if (data == null) {
+                return new int[0];
+            }
+            int lists = (int) data.getClass().getMethod("getCmdListsCount").invoke(data);
+            Method size = data.getClass().getMethod("getCmdListVtxBufferSize", int.class);
+            int[] vertices = new int[Math.max(0, lists)];
+            for (int i = 0; i < vertices.length; i++) {
+                vertices[i] = (int) size.invoke(data, i);
+            }
+            return vertices;
+        } finally {
+            Object restore = current.invoke(null);
+            ptr.setLong(restore, previous);
+            setCurrent.invoke(null, restore);
+        }
+    }
+
+    public static boolean editorVisible() throws ReflectiveOperationException {
+        return (boolean) type("editor.ui.ReplayUI").getMethod("isActive").invoke(null);
+    }
+
+    public static float uiScale() throws ReflectiveOperationException {
+        return (float) type("editor.ui.ReplayUI").getMethod("getUiScale").invoke(null);
+    }
+
+    public static void uiZoom(float zoom) throws ReflectiveOperationException {
+        type("editor.ui.ReplayUI").getField("newGlobalScale").setFloat(null, zoom);
+    }
+
+    private static Object currentState() throws ReflectiveOperationException {
+        Object state = type("state.EditorStateManager").getMethod("getCurrent").invoke(null);
+        if (state == null) {
+            throw new IllegalStateException("no editor state");
+        }
+        return state;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static int addScene(String name, List<List<de.lardtom.propwash.video.record.path.PathKeyframe>> cameraTracks, int fovKeys, int imguiColour,
+                               double eyeHeight) throws ReflectiveOperationException {
+        Object state = currentState();
+        Class<?> keyframeType = type("keyframe.KeyframeType");
+        Class<?> interpolation = type("keyframe.interpolation.InterpolationType");
+        Object smooth = interpolation.getMethod("valueOf", String.class).invoke(null, "SMOOTH");
+        Object hold = interpolation.getMethod("valueOf", String.class).invoke(null, "HOLD");
+        Object cameraType = type("keyframe.types.CameraKeyframeType").getField("INSTANCE").get(null);
+        Object fovType = type("keyframe.types.FOVKeyframeType").getField("INSTANCE").get(null);
+        java.lang.reflect.Constructor<?> camera = type("keyframe.impl.CameraKeyframe").getConstructor(Vector3d.class, float.class, float.class,
+                float.class, interpolation);
+        java.lang.reflect.Constructor<?> fov = type("keyframe.impl.FOVKeyframe").getConstructor(float.class, interpolation);
+        Class<?> trackClass = type("state.KeyframeTrack");
+        Object scene = type("state.EditorScene").getConstructor(String.class).newInstance(name);
+        List<Object> tracks = (List<Object>) scene.getClass().getField("keyframeTracks").get(scene);
+        int first = Integer.MAX_VALUE;
+        int last = Integer.MIN_VALUE;
+        for (List<de.lardtom.propwash.video.record.path.PathKeyframe> keys : cameraTracks) {
+            Object track = trackClass.getConstructor(keyframeType).newInstance(cameraType);
+            trackClass.getField("customColour").setInt(track, imguiColour);
+            Map<Integer, Object> map = (Map<Integer, Object>) trackClass.getField("keyframesByTick").get(track);
+            for (de.lardtom.propwash.video.record.path.PathKeyframe key : keys) {
+                map.put(key.tick(), camera.newInstance(new Vector3d(key.x(), key.y() - eyeHeight, key.z()), key.yaw(), key.pitch(), key.roll(), smooth));
+                first = Math.min(first, key.tick());
+                last = Math.max(last, key.tick());
+            }
+            tracks.add(track);
+        }
+        Object fovTrack = trackClass.getConstructor(keyframeType).newInstance(fovType);
+        trackClass.getField("customColour").setInt(fovTrack, imguiColour);
+        Map<Integer, Object> fovMap = (Map<Integer, Object>) trackClass.getField("keyframesByTick").get(fovTrack);
+        for (int i = 0; i < fovKeys && first <= last; i++) {
+            fovMap.put(first + (int) ((long) (last - first) * i / Math.max(1, fovKeys - 1)), fov.newInstance(70.0F, hold));
+        }
+        tracks.add(fovTrack);
+        long stamp = (long) state.getClass().getMethod("acquireWrite").invoke(state);
+        try {
+            List<Object> scenes = (List<Object>) state.getClass().getMethod("getScenes", long.class).invoke(state, stamp);
+            scenes.add(scene);
+            return scenes.size() - 1;
+        } finally {
+            state.getClass().getMethod("release", long.class).invoke(state, stamp);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void removeScene(int index) throws ReflectiveOperationException {
+        Object state = currentState();
+        long stamp = (long) state.getClass().getMethod("acquireWrite").invoke(state);
+        try {
+            List<Object> scenes = (List<Object>) state.getClass().getMethod("getScenes", long.class).invoke(state, stamp);
+            if (index >= 0 && index < scenes.size()) {
+                scenes.remove(index);
+            }
+        } finally {
+            state.getClass().getMethod("release", long.class).invoke(state, stamp);
+        }
+    }
+
+    public static int activeScene() throws ReflectiveOperationException {
+        Object state = currentState();
+        return (int) state.getClass().getMethod("getSceneIndex").invoke(state);
+    }
+
+    public static void activeScene(int index) throws ReflectiveOperationException {
+        Object state = currentState();
+        long stamp = (long) state.getClass().getMethod("acquireWrite").invoke(state);
+        try {
+            state.getClass().getMethod("setSceneIndex", int.class, long.class).invoke(state, index, stamp);
+        } finally {
+            state.getClass().getMethod("release", long.class).invoke(state, stamp);
+        }
+    }
+
+    public static Vector3d splinePosition(Vector3d p0, Vector3d p1, Vector3d p2, Vector3d p3, float time1, float time2, float time3, float amount)
+            throws ReflectiveOperationException {
+        return (Vector3d) type("spline.CatmullRom").getMethod("position", Vector3d.class, Vector3d.class, Vector3d.class, Vector3d.class, float.class,
+                float.class, float.class, float.class).invoke(null, p0, p1, p2, p3, time1, time2, time3, amount);
+    }
+
+    public static float splineDegrees(float p0, float p1, float p2, float p3, float time1, float time2, float time3, float amount)
+            throws ReflectiveOperationException {
+        return (float) type("spline.CatmullRom").getMethod("degrees", float.class, float.class, float.class, float.class, float.class, float.class,
+                float.class, float.class).invoke(null, p0, p1, p2, p3, time1, time2, time3, amount);
+    }
+
     public static int writtenTicks() {
         Object recorder = FlashbackBridge.recorder();
         return recorder == null ? -1 : FlashbackBridge.writtenTicks(recorder);

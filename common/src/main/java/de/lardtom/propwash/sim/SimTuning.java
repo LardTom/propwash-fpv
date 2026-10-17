@@ -27,7 +27,6 @@ public final class SimTuning {
     public boolean thermalLimits = true;
     public boolean escOvervoltage = true;
     public boolean sleepEnabled = true;
-    public boolean restFlat = true;
     public double gyroNoiseDps = 0.2;
     public double gyroVibrationDps = 1.0;
     public double gravityScale = 1.0;
@@ -58,7 +57,6 @@ public final class SimTuning {
         c.thermalLimits = this.thermalLimits;
         c.escOvervoltage = this.escOvervoltage;
         c.sleepEnabled = this.sleepEnabled;
-        c.restFlat = this.restFlat;
         c.gyroNoiseDps = this.gyroNoiseDps;
         c.gyroVibrationDps = this.gyroVibrationDps;
         c.gravityScale = this.gravityScale;

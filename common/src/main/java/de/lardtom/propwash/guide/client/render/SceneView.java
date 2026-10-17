@@ -11,6 +11,7 @@ import de.lardtom.propwash.guide.scene.SceneProjection;
 import de.lardtom.propwash.guide.scene.ScenePos;
 import de.lardtom.propwash.guide.scene.SceneState;
 import de.lardtom.propwash.guide.scenes.SceneKit;
+import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.race.GateGeometry;
 import de.lardtom.propwash.race.GateMount;
 import de.lardtom.propwash.race.GateSize;
@@ -164,7 +165,8 @@ public final class SceneView {
                 }
                 ItemStackRenderState render = this.items.computeIfAbsent(actor.id(), id -> new ItemStackRenderState());
                 Minecraft minecraft = Minecraft.getInstance();
-                RemoteGimbalRenderer.Pose pose = new RemoteGimbalRenderer.Pose(actor.leftX(), actor.leftY(), actor.rightX(), actor.rightY());
+                RemoteGimbalRenderer.Pose pose = RemoteGimbalRenderer.Pose.ofMode2(actor.leftX(), actor.leftY(), actor.rightX(), actor.rightY(),
+                        InputConfig.get().stickMode());
                 RemoteGimbalRenderer.extractPosed(stack, pose,
                         () -> minecraft.getItemModelResolver().updateForTopItem(render, stack, ItemDisplayContext.NONE, minecraft.level, null, 0));
                 ScenePos pos = actor.position();

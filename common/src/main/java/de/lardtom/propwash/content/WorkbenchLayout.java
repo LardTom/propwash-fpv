@@ -36,8 +36,8 @@ public final class WorkbenchLayout {
     public static final int ISSUE_BULLET = 4;
     public static final int ISSUE_BULLET_GAP = 5;
 
-    private static final int[] PART_X = {80, 80, 34, 126, 34, 126, 10, 150, 10, 150, 80, 80, 52, 108};
-    private static final int[] PART_Y = {64, 42, 30, 30, 98, 98, 30, 30, 98, 98, 20, 87, 64, 64};
+    private static final int[] PART_X = {80, 80, 34, 126, 34, 126, 10, 150, 10, 150, 80, 80, 52, 108, 30};
+    private static final int[] PART_Y = {64, 42, 30, 30, 98, 98, 30, 30, 98, 98, 20, 87, 64, 64, 64};
 
     private WorkbenchLayout() {
     }

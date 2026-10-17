@@ -167,6 +167,11 @@ final class ParamDerivation {
         final double[] hullX = new double[AirframeSpec.HULL_POINTS];
         final double[] hullY = new double[AirframeSpec.HULL_POINTS];
         final double[] hullZ = new double[AirframeSpec.HULL_POINTS];
+        int groundCount;
+        int groundMask;
+        final double[] groundX = new double[AirframeSpec.GROUND_POINTS];
+        final double[] groundY = new double[AirframeSpec.GROUND_POINTS];
+        final double[] groundZ = new double[AirframeSpec.GROUND_POINTS];
     }
 
     static double[] statorSize(MotorType motor) {
@@ -550,6 +555,7 @@ final class ParamDerivation {
         d.hullX[11] = 0.0;
         d.hullY[11] = bottom;
         d.hullZ[11] = 0.0;
+        groundPoints(d, 0.0, batteryFace, bw, bl, 0.0, frame.ducted, bottom);
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
         for (int k = 0; k < AirframeSpec.HULL_POINTS; k++) {
@@ -740,6 +746,7 @@ final class ParamDerivation {
         d.hullX[11] = -cx;
         d.hullY[11] = bottom;
         d.hullZ[11] = -cz;
+        groundPoints(d, -cx, batteryFace, body.bw, body.bl, -cz, d.ducted, bottom);
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
         for (int k = 0; k < AirframeSpec.HULL_POINTS; k++) {
@@ -749,6 +756,41 @@ final class ParamDerivation {
         d.hitboxWidth = 2.0 * half;
         d.hitboxHeight = maxY - minY;
         d.hitboxFootOffset = minY;
+    }
+
+    static void groundPoints(Draft d, double x, double face, double width, double length, double z, boolean ducted, double bottom) {
+        int n = AirframeSpec.HULL_POINTS;
+        System.arraycopy(d.hullX, 0, d.groundX, 0, n);
+        System.arraycopy(d.hullY, 0, d.groundY, 0, n);
+        System.arraycopy(d.hullZ, 0, d.groundZ, 0, n);
+        int mask = (1 << n) - 1;
+        mask &= ~(1 << 11);
+        for (int k = 8; k <= 9; k++) {
+            if (d.hullY[k] == face) {
+                mask &= ~(1 << k);
+            }
+        }
+        for (int c = 0; c < 4; c++) {
+            d.groundX[n] = x + ((c & 1) == 0 ? -0.5 : 0.5) * width;
+            d.groundY[n] = face;
+            d.groundZ[n] = z + ((c & 2) == 0 ? -0.5 : 0.5) * length;
+            mask |= 1 << n;
+            n++;
+        }
+        if (ducted) {
+            for (int i = 0; i < AirframeSpec.MOTORS; i++) {
+                d.groundX[n] = d.hullX[i];
+                d.groundY[n] = Math.min(bottom, d.hullY[i]);
+                d.groundZ[n] = d.hullZ[i];
+                mask |= 1 << n;
+                if (d.groundY[n] <= d.hullY[4 + i]) {
+                    mask &= ~(1 << (4 + i));
+                }
+                n++;
+            }
+        }
+        d.groundCount = n;
+        d.groundMask = mask;
     }
 
     static void throttleWeights(Draft d, double[] px, double[] pz) {

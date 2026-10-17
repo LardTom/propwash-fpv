@@ -2,6 +2,7 @@ package de.lardtom.propwash.video;
 
 public final class FeedInput {
     public FeedLook look = FeedLook.CLEAN;
+    public DigitalProfile digitalProfile = DigitalProfile.ADAPTIVE;
     public boolean connected;
     public boolean snowOnLoss;
     public float quality;

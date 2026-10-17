@@ -9,6 +9,8 @@ import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.client.Screenshots;
 import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.video.AnalogBreakup;
+import de.lardtom.propwash.video.DigitalBreakup;
 import de.lardtom.propwash.video.LinkBudget;
 import de.lardtom.propwash.video.SpectateServer;
 import de.lardtom.propwash.video.link.Medium;
@@ -53,6 +55,8 @@ public final class ShadowSelfTests {
     private static final int TRUNK_HEIGHT = 5;
     private static final int FOREST_PILOT = 50;
     private static final double HOUSE_RING = 7.0;
+    private static final int BANDO_ROOM = 4;
+    private static final int BANDO_FRONT = -2;
     private static final String FUTURE = "shadow_future";
     private static final String PROBE = "shadow_probe";
     private static final String MOVED = "shadow_moved";
@@ -77,6 +81,8 @@ public final class ShadowSelfTests {
     private static final double PLACE_TOLERANCE = 0.03;
     private static final double MATCH_DB = 1.5;
     private static final double MAX_AVERAGE_TICK_MS = 3.0;
+    private static final String[] ANALOG_STAGES = {"sauber", "Störstreifen", "Farbverlust", "Schnee", "Rauschen"};
+    private static final String[] DIGITAL_STAGES = {"sauber", "weicher", "Blöcke", "Standbilder", "verloren"};
     private static final AtomicReference<BlockPos> ORIGIN = new AtomicReference<>();
     private static final List<BlockPos> PLACED = new CopyOnWriteArrayList<>();
     private static final AtomicInteger DRONE = new AtomicInteger(-1);
@@ -88,15 +94,23 @@ public final class ShadowSelfTests {
 
     private static Probe[] probes() {
         List<Probe> list = new ArrayList<>();
-        list.add(new Probe("1 Baum, 20 m", Lane.TREE, 20, 0.0, 0.0, 13.7));
-        list.add(new Probe("1 Baum, 50 m", Lane.TREE, 50, 0.0, 0.0, 13.8));
-        list.add(new Probe("1 Baum, 90 m", Lane.TREE, 90, 0.0, 0.0, 13.8));
-        list.add(new Probe("Steinhaus, 30 m", Lane.HOUSE, 30, 0.0, 0.0, 18.9));
-        list.add(new Probe("Steinhaus, 60 m", Lane.HOUSE, 60, 0.0, 0.0, 21.1));
-        list.add(new Probe("Wald, 50 m", Lane.FOREST, FOREST_PILOT, 0.0, 0.0, 29.6));
+        list.add(new Probe("1 Baum, 20 m", Lane.TREE, 20, 0.0, 0.0, 14.0));
+        list.add(new Probe("1 Baum, 50 m", Lane.TREE, 50, 0.0, 0.0, 13.9));
+        list.add(new Probe("1 Baum, 90 m", Lane.TREE, 90, 0.0, 0.0, 14.4));
+        list.add(new Probe("Steinhaus, 30 m", Lane.HOUSE, 30, 0.0, 0.0, 13.6));
+        list.add(new Probe("Steinhaus, 60 m", Lane.HOUSE, 60, 0.0, 0.0, 14.7));
+        list.add(new Probe("Wald, 50 m", Lane.FOREST, FOREST_PILOT, 0.0, 0.0, 22.7));
         list.add(new Probe("freies Feld, 90 m", Lane.OPEN, 90, 0.0, 0.0, 0.0));
+        double[][] bando = {{9.0, 18.1, 27.2}, {9.0, 18.1, 27.1}};
+        int[] bandoPilot = {30, 60};
+        for (int i = 0; i < bandoPilot.length; i++) {
+            for (int walls = 1; walls <= 3; walls++) {
+                list.add(new Probe(String.format(Locale.ROOT, "Bando aus Beton, %d %s, Pilot %d m davor", walls, walls == 1 ? "Wand" : "Wände", bandoPilot[i]),
+                        Lane.BANDO, bandoPilot[i], BANDO_ROOM * (walls - 1), 0.0, bando[i][walls - 1]));
+            }
+        }
         double[] offsets = {-3.0, -1.5, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.5, 3.0};
-        double[] past = {0.0, 0.0, 1.6, 6.2, 10.9, 13.8, 10.9, 6.2, 1.6, 0.0, 0.0};
+        double[] past = {0.0, 0.0, 1.3, 4.4, 8.4, 13.9, 8.4, 4.4, 1.3, 0.0, 0.0};
         for (int i = 0; i < offsets.length; i++) {
             list.add(new Probe(String.format(Locale.ROOT, "Vorbeiflug am Baum, 50 m, %+.2f m seitlich", offsets[i]), Lane.TREE, 50, 0.0,
                     offsets[i], past[i]));
@@ -104,14 +118,14 @@ public final class ShadowSelfTests {
         for (int degrees = 0; degrees < 360; degrees += 45) {
             double angle = Math.toRadians(degrees);
             list.add(new Probe("ums Steinhaus, 60 m, " + degrees + "°", Lane.HOUSE, 60, HOUSE_RING * (Math.cos(angle) - 1.0),
-                    HOUSE_RING * Math.sin(angle), degrees == 0 ? 21.1 : 0.0));
+                    HOUSE_RING * Math.sin(angle), degrees == 0 ? 14.7 : 0.0));
         }
         return list.toArray(new Probe[0]);
     }
 
     public static void register() {
         SelfTest.clientStep("video: Funk-Material der Blöcke", 20, ShadowSelfTests::materialStep);
-        SelfTest.clientStep("video: Abschattung hinter Baum, Haus und Wald, Vorbeiflug und Runde ums Haus", 6000, ShadowSelfTests::flightStep);
+        SelfTest.clientStep("video: Abschattung hinter Baum, Haus, Bando und Wald, Vorbeiflug und Runde ums Haus", 7500, ShadowSelfTests::flightStep);
     }
 
     public static void registerShowcase() {
@@ -129,12 +143,28 @@ public final class ShadowSelfTests {
         shot(Lane.HOUSE, 40, VideoSystem.DIGITAL, "Digitalbild hinter einem Steinhaus, 40 m");
         shot(Lane.FOREST, 30, VideoSystem.ANALOG, "Analogbild im Wald, 30 m");
         shot(Lane.FOREST, 30, VideoSystem.DIGITAL, "Digitalbild im Wald, 30 m");
+        bandoShot(70, 1, VideoSystem.ANALOG, "Störstreifen");
+        bandoShot(30, 2, VideoSystem.ANALOG, "Farbverlust");
+        bandoShot(45, 2, VideoSystem.ANALOG, "Schnee");
+        bandoShot(30, 3, VideoSystem.ANALOG, "Rauschen");
+        bandoShot(60, 1, VideoSystem.DIGITAL, "sauber");
+        bandoShot(40, 2, VideoSystem.DIGITAL, "weicher");
+        bandoShot(60, 2, VideoSystem.DIGITAL, "Blöcke");
+        bandoShot(71, 2, VideoSystem.DIGITAL, "Standbilder");
+        bandoShot(60, 3, VideoSystem.DIGITAL, "verloren");
         SelfTest.clientStep("bildschirmfotos: Abschattung aufräumen", 600, ShadowSelfTests::cleanupStep);
     }
 
     private static void shot(Lane lane, int distance, VideoSystem system, String title) {
         String file = "vtx_shadow_" + lane.name().toLowerCase(Locale.ROOT) + "_" + distance + "_" + system.name().toLowerCase(Locale.ROOT);
-        Screenshots.step("bildschirmfotos: Abschattung – " + title, file, 40, new ShadowScene(lane, distance, system));
+        Screenshots.step("bildschirmfotos: Abschattung – " + title, file, 40, new ShadowScene(lane, distance, system, 0.0, null));
+    }
+
+    private static void bandoShot(int distance, int walls, VideoSystem system, String stage) {
+        String file = "vtx_signal_bando_" + walls + "_" + distance + "_" + system.name().toLowerCase(Locale.ROOT);
+        String title = String.format(Locale.ROOT, "%s im Bando hinter %d %s, Pilot %d m davor (%s)", system == VideoSystem.DIGITAL ? "Digitalbild" : "Analogbild",
+                walls, walls == 1 ? "Wand" : "Wänden", distance, stage);
+        Screenshots.step("bildschirmfotos: Abschattung – " + title, file, 40, new ShadowScene(Lane.BANDO, distance, system, BANDO_ROOM * (walls - 1), stage));
     }
 
     private static StepResult materialStep(SelfTest.StepContext ctx) {
@@ -150,7 +180,11 @@ public final class ShadowSelfTests {
                 {Blocks.SNOW_BLOCK, RfMaterial.SNOW}, {Blocks.POWDER_SNOW, RfMaterial.SNOW}, {Blocks.WOOL.pick(DyeColor.WHITE), RfMaterial.CLOTH},
                 {Blocks.IRON_BLOCK, RfMaterial.METAL}, {Blocks.IRON_DOOR, RfMaterial.METAL}, {Blocks.IRON_BARS, RfMaterial.METAL_MESH},
                 {Blocks.SHORT_GRASS, RfMaterial.PLANT}, {Blocks.POPPY, RfMaterial.PLANT}, {Blocks.WHEAT, RfMaterial.PLANT},
-                {Blocks.CACTUS, RfMaterial.TRUNK}, {Blocks.LAVA, RfMaterial.EARTH}, {Blocks.COBWEB, RfMaterial.PLANT}};
+                {Blocks.CACTUS, RfMaterial.TRUNK}, {Blocks.LAVA, RfMaterial.EARTH}, {Blocks.COBWEB, RfMaterial.PLANT},
+                {Blocks.TERRACOTTA, RfMaterial.EARTH}, {Blocks.DYED_TERRACOTTA.pick(DyeColor.ORANGE), RfMaterial.EARTH},
+                {Blocks.SANDSTONE, RfMaterial.EARTH}, {Blocks.RED_SANDSTONE, RfMaterial.EARTH}, {Blocks.END_STONE, RfMaterial.EARTH},
+                {Blocks.GLAZED_TERRACOTTA.pick(DyeColor.ORANGE), RfMaterial.MASONRY}, {Blocks.CUT_SANDSTONE, RfMaterial.MASONRY},
+                {Blocks.END_STONE_BRICKS, RfMaterial.MASONRY}};
         StringBuilder wrong = new StringBuilder();
         for (Object[] row : expected) {
             BlockState state = ((Block) row[0]).defaultBlockState();
@@ -289,6 +323,10 @@ public final class ShadowSelfTests {
         if (probe.expectedDb > 0.0 && probe.expectedDb < 3.0 && !(video.scanCenterLossDb() == 0.0 && db > 0.5)) {
             return fail(ctx, String.format(Locale.ROOT, "%s: knapp vorbei sollte bei freiem Mittelstrahl schon kosten (Mittelstrahl %.1f dB, gesamt %.1f dB)",
                     probe.name, video.scanCenterLossDb(), db));
+        }
+        if (drone != null && ControlLinkScan.INSTANCE.videoBandLossDb(drone) != db) {
+            return fail(ctx, String.format(Locale.ROOT, "%s: Steuerstrecke sieht %.2f dB statt der Abschattung der Videostrecke %.2f dB", probe.name,
+                    ControlLinkScan.INSTANCE.videoBandLossDb(drone), db));
         }
         float expected = (float) LinkBudget.quality(VideoSystem.ANALOG, distance, VideoType.ANALOG_RACE.rangeBlocks, db);
         if (Math.abs(video.rawQuality() - expected) > 0.02F) {
@@ -436,7 +474,7 @@ public final class ShadowSelfTests {
         int x0 = player.getBlockX();
         int z0 = player.getBlockZ() + SITE_OFFSET_Z;
         for (int cx = (x0 - 8) >> 4; cx <= (x0 + TREE_X + 24) >> 4; cx++) {
-            for (int cz = (z0 - 60) >> 4; cz <= (z0 + 130) >> 4; cz++) {
+            for (int cz = (z0 - 110) >> 4; cz <= (z0 + 130) >> 4; cz++) {
                 level.getChunk(cx, cz);
             }
         }
@@ -446,6 +484,7 @@ public final class ShadowSelfTests {
         int xt = x0 + TREE_X;
         oak(level, xt, y0, z0 + Lane.TREE.z, TRUNK_HEIGHT, xt - x0, 0);
         house(level, xt - 6, y0, z0 + Lane.HOUSE.z - 3);
+        bando(level, xt + BANDO_FRONT, y0, z0 + Lane.BANDO.z);
         int fx = xt - FOREST_PILOT;
         int fz = z0 + Lane.FOREST.z;
         for (int x = FOREST_PILOT - 15; x <= FOREST_PILOT + 12; x += 5) {
@@ -507,6 +546,27 @@ public final class ShadowSelfTests {
                 if (!edge) {
                     put(level, new BlockPos(x, y0 + 5, z), Blocks.OAK_SLAB.defaultBlockState());
                 }
+            }
+        }
+    }
+
+    private static void bando(ServerLevel level, int x0, int y0, int zc) {
+        int length = 3 * BANDO_ROOM;
+        for (int x = x0; x <= x0 + length; x++) {
+            for (int y = 0; y <= 6; y++) {
+                for (int z = zc - 8; z <= zc + 8; z++) {
+                    boolean shell = x == x0 || x == x0 + length || y == 6 || z == zc - 8 || z == zc + 8;
+                    boolean inner = (x - x0) % BANDO_ROOM == 0;
+                    if (shell || inner) {
+                        DyeColor color = y == 1 ? DyeColor.ORANGE : y == 3 ? DyeColor.CYAN : Math.floorMod(z, 4) == 0 ? DyeColor.YELLOW : DyeColor.LIGHT_GRAY;
+                        put(level, new BlockPos(x, y0 + y, z), Blocks.CONCRETE.pick(color).defaultBlockState());
+                    }
+                }
+            }
+        }
+        for (int room = 0; room < 3; room++) {
+            for (int z = zc - 6; z <= zc + 6; z += 3) {
+                put(level, new BlockPos(x0 + room * BANDO_ROOM + 2, y0 + 5, z), Blocks.LIGHT.defaultBlockState());
             }
         }
     }
@@ -601,7 +661,8 @@ public final class ShadowSelfTests {
         TREE(0, 5.5, 1.5, false),
         HOUSE(40, 4.5, 2.0, false),
         FOREST(90, 0.5, 2.5, true),
-        OPEN(-40, 5.5, 10.0, false);
+        OPEN(-40, 5.5, 10.0, false),
+        BANDO(-90, 0.5, 2.0, false);
 
         private final int z;
         private final double droneX;
@@ -629,11 +690,19 @@ public final class ShadowSelfTests {
         private final Lane lane;
         private final int distance;
         private final VideoSystem system;
+        private final double dx;
+        private final @Nullable String stage;
 
-        private ShadowScene(Lane lane, int distance, VideoSystem system) {
+        private ShadowScene(Lane lane, int distance, VideoSystem system, double dx, @Nullable String stage) {
             this.lane = lane;
             this.distance = distance;
             this.system = system;
+            this.dx = dx;
+            this.stage = stage;
+        }
+
+        private Vec3 target() {
+            return antenna(this.lane).add(this.dx, 0.0, 0.0);
         }
 
         @Override
@@ -645,9 +714,10 @@ public final class ShadowSelfTests {
                     ServerPlayer player = player(server);
                     save(player);
                     ensureSite(player);
-                    placePilot(player, this.lane, this.distance, antenna(this.lane));
+                    placePilot(player, this.lane, this.distance, this.target());
                     player.setItemSlot(EquipmentSlot.HEAD, goggles(this.system));
                     QuadcopterEntity drone = spawnDrone(player.level(), this.lane, this.system);
+                    moveDrone(drone, this.lane, this.target());
                     SpectateServer.simulateTransmitter(drone, PILOT);
                     SpectateServer.refreshSoon();
                 }));
@@ -683,15 +753,38 @@ public final class ShadowSelfTests {
                 return ctx.tick() - (int) state.get(REQUESTED) > 300 ? StepResult.fail("Chunks an der Testdrohne fehlen beim Zuschauen")
                         : StepResult.pending();
             }
+            if (this.stage == null) {
+                return StepResult.pass();
+            }
+            VideoState video = VideoState.INSTANCE;
+            if (!state.containsKey(ARRIVED)) {
+                state.put(ARRIVED, ctx.tick());
+                state.put(ROUNDS, video.scanRounds());
+                return StepResult.pending();
+            }
+            if (ctx.tick() - (int) state.get(ARRIVED) < SETTLE_TICKS * 3 || video.scanRounds() - (int) state.get(ROUNDS) < SETTLE_ROUNDS) {
+                return StepResult.pending();
+            }
+            String shown = this.system == VideoSystem.DIGITAL ? DIGITAL_STAGES[DigitalBreakup.stage(video.rawQuality()).ordinal()]
+                    : ANALOG_STAGES[AnalogBreakup.stage(video.rawQuality()).ordinal()];
+            if (!shown.equals(this.stage)) {
+                return StepResult.fail(String.format(Locale.ROOT, "Bando %d m, %s: Stufe %s statt %s (%.1f dB, Signal %.2f)", this.distance, this.system,
+                        shown, this.stage, video.obstructionDb(), video.rawQuality()));
+            }
+            boolean black = video.noSignal();
+            if (this.system == VideoSystem.DIGITAL && black != "verloren".equals(this.stage)) {
+                return ctx.tick() - (int) state.get(ARRIVED) > 200 ? StepResult.fail("Bando " + this.distance + " m: Schwarzbild " + black
+                        + " passt nicht zur Stufe " + this.stage) : StepResult.pending();
+            }
             return StepResult.pass();
         }
 
         @Override
         public void finish(SelfTest.StepContext ctx) {
             VideoState video = VideoState.INSTANCE;
-            ctx.log(String.format(Locale.ROOT, "%s %s %d m: %.1f dB Abschattung, Abstand %.1f m, Signal %.2f, Rauschen %.2f, verloren %s",
-                    this.lane, this.system, this.distance, video.obstructionDb(), video.distanceBlocks(), video.signalQuality(),
-                    video.noiseLevel(), video.videoLost()));
+            ctx.log(String.format(Locale.ROOT, "%s %s %d m%s: %.1f dB Abschattung, Abstand %.1f m, Signal %.2f (roh %.2f), Rauschen %.2f, verloren %s, Latenz %.0f ms",
+                    this.lane, this.system, this.distance, this.stage == null ? "" : " (" + this.stage + ")", video.obstructionDb(), video.distanceBlocks(),
+                    video.signalQuality(), video.rawQuality(), video.noiseLevel(), video.videoLost(), video.latencyNanos() / 1.0E6));
             SpectateSession.INSTANCE.stop(Minecraft.getInstance(), true);
         }
     }

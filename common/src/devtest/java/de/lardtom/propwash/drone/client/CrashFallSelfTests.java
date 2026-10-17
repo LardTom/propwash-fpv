@@ -182,12 +182,11 @@ final class CrashFallSelfTests {
                 drone.getY() - arena[1], drone.supportGap(PROBE), t.speed, t.grounded, t.sleeping, t.armed);
     }
 
-    private static boolean landed(QuadcopterEntity drone, int[] arena) {
-        return drone.getY() - arena[1] < ON_GROUND && drone.supportGap(PROBE) < SUPPORTED;
-    }
-
     private static boolean landed(QuadcopterEntity drone, int[] arena, DroneSim sim) {
-        return landed(drone, arena) && (sim.telemetry().grounded || sim.telemetry().sleeping);
+        double lowest = drone.getY() - sim.params().hitboxFootOffset + sim.lowestPointOffset();
+        double lift = Math.max(0.0, drone.getY() - lowest);
+        return lowest - arena[1] < ON_GROUND && drone.supportGap(PROBE) - lift < SUPPORTED
+                && (sim.telemetry().grounded || sim.telemetry().sleeping);
     }
 
     static StepResult wallCrashStep(SelfTest.StepContext ctx, int droneId) {

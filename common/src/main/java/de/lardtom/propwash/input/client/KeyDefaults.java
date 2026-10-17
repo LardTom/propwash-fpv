@@ -3,11 +3,13 @@ package de.lardtom.propwash.input.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.input.SwitchFunction;
+import net.minecraft.nbt.CompoundTag;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public final class KeyDefaults {
@@ -32,6 +34,7 @@ public final class KeyDefaults {
     public static final Entry POS_HOLD = own("drone_pos_hold", InputConstants.KEY_NUMPAD5, false);
     public static final Entry MODE_3D = own("drone_mode_3d", InputConstants.KEY_NUMPAD6, false);
     public static final Entry FLIP_UPRIGHT = own("drone_flip_upright", InputConstants.KEY_U, false);
+    public static final Entry TURTLE = own("drone_turtle", InputConstants.KEY_NUMPAD8, false);
     public static final Entry EXIT = own("drone_exit", InputConstants.KEY_Y, false);
     public static final Entry BEEPER = own("beeper", InputConstants.KEY_PERIOD, false);
     public static final Entry LEDS = own("drone_leds", InputConstants.KEY_F8, false);
@@ -40,7 +43,7 @@ public final class KeyDefaults {
 
     public static final Entry RESCUE = other("rescue", InputConstants.KEY_J);
     public static final Entry SET_HOME = other("set_home", InputConstants.KEY_COMMA);
-    public static final Entry RACE_RESTART = other("race_restart", InputConstants.KEY_BACKSPACE);
+    public static final Entry RESET = other("reset", InputConstants.KEY_BACKSPACE);
     public static final Entry CONFIGURATOR = other("configurator", InputConstants.KEY_K);
     public static final Entry FLIGHT_SCHOOL = other("flight_school", InputConstants.KEY_M);
     public static final Entry SELFTEST = other("selftest", UNBOUND);
@@ -51,18 +54,39 @@ public final class KeyDefaults {
     public static final Entry CARGO_DROP = other("drone_cargo_drop", InputConstants.KEY_RETURN);
     public static final Entry BLACKBOX = other("blackbox", InputConstants.KEY_NUMPAD7);
     public static final Entry DRONE_TRAILS = other("drone_trails", UNBOUND);
+    public static final Entry VTX_POWER = other("vtx_power", InputConstants.KEY_F10);
+    public static final Entry ACCESSORY_1 = other("accessory_action_1", InputConstants.KEY_NUMPAD9);
+    public static final Entry ACCESSORY_2 = other("accessory_action_2", InputConstants.KEY_NUMPAD0);
+    public static final Entry ACCESSORY_3 = other("accessory_action_3", InputConstants.KEY_NUMPADENTER);
+    public static final Entry ACCESSORY_4 = other("accessory_action_4", InputConstants.KEY_ADD);
+    public static final List<Entry> ACCESSORY_ACTIONS = List.of(ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4);
 
     public static final List<Entry> OWN = List.of(THROTTLE_UP, THROTTLE_DOWN, YAW_LEFT, YAW_RIGHT, PITCH_FORWARD, PITCH_BACK, ROLL_LEFT,
-            ROLL_RIGHT, MOUSE_CENTER, ARM, FLIGHT_MODE, MODE_ACRO, MODE_ANGLE, MODE_HORIZON, ALT_HOLD, POS_HOLD, MODE_3D, FLIP_UPRIGHT, EXIT, BEEPER,
-            LEDS, RECEIVER_WIZARD);
-    public static final List<Entry> OTHER_MODULES = List.of(RESCUE, SET_HOME, RACE_RESTART, CONFIGURATOR, FLIGHT_SCHOOL, SELFTEST,
-            ACTION_CAM_RECORD, VIDEO_SPECTATE, GATE_ROTATE, GATE_EDIT_CURSOR, CARGO_DROP, BLACKBOX, DRONE_TRAILS);
+            ROLL_RIGHT, MOUSE_CENTER, ARM, FLIGHT_MODE, MODE_ACRO, MODE_ANGLE, MODE_HORIZON, ALT_HOLD, POS_HOLD, MODE_3D, FLIP_UPRIGHT, TURTLE, EXIT,
+            BEEPER, LEDS, RECEIVER_WIZARD);
+    public static final List<Entry> OTHER_MODULES = List.of(RESCUE, SET_HOME, RESET, CONFIGURATOR, FLIGHT_SCHOOL, SELFTEST,
+            ACTION_CAM_RECORD, VIDEO_SPECTATE, GATE_ROTATE, GATE_EDIT_CURSOR, CARGO_DROP, BLACKBOX, DRONE_TRAILS, VTX_POWER, ACCESSORY_1,
+            ACCESSORY_2, ACCESSORY_3, ACCESSORY_4);
     public static final List<Entry> COMMANDS = commands();
     public static final List<String> REMOVED = List.of("kb_arm", "kb_angle");
+    public static final Map<String, String> RENAMED = Map.of(mappingName("race_restart"), RESET.mappingName());
+    public static final String OPTION_PREFIX = "key_";
     public static final List<Set<String>> SHARED = List.of(Set.of(FLIGHT_MODE.mappingName(), GATE_ROTATE.mappingName()),
             Set.of(MOUSE_CENTER.mappingName(), VANILLA_PICK_ITEM), Set.of(MOUSE_CENTER.mappingName(), VANILLA_SPECTATOR_HOTBAR));
 
     private KeyDefaults() {
+    }
+
+    public static void migrateOptions(CompoundTag options) {
+        for (Map.Entry<String, String> renamed : RENAMED.entrySet()) {
+            String from = OPTION_PREFIX + renamed.getKey();
+            String to = OPTION_PREFIX + renamed.getValue();
+            Optional<String> value = options.getString(from);
+            if (value.isPresent() && !options.contains(to)) {
+                options.putString(to, value.get());
+            }
+            options.remove(from);
+        }
     }
 
     public static List<Entry> all() {
@@ -70,6 +94,10 @@ public final class KeyDefaults {
         all.addAll(OTHER_MODULES);
         all.addAll(COMMANDS);
         return all;
+    }
+
+    public static Entry accessory(SwitchFunction function) {
+        return ACCESSORY_ACTIONS.get(function.accessoryNumber() - 1);
     }
 
     public static Entry command(SwitchFunction function) {

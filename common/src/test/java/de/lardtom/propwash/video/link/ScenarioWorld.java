@@ -13,6 +13,8 @@ final class ScenarioWorld implements ObstructionTracer.World {
     static final Medium STONE = Medium.full(RfMaterial.EARTH);
     static final Medium WINDOW = new Medium(RfMaterial.GLASS, null, 1.5 / LEGACY_SOLID);
     static final Medium SLAB = new Medium(RfMaterial.TIMBER, new double[]{0.0, 0.0, 0.0, 1.0, 0.5, 1.0}, 1.0);
+    static final Medium CONCRETE = Medium.full(RfMaterial.CONCRETE);
+    static final Medium GLASS = new Medium(RfMaterial.GLASS, null, 1.5 / LEGACY_SOLID);
 
     private final Map<Long, Medium> blocks = new HashMap<>();
     private final boolean ground;
@@ -36,6 +38,27 @@ final class ScenarioWorld implements ObstructionTracer.World {
 
     ScenarioWorld set(int x, int y, int z, Medium medium) {
         this.blocks.put(key(x, y, z), medium);
+        return this;
+    }
+
+    ScenarioWorld fill(int x0, int y0, int z0, int x1, int y1, int z1, Medium medium) {
+        for (int x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
+            for (int y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) {
+                for (int z = Math.min(z0, z1); z <= Math.max(z0, z1); z++) {
+                    this.set(x, y, z, medium);
+                }
+            }
+        }
+        return this;
+    }
+
+    ScenarioWorld ridge(int crestX, int height, int halfWidth, int z0, int z1) {
+        for (int x = crestX - halfWidth; x <= crestX + halfWidth; x++) {
+            int top = (int) Math.round(height * (1.0 - Math.pow(Math.abs(x - crestX) / (double) halfWidth, 2.0)));
+            if (top > 0) {
+                this.fill(x, 0, z0, x, top - 1, z1, GROUND);
+            }
+        }
         return this;
     }
 

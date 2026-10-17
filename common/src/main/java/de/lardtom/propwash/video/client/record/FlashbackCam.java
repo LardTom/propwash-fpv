@@ -4,6 +4,7 @@ import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.compat.flashback.client.FlashbackBridge;
 import de.lardtom.propwash.compat.flashback.client.FlashbackScene;
+import de.lardtom.propwash.compat.flashback.client.FlashbackUiScale;
 import de.lardtom.propwash.content.ContentIds;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
@@ -15,8 +16,12 @@ import de.lardtom.propwash.video.client.VideoState;
 import de.lardtom.propwash.video.record.ClipInfo;
 import de.lardtom.propwash.video.record.path.CameraPathBuffer;
 import de.lardtom.propwash.video.record.path.CameraTrack;
-import de.lardtom.propwash.video.record.path.KeyframeDensity;
+import de.lardtom.propwash.video.record.path.FlashbackBudget;
+import de.lardtom.propwash.video.record.path.LiveTrackCounter;
+import de.lardtom.propwash.video.record.path.PathFrames;
+import de.lardtom.propwash.video.record.path.PathResampler;
 import de.lardtom.propwash.video.record.path.PathSample;
+import de.lardtom.propwash.video.record.path.Simplification;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -66,6 +71,10 @@ public final class FlashbackCam {
     private @Nullable String lastError;
     private @Nullable Result lastResult;
     private long samples;
+    private @Nullable LiveTrackCounter counter;
+    private float budgetScale = FlashbackBudget.MIN_ASSUMED_SCALE;
+    private boolean limitActive = true;
+    private @Nullable Budget budgetOverride;
 
     private FlashbackCam() {
     }
@@ -116,6 +125,25 @@ public final class FlashbackCam {
 
     public @Nullable CameraTrack lastTrack() {
         return this.lastTrack;
+    }
+
+    public void overrideBudget(@Nullable Budget budget) {
+        this.budgetOverride = budget;
+    }
+
+    public @Nullable Budget budget() {
+        Budget forced = this.budgetOverride;
+        if (forced != null) {
+            return forced;
+        }
+        LiveTrackCounter live = this.counter;
+        if (this.phase != Phase.RECORDING || live == null) {
+            return null;
+        }
+        int fov = Math.max(2, live.fovKeyframes());
+        int keyframes = live.cameraKeyframes();
+        return new Budget(FlashbackBudget.fill(keyframes, fov, this.budgetScale), keyframes, FlashbackBudget.maxCameraKeyframes(this.budgetScale, fov),
+                this.limitActive, this.budgetScale);
     }
 
     public @Nullable String lastError() {
@@ -194,6 +222,10 @@ public final class FlashbackCam {
         this.droneName = flown.hasCustomName() && flown.getCustomName() != null ? flown.getCustomName().getString() : null;
         this.startedFlashback = started;
         this.automatic = automatic;
+        RecordingConfig config = RecordingConfig.get();
+        this.counter = new LiveTrackCounter(config.flashbackSimplification());
+        this.limitActive = config.flashbackKeyframeLimit;
+        this.budgetScale = FlashbackUiScale.budgetScale(minecraft);
         this.buffer.clear();
         this.samples = 0L;
         this.waiting = true;
@@ -219,6 +251,10 @@ public final class FlashbackCam {
         this.buffer = new CameraPathBuffer();
         this.lastPath = captured;
         String name = this.droneName;
+        LiveTrackCounter live = this.counter;
+        Simplification wanted = live == null ? RecordingConfig.get().flashbackSimplification() : live.tolerance();
+        boolean limit = this.limitActive;
+        float scale = this.budgetScale;
         this.reset();
         if (id == null || captured.spanTicks() < 1.0) {
             if (finishFlashback) {
@@ -230,7 +266,6 @@ public final class FlashbackCam {
             return;
         }
         int flight = this.flights.merge(id, 1, Integer::sum);
-        KeyframeDensity density = RecordingConfig.get().flashbackDensity;
         String sceneName = name == null
                 ? Component.translatable("propwash.video.flashback.scene", flight).getString()
                 : Component.translatable("propwash.video.flashback.scene_named", name, flight).getString();
@@ -238,9 +273,9 @@ public final class FlashbackCam {
         String fovName = Component.translatable("propwash.video.flashback.track.fov").getString();
         double eye = Avatar.DEFAULT_EYE_HEIGHT;
         CompletableFuture<Handover> future = CompletableFuture
-                .supplyAsync(() -> CameraTrack.of(captured, density), Util.backgroundExecutor())
-                .thenApplyAsync(track -> this.handOver(minecraft, id, new FlashbackScene(sceneName, cameraName, fovName, TRACK_COLOUR, eye, track),
-                        reason, finishFlashback), minecraft);
+                .supplyAsync(() -> build(captured, wanted, limit, scale), Util.backgroundExecutor())
+                .thenApplyAsync(built -> this.handOver(minecraft, id, new FlashbackScene(sceneName, cameraName, fovName, TRACK_COLOUR, eye,
+                        built.track()), built, scale, reason, finishFlashback), minecraft);
         this.saving = future;
         future.whenCompleteAsync((handover, error) -> {
             if (this.saving == future) {
@@ -258,7 +293,15 @@ public final class FlashbackCam {
         }, minecraft);
     }
 
-    private Handover handOver(Minecraft minecraft, UUID id, FlashbackScene scene, StopReason reason, boolean finishFlashback) {
+    public static CameraTrack.Built build(CameraPathBuffer captured, Simplification wanted, boolean limit, float scale) {
+        PathFrames frames = PathFrames.of(PathResampler.perTick(captured));
+        int fov = Math.max(2, CameraTrack.fovKeys(frames.poses()).size());
+        int max = FlashbackBudget.maxCameraKeyframes(scale, fov);
+        return CameraTrack.build(frames, wanted, limit ? max : Integer.MAX_VALUE);
+    }
+
+    private Handover handOver(Minecraft minecraft, UUID id, FlashbackScene scene, CameraTrack.Built built, float scale, StopReason reason,
+                              boolean finishFlashback) {
         CameraTrack track = scene.track();
         this.lastTrack = track;
         if (!track.usable()) {
@@ -279,15 +322,25 @@ public final class FlashbackCam {
         if (finishFlashback) {
             FlashbackBridge.finishRecording();
         }
+        int max = FlashbackBudget.maxCameraKeyframes(scale, track.fov().size());
         Handover handover = new Handover(id, index, scene.name(), track.startTick(), track.endTick(), track.camera().size(), track.fov().size(),
-                finishFlashback, reason);
+                finishFlashback, reason, built.wantedKeyframes(), max, built.capped(), built.used().position(), built.used().angle(),
+                FlashbackBudget.fill(track.camera().size(), track.fov().size(), scale));
         this.lastHandover = handover;
         Constants.LOG.info("Action-Cam (Flashback): Szene \"{}\" an Flashback übergeben (Aufnahme {}, Ticks {}–{}, {} Keyframes)", scene.name(), id,
                 track.startTick(), track.endTick(), track.camera().size());
         Component detail = Component.translatable(finishFlashback ? "propwash.video.flashback.toast.saved_finished" : "propwash.video.flashback.toast.saved_detail",
                 scene.name(), ClipInfo.duration(Math.round(track.durationSeconds())), track.camera().size());
+        int accent = Palette.ACCENT;
+        if (handover.capped()) {
+            detail = Component.empty().append(detail).append(" ").append(Component.translatable("propwash.video.flashback.toast.thinned",
+                    track.camera().size(), SimplificationText.centimetres(handover.tolerancePosition()), SimplificationText.degrees(handover.toleranceAngle())));
+        } else if (handover.fill() > 1.0) {
+            detail = Component.empty().append(detail).append(" ").append(Component.translatable("propwash.video.flashback.toast.too_big"));
+            accent = Palette.WARNING;
+        }
         toast(minecraft, Component.translatable(reason.error() ? "propwash.video.flashback.toast.saved_after" : "propwash.video.flashback.toast.saved",
-                Component.translatable(reason.translationKey())), detail, Palette.ACCENT, STOP_TOAST_MILLIS);
+                Component.translatable(reason.translationKey())), detail, accent, STOP_TOAST_MILLIS);
         return handover;
     }
 
@@ -301,6 +354,7 @@ public final class FlashbackCam {
         this.startedFlashback = false;
         this.automatic = false;
         this.waiting = false;
+        this.counter = null;
     }
 
     @Nullable PathSample latestSample() {
@@ -375,6 +429,11 @@ public final class FlashbackCam {
                 && !minecraft.isPaused()) {
             this.lastError = "flashback not writing";
             this.stop(minecraft, StopReason.FLASHBACK_STOPPED);
+            return;
+        }
+        LiveTrackCounter live = this.counter;
+        if (live != null) {
+            live.update(this.buffer);
         }
     }
 
@@ -469,6 +528,13 @@ public final class FlashbackCam {
     }
 
     public record Handover(UUID replay, int sceneIndex, String scene, int startTick, int endTick, int keyframes, int fovKeyframes,
-                           boolean finishedRecording, StopReason reason) {
+                           boolean finishedRecording, StopReason reason, int wantedKeyframes, int maxKeyframes, boolean capped,
+                           double tolerancePosition, double toleranceAngle, double fill) {
+    }
+
+    public record Budget(double fill, int keyframes, int maxKeyframes, boolean limit, float scale) {
+        public boolean over() {
+            return this.keyframes > this.maxKeyframes;
+        }
     }
 }

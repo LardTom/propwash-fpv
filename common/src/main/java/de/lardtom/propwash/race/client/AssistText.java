@@ -1,84 +1,83 @@
 package de.lardtom.propwash.race.client;
 
+import de.lardtom.propwash.accessory.client.AddonFlightClient;
+import de.lardtom.propwash.build.DroneBuild;
+import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.drone.QuadcopterEntity;
-import de.lardtom.propwash.drone.RadioLink;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.race.AssistCheck;
+import de.lardtom.propwash.race.AssistReasons;
+import de.lardtom.propwash.race.AssistWords;
 import de.lardtom.propwash.race.LapAssist;
+import de.lardtom.propwash.race.RaceServer;
+import de.lardtom.propwash.rescue.RescueSupervisor;
+import de.lardtom.propwash.rescue.client.RescueController;
 import de.lardtom.propwash.rescue.client.RescueState;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.PhysicsRules;
-import de.lardtom.propwash.server.rules.RuleSpec;
+import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.HoldMode;
 import de.lardtom.propwash.video.client.VideoConfig;
 import de.lardtom.propwash.video.client.VideoSettings;
 import de.lardtom.propwash.video.client.VideoState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
+import java.util.Locale;
 
 public final class AssistText {
     private AssistText() {
     }
 
-    public static int evaluate(PilotSession session, QuadcopterEntity drone) {
+    public static AssistReasons evaluate(PilotSession session, QuadcopterEntity drone) {
         VideoState video = VideoState.INSTANCE;
         VideoConfig config = VideoSettings.get();
-        LapAssist.Flight flight = new LapAssist.Flight(session.holdMode() != HoldMode.OFF, RescueState.INSTANCE.active(),
-                ClientWorldRules.INSTANCE.physics().modified(), drone.build().isCreative(), !drone.build().buildable(), video.creative(),
-                !config.creativeLatencyFromModule, config.creativeLatencyMs, drone.build().video().latencyMs,
-                RadioLink.freeRange(Minecraft.getInstance().player), video.creative(), video.relayHops());
-        return LapAssist.of(flight);
+        DroneBuild build = drone.build();
+        AssistReasons reasons = AssistCheck.evaluate(new AssistCheck.Setup(session.holdMode(), rescueTrigger(), session.appliedPhysics(),
+                session.physicsModified(), build.isCreative(), RaceServer.issues(build), video.creative(), !config.creativeLatencyFromModule,
+                config.creativeLatencyMs, build.video().latencyMs).withZones(session.zoneResolution(), session.zoneBlendDetails(), session.physicsModified()));
+        DroneSim sim = session.sim();
+        String addon = AddonFlightClient.INSTANCE.engagedAssist(sim);
+        return AssistCheck.withAddon(reasons, addon, sim != null && addon != null && sim.assistOwnsHold());
+    }
+
+    public static AssistReasons preflight(@Nullable DroneBuild build, @Nullable VideoSystem goggles, HoldMode requestedHold) {
+        VideoConfig config = VideoSettings.get();
+        PhysicsRules physics = ClientWorldRules.INSTANCE.physics();
+        AssistCheck.Setup setup = AssistCheck.Setup.clean().withHold(requestedHold).withRescue(rescueTrigger()).withPhysics(physics, false);
+        if (build != null) {
+            setup = setup.withDrone(build.isCreative(), RaceServer.issues(build))
+                    .withGoggles(goggles == VideoSystem.CREATIVE, !config.creativeLatencyFromModule, config.creativeLatencyMs, build.video().latencyMs);
+        }
+        return AssistCheck.evaluate(setup);
+    }
+
+    public static @Nullable String rescueTrigger() {
+        if (!RescueState.INSTANCE.active()) {
+            return null;
+        }
+        RescueSupervisor.Trigger trigger = RescueController.INSTANCE.trigger();
+        return trigger == null ? "" : trigger.name().toLowerCase(Locale.ROOT);
+    }
+
+    public static Component reasons(AssistReasons reasons) {
+        return AssistWords.describe(reasons);
     }
 
     public static Component reasons(int mask) {
-        MutableComponent out = Component.empty();
-        List<LapAssist> list = LapAssist.list(mask);
-        for (int i = 0; i < list.size(); i++) {
-            if (i > 0) {
-                out.append(Component.translatable("propwash.race.assist.separator"));
-            }
-            out.append(reason(list.get(i)));
-        }
-        return out;
+        return AssistWords.describe(AssistReasons.of(mask));
     }
 
     public static Component storedReasons(int mask) {
-        MutableComponent out = Component.empty();
-        List<LapAssist> list = LapAssist.list(mask);
-        for (int i = 0; i < list.size(); i++) {
-            if (i > 0) {
-                out.append(Component.translatable("propwash.race.assist.separator"));
-            }
-            out.append(Component.translatable(list.get(i).translationKey()));
-        }
-        return out;
+        return AssistWords.describe(AssistReasons.of(mask));
+    }
+
+    public static Component storedReasons(AssistReasons reasons) {
+        return AssistWords.describe(reasons);
     }
 
     public static Component reason(LapAssist assist) {
-        return switch (assist) {
-            case WORLD_PHYSICS -> {
-                List<RuleSpec> changed = PhysicsRules.changed(ClientWorldRules.INSTANCE.values());
-                if (changed.isEmpty()) {
-                    yield Component.translatable(assist.translationKey());
-                }
-                MutableComponent names = Component.empty();
-                for (int i = 0; i < changed.size(); i++) {
-                    if (i > 0) {
-                        names.append(", ");
-                    }
-                    names.append(Component.translatable(changed.get(i).translationKey()));
-                }
-                yield Component.translatable(assist.translationKey() + ".rules", names);
-            }
-            case GOGGLES_LATENCY -> {
-                VideoConfig config = VideoSettings.get();
-                VideoState video = VideoState.INSTANCE;
-                int transmitter = video.camera() == null ? 0 : video.camera().latencyMs;
-                yield Component.translatable(assist.translationKey() + ".ms", config.creativeLatencyMs, transmitter);
-            }
-            default -> Component.translatable(assist.translationKey());
-        };
+        return AssistWords.reason(assist, List.of());
     }
 }

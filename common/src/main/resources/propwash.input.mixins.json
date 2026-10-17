@@ -6,6 +6,7 @@
   "mixins": [],
   "client": [
     "client.KeyMappingMixin",
+    "client.OptionsMixin",
     "client.SDLEventHandlerMixin"
   ],
   "server": [],

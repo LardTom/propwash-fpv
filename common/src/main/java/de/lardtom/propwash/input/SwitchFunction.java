@@ -12,7 +12,7 @@ public enum SwitchFunction {
     FLIP_OVER,
     SET_HOME,
     BEEPER,
-    RACE_RESTART,
+    RESET,
     RECORD,
     LEDS_OFF,
     ALT_HOLD,
@@ -20,6 +20,12 @@ public enum SwitchFunction {
     CARGO_DROP,
     MODE_3D,
     BLACKBOX,
+    VTX_POWER,
+    TURTLE,
+    ACCESSORY_1,
+    ACCESSORY_2,
+    ACCESSORY_3,
+    ACCESSORY_4,
     COMMAND_1,
     COMMAND_2,
     COMMAND_3,
@@ -30,6 +36,7 @@ public enum SwitchFunction {
     COMMAND_8;
 
     public static final int COMMAND_COUNT = 8;
+    public static final int ACCESSORY_COUNT = 4;
     private static final SwitchFunction[] VALUES = values();
 
     public String translationKey() {
@@ -42,6 +49,21 @@ public enum SwitchFunction {
 
     public int commandIndex() {
         return this.command() ? this.ordinal() - COMMAND_1.ordinal() : -1;
+    }
+
+    public boolean accessoryAction() {
+        return this.ordinal() >= ACCESSORY_1.ordinal() && this.ordinal() <= ACCESSORY_4.ordinal();
+    }
+
+    public int accessoryNumber() {
+        return this.accessoryAction() ? this.ordinal() - ACCESSORY_1.ordinal() + 1 : 0;
+    }
+
+    public static SwitchFunction accessory(int number) {
+        if (number < 1 || number > ACCESSORY_COUNT) {
+            throw new IllegalArgumentException("Zubehör-Aktion " + number);
+        }
+        return VALUES[ACCESSORY_1.ordinal() + number - 1];
     }
 
     public static SwitchFunction command(int index) {
@@ -71,14 +93,15 @@ public enum SwitchFunction {
 
     public boolean supportsToggle() {
         return switch (this) {
-            case ARM, ANGLE, HORIZON, RESCUE, BEEPER, RECORD, LEDS_OFF, ALT_HOLD, POS_HOLD, MODE_3D, BLACKBOX -> true;
-            case FLIP_OVER, SET_HOME, RACE_RESTART, CARGO_DROP -> false;
+            case ARM, ANGLE, HORIZON, RESCUE, BEEPER, RECORD, LEDS_OFF, ALT_HOLD, POS_HOLD, MODE_3D, BLACKBOX, TURTLE -> true;
+            case FLIP_OVER, SET_HOME, RESET, CARGO_DROP, VTX_POWER -> false;
+            case ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4 -> false;
             case COMMAND_1, COMMAND_2, COMMAND_3, COMMAND_4, COMMAND_5, COMMAND_6, COMMAND_7, COMMAND_8 -> true;
         };
     }
 
     public boolean latchesOnGamepad() {
         return this == ARM || this == ANGLE || this == HORIZON || this == RESCUE || this == BEEPER || this == RECORD
-                || this == LEDS_OFF || this == ALT_HOLD || this == POS_HOLD || this == MODE_3D || this == BLACKBOX;
+                || this == LEDS_OFF || this == ALT_HOLD || this == POS_HOLD || this == MODE_3D || this == BLACKBOX || this == TURTLE;
     }
 }

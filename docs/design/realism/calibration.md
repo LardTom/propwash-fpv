@@ -105,6 +105,29 @@ Spannungseinbruch und Prop-Wirkungsgrad stimmen; Flug-Engine und Daten bleiben u
   Zeit aus dem Video). Ebenso notiert: die ESC-Eingangsgrenze von 80 % der Dauerangabe begrenzt einen 12-A-AIO mit
   frischem 680-mAh-Akku knapp (≈ −7 % Spitze), ein echter Bluejay-ESC begrenzt nicht.
 
+## Nachtrag 11.10. (0.5.0): Race-Preset mit True-X-Rahmen und flachem Race-Prop
+
+Nach dem Playtest fliegt das eingebaute Race-Preset auf einem True-X gezeichneten `race_5` mit dem neuen Prop
+`p51_29_3b` (5,1×2,9×3); Recherche, Prüfstandsdaten, Herleitung und alle Entscheidungen stehen in
+`motors-props.md` §12. Für die Kalibrierung zählt:
+
+| Aufbau | Masse g | S/G | Schwebegas % | Schweben | Reisen | Gemischt | Aggressiv | I Schweben / gemischt / Vollgas A | Topspeed km/h | T Motor °C 60 s / gemischt |
+|---|---|---|---|---|---|---|---|---|---|---|
+| PW race_5 bis 10.10. (`p51_3b`) | 430,2 | 13,3 | 19,2 | 12:07 | 8:37 | 3:07 (0,87 W/g) | 2:24 (1,14 W/g) | 4,03 / 16,9 / 124,7 | 168 | 94 / 59 |
+| PW race_5 ab 11.10. (`p51_29_3b`) | 430,6 | 13,1 | 19,0 | 11:48 | 7:48 | 2:55 (0,93 W/g) | 2:14 (1,22 W/g) | 4,13 / 18,1 / 130,3 | 147 | 96 / 61 |
+| Fenster 5″ Race (§1) | | | | 9:04–13:37 | 6:48–10:05 | 2:43–3:24 | 1:57–2:43 | | | |
+
+- `tools/calibration.sh` mit den Daten von Just More Parts: 11/11 Tests, in `calibration.txt` ist nur die Zeile
+  `propwash:race_5` anders, alle 22 JMP-Presets und die übrigen vier eingebauten byte-gleich.
+- `motion.txt`: 1254 statt 1245 Varianten. Die 1201 gemeinsamen sind bitgleich (`acro`, `angle`, `drop`, `spec`); 44
+  Einzeltausch-Varianten des alten Race-Presets entfallen, 53 mit dem neuen Prop kommen dazu. `fall.txt`: nur die
+  beiden Zeilen `propwash:race_5` (flach fallen unverändert 18,0 m/s, Steigen 39,5 statt 45,8 m/s, kopfüber Vollgas
+  38,7 statt 44,2 m/s). `throttle_drop.txt` unverändert.
+- Goldens: `airframe_golden.txt` +34, `builtin_regression.txt` +27, `builtin_ground_rest.txt` +12 Zeilen, keine
+  bestehende Zeile geändert; das alte Race-Preset bleibt als `RACER_040` darin. `builtin_definitions.txt` nur
+  `RACE_5` (`shape=TRUE_X`). Der gemischte und aggressive Flug des Racers liegt mit 0,93 / 1,22 W/g näher an den
+  Rennwerten aus `builds.md` §7 (0,89 W/g Durchschnittspilot, 1,33 W/g Profi) als vorher.
+
 ## Nachtrag 08.10. (0.5.0): Steigflug-Schub nach Impulstheorie
 
 Das Flugmodell rechnet den Schub im Steigflug jetzt mit Impuls- und Blattelementtheorie statt linear

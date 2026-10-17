@@ -14,6 +14,7 @@ import de.lardtom.propwash.core.BoundDrone;
 import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.drone.bind.BindAccess;
 import de.lardtom.propwash.drone.bind.ReceiverBinds;
+import de.lardtom.propwash.drone.coating.DroneCoating;
 import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.server.WorldRules;
 import net.minecraft.ChatFormatting;
@@ -48,6 +49,9 @@ public final class DroneInteractions {
         }
         if (propType(stack).isPresent()) {
             return DroneInteraction.HeldKind.PROP;
+        }
+        if (stack.is(DroneModule.WATERPROOF_SPRAY.get())) {
+            return DroneInteraction.HeldKind.COATING;
         }
         return DroneInteraction.HeldKind.OTHER;
     }
@@ -87,6 +91,7 @@ public final class DroneInteractions {
             case LOCKED -> player.sendOverlayMessage(Component.translatable("propwash.drone.battery.locked").withStyle(ChatFormatting.RED));
             case PICK_UP -> DronePiloting.pickUp(player, drone);
             case OCCUPIED -> player.sendOverlayMessage(Component.translatable("propwash.drone.pilot.occupied").withStyle(ChatFormatting.RED));
+            case COAT -> DroneCoating.coat(player, drone, held);
             case PASS -> {
             }
         }

@@ -12,6 +12,8 @@ final class FlatWorld {
     final StepResult result = new StepResult();
     final MoveReport report = new MoveReport();
     double groundY = 0.0;
+    double fluidY = Double.NEGATIVE_INFINITY;
+    boolean solidKnown = true;
     double wallX = Double.POSITIVE_INFINITY;
     double grip = 1.0;
     double restitution = -1.0;
@@ -50,13 +52,23 @@ final class FlatWorld {
         return this.y + this.foot;
     }
 
+    double lowest() {
+        return this.y + this.sim.ground.lowest(this.sim.params(), this.sim.body);
+    }
+
     void frame(double dt) {
         this.frame(Math.round(dt * 1e9));
     }
 
     void frame(long nanos) {
-        double distance = this.y - this.groundY;
+        double distance = this.y - Math.max(this.groundY, this.fluidY);
         this.env.groundDistance = distance <= RAYCAST_RANGE ? Math.max(0.0, distance) : Double.POSITIVE_INFINITY;
+        if (!this.solidKnown) {
+            this.env.solidDistance = Double.POSITIVE_INFINITY;
+        } else if (this.fluidY > this.groundY) {
+            double solid = this.y - this.groundY;
+            this.env.solidDistance = solid <= RAYCAST_RANGE ? Math.max(0.0, solid) : Double.POSITIVE_INFINITY;
+        }
         this.sim.step(nanos, this.input, this.env, this.result);
         this.move();
     }

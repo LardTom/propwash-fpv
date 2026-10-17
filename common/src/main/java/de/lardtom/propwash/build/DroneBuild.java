@@ -34,7 +34,7 @@ public record DroneBuild(FrameType frame, StackType stack, MotorType motor, Prop
     public static final DroneBuild FREESTYLE = new DroneBuild(FrameType.FREESTYLE_5, StackType.STACK_30, MotorType.M2207_1750,
             PropType.P51_3B, VideoType.DIGITAL_HD, BatteryType.B6S_1300);
     public static final DroneBuild RACER = new DroneBuild(FrameType.RACE_5, StackType.STACK_30, MotorType.M2306_1860,
-            PropType.P51_3B, VideoType.ANALOG_RACE, BatteryType.B6S_1100);
+            PropType.P51_29_3B, VideoType.ANALOG_RACE, BatteryType.B6S_1100);
     public static final DroneBuild LONG_RANGE = new DroneBuild(FrameType.LONG_RANGE_7, StackType.STACK_30, MotorType.M2807_1300,
             PropType.P7_2B, VideoType.DIGITAL_HD, BatteryType.B6S_4000_LION);
 

@@ -142,7 +142,8 @@ public final class RadioHud {
         g.text(font, label, x + 4, y + 1, d.armed ? Palette.ERROR : Palette.SUCCESS, false);
         String modeKey = d.holdMode == HoldMode.OFF ? d.mode.name() : d.holdMode.name();
         String prefix = d.mode3d && d.holdMode == HoldMode.OFF ? "propwash.osd.mode_3d." : "propwash.osd.mode.";
-        Component mode = Component.translatable(prefix + modeKey.toLowerCase(Locale.ROOT));
+        Component mode = d.turtle ? Component.translatable("propwash.osd.mode.turtle")
+                : Component.translatable(prefix + modeKey.toLowerCase(Locale.ROOT));
         g.text(font, mode, x + WIDTH - 3 - font.width(mode), y + 1, Palette.ACCENT, false);
         if (d.mode3d) {
             Component throttle = Component.translatable("propwash.osd.label.throttle").append(" ")

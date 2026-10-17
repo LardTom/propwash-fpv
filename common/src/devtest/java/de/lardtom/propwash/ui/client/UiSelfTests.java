@@ -65,6 +65,7 @@ public final class UiSelfTests {
         SelfTest.clientStep("ui: Speicherort je Tab und Tasten-Tab im Theme", 200, UiSelfTests::keysTabStep);
         SelfTest.clientStep("ui: PID-Wert über TuneAccess", 400, UiSelfTests::tuneStep);
         ArmAngleSelfTests.register();
+        CrashDisarmPlacementSelfTests.register();
         ConfigInputSelfTests.register();
         SliderTypingSelfTests.register();
         ThemeSelfTests.register();

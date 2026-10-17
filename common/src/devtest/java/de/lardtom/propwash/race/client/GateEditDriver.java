@@ -11,6 +11,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Util;
 import org.jspecify.annotations.Nullable;
 
 final class GateEditDriver {
@@ -63,6 +64,45 @@ final class GateEditDriver {
         release(mc, InputConstants.getKey(key.saveString()).getValue());
         key.setDown(false);
         return true;
+    }
+
+    static @Nullable String mouseTipProblem(GateEditor editor, boolean mouseFree, int guiWidth, int guiHeight, boolean roomy) {
+        GateEditPanel probe = new GateEditPanel(editor, mouseFree);
+        probe.layout(guiWidth, guiHeight);
+        String where = guiWidth + " × " + guiHeight + (mouseFree ? " (Maus frei)" : " (Anzeige)");
+        String key = GateEditor.cursorKeyName().getString();
+        String tip = GateEditPanel.mouseTip(mouseFree).getString();
+        if (key.isBlank() || !tip.contains(key)) {
+            return "Hinweis „" + tip + "“ nennt die Taste „" + key + "“ nicht";
+        }
+        boolean mac = Util.getPlatform() == Util.OS.OSX;
+        if (mac != key.contains("\u2325")) {
+            return "Taste heißt auf " + Util.getPlatform() + " „" + key + "“ (das Zeichen der Wahltaste gehört nur auf macOS dazu)";
+        }
+        if (probe.top() < 0 || probe.bottom() > guiHeight) {
+            return "Panel passt nicht in " + where + ": " + probe.top() + "–" + probe.bottom();
+        }
+        if (roomy && probe.compact()) {
+            return "Panel braucht in " + where + " die gedrängte Darstellung";
+        }
+        if (roomy && probe.tipBottom() - probe.tipTop() > Metrics.LINE_HEIGHT + 2) {
+            return "Hinweis „" + tip + "“ braucht in " + where + " mehr als eine Zeile";
+        }
+        if (probe.tipBottom() - probe.tipTop() < Metrics.LINE_HEIGHT || probe.tipTop() < probe.top() + 20) {
+            return "Hinweis zur freien Maus steht nicht unter der Kopfzeile in " + where + ": " + probe.tipTop() + "–" + probe.tipBottom();
+        }
+        for (GateEditModel.Row row : editor.model().rows(editor.model().page())) {
+            AbstractWidget slider = probe.control(row);
+            if (slider != null && slider.getY() < probe.tipBottom() + Metrics.LINE_HEIGHT) {
+                return "Hinweis zur freien Maus steht nicht über den Zeilen in " + where + ": Hinweis bis " + probe.tipBottom() + ", Zeile "
+                        + row + " bei " + slider.getY();
+            }
+        }
+        int inner = probe.width() - 2 * Metrics.PADDING;
+        if (!roomy && Minecraft.getInstance().font.width(tip) > inner + inner / 4) {
+            return "Hinweis „" + tip + "“ ist für die gedrängte Zeile zu lang (" + Minecraft.getInstance().font.width(tip) + " > " + inner + ")";
+        }
+        return null;
     }
 
     static @Nullable GateEditPanel panel(Minecraft mc) {

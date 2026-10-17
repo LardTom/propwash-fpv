@@ -7,13 +7,14 @@
   "max_prop_mm": 130,
   "motor_mounts": ["propwash:m22"],
   "stack_mounts": ["propwash:s30"],
-  "accessory_mounts": ["top", "bottom"],
+  "accessory_mounts": ["top", "bottom", "front"],
   "battery": {"on_top": true, "plate_mm": 30.0},
   "electronics_mm": 12.0,
   "camera": {"pos": [0.0, 17.2, -58.8], "tilt_deg": 28.0},
   "accessory_anchors": {
     "top": {"pos": [0.0, 34.7, -69.0], "tilt_deg": 22.0, "length_mm": 0.0},
-    "bottom": {"pos": [0.0, -3.0, -56.0], "tilt_deg": 30.0, "length_mm": 34.0}
+    "bottom": {"pos": [0.0, -3.0, -56.0], "tilt_deg": 30.0, "length_mm": 34.0},
+    "front": {"pos": [0.0, 0.0, -72.0], "tilt_deg": 0.0, "length_mm": 0.0}
   },
   "aero": {"frontal_area_m2": 0.012, "drag_coefficient": 0.9},
   "impact_tolerance": 8.0,

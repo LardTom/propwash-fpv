@@ -22,9 +22,14 @@ class ObstructionTracerTest {
     @Test
     void lossScalesWithWallThicknessAndCountsTheSurfacesOnce() {
         double one = ObstructionTracer.traceDb(0.5, 0.5, 0.5, 0.5, 0.5, 20.5, wall(5, 5, BRICK), 1000.0);
+        double two = ObstructionTracer.traceDb(0.5, 0.5, 0.5, 0.5, 0.5, 20.5, wall(5, 6, BRICK), 1000.0);
         double three = ObstructionTracer.traceDb(0.5, 0.5, 0.5, 0.5, 0.5, 20.5, wall(5, 7, BRICK), 1000.0);
         assertEquals(PER_METER + CROSSING, one, 1.0E-9);
-        assertEquals(3.0 * PER_METER + CROSSING, three, 1.0E-9);
+        assertEquals(2.0 * PER_METER + CROSSING, two, 1.0E-9);
+        assertEquals(RfMaterial.Wall.MAX_WALL_RUN_M * PER_METER + CROSSING, three, 1.0E-9);
+        Medium ground = Medium.full(RfMaterial.EARTH);
+        double hill = ObstructionTracer.traceDb(0.5, 0.5, 0.5, 0.5, 0.5, 20.5, wall(5, 9, ground), 1000.0);
+        assertEquals(5.0 * RfMaterial.EARTH.dbPerMeter() + RfMaterial.EARTH.dbPerCrossing(), hill, 1.0E-9);
     }
 
     @Test

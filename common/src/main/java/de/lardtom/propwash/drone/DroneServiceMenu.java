@@ -1,5 +1,6 @@
 package de.lardtom.propwash.drone;
 
+import de.lardtom.propwash.accessory.AccessoryModule;
 import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.PartWear;
@@ -49,6 +50,7 @@ public class DroneServiceMenu extends AbstractContainerMenu {
     public static final int UPTILT_BUTTON = 1000;
     public static final int UPTILT_BUTTON_MAX = UPTILT_BUTTON + (int) TuneMapping.CAMERA_UPTILT_MAX;
     public static final int RESET_BIND_BUTTON = 2000;
+    public static final int ACCESSORY_BUTTON = 3000;
     public static final int INV_START = PROP_END;
     public static final int HOTBAR_START = INV_START + 27;
     public static final int INV_END = HOTBAR_START + 9;
@@ -141,6 +143,11 @@ public class DroneServiceMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player, int buttonId) {
+        if (buttonId == ACCESSORY_BUTTON) {
+            QuadcopterEntity drone = this.drone();
+            return drone != null && this.parts instanceof DroneServiceContainer && player instanceof ServerPlayer serverPlayer
+                    && AccessoryModule.openMenu(serverPlayer, drone);
+        }
         boolean reset = buttonId == RESET_BIND_BUTTON;
         if (!reset && (buttonId < UPTILT_BUTTON || buttonId > UPTILT_BUTTON_MAX)) {
             return false;

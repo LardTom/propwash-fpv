@@ -8,8 +8,9 @@ Propwash-Teilen darin.
 
 Quellen: `bando.plan.*` (reines Java, keine Minecraft-Typen: Bauplan, Bausteine, Varianten, Paletten, Platzwahl,
 Prüfungen), `bando.BandoStructure`/`BandoPiece`/`BandoBlocks`/`BandoModule` (Strukturtyp, Teil, Blockzustände,
-Registrierung), `bando.BandoScene` + `bando.client.BandoClient` (Flugschule), `tools/data/bandos.py` (Strukturen, Tags,
-Strukturset, Beute), JUnit `bando.*Test`, Selbsttest `bando.client.BandoSelfTests`/`BandoWorldTests`.
+Registrierung), `bando.BandoMapItem` (Bando-Karte), `bando.BandoScene` + `bando.client.BandoClient` (Flugschule),
+`tools/data/bandos.py` (Strukturen, Tags, Strukturset, Beute, Bando-Karte), JUnit `bando.*Test`, Selbsttest
+`bando.client.BandoSelfTests`/`BandoWorldTests`/`BandoMapTests`.
 
 ## Familien und Varianten
 
@@ -213,6 +214,9 @@ Es gibt keine NBT-Vorlagen. Aus Variante und dem Seed des Strukturstarts entsteh
   Spitzenteile. Gemessen 2,55 Propwash-Stapel je Truhe, 43 % davon gebraucht.
 - Addons hängen eigene Beute ein: `PropwashApi.loot().inject(ResourceKey.create(Registries.LOOT_TABLE,
   Identifier.fromNamespaceAndPath("propwash", "chests/bando")), eigeneTabelle)`.
+- Dritter Pool (seit 0.5.2): in 10 % der Truhen eine Bando-Karte zum nächsten *anderen* unerkundeten Bando (siehe
+  „Bando-Karte“). Die Messung oben (2,55 Stapel, 43 % gebraucht) zählt nur die ersten beiden Pools; in der Flachwelt des
+  Selbsttests gibt es keine Bandos, die Karte entfällt dort.
 
 ## Seltenheit und Platzwahl
 
@@ -275,7 +279,48 @@ Es gibt keine NBT-Vorlagen. Aus Variante und dem Seed des Strukturstarts entsteh
   `{"other_set": "<set>", "reach": <Blöcke>}`) oder die Beutetabelle ersetzen.
 - `/locate structure #propwash:bandos` findet den nächsten, `/locate structure propwash:bando/desert` usw. eine Familie.
   `/locate` prüft wie bei Vanilla nur Strukturstarts (keine Bauarbeit) und stimmt mit der Welt überein.
-- Server: reine Weltgenerierung, keine neuen Pakete, keine Änderung am Netzwerkprotokoll oder an der API.
+- Server: reine Weltgenerierung, keine neuen Pakete. Die Bando-Karte (seit 0.5.2) bringt neue Registereinträge und damit
+  Netzprotokoll 16, an der API ändert sich nichts.
+
+## Bando-Karte
+
+Ohne `/locate` fand man Bandos im Überlebensmodus nur durch Zufall. Seit 0.5.2 gibt es eine Entdeckerkarte wie die
+Vanilla-Karten zu Ozeanmonument, Waldanwesen oder Prüfungskammer.
+
+- **Item** `propwash:bando_map` (`bando.BandoMapItem`, ein `MapItem` mit `minecraft:map_decorations` wie die
+  Vanilla-Entdeckerkarten in 26.3), eigenes Inventar-Symbol (gefaltete Karte mit gestrichelter Flugroute) und eigenes
+  Kartensymbol `propwash:bando` (`MapDecorationType`, Textur `textures/map/decorations/bando.png`, 8 × 8, verfallene
+  Halle mit Dachloch und rostigem Schornstein; im Item-Rahmen sichtbar). Shift-Tooltip wie alle Propwash-Items; eine
+  Karte ohne Ziel (z. B. per `/give`) sagt „Leer – zeigt noch keinen Bando“. Nicht im Kreativ-Tab, so wie Vanilla
+  keine Entdeckerkarten listet.
+- **Kartograf, Stufe Geselle** (wie Ozeanmonument und Prüfungskammer): 10 Smaragde + Kompass, 12 Verkäufe, 10 EP,
+  Rabatt durch Ruf 0,2. Handel `propwash:cartographer/3/emerald_and_compass_bando_map` (Registry `villager_trade`),
+  angehängt an das Vanilla-Tag `#minecraft:cartographer/level_3` (ohne `replace`, also verträglich mit anderen Mods);
+  das Handelsset der Stufe zieht 2 von jetzt 4 Angeboten. Wie bei Vanilla entsteht die Karte, wenn der Kartograf die
+  Stufe erreicht; alle Verkäufe dieses Angebots zeigen auf denselben Bando.
+- **Truhen:** 10 % der Bando-Truhen (eigener Pool, die Karte zeigt auf einen anderen Bando, weil der eigene beim
+  Würfeln als kartiert gilt) und 11,7 % der Truhen im Haus des Kartografen im Dorf (`propwash:inject/village_cartographer`,
+  Gewicht aus dem Leer-Eintrag genommen, die übrigen Chancen bleiben gleich; Fundchance 42 → 53 %).
+- **Ziel:** Vanilla-Funktion `minecraft:exploration_map` auf das Tag `#propwash:bandos`, Maßstab 2 (1 : 4, wie die
+  Vanilla-Entdeckerkarten), `skip_existing_chunks` an: nur Bandos, auf die noch keine Karte zeigt, die Karte markiert
+  ihren Bando als kartiert. Danach `minecraft:filtered` mit `on_fail: discard`: Findet die Suche nichts, entsteht keine
+  leere Karte – der Kartograf nimmt dann ein anderes Angebot, die Truhe bleibt ohne Karte.
+- **Suchradius 16 Zellen** des Struktursets (16 × 44 Chunks, gut 11 km). Vanilla nimmt 100 Zellen, bei Bandos wären das
+  70 km und im schlimmsten Fall (Welt ohne passende Biome) zehntausende Zellen auf dem Server-Thread. Auf Seed 20261003
+  steht in gut jeder sechsten Zelle ein Bando; 16 Ringe finden praktisch immer einen. Gemessen (Selbsttest, Fabric):
+  70–75 ms für die erste Karte des Kartografen, 95–120 ms für eine Truhenkarte (die zwei nächsten sind schon kartiert).
+- **Bauwerke generieren: Aus:** Die Vanilla-Suche gibt sofort nichts zurück, also kein Kartenhandel und keine Karte
+  in Truhen (Selbsttest mit eigener Welt). Datenpakete, die alle Bando-Biome leeren, wirken genauso.
+- **Datenpakete und Befehle:** Die Funktion steht zweimal, als Item-Modifikator `propwash:bando_map` (Beutetabellen
+  verweisen darauf) und wörtlich im Handel – Handel werden mit der Welt geladen, vor den Item-Modifikatoren, und können
+  deshalb nicht auf sie verweisen. `tools/data/bandos.py` erzeugt beide aus einer Quelle, JUnit prüft, dass sie gleich
+  sind. Eine Karte per Befehl: `/give @s propwash:bando_map`, dann `/item modify entity @s weapon.mainhand
+  propwash:bando_map`.
+- **Kopieren** wie jede Karte (Tag `#minecraft:clonable_maps`: Werkbank oder Kartentisch mit einer leeren Karte).
+- **Rezeptbuch:** Die Karte zählt wie jedes Propwash-Item zu `has_propwash_item` (`docs/design/survival.md`): Wer eine
+  kauft oder findet, sieht alle Propwash-Rezepte.
+- **Flugschule:** Szene „Bandos“, Schritt 4 „Bando-Karte“ (Karte über dem Bando, Hinweis auf Kartograf, Preis).
+- **Netz:** Item und Kartensymbol sind neue Registereinträge (beide Loader gleichen sie ab), deshalb Netzprotokoll 16.
 
 ## Kosten der Weltgenerierung
 
@@ -352,6 +397,20 @@ Nachbarn).
 - Selbsttest in der Testwelt: Registrierung und alle 114 Blockzustände, Suche im echten Overworld-Generator (wie
   `/locate`, Seltenheit), alle 11 Varianten je zweimal gesetzt und geprüft (auch: nichts schwebt, siehe unten; vorher
   steht in jedem Grundriss Gras auf dem Boden, das danach Halt haben muss), Beute 600-mal gewürfelt.
+- Bando-Karte: JUnit `BandoMapDataTest` (Handel und Item-Modifikator zeichnen dieselbe Karte, Ziel `#propwash:bandos`,
+  Symbol `propwash:bando`, unerkundet, Suchradius höchstens 12 km, ohne Ziel keine Karte, Geselle mit Smaragden und
+  Kompass, Tag ohne `replace`, Vanilla-Handelsset liest das Tag, Felder wie der Vanilla-Monument-Handel, Truhen-Chancen,
+  jede Karte in einer Beutetabelle mit der Funktion, Kopier-Tag, Texturgrößen, Atlas, Texte). Selbsttest
+  (`BandoMapTests`, Schritte `bando: Karte – …`): in der Testwelt Item, Kartensymbol im Atlas, Item-Modell, Texte, nicht
+  im Kreativ-Tab, Handel im Handelsset des Gesellen, Modifikator, Kopier-Tag; in der Welt ohne Bauwerke kein Angebot,
+  der Modifikator verwirft die Karte, je 200 Würfe in Bando- und Kartografen-Truhe ohne Karte; in der Welt mit Bauwerken
+  (Seed 20261003, Ursprung am Spawn 16/72/192) zeigt die Karte des Kartografen genau auf den Treffer der Vanilla-Suche
+  (Feld-Bando bei −608/96, 631 Blöcke), an der Stelle steht ein echter Bando-Start (Symbol 0 Blöcke vom Bauwerk) und er
+  ist danach kartiert, eine zweite Karte zeigt auf einen anderen Bando (−448/736), die Truhen-Funktion auf einen dritten
+  (Küste, 336/1024), jeder Bando liegt auf seiner Karte. Mit `-PpropwashScreenshots=true` dazu
+  `docs/screenshots/bando_map_hand.png` (Karte in der Hand am Bando, Inventar-Symbol in der Schnellleiste) und
+  `bando_map_trade.png` (Handelsfenster des Gesellen mit Tooltip), aus der Flugschule `flight_school_bandos_map.png`.
+  Gefiltert: `'-PpropwashSelftestOnly=bando: Karte,bando: Welt ohne,bando: Welt mit'` (gut 1 min).
 - Selbsttest nach dem Verlassen der Testwelt (zwei eigene Welten, gleicher Seed): ohne Bauwerke kein Bando und kein
   `/locate`-Treffer, Zeitmessung; mit Bauwerken `/locate structure #propwash:bandos`, jede Familie gefunden,
   Zeitmessung derselben Chunks, jede Familie vor Ort geprüft (≥ 99 % der Bauteile stehen, Truhe mit Beutetabelle, Biom,
@@ -423,3 +482,7 @@ Nachbarn).
 `bando.plan` kennt keine Minecraft-Typen; Paletten sind Blockzustand-Texte. Für 1.21.1/26.2 sind nur die Paletten
 anzupassen (z. B. `iron_chain` → `chain`, Beton-Stufen und -Treppen gibt es dort nicht) und der dünne Teil in
 `BandoStructure`/`BandoPiece` (Strukturtyp, Codec, Platzierung).
+
+Bando-Karte: In 26.3 sind Handel datengetrieben (`villager_trade`, `trade_set`) und Entdeckerkarten eigene Items. Für
+1.21.1/26.2 bleibt das Item (`MapItem` mit eigenem Kartensymbol); der Handel braucht dort Code (Fabric
+`TradeOfferHelper`, NeoForge `VillagerTradesEvent`), die Beutetabellen und der Item-Modifikator bleiben gleich.

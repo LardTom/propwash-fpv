@@ -728,3 +728,141 @@ Seitenstruktur abrufbar. Abruf 2026-09-30.
 - [MAG] https://radialmagnet.com/neodymium-magnet-temperature-classes/
 - [UTS-Heat] https://www.unmannedtechshop.co.uk/blogs/knowledge-base/fpv-motor-overheating-troubleshooting-guide
 - [PWR] https://arxiv.org/abs/2209.04128 (Leistungsmodell und Flugmessung Mehrrotorer: Leistung fällt ab dem Schweben zunächst und steigt bei hoher Fahrt)
+
+## 12. Nachtrag 11.10.2026 (0.5.0): Race-Prop 5,1×2,9×3 und True-X-Race-Rahmen
+
+Anlass: Rückmeldung aus dem ersten Playtest von einem Piloten, der selbst 5″-Rennen fliegt. Sinngemäß: 5″-Racer
+fliegen heute True-X oder nur leicht gestreckt, und flache Props sind verbreitet – am beliebtesten ist derzeit der
+„5129“ (5,1″ Durchmesser, 2,9″ Steigung). Das eingebaute Race-Preset hatte ein gestrecktes Rahmenmodell und den
+5,1×4,6×3 des Freestyle-Presets.
+
+### 12.1 Quellen (Abruf 2026-10-11)
+
+| Kürzel | Quelle | Inhalt |
+|---|---|---|
+| [TM-P226] | https://www.ligpower.com/product/p22_6-7-kv1980-fpv-motor.html | T-Hobby P22.6-7 (36 g, 12N14P, 55 / 50 mΩ) mit 1880 und 1980 KV auf 6S: vollständige Schubtabellen für T-Hobby F5146, T5143S, **HQ 5.1x2.9x3** und Gemfan 5127 auf demselben Motor; Stufe B |
+| [HQ-R29] | https://kiwiquads.co.nz/product/hqprop-5129-r29-poly-carbonate-propeller-grey/ | HQProp 5129 R29: 5,1″, Steigung 2,9, 3 Blätter, 4,4 g, Polycarbonat, Nabe 12,6 × 6,7 mm, Welle 5 mm |
+| [HQ-R29V3] | https://www.racedayquads.com/products/hqprop-flowerpig-r29v3-3-blade-propeller-set-of-4 | Händlertext zum R29V3: eine der flachsten Steigungen für 5,1″, lineares Gas, weniger Motorlast (Herstellerangabe, kein Messwert) |
+| [HQ-R29V4] | https://www.getfpv.com/hqprop-flowerpig-r29v4-3-blade-propeller-set-of-4-pink.html | R29V4: Nabe 12,5 mm, 4,3 g |
+| [TT-RealX] | https://www.myfpvstore.com/yima | TransTEC Lightning Real X V2: True-X, Radstand 215 mm, Arme 5 mm, 87 g |
+| [HL-F3LX] | https://www.myfpvstore.com/5mwp | Hyperlite F3LX: True-X-Race-Rahmen 5″, Arme 5 mm, 59 g mit Schrauben |
+| [F1-SK] | https://www.myfpvstore.com/quadcopter-frames/flightone-skinny-kid-racing-drone-frame/ | FlightOne Skinny Kid: True-X-Race-Rahmen, 61 g |
+| [XB-MCK] | https://www.getfpv.com/xbee-mck-light-5-frame-true-x.html | XBEE MCK Light 5″: Race-Rahmen in True-X |
+| [533-LS] | https://racedayquads.com/products/five33-lightswitch-5-racing-frame-kit-lite-t700-arms | Five33 LightSwitch 5″: 45 g, Arme 5,5 mm, Motorlochbild 16 × 16 |
+
+### 12.2 Prüfstand: derselbe Motor mit 4,6″ und 2,9″ Steigung
+
+[TM-P226], 6S (24,0 V am Netzteil, Spannung unter Last in der Tabelle):
+
+| Motor | Prop | 50 % Gas: Schub · Strom · Leistung · U/min · g/W | 100 % Gas: Schub · Strom · Leistung · U/min · g/W |
+|---|---|---|---|
+| 1880 KV | T-Hobby F5146 (5,1×4,6×3) | 586 g · 7,4 A · 176 W · 20 358 · 3,33 | 1644 g · 35,5 A · 819 W · 33 071 · 2,01 |
+| 1880 KV | HQ 5.1x2.9x3 | 575 g · 7,5 A · 179 W · 20 316 · 3,21 | 1629 g · 37,0 A · 852 W · 32 409 · 1,91 |
+| 1880 KV | Gemfan 5127 | 611 g · 8,1 A · 192 W · 20 071 · 3,18 | 1636 g · 37,9 A · 872 W · 31 925 · 1,88 |
+| 1980 KV | T-Hobby F5146 (5,1×4,6×3) | 622 g · 8,1 A · 193 W · 21 086 · 3,22 | 1740 g · 39,5 A · 907 W · 33 991 · 1,92 |
+| 1980 KV | HQ 5.1x2.9x3 | 616 g · 8,4 A · 199 W · 20 987 · 3,09 | 1703 g · 40,7 A · 934 W · 33 468 · 1,82 |
+| 1980 KV | Gemfan 5127 | 654 g · 9,1 A · 215 W · 20 608 · 3,04 | 1727 g · 42,0 A · 962 W · 32 789 · 1,80 |
+
+Was der Prüfstand zeigt – und was viele nicht erwarten: Der flache Race-Prop macht im Stand **gleich viel Schub** wie
+der 4,6er (−1 bis −2 %), dreht dabei 1,5–2 % langsamer und zieht 3–4 % **mehr** Strom. Er holt den Schub über breite
+Blätter statt über Steigung. Was die flache Steigung kostet, ist Geschwindigkeit: Der Schub fällt mit der Anströmung
+früher ab.
+
+Beiwerte relativ zum F5146 bei 100 % Gas (`c_t ∝ T/n²`, `c_p ∝ P/n³`):
+
+| Motor | c_t HQ 2,9″ / F5146 | c_p elektrisch | c_p über das Drehmoment (auf 0,01 N·m gerundet) | Gütegrad `c_t^1,5/c_p` |
+|---|---|---|---|---|
+| 1880 KV | 1,032 | 1,105 | 1,04 (0,17 / 0,17 N·m) | 0,95 |
+| 1980 KV | 1,010 | 1,079 | 1,09 (0,19 / 0,18 N·m) | 0,94 |
+| Mittel | **1,02** | 1,09 | 1,07 | 0,95 |
+
+Die g/W-Werte der Tabelle bestätigen den Gütegrad über den ganzen Gasweg: HQ 2,9″ liegt bei gleichem Gas 3–5 % unter
+dem F5146 (bei 20 % Gas 1,4–3,6 %).
+
+### 12.3 Bauteil `propwash:p51_29_3b`
+
+| Feld | Wert | Herleitung |
+|---|---|---|
+| Durchmesser / Steigung / Blätter | 130 mm / 2,9″ / 3 | [HQ-R29]; P/D 0,57 |
+| Masse | 4,4 g | [HQ-R29] (R29V4 4,3 g) |
+| `ct` | 0,122 | Anker `p51_3b` 0,120 × 1,02 (Prüfstand 12.2) |
+| `cp` | 0,065 | Anker `p51_3b` 0,060 × 1,08 (elektrisch 1,09, über Drehmoment 1,07) |
+| Gütegrad (wie Abschnitt 4) | 0,46 | `p51_3b` 0,49; Verhältnis 0,95 wie am Prüfstand |
+| Material, Steifigkeit | Polycarbonat, 1,0 | wie alle eingebauten Props |
+| Nullschub-Fortschritt | 0,100 m je Umdrehung | Flugmodell: Steigung + 0,20 × Durchmesser; `p51_3b` 0,143 m (−30 %) |
+
+Wie bei `p51_3b` liegen die absoluten Beiwerte unter den realen (Abschnitt 4, Entscheidung des Besitzers: flugwirksame
+Anker bleiben). Der neue Prop ist deshalb **relativ zum Anker** kalibriert – dieselbe Methode wie bei den Props von
+Just More Parts, nur mit einem Prüfstand statt der Faustformel über P/D. Die Faustformel (`ct ∝ (P/D)^0,5`,
+`cp ∝ (P/D)^1,3`) hätte 0,095 / 0,033 ergeben: 21 % weniger Standschub und halbe Leistung. Das widerspricht der
+Messung, weil die Formel gleiche Blattform annimmt und Race-Props die Steigung durch Blattfläche ersetzen.
+
+Modell im Generator (`tools/assets/parts/props.py`): Blatttiefe 11,5 / 18,5 / 15 / 9,5 mm statt 10 / 15 / 11,5 / 7 mm,
+Anstellwinkel 14 / 11 / 9 / 8° statt 19 / 16 / 14 / 13°, Nabe 12,6 × 6,7 mm, rot (`#f2463a`). Rezept wie der 5,1″-Prop
+mit Goldnugget statt Eisennugget als Nabe (Gold markiert schon den Race-Rahmen), 4 Stück.
+
+### 12.4 Race-Rahmen: True-X
+
+`race_5` hat keine eigenen Arme in der Definition; das Flugmodell rechnet ihn deshalb seit jeher als True-X aus dem
+Radstand (Motoren bei ±76,0 / ±76,0 mm). Gestreckt war nur das Bild (±68,82 / ±82,58 mm, Verhältnis 1,2). Jetzt
+zeichnet der Generator den Rahmen so, wie er fliegt. Radstand 215 mm und 88 g passen zu einem echten True-X-Race-Rahmen
+([TT-RealX]: 215 mm, 87 g; leichtere Rahmen 45–61 g, [533-LS], [HL-F3LX], [F1-SK]). Flugwirksame Daten, Kameraposition
+(18,7 mm hoch, 51,9 mm vor der Mitte, 38° Uptilt) und der Akku unter dem Rahmen bleiben. Props im FPV-Bild: 6,4 %
+statt 11,0 % (`props-in-view.md` §9.6), Zielband für True-X 6–10 %.
+
+### 12.5 Ergebnis: Race-Preset alt und neu
+
+`race_5` + `stack_30` + `m2306_1860` (2306.5, 1860 KV) + Prop + `analog_race` + `b6s_1100`:
+
+| Kennwert | mit `p51_3b` (bis 10.10.) | mit `p51_29_3b` | real |
+|---|---|---|---|
+| Abfluggewicht / trocken | 430,2 / 255,2 g | 430,6 / 255,6 g | trocken 250–300 g (`builds.md` §7) |
+| Standschub je Motor | 1430 g | 1407 g (−1,6 %) | Prüfstand −0,9 bis −2,1 % |
+| Schub/Gewicht | 13,3 | 13,1 | 5″ Race 10–15 |
+| Vollgas: Drehzahl | 34 683 U/min | 34 119 U/min (−1,6 %) | Prüfstand −1,5 bis −2,0 % |
+| Vollgas: Akkustrom | 124,7 A | 130,3 A (+4,5 %) | Prüfstand je Motor +3,0 bis +4,2 % |
+| Akkulast bei Vollgas | 94 % | 99 % | 6S 1100 mAh am Limit, keine Warnung |
+| Schwebegas / Schwebestrom | 19,2 % / 4,03 A | 19,0 % / 4,13 A | 16–25 % |
+| Topspeed (Akku 80 %) | 168 km/h | **147 km/h** | Race-Quads 130–160 km/h (`builds.md` §7) |
+| Topspeed frischer Akku / Sturzflug | 175 / 192 km/h | 153 / 166 km/h | |
+| Punch 1 s Vollgas aus dem Schweben | 47,3 m/s, 11,7 g | 41,1 m/s, 11,2 g | |
+| Schweben / Reisen | 12:07 / 8:37 min | 11:48 / 7:48 min | |
+| Gemischt / aggressiv | 3:07 / 2:24 min (0,87 / 1,14 W/g) | 2:55 / 2:14 min (0,93 / 1,22 W/g) | Rennen 0,89–1,33 W/g (`builds.md` §7) |
+| Motor nach 60 s Vollgas im Stand | 94 °C | 96 °C | |
+| Roll P / I (automatisch) | 34 / 40 | 33 / 39 | |
+
+Der Racer bleibt schneller, leichter und spritziger als das Freestyle-Preset (141 km/h, Schub/Gewicht 10,6, Punch
+38,7 m/s). Wer Höchsttempo will, steckt den 4,6″-Prop auf den Race-Rahmen: 168 km/h bei 6 % längerer Flugzeit; der
+2,9er ist die Wahl enger Kurse – so wie im echten Rennen.
+
+### 12.6 Goldens und Nachweis „alles andere fliegt bitgleich“
+
+- `airframe_golden.txt` +34 Zeilen (30 Spezifikationszeilen Rahmen × Motor × neuer Prop, 4 `analysis:`-Zeilen des neuen
+  Race-Presets), `builtin_regression.txt` +27, `builtin_ground_rest.txt` +12 – **keine** bestehende Zeile geändert oder
+  entfernt. Der Racer mit dem 4,6″-Prop bleibt als `RACER_040` in den Goldens (alle seine Zeilen bitgleich).
+- `builtin_definitions.txt`: nur `RACE_5` mit `shape=TRUE_X` statt `STRETCHED_X`; der neue Prop steht wie die anderen
+  Teile ab 0.5.0 nicht in dieser Datei (`ADDED_AFTER_032`).
+- `save_format_032.txt` unverändert (Prüfung ohne den neuen Prop und mit dem Racer in alter Zusammensetzung).
+- Motorklang: die beiden alten Prüfsummen unverändert, je eine neue für den Race-Prop und das neue Race-Preset.
+- `tools/calibration.sh` mit den Daten von Just More Parts: `calibration.txt` nur die Zeile `propwash:race_5` anders,
+  alle 22 JMP-Presets byte-gleich; `motion.txt` 1254 statt 1245 Varianten – die 1201 gemeinsamen bitgleich (`acro`,
+  `angle`, `drop`, `spec`), 44 Tausch-Varianten des alten Race-Presets entfallen, 53 mit dem neuen Prop kommen dazu;
+  `fall.txt` nur die Zeilen `propwash:race_5`, `throttle_drop.txt` unverändert.
+- Angepasste Zielwerte: `FlightCharacterizationTest`, `TopSpeedTest` und der Selbsttest „drone: Topspeed realistisch“
+  Racer 140–160 km/h (frisch 140–165, Sturzflug bis 175) statt 160–180 (160–185, 195); `DerivationTest` und
+  `OpenLoopPhysicsTest` mit den Werten aus 12.5; `CameraOcclusionTest` Racer 6,36 % im gerenderten Bild.
+- Neu: JUnit `build.RacePresetTest`, Selbsttest „drone-render: Race-Preset“ (drei Schritte).
+
+### 12.7 Entscheidungen
+
+| Entscheidung | Warum | Verworfen |
+|---|---|---|
+| Der eingebaute Race-Rahmen wird True-X, kein zweiter Race-Rahmen | Er flog schon immer als True-X, nur das Bild war gestreckt; Maße passen zu echten True-X-Rahmen; der gestreckte Race-Rahmen bleibt als „Slim“ in Just More Parts | Neuer Rahmen `race_5_x` neben dem gestreckten: zwei eingebaute Race-Rahmen, die gleich fliegen; leicht gestreckt (1,05–1,1): das Bild wiche wieder vom Flugmodell ab |
+| Radstand, Gewicht, Widerstand, Kamera des Rahmens bleiben | Alle Flug-Goldens des Rahmens bleiben bitgleich; 215 mm / 88 g sind real | Leichter (60–70 g) oder kürzer (205 mm): ändert jeden Flug mit dem Rahmen |
+| Neuer Prop statt den 5,1×4,6×3 zu ändern | Der 4,6er ist der richtige Freestyle-Prop und bleibt für Höchsttempo | 4,6er flacher machen: ändert Freestyle-Preset und alle Bauten damit |
+| Beiwerte aus dem Prüfstand relativ zum Anker | Derselbe Motor, derselbe Stand, beide Props | Faustformel über P/D (−21 % Schub, widerspricht der Messung); absolute Prüfstandswerte (brächen den Anker) |
+| Motor 2306.5 mit 1860 KV und Akku 6S 1100 mAh bleiben | Liegen im üblichen Bereich (2207/2306, 1750–1950 KV, 6S) | Neuer Motor mit mehr KV, um das Tempo zurückzuholen |
+| Zielband Topspeed Racer 140–160 km/h | Folgt dem flachen Prop und realen Race-Quads | Band 160–180 behalten und den Prop „schneller“ rechnen als gemessen |
+| Neuer Prop wird als letztes eingebautes Prop angemeldet (nach dem 7″) | Wie Kreativ-FC, Flashback-Cam und Greifer: Reihenfolge der alten Teile bleibt, Sharecode-Tabellen hängen nur an | Einsortieren hinter den 4,6er: schönere Liste, aber verschiebt die Reihenfolge bestehender Teile |
+| Keine Truhen-Beute für den neuen Prop | Bestehende Beutetabellen bleiben, wie sie sind; das Rezept ist billig | Eintrag in Stronghold/Arena: verschiebt die Chancen aller anderen Einträge |
+| Race-Presets von Just More Parts bleiben | Sie stellen den gestreckten Slim-Rahmen vor; JMP 1.1.0 läuft auch mit Propwash 0.4.0, das den neuen Prop nicht kennt | JMP-Presets auf den neuen Prop umstellen; eigener 2,9″-Prop in JMP (Doppel) |

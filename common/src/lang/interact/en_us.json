@@ -19,5 +19,7 @@
   "gamerule.propwash.break_impact_scale.value.0": "No kick",
   "propwash.interact.break.denied.protected": "Your drone can't break anything here – this area is protected",
   "propwash.interact.break.denied.game_mode": "Your drone can't break blocks in this game mode",
-  "propwash.interact.break.denied.course": "The frame of a freeform gate doesn't break"
+  "propwash.interact.break.denied.course": "The frame of a freeform gate doesn't break",
+  "propwash.interact.snag.caught": "Caught in a cobweb",
+  "propwash.interact.snag.caught.hint": "Throttle up to break free – the props wind up silk and wear down while they cut through."
 }

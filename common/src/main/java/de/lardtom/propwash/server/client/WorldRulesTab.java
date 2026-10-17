@@ -24,6 +24,7 @@ import de.lardtom.propwash.ui.client.widget.FlatButton;
 import de.lardtom.propwash.ui.client.widget.NumberSpinner;
 import de.lardtom.propwash.ui.client.widget.ScrollPanel;
 import de.lardtom.propwash.ui.client.widget.ValueSlider;
+import de.lardtom.propwash.zone.client.ZoneSection;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -61,6 +62,8 @@ public final class WorldRulesTab extends UiTab {
     private final Map<Identifier, String> draft = new HashMap<>();
     private final List<Row> rows = new ArrayList<>();
     private final List<Section> sections = new ArrayList<>();
+    private final ZoneSection zones = new ZoneSection();
+    private int zonesY;
     private final Map<RulePreset, FlatButton> presetButtons = new EnumMap<>(RulePreset.class);
     private int introY;
     private int presetStatusY;
@@ -127,6 +130,10 @@ public final class WorldRulesTab extends UiTab {
         return Optional.empty();
     }
 
+    public ZoneSection zones() {
+        return this.zones;
+    }
+
     public Optional<FlatButton> presetButton(RulePreset preset) {
         return Optional.ofNullable(this.presetButtons.get(preset));
     }
@@ -168,6 +175,11 @@ public final class WorldRulesTab extends UiTab {
         }
         this.presetStatusY = cy;
         cy += Metrics.LINE_HEIGHT + Metrics.SECTION_GAP;
+        panel.stop(cy);
+        this.zonesY = cy;
+        this.sections.add(new Section(ZoneSection.title(), cy));
+        cy += Metrics.SECTION_HEIGHT;
+        cy = this.zones.build(cy, this.x, this.top(), w, editable, font, widget -> this.add(widget), panel::stop);
         for (Map.Entry<String, List<GameRule<?>>> group : groups.entrySet()) {
             panel.stop(cy);
             this.sections.add(new Section(Component.translatable(group.getKey()), cy));
@@ -369,6 +381,22 @@ public final class WorldRulesTab extends UiTab {
         }
     }
 
+    public int zonesTop() {
+        return this.top() + this.zonesY;
+    }
+
+    public int screenY(ZoneSection.Entry entry) {
+        return this.top() + entry.y();
+    }
+
+    public int viewTop() {
+        return this.y;
+    }
+
+    public boolean atTop() {
+        return this.scroll == null || this.scroll.offset() <= 0;
+    }
+
     public int rowWidth() {
         return this.innerWidth();
     }
@@ -441,7 +469,7 @@ public final class WorldRulesTab extends UiTab {
     @Override
     public void tick() {
         ClientWorldRules synced = ClientWorldRules.INSTANCE;
-        if (synced.editable() != this.builtEditable || synced.known() != this.builtKnown) {
+        if (synced.editable() != this.builtEditable || synced.known() != this.builtKnown || this.zones.stale()) {
             if (!synced.editable()) {
                 this.draft.clear();
             }
@@ -465,7 +493,7 @@ public final class WorldRulesTab extends UiTab {
         ThemeText.wrapped(g, font, intro, this.x + Metrics.PADDING, introTop + Metrics.PADDING, w - 2 * Metrics.PADDING,
                 warn ? Palette.WARNING : Palette.TEXT_MUTED);
         for (Section section : this.sections) {
-            this.section(g, section.title(), this.x, top + section.y(), w);
+            this.section(g, section.title(), this.x, top + section.y(), section.y() == this.zonesY ? this.zones.headingWidth(w) : w);
         }
         ThemeText.line(g, font, this.presetStatus(), this.x, this.x + w, top + this.presetStatusY + 1, Palette.TEXT_MUTED, ThemeText.Align.LEFT,
                 false);
@@ -492,8 +520,11 @@ public final class WorldRulesTab extends UiTab {
                 }
             }
         }
+        Component zoneTip = this.zones.extract(g, font, this.x, top, w, mouseX, mouseY, this.y, clip);
         if (hovered != null) {
             ThemeText.tooltipWrapped(g, font, hovered.tooltip(), TOOLTIP_WIDTH, mouseX, mouseY);
+        } else if (zoneTip != null) {
+            ThemeText.tooltipWrapped(g, font, zoneTip, ZoneSection.TOOLTIP_WIDTH, mouseX, mouseY);
         }
         for (Map.Entry<RulePreset, FlatButton> entry : this.presetButtons.entrySet()) {
             FlatButton button = entry.getValue();

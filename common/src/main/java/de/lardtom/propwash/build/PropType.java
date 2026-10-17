@@ -15,6 +15,7 @@ public final class PropType implements PartInfo {
     public static final PropType P3_3B = builtin("p3_3b");
     public static final PropType P51_3B = builtin("p51_3b");
     public static final PropType P7_2B = builtin("p7_2b");
+    public static final PropType P51_29_3B = builtin("p51_29_3b");
 
     private final PropDefinition definition;
     private final String name;

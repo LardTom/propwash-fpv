@@ -15,6 +15,26 @@ public final class SwitchEvaluator {
         this.primed = false;
     }
 
+    public void copyFrom(SwitchEvaluator other) {
+        System.arraycopy(other.previousRaw, 0, this.previousRaw, 0, FUNCTIONS.length);
+        System.arraycopy(other.latched, 0, this.latched, 0, FUNCTIONS.length);
+        this.primed = other.primed;
+    }
+
+    public void follow(SwitchEvaluator live, DeviceProfile liveProfile, DeviceProfile profile) {
+        if (!live.primed) {
+            return;
+        }
+        boolean all = !this.primed;
+        for (int i = 0; i < FUNCTIONS.length; i++) {
+            if (all || liveProfile.binding(FUNCTIONS[i]).equals(profile.binding(FUNCTIONS[i]))) {
+                this.previousRaw[i] = live.previousRaw[i];
+                this.latched[i] = live.latched[i];
+            }
+        }
+        this.primed = true;
+    }
+
     public int evaluate(DeviceProfile profile, float[] axes, boolean[] buttons) {
         int bits = 0;
         for (int i = 0; i < FUNCTIONS.length; i++) {

@@ -15,6 +15,7 @@ from assetlib import ASSETS, RES, SRC, load_palette, load_pixel_sheets, save_png
 from guikit import GUI, inset, panel, preview_field, rect, slot_well
 import charger
 import course
+import maps
 import materials
 import menus
 import remote
@@ -39,7 +40,7 @@ def mix(c1, c2, t):
 
 
 PIXEL = {}
-for sheet in ("slots", "items", "block"):
+for sheet in ("slots", "items", "block", "font"):
     PIXEL.update(load_pixel_sheets(SRC / "pixel" / f"{sheet}.txt", PAL))
 
 
@@ -1155,13 +1156,19 @@ def gate_icon(width, height):
     return img
 
 
+def gen_waterproof_spray():
+    save_png(PIXEL["waterproof_spray"], tex_path("item", "waterproof_spray"))
+    flat_item_model("waterproof_spray")
+    item_def("waterproof_spray", f"{NS}:item/waterproof_spray")
+
+
 def gen_course_tool():
     save_png(PIXEL["course_tool"], tex_path("item", "course_tool"))
     flat_item_model("course_tool", parent="minecraft:item/handheld")
     item_def("course_tool", f"{NS}:item/course_tool")
 
 
-SLOT_CATEGORIES = ("frame", "stack", "motor", "prop", "video", "battery", "drone", "accessory_top", "accessory_bottom")
+SLOT_CATEGORIES = ("frame", "stack", "motor", "prop", "video", "battery", "drone", "accessory_top", "accessory_bottom", "accessory_front")
 
 
 def silhouette(test, threshold=0.45, sub=8):
@@ -1236,6 +1243,7 @@ PART_SLOTS = {
     "battery": (80, 87),
     "accessory_top": (52, 64),
     "accessory_bottom": (108, 64),
+    "accessory_front": (30, 64),
 }
 RESULT_SLOT = (202, 100)
 SALVAGE_SLOT = (234, 100)
@@ -1461,6 +1469,21 @@ def gen_icons():
     save_png(render_icon(128), RES / "pack.png")
 
 
+KEY_FONT_GLYPHS = (("option_key", "\u2325"),)
+
+
+def gen_key_font():
+    providers = []
+    for name, char in KEY_FONT_GLYPHS:
+        glyph = PIXEL[name]
+        if glyph.size[1] != 8:
+            raise ValueError(f"font glyph {name} must be 8 px high, is {glyph.size[1]}")
+        save_png(glyph, tex_path("font", name))
+        providers.append({"type": "bitmap", "file": f"{NS}:font/{name}.png", "ascent": 7, "chars": [char]})
+    providers.append({"type": "reference", "id": "minecraft:default"})
+    write_json({"providers": providers}, ASSETS / "font" / "keys.json")
+
+
 def main():
     gen_workbench()
     gen_goggles()
@@ -1469,15 +1492,18 @@ def main():
     gen_gate_pieces()
     gen_gate_pole()
     gen_course_tool()
+    gen_waterproof_spray()
     gen_slot_sprites()
     gen_gui()
     gen_icons()
+    gen_key_font()
     remote.generate()
     charger.generate()
     repeater.generate()
     course.generate()
     menus.generate()
     materials.generate()
+    maps.generate()
     print("generated world assets")
 
 

@@ -16,6 +16,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Util;
 import org.joml.Matrix3x2fStack;
 import org.jspecify.annotations.Nullable;
@@ -38,6 +39,9 @@ public final class RaceHud {
     private static final int TOAST_PAD_X = 7;
     private static final int TOAST_HEIGHT = 16;
     private static final int TOAST_GAP = 3;
+    private static final int TOAST_MARGIN_X = 8;
+    private static final int TOAST_MIN_WIDTH = 80;
+    private static final int TOAST_LINE_GAP = 1;
     private static final int OSD_ROW = 11;
     private static final int ASSIST_ROW = 4;
     private static final int ASSIST_HEIGHT = 12;
@@ -121,8 +125,7 @@ public final class RaceHud {
         long seconds = (tracker.lobbyRemainingNanos() + LapTracker.SECOND - 1L) / LapTracker.SECOND;
         Component text = tracker.lobbyMember()
                 ? Component.translatable("propwash.race.lobby.waiting", tracker.lobbyCourse(), pilots.size(), seconds)
-                : Component.translatable("propwash.race.lobby.open", tracker.lobbyCourse(), pilots.size(),
-                RaceClient.restartKey() == null ? Component.empty() : RaceClient.restartKey().getTranslatedKeyMessage());
+                : Component.translatable("propwash.race.lobby.open", tracker.lobbyCourse(), pilots.size());
         Component names = Component.literal(String.join(", ", pilots));
         int y = (int) (graphics.guiHeight() * 0.72F);
         if (osd) {
@@ -219,12 +222,23 @@ public final class RaceHud {
                 }
                 continue;
             }
-            int half = font.width(line.text) / 2 + TOAST_PAD_X;
+            int room = Math.max(TOAST_MIN_WIDTH, graphics.guiWidth() - 2 * TOAST_MARGIN_X - 2 * TOAST_PAD_X);
+            List<FormattedCharSequence> parts = font.split(line.text, room);
+            int widest = 0;
+            for (FormattedCharSequence part : parts) {
+                widest = Math.max(widest, font.width(part));
+            }
+            int half = widest / 2 + TOAST_PAD_X;
             int top = (int) y;
-            ThemeDraw.notice(graphics, centerX - half, top, centerX + half, top + TOAST_HEIGHT, ARGB.opaque(line.rgb), alpha);
-            graphics.centeredText(font, line.text, centerX + 1, top + (TOAST_HEIGHT - font.lineHeight) / 2 + 1,
-                    ARGB.color(Math.max(16, (int) (alpha * 255.0F)), line.rgb));
-            y += TOAST_HEIGHT + TOAST_GAP;
+            int height = TOAST_HEIGHT + Math.max(0, parts.size() - 1) * (font.lineHeight + TOAST_LINE_GAP);
+            ThemeDraw.notice(graphics, centerX - half, top, centerX + half, top + height, ARGB.opaque(line.rgb), alpha);
+            int textY = top + (TOAST_HEIGHT - font.lineHeight) / 2 + 1;
+            int color = ARGB.color(Math.max(16, (int) (alpha * 255.0F)), line.rgb);
+            for (FormattedCharSequence part : parts) {
+                graphics.centeredText(font, part, centerX + 1, textY, color);
+                textY += font.lineHeight + TOAST_LINE_GAP;
+            }
+            y += height + TOAST_GAP;
         }
     }
 }

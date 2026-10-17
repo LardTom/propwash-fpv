@@ -59,6 +59,20 @@ public final class FlightModeSelector {
         return this.source == Source.SWITCH && this.set(StabMode.ACRO, Source.DEFAULT);
     }
 
+    public StabMode preview(boolean device, int active, int readable) {
+        if (!device) {
+            return this.mode;
+        }
+        StabMode fromSwitches = fromSwitches(active, readable);
+        if (fromSwitches == this.lastSwitch) {
+            return this.mode;
+        }
+        if (fromSwitches != null) {
+            return fromSwitches;
+        }
+        return this.source == Source.SWITCH ? StabMode.ACRO : this.mode;
+    }
+
     public void select(StabMode next) {
         this.set(next, Source.KEY);
     }
@@ -75,7 +89,7 @@ public final class FlightModeSelector {
 
     public boolean keyOverridesSwitch(boolean device, int active, int readable) {
         StabMode fromSwitches = device ? fromSwitches(active, readable) : null;
-        return this.source == Source.KEY && fromSwitches != null && fromSwitches != this.mode;
+        return this.source == Source.KEY && fromSwitches != null && fromSwitches == this.lastSwitch && fromSwitches != this.mode;
     }
 
     public void reset() {

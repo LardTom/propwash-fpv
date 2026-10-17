@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:sequence",
+  "functions": [
+    {
+      "type": "minecraft:exploration_map",
+      "decoration": "propwash:bando",
+      "destination": "#propwash:bandos",
+      "search_radius": 16,
+      "zoom": 2
+    },
+    {
+      "type": "minecraft:filtered",
+      "item_filter": {
+        "predicates": {
+          "minecraft:map_id": {}
+        }
+      },
+      "on_fail": {
+        "type": "minecraft:discard"
+      }
+    }
+  ]
+}

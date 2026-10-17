@@ -1,15 +1,21 @@
 package de.lardtom.propwash.sim;
 
+import de.lardtom.propwash.api.flight.FlightAssist;
+import de.lardtom.propwash.api.flight.ForceProvider;
+import de.lardtom.propwash.api.flight.SensorDirection;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.PartWear;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
+
+import java.util.List;
 
 public final class DroneSim {
     public static final int PHYSICS_HZ = 2000;
     public static final long SUBSTEP_NANOS = 500_000L;
     public static final int MAX_SUBSTEPS = 100;
     public static final double MAX_FRAME_DT = 0.05;
+    public static final double ASSIST_ENGAGED_HOLD_SECONDS = 0.25;
 
     static final double H = 1.0 / PHYSICS_HZ;
     static final long MAX_FRAME_NANOS = 50_000_000L;
@@ -26,9 +32,8 @@ public final class DroneSim {
     static final double WATER_DRAG = 400.0;
     static final double SLEEP_SPEED = 0.05;
     static final double SLEEP_RATE = 0.1;
-    static final double RIGHTING_RATE = 4.0;
-    static final double CONTACT_RATE = 0.2;
-    static final double GROUND_TOLERANCE = 0.001;
+    static final double PLANE_RANGE = 1.0;
+    static final double BOX_TOLERANCE = 1.0E-6;
     static final double RESTING_TOLERANCE = 0.002;
     static final double WAKE_THRESHOLD = 0.02;
     static final double SUPPORT_TOLERANCE = 0.002;
@@ -37,12 +42,18 @@ public final class DroneSim {
     static final double OBLIQUE_SAME_CONTACT = 0.95;
     static final double OBLIQUE_GROUND = 0.7;
     static final double IMPACT_RECORD_SPEED = 1.0;
+    static final double WATER_SURFACE_LIMIT = 64.0;
+    static final double WATER_DENSITY_RATIO = 1000.0 / ModelConstants.RHO0;
+    static final double WATER_PROP_EFFICIENCY = 0.12;
+    static final double DRONE_DENSITY_RATIO = 1.8;
+    static final double TURTLE_MAX_SPEED = 1.0;
 
     private AirframeSpec params;
     private FlightControllerConfig config;
     private FilterSettings activeFilters;
     private boolean filtersPending;
     private SimTuning tuning;
+    private double videoPowerDeltaW;
 
     final RigidBody body = new RigidBody();
     final PowerSystem power = new PowerSystem();
@@ -54,8 +65,11 @@ public final class DroneSim {
     final Thermal thermal = new Thermal();
     final BodyAero bodyAero = new BodyAero();
     final CollisionSolver collision = new CollisionSolver();
+    final GroundSolver ground = new GroundSolver();
     final BreakSolver breakSolver = new BreakSolver();
     final Arming arming = new Arming();
+    final TurtleMix turtleMix = new TurtleMix();
+    final HullContact hullContact = new HullContact();
     final SimRandom rng;
     final NavHold nav;
     private final Telemetry telemetry = new Telemetry();
@@ -81,6 +95,9 @@ public final class DroneSim {
     private final double[] overrideDuty = new double[AirframeSpec.MOTORS];
     final double[] wearThrust = {1.0, 1.0, 1.0, 1.0};
     final boolean[] motorDead = new boolean[AirframeSpec.MOTORS];
+    final double[] fluidThrust = {1.0, 1.0, 1.0, 1.0};
+    private boolean waterproof;
+    private double bodyWet;
     private PartWear wear = PartWear.PRISTINE;
     private double wearVibration;
     private double wearGyroNoise;
@@ -120,7 +137,17 @@ public final class DroneSim {
     private double frameStartVz;
     private double groundHeight;
     private double groundGrip = 1.0;
+    private double groundBounce = -1.0;
     private double normalForce;
+    private boolean planeValid;
+    private double planeY;
+    private boolean frameTouch;
+    private double frameApproach;
+    private double frameTangential;
+    private double frameImpulse;
+    private int frameContacts;
+    private int frameStruck;
+    private final double[] frameStruckRpm = new double[AirframeSpec.MOTORS];
 
     private long brownoutCounter;
     private boolean brownoutLatched;
@@ -163,6 +190,25 @@ public final class DroneSim {
     private boolean reversibleActive;
     private FcListener fcListener;
     private final FcSample fcSample = new FcSample();
+    private static final ForceProvider[] NO_PROVIDERS = new ForceProvider[0];
+    private final ExternalLoads loads = new ExternalLoads();
+    private final AssistBridge bridge = new AssistBridge(this);
+    private final PilotInput assistInput = new PilotInput();
+    private FlightAssist assist;
+    private ForceProvider[] forceProviders = NO_PROVIDERS;
+    private boolean assistAttitude;
+    private boolean assistYaw;
+    private double assistRoll;
+    private double assistPitch;
+    private double assistYawStick;
+    private double assistThrottle;
+    private StabMode assistMode;
+    private boolean assistSticks;
+    private String assistLabel;
+    private double assistEngagedAt = Double.NEGATIVE_INFINITY;
+    private boolean assistOwnsHold;
+    private boolean returnHomeRequested;
+    private RuntimeException extensionFailure;
 
     public DroneSim(DroneBuild build, FlightControllerConfig config, SimTuning tuning, long seed) {
         this(AirframeSpec.of(build), config, tuning, seed);
@@ -247,6 +293,7 @@ public final class DroneSim {
         s.armed = a.armed;
         s.mode = mode;
         s.mode3d = mode3d;
+        s.turtle = this.arming.armed && this.arming.turtle;
         s.airmode = a.armed && fc.pid().airmode && fc.airmodeLatched;
         s.failsafeStage = a.failsafeStage;
         s.linkOk = this.input.linkOk;
@@ -368,6 +415,9 @@ public final class DroneSim {
         this.windX = 0.0;
         this.windY = 0.0;
         this.windZ = 0.0;
+        if (this.loads.active()) {
+            this.loads.clear();
+        }
     }
 
     private void clearContacts() {
@@ -376,6 +426,102 @@ public final class DroneSim {
             this.contactSign[a] = 0.0;
         }
         this.obliqueFrames = 0;
+        this.planeValid = false;
+        this.ground.forget();
+        this.clearFrameContacts();
+    }
+
+    private void clearFrameContacts() {
+        this.frameTouch = false;
+        this.frameApproach = 0.0;
+        this.frameTangential = 0.0;
+        this.frameImpulse = 0.0;
+        this.frameContacts = 0;
+        this.frameStruck = 0;
+        for (int i = 0; i < AirframeSpec.MOTORS; i++) {
+            this.frameStruckRpm[i] = 0.0;
+        }
+    }
+
+    private void choosePlane() {
+        double plane = this.groundedFrames > 0 ? this.groundHeight : Double.NEGATIVE_INFINITY;
+        double distance = this.env.solidDistance;
+        if (distance < Double.POSITIVE_INFINITY) {
+            plane = Math.max(plane, this.visY - distance);
+        }
+        this.planeY = plane;
+        this.planeValid = plane > Double.NEGATIVE_INFINITY && this.body.py - plane < PLANE_RANGE;
+        if (!this.planeValid) {
+            this.ground.forget();
+        }
+    }
+
+    private void noteContact(AirframeSpec p, SimTuning t, RigidBody b, GroundSolver gs) {
+        this.frameTouch = true;
+        this.frameImpulse = Math.max(this.frameImpulse, gs.normalImpulse);
+        if (gs.newContacts == 0) {
+            return;
+        }
+        if (gs.approachSpeed >= this.frameApproach) {
+            this.frameApproach = gs.approachSpeed;
+            this.frameTangential = gs.tangentialSpeed;
+        }
+        this.frameContacts |= gs.touchMask;
+        if (p.ducted || !t.propStrikes || b.r11 >= CollisionSolver.STRIKE_NORMAL_LIMIT) {
+            return;
+        }
+        boolean struck = false;
+        for (int i = 0; i < AirframeSpec.MOTORS; i++) {
+            double w = this.power.omega[i];
+            if ((gs.newContacts & (1 << i)) != 0 && Math.abs(w) > CollisionSolver.STRIKE_OMEGA_FRACTION * p.hoverOmega) {
+                this.frameStruck |= 1 << i;
+                this.frameStruckRpm[i] = Math.max(this.frameStruckRpm[i], Math.abs(w) * 60.0 / SimMath.TWO_PI);
+                this.power.omega[i] = CollisionSolver.STRIKE_REMAINING * w;
+                double dl = -this.spinSign * p.spin(i) * p.rotorInertiaEff * CollisionSolver.STRIKE_YAW_TRANSFER * w;
+                b.lx += dl * b.r01;
+                b.ly += dl * b.r11;
+                b.lz += dl * b.r21;
+                struck = true;
+            }
+        }
+        if (struck) {
+            b.updateRates();
+        }
+    }
+
+    private boolean groundImpulse(AirframeSpec p, RigidBody b, double plane, double grip, double restitution) {
+        GroundSolver gs = this.ground;
+        SimTuning t = this.tuning;
+        double bounce = (restitution >= 0.0 ? restitution : p.restitution) * t.restitutionScale;
+        double soft = (restitution >= 0.0 ? restitution : Math.min(p.restitution, ModelConstants.RESTITUTION_BATTERY)) * t.restitutionScale;
+        b.updateDerived();
+        if (!gs.solve(p, b, plane, H, p.friction * grip, bounce, soft, p.impactTolerance * t.crashSpeedScale, false, b.vx, b.vy, b.vz,
+                b.lx, b.ly, b.lz)) {
+            return false;
+        }
+        b.vx = gs.vx;
+        b.vy = gs.vy;
+        b.vz = gs.vz;
+        b.lx = gs.lx;
+        b.ly = gs.ly;
+        b.lz = gs.lz;
+        b.updateRates();
+        this.noteContact(p, t, b, gs);
+        return true;
+    }
+
+    static int hullMask(int groundMask) {
+        int n = AirframeSpec.HULL_POINTS;
+        int mask = groundMask & ((1 << n) - 1);
+        for (int c = 0; c < 4; c++) {
+            if ((groundMask & (1 << (n + c))) != 0) {
+                mask |= (c & 2) == 0 ? 1 << 9 : 1 << 8;
+            }
+            if ((groundMask & (1 << (n + 4 + c))) != 0) {
+                mask |= 1 << (4 + c);
+            }
+        }
+        return mask;
     }
 
     public void setBatteryCharge(double chargeFraction) {
@@ -383,11 +529,15 @@ public final class DroneSim {
         this.brownoutCounter = 0L;
         this.brownoutLatched = false;
         this.clearBatteryAlarms();
-        this.power.extraPower = EnergyModel.extraPower(this.params, this.power.omega, this.arming.armed);
+        this.power.extraPower = this.extraPower(this.params);
         this.power.fullLoad = EnergyModel.fullLoad(this.params, this.power.omega, this.arming.armed);
         this.cellFilter.reset(this.power.packVoltage(this.tuning.batterySag) / this.params.cells);
         this.updateHoverEstimate();
         this.fillTelemetry(0);
+    }
+
+    public void keepBatteryCharge() {
+        this.power.keepCharge();
     }
 
     public boolean setBuild(DroneBuild build) {
@@ -414,7 +564,7 @@ public final class DroneSim {
             return false;
         }
         this.applyParams(params);
-        this.power.extraPower = EnergyModel.extraPower(this.params, this.power.omega, this.arming.armed);
+        this.power.extraPower = this.extraPower(this.params);
         this.power.fullLoad = EnergyModel.fullLoad(this.params, this.power.omega, this.arming.armed);
         this.updateHoverEstimate();
         this.applyWear(this.wear);
@@ -454,6 +604,19 @@ public final class DroneSim {
         this.updateHoverEstimate();
     }
 
+    public void setVideoPowerDelta(double watts) {
+        this.videoPowerDeltaW = Double.isFinite(watts) ? watts : 0.0;
+    }
+
+    public double videoPowerDelta() {
+        return this.videoPowerDeltaW;
+    }
+
+    private double extraPower(AirframeSpec p) {
+        double extra = EnergyModel.extraPower(p, this.power.omega, this.arming.armed);
+        return this.videoPowerDeltaW == 0.0 ? extra : extra + this.videoPowerDeltaW;
+    }
+
     public void setTuning(SimTuning tuning) {
         SimTuning t = tuning == null ? new SimTuning() : tuning.copy();
         t.sanitize();
@@ -463,6 +626,24 @@ public final class DroneSim {
             this.gravity = g;
             this.nav.gravity = g;
             this.updateHoverEstimate();
+        }
+    }
+
+    public boolean waterproof() {
+        return this.waterproof;
+    }
+
+    public void setWaterproof(boolean waterproof) {
+        if (waterproof == this.waterproof) {
+            return;
+        }
+        this.waterproof = waterproof;
+        if (!waterproof) {
+            this.bodyWet = 0.0;
+            for (int i = 0; i < AirframeSpec.MOTORS; i++) {
+                this.fluidThrust[i] = 1.0;
+                this.power.fluidLoad[i] = 1.0;
+            }
         }
     }
 
@@ -512,6 +693,8 @@ public final class DroneSim {
         this.fromYaw = this.appliedYaw;
         this.fromThrottle = this.appliedThrottle;
         this.frameArming();
+        this.clearFrameContacts();
+        this.choosePlane();
         this.frameStartY = this.body.py;
         this.frameStartVx = this.body.vx;
         this.frameStartVy = this.body.vy;
@@ -539,6 +722,8 @@ public final class DroneSim {
             d.altHold = false;
             d.posHold = false;
             d.mode3d = false;
+            d.turtle = false;
+            d.actions = 0;
             return;
         }
         d.roll = SimMath.clamp(SimMath.finiteOr(in.roll, 0.0), -1.0, 1.0);
@@ -551,12 +736,15 @@ public final class DroneSim {
         d.altHold = in.altHold;
         d.posHold = in.posHold;
         d.mode3d = in.mode3d;
+        d.turtle = in.turtle;
+        d.actions = in.actions & 0xF;
     }
 
     private void sanitizeEnvironment(SimEnvironment e) {
         SimEnvironment d = this.env;
         if (e == null) {
             d.groundDistance = Double.POSITIVE_INFINITY;
+            d.solidDistance = Double.POSITIVE_INFINITY;
             d.windX = 0.0;
             d.windY = 0.0;
             d.windZ = 0.0;
@@ -565,9 +753,13 @@ public final class DroneSim {
             d.ambientTempC = 20.0;
             d.fluid = Fluid.NONE;
             d.skyView = 1.0;
+            d.snag.clear();
+            this.applySnag();
+            d.waterSurface = Double.NEGATIVE_INFINITY;
             return;
         }
         d.groundDistance = Double.isNaN(e.groundDistance) ? Double.POSITIVE_INFINITY : Math.max(0.0, e.groundDistance);
+        d.solidDistance = Double.isNaN(e.solidDistance) ? d.groundDistance : Math.max(0.0, e.solidDistance);
         d.windX = SimMath.clamp(SimMath.finiteOr(e.windX, 0.0), -100.0, 100.0);
         d.windY = SimMath.clamp(SimMath.finiteOr(e.windY, 0.0), -100.0, 100.0);
         d.windZ = SimMath.clamp(SimMath.finiteOr(e.windZ, 0.0), -100.0, 100.0);
@@ -576,6 +768,17 @@ public final class DroneSim {
         d.ambientTempC = SimMath.sanitize(e.ambientTempC, -40.0, 60.0, 20.0);
         d.fluid = e.fluid == null ? Fluid.NONE : e.fluid;
         d.skyView = SimMath.sanitize(e.skyView, 0.0, 1.0, 1.0);
+        d.waterSurface = Double.isNaN(e.waterSurface) ? Double.NEGATIVE_INFINITY : Math.min(e.waterSurface, WATER_SURFACE_LIMIT);
+        d.snag.sanitizeFrom(e.snag);
+        this.applySnag();
+    }
+
+    private void applySnag() {
+        SnagField f = this.env.snag;
+        this.snagOn = f.active();
+        for (int i = 0; i < AirframeSpec.MOTORS; i++) {
+            this.power.snagLoad[i] = 1.0 + f.propLoad[i];
+        }
     }
 
     public boolean buildable() {
@@ -586,13 +789,21 @@ public final class DroneSim {
         Arming a = this.arming;
         PilotInput in = this.input;
         boolean switchOn = in.armSwitch;
-        int conditions = in.mode3d
+        Fluid armFluid = this.waterproof && this.env.fluid == Fluid.WATER ? Fluid.NONE : this.env.fluid;
+        boolean turtleArm = in.turtle && !a.armed;
+        int conditions = turtleArm
+                ? Arming.conditionsTurtle(in, this.config, this.power.soc, this.buildable(), a.crashCooldownSubsteps > 0L,
+                a.rebootSubsteps > 0L, armFluid, this.hardwareFault || this.escBurned, this.restingForTurtle())
+                : in.mode3d
                 ? Arming.conditions3d(in, this.config, this.body.tiltRad() * SimMath.DEG, this.power.soc, this.buildable(),
-                a.crashCooldownSubsteps > 0L, a.rebootSubsteps > 0L, this.env.fluid, this.hardwareFault || this.escBurned)
+                a.crashCooldownSubsteps > 0L, a.rebootSubsteps > 0L, armFluid, this.hardwareFault || this.escBurned)
                 : Arming.conditions(in, this.config, this.body.tiltRad() * SimMath.DEG, this.power.soc,
-                this.buildable(), a.crashCooldownSubsteps > 0L, a.rebootSubsteps > 0L, this.env.fluid, this.hardwareFault || this.escBurned);
+                this.buildable(), a.crashCooldownSubsteps > 0L, a.rebootSubsteps > 0L, armFluid, this.hardwareFault || this.escBurned);
         if (a.armed && this.env.fluid == Fluid.LAVA) {
             this.disarm(DisarmReason.FLUID);
+        }
+        if (a.armed && a.turtle && !in.turtle) {
+            this.disarm(DisarmReason.TURTLE_OFF);
         }
         if (a.pendingSwitchCheck) {
             a.pendingSwitchCheck = false;
@@ -619,6 +830,7 @@ public final class DroneSim {
                 mask = conditions;
             }
             if (mask == 0) {
+                a.turtle = turtleArm;
                 this.arm();
             } else {
                 this.emit(SimEventType.ARM_BLOCKED, mask, -1);
@@ -637,8 +849,34 @@ public final class DroneSim {
         this.fc.reset(this.gyroModel.raw, this.power.busVoltage, this.appliedRoll, this.appliedPitch, this.appliedYaw,
                 this.appliedThrottle);
         this.gLoadMax = 0.0;
+        this.turtleMix.stop();
+        this.arming.turtleDone = false;
+        if (this.arming.turtle) {
+            this.liftOntoHull();
+        }
         this.wakeUp();
-        this.emit(SimEventType.ARMED, 0.0, -1);
+        this.emit(SimEventType.ARMED, this.arming.turtle ? 1.0 : 0.0, -1);
+    }
+
+    private void liftOntoHull() {
+        RigidBody b = this.body;
+        if (!(this.env.groundDistance < Double.POSITIVE_INFINITY)) {
+            return;
+        }
+        double groundY = b.py - this.env.groundDistance;
+        double depth = groundY - (b.py + HullContact.lowest(this.params, b)) - HullContact.STATIC_SINK;
+        if (depth > 0.0) {
+            b.py += depth;
+        }
+    }
+
+    private boolean restingForTurtle() {
+        RigidBody b = this.body;
+        return (this.groundedFrames > 0 || this.sleeping) && SimMath.hypot3(b.vx, b.vy, b.vz) < TURTLE_MAX_SPEED;
+    }
+
+    public boolean turtleArmed() {
+        return this.arming.armed && this.arming.turtle;
     }
 
     private void disarm(DisarmReason reason) {
@@ -647,6 +885,9 @@ public final class DroneSim {
             return;
         }
         a.armed = false;
+        a.turtle = false;
+        a.turtleDone = false;
+        this.turtleMix.stop();
         a.lastDisarmReason = reason;
         a.failsafeStage = reason == DisarmReason.FAILSAFE ? 2 : 0;
         a.landingSubsteps = 0L;
@@ -749,17 +990,48 @@ public final class DroneSim {
                     r = undeadband(this.nav.rollStick, band);
                     pt = undeadband(this.nav.pitchStick, band);
                 }
+                if (this.assist != null) {
+                    if (this.assistSticks && !this.nav.attitudeOverride) {
+                        r = this.assistRoll;
+                        pt = this.assistPitch;
+                    }
+                    if (this.assistYaw) {
+                        y = undeadband(this.assistYawStick, this.config.rates.rcDeadband);
+                    } else if (this.assistSticks) {
+                        y = this.assistYawStick;
+                    }
+                }
+            } else if (this.assist != null && this.assistAttitude) {
+                mode3d = false;
+                if (this.assistSticks) {
+                    r = this.assistRoll;
+                    pt = this.assistPitch;
+                    y = this.assistYawStick;
+                    thr = this.assistThrottle;
+                }
+                if (this.assistYaw) {
+                    y = undeadband(this.assistYawStick, this.config.rates.rcDeadband);
+                }
+                if (this.assistMode != null) {
+                    mode = this.assistMode;
+                }
             }
+            boolean turtle = a.armed && a.turtle;
+            boolean fcArmed = a.armed && !turtle;
             if (mode3d) {
-                this.fc.update(r, pt, y, thr, mode, a.armed, b, this.gyroModel.raw, this.power.busVoltage, true, this.config.deadband3d);
+                this.fc.update(r, pt, y, thr, mode, fcArmed, b, this.gyroModel.raw, this.power.busVoltage, true, this.config.deadband3d);
             } else {
-                this.fc.update(r, pt, y, thr, mode, a.armed, b, this.gyroModel.raw, this.power.busVoltage);
+                this.fc.update(r, pt, y, thr, mode, fcArmed, b, this.gyroModel.raw, this.power.busVoltage);
+            }
+            if (turtle) {
+                this.turtleTick(r, pt, y, in.mode3d ? 0.0 : thr);
             }
             if (this.fc.airmodeJustLatched) {
                 this.emit(SimEventType.AIRMODE_ACTIVE, 0.0, -1);
             }
             for (int i = 0; i < AirframeSpec.MOTORS; i++) {
-                double duty = a.armed && !this.motorDead[i] ? (this.dutyOverrideActive ? this.overrideDuty[i] : this.fc.duty[i]) : 0.0;
+                double duty = a.armed && !this.motorDead[i]
+                        ? (this.dutyOverrideActive ? this.overrideDuty[i] : turtle ? this.turtleMix.duty[i] : this.fc.duty[i]) : 0.0;
                 double limit = this.thermal.limit[i];
                 if (duty < 0.0) {
                     this.dutyNext[i] = limit < 1.0 ? Math.max(duty, -limit) : duty;
@@ -817,7 +1089,11 @@ public final class DroneSim {
         } else {
             this.waterCounter = 0L;
         }
-        boolean drowned = inWater && this.waterCounter >= WATER_SUBSTEPS;
+        boolean proof = this.waterproof;
+        if (proof) {
+            this.updateSubmersion(p, b, inWater);
+        }
+        boolean drowned = !proof && inWater && this.waterCounter >= WATER_SUBSTEPS;
         if (drowned && a.armed) {
             this.disarm(DisarmReason.FLUID);
         }
@@ -839,11 +1115,12 @@ public final class DroneSim {
         }
 
         double upY = b.r11;
-        boolean groundOn = t.groundEffect && upY > ModelConstants.GE_MIN_UP && this.env.groundDistance < Double.POSITIVE_INFINITY;
+        boolean geAllowed = !proof || this.bodyWet <= 0.0;
+        boolean groundOn = geAllowed && t.groundEffect && upY > ModelConstants.GE_MIN_UP && this.env.groundDistance < Double.POSITIVE_INFINITY;
         double dyFrame = b.py - this.frameStartY;
         double spacing = p.motorSpacing;
         double maxGe = 1.0;
-        boolean groundRule = t.groundEffect && this.env.groundDistance < Double.POSITIVE_INFINITY;
+        boolean groundRule = geAllowed && t.groundEffect && this.env.groundDistance < Double.POSITIVE_INFINITY;
         for (int i = 0; i < AirframeSpec.MOTORS; i++) {
             double f = 1.0;
             boolean rotorGround = reversible ? groundRule && (this.power.omega[i] < 0.0 ? -upY : upY) > ModelConstants.GE_MIN_UP : groundOn;
@@ -902,7 +1179,7 @@ public final class DroneSim {
                     t.translationalLiftScale);
             double axialFactor = RotorAero.axialThrustFactor(p, lam, w, this.cross[i]);
             double ti = thrustScale * p.kThrust * rhoRatio * RotorAero.ductFactor(p.ducted, p.ductGain, lam) * axialFactor
-                    * tl * this.groundFactor[i] * Math.max(0.0, fw) * w * w * this.wearThrust[i];
+                    * tl * this.groundFactor[i] * Math.max(0.0, fw) * w * w * this.wearThrust[i] * this.fluidThrust[i];
             if (p.propFlex != 0.0) {
                 ti *= RotorAero.flexFactor(p, w);
             }
@@ -937,10 +1214,14 @@ public final class DroneSim {
         tx += wbz * rotorMomentum;
         tz -= wbx * rotorMomentum;
         double crot = p.rotationalDamping * rhoRatio;
+        if (proof) {
+            crot *= 1.0 + this.bodyWet * (WATER_DRAG - 1.0);
+        }
         tx -= crot * wbx * Math.abs(wbx);
         ty -= crot * wby * Math.abs(wby);
         tz -= crot * wbz * Math.abs(wbz);
-        this.bodyAero.drag(p, rho, t.dragScale * (inWater ? WATER_DRAG : 1.0), ubx, uby, ubz, h,
+        double waterDrag = proof ? 1.0 + this.bodyWet * (WATER_DRAG - 1.0) : inWater ? WATER_DRAG : 1.0;
+        this.bodyAero.drag(p, rho, t.dragScale * waterDrag, ubx, uby, ubz, h,
                 reversible ? 1.0 : descentTopScale(p, rho, uby, sumThrust));
         fx += this.bodyAero.fx;
         fy += this.bodyAero.fy;
@@ -953,48 +1234,114 @@ public final class DroneSim {
         double fwz = b.r20 * fx + b.r21 * fy + b.r22 * fz;
         double accX = fwx / m;
         double accY = fwy / m - g;
+        double buoyancy = 0.0;
+        if (proof && this.bodyWet > 0.0) {
+            buoyancy = this.bodyWet * m * g / DRONE_DENSITY_RATIO;
+            accY += buoyancy / m;
+        }
         double accZ = fwz / m;
         double twx = b.r00 * tx + b.r01 * ty + b.r02 * tz;
         double twy = b.r10 * tx + b.r11 * ty + b.r12 * tz;
         double twz = b.r20 * tx + b.r21 * ty + b.r22 * tz;
+        if (this.loads.active()) {
+            ExternalLoads l = this.loads;
+            l.accumulate(b, h);
+            accX += l.forceX / m;
+            accY += l.forceY / m;
+            accZ += l.forceZ / m;
+            twx += l.torqueX;
+            twy += l.torqueY;
+            twz += l.torqueZ;
+            fx += b.r00 * l.forceX + b.r10 * l.forceY + b.r20 * l.forceZ;
+            fy += b.r01 * l.forceX + b.r11 * l.forceY + b.r21 * l.forceZ;
+            fz += b.r02 * l.forceX + b.r12 * l.forceY + b.r22 * l.forceZ;
+            if (this.sleeping && (Math.abs(l.forceX) + Math.abs(l.forceY) + Math.abs(l.forceZ) > ExternalLoads.WAKE_FORCE * m
+                    || Math.abs(l.torqueX) + Math.abs(l.torqueY) + Math.abs(l.torqueZ) > ExternalLoads.WAKE_TORQUE)) {
+                this.wakeUp();
+            }
+        }
 
         this.normalForce = 0.0;
-        if (this.groundedFrames > 0 && !this.sleeping) {
-            double normal = Math.max(0.0, m * g - sumThrust * b.r11);
-            this.normalForce = normal;
-            if (b.vy <= 0.0 && b.py <= this.groundHeight - p.hitboxFootOffset + GROUND_TOLERANCE) {
+        double contactX = 0.0;
+        double contactY = 0.0;
+        double contactZ = 0.0;
+        boolean boxResting = this.groundedFrames > 0 && b.py <= this.groundHeight - p.hitboxFootOffset + BOX_TOLERANCE;
+        boolean hullGround = a.armed && a.turtle && this.env.groundDistance < Double.POSITIVE_INFINITY;
+        if (hullGround) {
+            HullContact hc = this.hullContact;
+            hc.solve(p, b, this.frameStartY - this.env.groundDistance, p.friction * this.groundGrip, g);
+            accX += hc.fx / m;
+            accY += hc.fy / m;
+            accZ += hc.fz / m;
+            twx += hc.tx;
+            twy += hc.ty;
+            twz += hc.tz;
+            this.normalForce = hc.normal;
+            contactX = hc.fx;
+            contactY = hc.fy;
+            contactZ = hc.fz;
+        }
+        if (!hullGround && this.planeValid && !this.sleeping && !this.poseLocked) {
+            GroundSolver gs = this.ground;
+            double plane = this.planeY;
+            if (boxResting) {
+                plane = Math.max(plane, b.py + gs.lowest(p, b));
+            }
+            double bounce = (this.groundBounce >= 0.0 ? this.groundBounce : p.restitution) * t.restitutionScale;
+            double soft = (this.groundBounce >= 0.0 ? this.groundBounce : Math.min(p.restitution, ModelConstants.RESTITUTION_BATTERY))
+                    * t.restitutionScale;
+            if (gs.solve(p, b, plane, h, p.friction * this.groundGrip, bounce, soft, p.impactTolerance * t.crashSpeedScale, true,
+                    b.vx + h * accX, b.vy + h * accY, b.vz + h * accZ, b.lx + h * twx, b.ly + h * twy, b.lz + h * twz)) {
+                contactX = gs.impulseX / h;
+                contactY = gs.impulseY / h;
+                contactZ = gs.impulseZ / h;
+                accX += contactX / m;
+                accY += contactY / m;
+                accZ += contactZ / m;
+                twx += gs.angularX / h;
+                twy += gs.angularY / h;
+                twz += gs.angularZ / h;
+                this.normalForce = gs.normalImpulse / h;
+                this.noteContact(p, t, b, gs);
+            }
+        }
+        if (!hullGround && boxResting && !this.sleeping) {
+            if (b.vy <= 0.0) {
+                double load = Math.max(0.0, m * g - sumThrust * b.r11 - buoyancy) - this.normalForce;
                 b.vy = 0.0;
                 if (accY < 0.0) {
                     accY = 0.0;
                 }
+                double vxz = Math.sqrt(b.vx * b.vx + b.vz * b.vz);
+                if (load > 0.0 && vxz > 0.0) {
+                    double dv = Math.min(vxz, p.friction * this.groundGrip * load / m * h);
+                    b.vx -= dv * b.vx / vxz;
+                    b.vz -= dv * b.vz / vxz;
+                }
+                if (load > 0.0) {
+                    contactY += load;
+                    this.normalForce += load;
+                }
             }
-            double mu = p.friction * this.groundGrip;
-            double vxz = Math.sqrt(b.vx * b.vx + b.vz * b.vz);
-            if (vxz > 0.0) {
-                double dv = Math.min(vxz, mu * normal / m * h);
-                b.vx -= dv * b.vx / vxz;
-                b.vz -= dv * b.vz / vxz;
-            }
-            double rate = SimMath.hypot3(b.wbx, b.wby, b.wbz);
-            if (rate < RIGHTING_RATE && Math.abs(sumThrust) < 0.5 * m * g) {
-                double target = b.r11 >= 0.0 ? 1.0 : -1.0;
-                double kr = m * g * p.motorOffset;
-                double cr = 2.0 * Math.sqrt(kr * p.inertiaXx);
-                double edge = a.armed || !t.restFlat ? 1.0 : GroundRest.gain(b.r01, b.r21);
-                double ux = b.r01 * edge;
-                double uz = b.r21 * edge;
-                twx += kr * (-uz * target) - cr * b.wwx;
-                twz += kr * (ux * target) - cr * b.wwz;
-            }
-            double contactTorque = mu * normal * p.motorOffset;
-            twx -= contactTorque * StrictMath.tanh(b.wwx / CONTACT_RATE);
-            twy -= contactTorque * StrictMath.tanh(b.wwy / CONTACT_RATE);
-            twz -= contactTorque * StrictMath.tanh(b.wwz / CONTACT_RATE);
         }
 
-        this.specificX = fx / m + b.r10 * this.normalForce / m;
-        this.specificY = fy / m + b.r11 * this.normalForce / m;
-        this.specificZ = fz / m + b.r12 * this.normalForce / m;
+        this.specificX = fx / m + (b.r00 * contactX + b.r10 * contactY + b.r20 * contactZ) / m;
+        this.specificY = fy / m + (b.r01 * contactX + b.r11 * contactY + b.r21 * contactZ) / m;
+        this.specificZ = fz / m + (b.r02 * contactX + b.r12 * contactY + b.r22 * contactZ) / m;
+
+        if (this.snagOn && !this.sleeping && !this.poseLocked) {
+            SnagDrag sd = this.snagDrag;
+            sd.compute(b, p, this.env.snag, h, accX, accY, accZ);
+            accX += sd.ax;
+            accY += sd.ay;
+            accZ += sd.az;
+            twx += sd.tx;
+            twy += sd.ty;
+            twz += sd.tz;
+            this.specificX += b.r00 * sd.ax + b.r10 * sd.ay + b.r20 * sd.az;
+            this.specificY += b.r01 * sd.ax + b.r11 * sd.ay + b.r21 * sd.az;
+            this.specificZ += b.r02 * sd.ax + b.r12 * sd.ay + b.r22 * sd.az;
+        }
 
         if (this.injectFault) {
             this.injectFault = false;
@@ -1057,6 +1404,43 @@ public final class DroneSim {
         System.arraycopy(this.dutyNext, 0, this.dutyCur, 0, AirframeSpec.MOTORS);
     }
 
+    private final SnagDrag snagDrag = new SnagDrag();
+    private boolean snagOn;
+    private void updateSubmersion(AirframeSpec p, RigidBody b, boolean inWater) {
+        double surface = this.env.waterSurface;
+        boolean known = surface > Double.NEGATIVE_INFINITY;
+        double height = Math.max(p.hitboxHeight, 0.02);
+        this.bodyWet = known ? SimMath.clamp01(surface / height + 0.5) : inWater ? 1.0 : 0.0;
+        double band = Math.max(p.propRadius, 0.01);
+        for (int i = 0; i < AirframeSpec.MOTORS; i++) {
+            double wet;
+            if (known) {
+                double depth = surface - (b.r10 * p.motorX(i) + b.r11 * p.motorY(i) + b.r12 * p.motorZ(i));
+                wet = SimMath.clamp01(depth / band + 0.5);
+            } else {
+                wet = inWater ? 1.0 : 0.0;
+            }
+            this.power.fluidLoad[i] = 1.0 + wet * (WATER_DENSITY_RATIO - 1.0);
+            this.fluidThrust[i] = 1.0 + wet * (WATER_DENSITY_RATIO * WATER_PROP_EFFICIENCY - 1.0);
+        }
+    }
+
+    private void turtleTick(double roll, double pitch, double yaw, double throttle) {
+        Arming a = this.arming;
+        if (this.body.tiltRad() * SimMath.DEG < TurtleMix.UPRIGHT_TILT_DEG) {
+            a.turtleDone = true;
+        }
+        if (a.turtleDone || a.failsafeStage != 0) {
+            this.turtleMix.stop();
+            return;
+        }
+        PidProfile pid = this.fc.pid();
+        RigidBody b = this.body;
+        double rate = SimMath.hypot3(b.wwx, b.wwy, b.wwz);
+        double governor = TurtleMix.governor(b.tiltRad() * SimMath.DEG, rate, b.vy);
+        this.turtleMix.update(this.params, roll, pitch, yaw, throttle, pid.motorIdlePercent / 100.0, pid.propsOut, governor);
+    }
+
     private double rotorHx;
     private double rotorHz;
 
@@ -1083,7 +1467,7 @@ public final class DroneSim {
         double duct = reverse ? 1.0 : RotorAero.ductFactor(p.ducted, p.ductGain, lam);
         double axialFactor = reverse ? RotorAero.axialThrustFactor(lam) : RotorAero.axialThrustFactor(p, lam, aw, this.cross[i]);
         double magnitude = thrustScale * kT * rhoRatio * duct * axialFactor * tl * this.groundFactor[i]
-                * Math.max(0.0, fw) * aw * aw * this.wearThrust[i];
+                * Math.max(0.0, fw) * aw * aw * this.wearThrust[i] * this.fluidThrust[i];
         if (p.propFlex != 0.0) {
             magnitude *= RotorAero.flexFactor(p, aw);
         }
@@ -1131,10 +1515,231 @@ public final class DroneSim {
         double airspeed = SimMath.hypot3(b.vx - this.windX, b.vy - this.windY, b.vz - this.windZ);
         double height = this.env.groundDistance - (b.py - this.frameStartY) + p.hitboxFootOffset;
         double thrustRatio = this.totalThrust / (p.massKg * SimTuning.referenceGravity(this.gravity));
-        this.nav.update(this.config.hold, this.arming.armed, this.arming.failsafeStage == 1, this.groundedFrames > 0, this.input,
+        PilotInput navInput = this.input;
+        AssistBridge guide = null;
+        if (this.assist != null) {
+            this.runAssist();
+            if (this.assist != null) {
+                navInput = this.assistInput;
+                guide = this.bridge.guidesNav() ? this.bridge : null;
+            }
+        }
+        if (this.forceProviders.length > 0) {
+            this.runForceProviders();
+        }
+        this.nav.update(this.config.hold, this.arming.armed, this.arming.failsafeStage == 1, this.groundedFrames > 0, navInput,
                 this.env.skyView, b,
                 wx, wy, wz, airspeed, height, thrustRatio, this.washFilter.value(), this.wearVibration, this.hoverStick,
-                this.fc.pid());
+                this.fc.pid(), guide);
+    }
+
+    private void runAssist() {
+        AssistBridge out = this.bridge;
+        out.resetOutput();
+        try {
+            this.assist.update(out, out);
+        } catch (RuntimeException e) {
+            this.extensionFailure = e;
+            this.setAssist(null);
+            return;
+        }
+        PilotInput in = this.input;
+        PilotInput eff = this.assistInput;
+        in.copyTo(eff);
+        if (out.sticks) {
+            eff.roll = out.roll;
+            eff.pitch = out.pitch;
+            eff.yaw = out.yaw;
+            eff.throttle = out.throttle;
+        }
+        if (out.mode != null) {
+            eff.mode = AssistBridge.stabMode(out.mode);
+        }
+        if (out.guidesNav()) {
+            eff.altHold = out.horizontal == 0;
+            eff.posHold = out.horizontal != 0;
+        }
+        this.assistSticks = out.sticks;
+        this.assistRoll = out.roll;
+        this.assistPitch = out.pitch;
+        this.assistThrottle = out.throttle;
+        this.assistMode = out.mode == null ? null : AssistBridge.stabMode(out.mode);
+        this.assistYaw = out.yawRate || out.heading;
+        this.assistYawStick = this.assistYaw ? out.yawStick(this.body, this.config.rates) : out.yaw;
+        this.assistAttitude = out.controlsAttitude();
+        this.assistLabel = out.label;
+        if (out.controlsAttitude() || out.guidesNav()) {
+            this.assistEngagedAt = this.time;
+            this.assistOwnsHold = out.guidesNav() && !in.altHold && !in.posHold;
+        }
+        if (out.returnHome) {
+            out.returnHome = false;
+            this.returnHomeRequested = true;
+        }
+    }
+
+    private void runForceProviders() {
+        AssistBridge sink = this.bridge;
+        sink.resetForces();
+        for (ForceProvider provider : this.forceProviders) {
+            try {
+                provider.apply(sink, sink);
+            } catch (RuntimeException e) {
+                this.extensionFailure = e;
+                this.setForceProviders(List.of());
+                this.loads.clearProvider();
+                return;
+            }
+        }
+        this.loads.setProvider(sink.sumFx, sink.sumFy, sink.sumFz, sink.sumTx, sink.sumTy, sink.sumTz);
+    }
+
+    public void setAssist(FlightAssist assist) {
+        if (this.assist == assist) {
+            return;
+        }
+        this.assist = assist;
+        this.assistAttitude = false;
+        this.assistYaw = false;
+        this.assistSticks = false;
+        this.assistMode = null;
+        this.assistLabel = null;
+        this.returnHomeRequested = false;
+        this.bridge.resetOutput();
+        if (assist != null) {
+            try {
+                assist.reset();
+            } catch (RuntimeException e) {
+                this.extensionFailure = e;
+                this.assist = null;
+            }
+        }
+    }
+
+    public FlightAssist assist() {
+        return this.assist;
+    }
+
+    public void setForceProviders(List<ForceProvider> providers) {
+        this.forceProviders = providers == null || providers.isEmpty() ? NO_PROVIDERS : providers.toArray(new ForceProvider[0]);
+        if (this.forceProviders.length == 0) {
+            this.loads.clearProvider();
+        }
+    }
+
+    public int forceProviderCount() {
+        return this.forceProviders.length;
+    }
+
+    public double assistSensorRange() {
+        FlightAssist a = this.assist;
+        if (a == null) {
+            return 0.0;
+        }
+        try {
+            double range = a.sensorRange();
+            return Double.isFinite(range) ? SimMath.clamp(range, 0.0, 64.0) : 0.0;
+        } catch (RuntimeException e) {
+            this.extensionFailure = e;
+            return 0.0;
+        }
+    }
+
+    public void setObstacleDistance(SensorDirection direction, double metres) {
+        if (direction != null) {
+            this.bridge.obstacles[direction.ordinal()] = Double.isNaN(metres) ? Double.NaN : Math.max(0.0, metres);
+        }
+    }
+
+    public String assistLabel() {
+        return this.assist == null ? null : this.assistLabel;
+    }
+
+    public boolean assistEngaged() {
+        return this.assist != null && this.time - this.assistEngagedAt <= ASSIST_ENGAGED_HOLD_SECONDS;
+    }
+
+    public boolean assistOwnsHold() {
+        return this.assistEngaged() && this.assistOwnsHold;
+    }
+
+    public boolean consumeReturnHomeRequest() {
+        boolean requested = this.returnHomeRequested;
+        this.returnHomeRequested = false;
+        return requested;
+    }
+
+    public RuntimeException consumeExtensionFailure() {
+        RuntimeException failure = this.extensionFailure;
+        this.extensionFailure = null;
+        return failure;
+    }
+
+    public boolean applyImpulse(double jx, double jy, double jz, double frameX, double frameY, double frameZ) {
+        if (!Double.isFinite(jx + jy + jz + frameX + frameY + frameZ)) {
+            return false;
+        }
+        RigidBody b = this.body;
+        double magnitude = Math.sqrt(jx * jx + jy * jy + jz * jz);
+        if (!(magnitude > 0.0)) {
+            return false;
+        }
+        double scale = magnitude > ExternalLoads.MAX_IMPULSE ? ExternalLoads.MAX_IMPULSE / magnitude : 1.0;
+        double ix = jx * scale;
+        double iy = jy * scale;
+        double iz = jz * scale;
+        double arm = Math.sqrt(frameX * frameX + frameY * frameY + frameZ * frameZ);
+        double armScale = arm > ExternalLoads.MAX_ARM ? ExternalLoads.MAX_ARM / arm : 1.0;
+        double bx = -frameX * armScale;
+        double by = frameY * armScale;
+        double bz = -frameZ * armScale;
+        double rx = b.r00 * bx + b.r01 * by + b.r02 * bz;
+        double ry = b.r10 * bx + b.r11 * by + b.r12 * bz;
+        double rz = b.r20 * bx + b.r21 * by + b.r22 * bz;
+        double m = b.mass;
+        b.vx += ix / m;
+        b.vy += iy / m;
+        b.vz += iz / m;
+        b.lx += ry * iz - rz * iy;
+        b.ly += rz * ix - rx * iz;
+        b.lz += rx * iy - ry * ix;
+        b.updateRates();
+        this.wakeUp();
+        return true;
+    }
+
+    public boolean push(double fx, double fy, double fz, boolean frameRelative, double frameX, double frameY, double frameZ, double seconds) {
+        double bfx = frameRelative ? -fx : fx;
+        double bfz = frameRelative ? -fz : fz;
+        boolean added = this.loads.add(bfx, fy, bfz, frameRelative, -frameX, frameY, -frameZ, seconds);
+        if (added) {
+            this.wakeUp();
+        }
+        return added;
+    }
+
+    public int activePushes() {
+        return this.loads.pushes();
+    }
+
+    double simTime() {
+        return this.time;
+    }
+
+    PilotInput pilotInput() {
+        return this.input;
+    }
+
+    boolean groundedNow() {
+        return this.groundedFrames > 0;
+    }
+
+    double hoverStickNow() {
+        return this.hoverStick;
+    }
+
+    double heightAboveGroundNow() {
+        return this.env.groundDistance - (this.body.py - this.frameStartY) + this.params.hitboxFootOffset;
     }
 
     static double undeadband(double stick, double band) {
@@ -1212,7 +1817,7 @@ public final class DroneSim {
             this.power.resistance[i] = t.thermalEffects ? this.thermal.motorResistance(p, i) + p.escResistance : p.phaseResistance;
             this.thermalLimits(p, t, i, temp);
         }
-        this.power.extraPower = EnergyModel.extraPower(p, this.power.omega, this.arming.armed);
+        this.power.extraPower = this.extraPower(p);
         this.power.fullLoad = EnergyModel.fullLoad(p, this.power.omega, this.arming.armed);
         double cell = this.cellFilter.apply(this.power.packVoltage(t.batterySag) / p.cells);
         if (t.infiniteBattery) {
@@ -1286,8 +1891,8 @@ public final class DroneSim {
         double scale = this.tuning.gravityScale;
         double omega = p.hoverOmega * Math.sqrt(scale) / Math.sqrt(rhoRatio);
         double current = OperatingPoints.hoverCurrent(p, scale);
-        OperatingPoints.steadyMotor(p, omega, current, this.power.soc, false, this.power.polarization, this.tuning.batterySag,
-                this.hoverPoint);
+        OperatingPoints.loadedMotor(p, omega, current, this.power.soc, OperatingPoints.INSTANT, this.power.transientVoltage(),
+                this.tuning.batterySag, this.hoverPoint);
         double output = this.fc.outputForDuty(this.hoverPoint.duty, this.hoverPoint.busVoltage);
         this.hoverStick = ThrottleCurve.inverse(this.fc.pid(), SimMath.clamp01(output));
     }
@@ -1346,7 +1951,7 @@ public final class DroneSim {
             this.power.resistance[i] = this.tuning.thermalEffects
                     ? this.thermal.motorResistance(this.params, i) + this.params.escResistance : this.params.phaseResistance;
         }
-        if (!Double.isFinite(this.power.lastBusVoltage + this.power.soc + this.power.mAhUsed + this.power.polarization
+        if (!Double.isFinite(this.power.lastBusVoltage + this.power.soc + this.power.mAhUsed + this.power.transientVoltage()
                 + this.power.heatCurrent)) {
             this.power.setStateOfCharge(Math.max(0.0, SimMath.finiteOr(this.power.soc, 1.0)));
         }
@@ -1448,10 +2053,12 @@ public final class DroneSim {
         this.visZ += cz;
         double grip = SimMath.sanitize(report.surfaceGrip, 0.0, 4.0, 1.0);
         boolean supportKnown = !Double.isNaN(report.supportGap);
-        boolean unsupported = supportKnown && report.supportGap > SUPPORT_TOLERANCE;
+        double lift = this.planeValid ? Math.max(0.0, this.visY + p.hitboxFootOffset - this.planeY) : 0.0;
+        boolean unsupported = supportKnown && report.supportGap > lift + SUPPORT_TOLERANCE;
         double restitution = Double.isNaN(report.surfaceRestitution) || report.surfaceRestitution < 0.0 ? -1.0
                 : Math.min(report.surfaceRestitution, 1.0);
         boolean hitGround = false;
+        boolean boxGround = false;
         double groundImpact = 0.0;
         boolean wasGrounded = this.groundedFrames > 0;
         double ax = this.axisSpeed(report.hitX, report.requestedX, report.impactVelocityX, b.vx);
@@ -1502,6 +2109,13 @@ public final class DroneSim {
             }
             touched |= 1 << axis;
             this.contactSign[axis] = sign;
+            if (ny > 0.0 && this.turtleArmed()) {
+                if (b.vy < 0.0) {
+                    b.vy = 0.0;
+                }
+                hitGround = true;
+                continue;
+            }
             double saved = 0.0;
             boolean useImpact = Double.isFinite(impact);
             if (useImpact) {
@@ -1516,6 +2130,17 @@ public final class DroneSim {
                     b.vz = impact;
                 }
             }
+            if (ny > 0.0) {
+                boolean pushed = this.groundImpulse(p, b, this.visY + p.hitboxFootOffset, grip, restitution);
+                if (useImpact && !pushed) {
+                    b.vy = saved;
+                }
+                hitGround = true;
+                boxGround = true;
+                this.groundGrip = grip;
+                this.groundBounce = restitution;
+                continue;
+            }
             this.collision.resolve(p, b, this.power, this.tuning, this.spinSign, nx, ny, nz, grip, restitution, approach);
             if (useImpact && !this.collision.resolved) {
                 if (axis == 0) {
@@ -1525,10 +2150,6 @@ public final class DroneSim {
                 } else {
                     b.vz = saved;
                 }
-            }
-            if (ny > 0.0) {
-                hitGround = true;
-                groundImpact = Math.max(groundImpact, this.collision.impactSpeed);
             }
             if (this.collision.resolved) {
                 this.classifyImpact(Math.min(this.collision.impactSpeed, approach), nx, ny, nz);
@@ -1574,10 +2195,35 @@ public final class DroneSim {
         } else if (this.obliqueFrames > 0) {
             this.obliqueFrames--;
         }
+        if (this.frameContacts != 0 || this.frameStruck != 0) {
+            this.classify(this.frameApproach, this.frameTangential, hullMask(this.frameContacts), this.frameStruck, this.frameStruckRpm,
+                    0.0, 1.0, 0.0);
+            if (this.frameImpulse > 0.05 * p.massKg) {
+                this.wakeUp();
+            }
+        }
+        if (this.frameTouch && this.planeValid && !boxGround) {
+            if (unsupported) {
+                this.leaveGround(b);
+            } else {
+                hitGround = true;
+                groundImpact = Math.max(groundImpact, this.frameApproach);
+                if (this.groundedFrames == 0) {
+                    this.groundHeight = this.planeY;
+                }
+            }
+        }
+        if (boxGround) {
+            groundImpact = Math.max(groundImpact, this.frameApproach);
+        }
+        this.clearFrameContacts();
         if (hitGround) {
             this.groundedFrames = 2;
-            this.groundHeight = this.visY + p.hitboxFootOffset;
+            if (boxGround) {
+                this.groundHeight = this.visY + p.hitboxFootOffset;
+            }
             this.groundGrip = grip;
+            this.groundBounce = restitution;
             if (!wasGrounded && groundImpact < 1.5 && b.tiltRad() * SimMath.DEG < 30.0) {
                 this.emit(SimEventType.LANDED, -groundImpact, -1);
             }
@@ -1595,7 +2241,7 @@ public final class DroneSim {
             }
         }
         if (this.sleeping) {
-            double clearance = this.env.groundDistance + p.hitboxFootOffset;
+            double clearance = this.env.solidDistance + this.ground.lowest(p, b);
             if (unsupported) {
                 this.wakeUp();
                 this.leaveGround(b);
@@ -1622,18 +2268,34 @@ public final class DroneSim {
 
     private void classifyImpact(double v, double nx, double ny, double nz) {
         CollisionSolver c = this.collision;
-        double vcr = this.params.impactTolerance * this.tuning.crashSpeedScale;
-        this.recordImpact(v, nx, ny, nz);
+        int struck = 0;
         for (int i = 0; i < AirframeSpec.MOTORS; i++) {
             if (c.struck[i]) {
+                struck |= 1 << i;
+            }
+        }
+        int contacts = 0;
+        for (int k = 0; k < AirframeSpec.HULL_POINTS; k++) {
+            if (c.hull.inContact[k]) {
+                contacts |= 1 << k;
+            }
+        }
+        this.classify(v, c.tangentialSpeed, contacts, struck, c.struckRpm, nx, ny, nz);
+    }
+
+    private void classify(double v, double tangential, int contacts, int struck, double[] struckRpm, double nx, double ny, double nz) {
+        double vcr = this.params.impactTolerance * this.tuning.crashSpeedScale;
+        this.recordImpact(v, tangential, contacts, struck, struckRpm, nx, ny, nz);
+        for (int i = 0; i < AirframeSpec.MOTORS; i++) {
+            if ((struck & (1 << i)) != 0) {
                 this.propStrikeCount++;
-                this.emit(SimEventType.PROP_STRIKE, c.struckRpm[i], i);
+                this.emit(SimEventType.PROP_STRIKE, struckRpm[i], i);
             }
         }
         if (v >= 1.0) {
             this.lastImpactSpeed = v;
         }
-        boolean crash = v >= vcr || (c.tangentialSpeed >= 1.5 * vcr && v >= 0.5);
+        boolean crash = v >= vcr || (tangential >= 1.5 * vcr && v >= 0.5);
         if (crash || v >= 1.0) {
             this.impactCount++;
         }
@@ -1651,30 +2313,21 @@ public final class DroneSim {
         }
     }
 
-    private void recordImpact(double v, double nx, double ny, double nz) {
-        CollisionSolver c = this.collision;
-        int struck = 0;
+    private void recordImpact(double v, double tangential, int contacts, int struck, double[] struckRpm, double nx, double ny, double nz) {
         double spin = 0.0;
         for (int i = 0; i < AirframeSpec.MOTORS; i++) {
-            if (c.struck[i]) {
-                struck |= 1 << i;
-                spin = Math.max(spin, c.struckRpm[i] * SimMath.TWO_PI / 60.0 / this.params.hoverOmega);
+            if ((struck & (1 << i)) != 0) {
+                spin = Math.max(spin, struckRpm[i] * SimMath.TWO_PI / 60.0 / this.params.hoverOmega);
             }
         }
         if (v < IMPACT_RECORD_SPEED && struck == 0) {
             return;
         }
-        int contacts = 0;
-        for (int k = 0; k < AirframeSpec.HULL_POINTS; k++) {
-            if (c.hull.inContact[k]) {
-                contacts |= 1 << k;
-            }
-        }
         RigidBody b = this.body;
         double bx = b.r00 * nx + b.r10 * ny + b.r20 * nz;
         double by = b.r01 * nx + b.r11 * ny + b.r21 * nz;
         double bz = b.r02 * nx + b.r12 * ny + b.r22 * nz;
-        this.impacts.add(v, c.tangentialSpeed, bx, by, bz, contacts, struck, spin);
+        this.impacts.add(v, tangential, bx, by, bz, contacts, struck, spin);
     }
 
     public void teleport(double x, double y, double z, boolean keepVelocity) {
@@ -1834,6 +2487,7 @@ public final class DroneSim {
         dst.soc = this.power.soc;
         dst.mAhUsed = this.power.mAhUsed;
         dst.polarizationVoltage = this.power.polarization;
+        dst.fastPolarizationVoltage = this.power.fastPolarization;
         dst.lastBatteryCurrent = this.power.lastBatteryCurrent;
         dst.batteryHeatCurrent = this.power.heatCurrent;
         dst.lastBusVoltage = this.power.lastBusVoltage;
@@ -1877,6 +2531,7 @@ public final class DroneSim {
         this.power.soc = src.soc;
         this.power.mAhUsed = src.mAhUsed;
         this.power.polarization = src.polarizationVoltage;
+        this.power.fastPolarization = src.fastPolarizationVoltage;
         this.power.lastBatteryCurrent = src.lastBatteryCurrent;
         this.power.heatCurrent = src.batteryHeatCurrent;
         this.power.lastBusVoltage = src.lastBusVoltage;
@@ -1918,6 +2573,10 @@ public final class DroneSim {
         this.visY = this.body.py + this.body.vy * tau;
         this.visZ = this.body.pz + this.body.vz * tau;
         this.frameStartY = this.body.py;
+        this.ground.forget();
+        if (this.groundedFrames > 0) {
+            this.groundHeight = this.visY + Math.min(this.params.hitboxFootOffset, this.ground.lowest(this.params, this.body));
+        }
         this.updateHoverEstimate();
         this.fillTelemetry(0);
     }
@@ -1974,8 +2633,9 @@ public final class DroneSim {
             s.mAhUsed = (1.0 - s.soc) * this.params.capacityMah;
             repaired = true;
         }
-        if (!Double.isFinite(s.polarizationVoltage + s.lastBatteryCurrent + s.batteryHeatCurrent)) {
+        if (!Double.isFinite(s.polarizationVoltage + s.fastPolarizationVoltage + s.lastBatteryCurrent + s.batteryHeatCurrent)) {
             s.polarizationVoltage = 0.0;
+            s.fastPolarizationVoltage = 0.0;
             s.lastBatteryCurrent = 0.0;
             s.batteryHeatCurrent = 0.0;
             repaired = true;
@@ -1995,6 +2655,10 @@ public final class DroneSim {
         }
         s.groundedFrames = Math.max(0, Math.min(s.groundedFrames, 2));
         return repaired;
+    }
+
+    public double lowestPointOffset() {
+        return this.ground.lowest(this.params, this.body);
     }
 
     public void getPosition(Vector3d dst) {
@@ -2066,6 +2730,9 @@ public final class DroneSim {
         tm.inGroundEffect = this.maxGroundFactor > 1.02;
         tm.mode = this.arming.failsafeStage == 1 ? StabMode.ANGLE : this.input.mode;
         tm.mode3d = this.input.mode3d && this.arming.failsafeStage != 1 && this.nav.mode == HoldMode.OFF;
+        tm.turtle = this.arming.armed && this.arming.turtle;
+        tm.waterproof = this.waterproof;
+        tm.submerged = this.bodyWet;
         tm.lastDisarmReason = this.arming.lastDisarmReason;
         tm.batteryState = this.batteryState;
         double sumThrust = 0.0;
@@ -2148,5 +2815,7 @@ public final class DroneSim {
         tm.holdPositionError = nav.mode == HoldMode.POSHOLD ? Math.hypot(nav.targetX - b.px, nav.targetZ - b.pz) : 0.0;
         tm.gpsPositionError = nav.horizValid ? Math.hypot(nav.xEst - b.px, nav.zhEst - b.pz) : 0.0;
         tm.headingErrorDeg = nav.headingErrorRad * SimMath.DEG;
+        tm.assistLabel = this.assist == null ? null : this.assistLabel;
+        tm.externalPushes = this.loads.pushes();
     }
 }

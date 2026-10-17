@@ -59,12 +59,13 @@ Das letzte öffentliche Release vor dieser Regel war **0.3.2** (CurseForge). Die
 0.4.0–0.4.4 trugen noch saubere Nummern; sie sind zusammen das öffentliche Release **0.4.0**. Ihre Jars liegen unter
 `release/internal/0.4.0-internal` … `release/internal/0.4.4-internal`, die Einzelheiten in den Tages-Changelogs vom
 29.09. bis 01.10.2026. Design-Dokumente (z. B. `docs/design/realism/calibration.md`, Flugmodell-Spezifikation) nennen
-diese internen Nummern weiter als Durchgänge; öffentlich gibt es nur 0.4.0. Danach folgten 0.5.0 und die Fehlerbehebung
-0.5.1; das nächste Release ist 0.5.2, interne Stände bis dahin heißen `0.5.2-dev.N` / `0.5.2-rc.N`.
+diese internen Nummern weiter als Durchgänge; öffentlich gibt es nur 0.4.0. Danach folgten 0.5.0, die Fehlerbehebung
+0.5.1 und das Funktions-Update 0.5.2; das nächste Release ist 0.5.3, interne Stände bis dahin heißen `0.5.3-dev.N` /
+`0.5.3-rc.N`.
 
 ## 2. API-Version (Parts-API)
 
-`PropwashApi.API_VERSION` (heute **1.5.0**, ab Propwash 0.5.0) folgt SemVer und ist unabhängig von der Mod-Version
+`PropwashApi.API_VERSION` (heute **1.6.0**, ab Propwash 0.5.2) folgt SemVer und ist unabhängig von der Mod-Version
 (`docs/design/parts-api.md` §3):
 
 - **MAJOR** bei jeder inkompatiblen Änderung stabiler Typen, **MINOR** bei Ergänzungen, **PATCH** bei Fehlerbehebungen
@@ -76,7 +77,7 @@ diese internen Nummern weiter als Durchgänge; öffentlich gibt es nur 0.4.0. Da
 
 ## 3. Netzprotokoll
 
-`Constants.PROTOCOL_VERSION` (heute **15**, ab Propwash 0.5.0) steigt, sobald Client und Server mit der vorherigen Nummer nicht mehr
+`Constants.PROTOCOL_VERSION` (heute **16**, ab Propwash 0.5.2) steigt, sobald Client und Server mit der vorherigen Nummer nicht mehr
 zusammenspielen (neue oder geänderte Pakete, geänderte Teile-Abgleiche). Beim Verbinden vergleichen beide Seiten die
 Nummer und melden eine Abweichung mit beiden Versionen. Die Protokollversion ist unabhängig von Mod- und API-Version;
 steigt sie, nennt der CHANGELOG-Abschnitt des Releases unter *Compatibility*, dass Client und Server dieselbe Version

@@ -71,9 +71,11 @@ class ObstructionScanTest {
     }
 
     @Test
-    void solidWallAcrossThePathBlocksTheVideo() {
+    void wideWallCostsItsMaterialAndThickTerrainBlocksTheVideo() {
         ObstructionTracer.World wall = (x, y, z) -> x == 20 && Math.abs(y) < 40 && Math.abs(z) < 40 ? ScenarioWorld.STONE : Medium.AIR;
-        assertTrue(scan(wall, 40.5, 0.5, 0.5) >= 55.0);
+        assertEquals(RfMaterial.EARTH.straightBlockDb(), scan(wall, 40.5, 0.5, 0.5), 0.5);
+        ObstructionTracer.World hill = (x, y, z) -> x >= 14 && x <= 26 && Math.abs(y) < 40 && Math.abs(z) < 40 ? ScenarioWorld.STONE : Medium.AIR;
+        assertTrue(scan(hill, 40.5, 0.5, 0.5) >= 55.0);
     }
 
     @Test
@@ -114,6 +116,6 @@ class ObstructionScanTest {
         int n = scan.representativeLosses(out);
         assertEquals(ObstructionScan.REPRESENTATIVE, n);
         assertEquals(scan.centerLossDb(), out[0], 0.0);
-        assertTrue(out[0] > 30.0, "center ray through the trunk " + out[0]);
+        assertEquals(RfMaterial.TRUNK.straightBlockDb(), out[0], 1.0E-9, "center ray through the trunk");
     }
 }

@@ -1,5 +1,6 @@
 package de.lardtom.propwash.drone.client;
 
+import de.lardtom.propwash.accessory.client.AddonFlightClient;
 import de.lardtom.propwash.api.part.AirframeGeometry;
 import de.lardtom.propwash.audio.client.AudioHooks;
 import de.lardtom.propwash.audio.client.Beep;
@@ -9,10 +10,12 @@ import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.content.ContentIds;
 import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.core.client.ClientBus;
+import de.lardtom.propwash.core.event.Event;
 import de.lardtom.propwash.drone.CameraMount;
 import de.lardtom.propwash.drone.PilotBodyRules;
 import de.lardtom.propwash.drone.PilotMode;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.WaterSurface;
 import de.lardtom.propwash.drone.WindModel;
 import de.lardtom.propwash.drone.RadioLink;
 import de.lardtom.propwash.drone.TuneMapping;
@@ -26,6 +29,7 @@ import de.lardtom.propwash.input.FlightModeSelector;
 import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.input.KeyRepeatFilter;
 import de.lardtom.propwash.input.Mode3dSelector;
+import de.lardtom.propwash.input.TurtleSelector;
 import de.lardtom.propwash.input.RadioSource;
 import de.lardtom.propwash.input.RadioState;
 import de.lardtom.propwash.interact.client.PilotInteraction;
@@ -34,6 +38,7 @@ import de.lardtom.propwash.input.SwitchFunction;
 import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.input.client.TransmitterInput;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.race.AssistDetail;
 import de.lardtom.propwash.relay.client.RelayClient;
 import de.lardtom.propwash.relay.client.RelayControl;
 import de.lardtom.propwash.rescue.client.RescueState;
@@ -62,8 +67,13 @@ import de.lardtom.propwash.sim.StepResult;
 import de.lardtom.propwash.sim.Telemetry;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemedToast;
+import de.lardtom.propwash.video.client.ControlLinkScan;
 import de.lardtom.propwash.video.client.VideoSettings;
 import de.lardtom.propwash.video.client.VideoState;
+import de.lardtom.propwash.zone.ZoneField;
+import de.lardtom.propwash.zone.ZoneResolution;
+import de.lardtom.propwash.zone.client.ClientZones;
+import de.lardtom.propwash.video.client.VtxRuntime;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
@@ -95,9 +105,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 public final class PilotSession {
     public static final PilotSession INSTANCE = new PilotSession();
+    public static final Event<Consumer<QuadcopterEntity>> HOME_RESET = new Event<>("pilot_home_reset");
+    static final long RESET_HOLD_NANOS = 5_000_000_000L;
 
     static final int[] LAYOUT_TO_SIM = {3, 1, 2, 0};
     public static final Object TOAST_TOKEN = new Object();
@@ -107,6 +120,7 @@ public final class PilotSession {
     private static final double SLICE_DISTANCE = 0.5;
     private static final int MAX_SLICES = 4;
     private static final double GROUND_PROBE = 5.0;
+    private static final double SOLID_PROBE = 1.0;
     private static final double HIT_EPSILON = 1.0E-7;
     private static final double SUPPORT_PROBE = 0.05;
     private static final long LOW_BATTERY_INTERVAL = 3_000_000_000L;
@@ -136,8 +150,10 @@ public final class PilotSession {
     private long lastSendNanos;
     private long nextLowBatteryBeep;
     private int epoch;
+    private long resetHoldUntil;
     private int motorsPacked;
     private float linkStrength;
+    private double rssiDbm = Double.NaN;
     private boolean armLatch;
     private boolean heldArmSwitch;
     private final FlightModeSelector modes = new FlightModeSelector();
@@ -152,6 +168,9 @@ public final class PilotSession {
     private final Mode3dSelector mode3d = new Mode3dSelector();
     private boolean mode3dActive;
     private boolean lastMode3dAnnounced;
+    private final KeyRepeatFilter turtleKey = new KeyRepeatFilter();
+    private final TurtleSelector turtle = new TurtleSelector();
+    private boolean turtleFlip;
     private Mode3dSelector.Block mode3dBlockShown = Mode3dSelector.Block.NONE;
     private boolean keyAltHold;
     private boolean keyPosHold;
@@ -179,6 +198,9 @@ public final class PilotSession {
     private int suppressTicks;
     private int suppressedPilotUpdates;
     private boolean physicsModified;
+    private PhysicsRules appliedPhysics = PhysicsRules.DEFAULT;
+    private final ZoneField zoneField = new ZoneField();
+    private double frameSeconds;
     private boolean radioSeen;
     private boolean ledsOff;
     private final ArmSwitchGuard armGuard = new ArmSwitchGuard();
@@ -187,6 +209,7 @@ public final class PilotSession {
     private boolean testArm;
     private @Nullable StabMode testMode;
     private @Nullable Boolean testMode3d;
+    private @Nullable Boolean testTurtle;
 
     private PilotSession() {
     }
@@ -215,6 +238,10 @@ public final class PilotSession {
         return this.isActive() ? this.linkStrength : 0.0F;
     }
 
+    public double rssiDbm() {
+        return this.isActive() ? this.rssiDbm : Double.NaN;
+    }
+
     public @Nullable DroneSim sim() {
         return this.isActive() ? this.sim : null;
     }
@@ -234,6 +261,16 @@ public final class PilotSession {
     void resetFlightModes() {
         this.modes.reset();
         this.mode3d.reset();
+        this.turtle.reset();
+    }
+
+    public boolean turtleSelected() {
+        return this.isActive() && this.input.turtle;
+    }
+
+    public boolean turtleArmed() {
+        DroneSim s = this.sim;
+        return this.isActive() && s != null && s.turtleArmed();
     }
 
     public boolean mode3dActive() {
@@ -272,6 +309,26 @@ public final class PilotSession {
         return s != null ? s.telemetry().holdMode : HoldMode.OFF;
     }
 
+    public PhysicsRules appliedPhysics() {
+        return this.sim() != null ? this.appliedPhysics : ClientWorldRules.INSTANCE.physics();
+    }
+
+    public boolean physicsModified() {
+        return this.physicsModified;
+    }
+
+    public ZoneResolution zoneResolution() {
+        return this.sim() != null ? this.zoneField.resolution() : ZoneResolution.world(ClientWorldRules.INSTANCE.physics());
+    }
+
+    public ZoneField zoneField() {
+        return this.zoneField;
+    }
+
+    public List<AssistDetail> zoneBlendDetails() {
+        return this.sim() != null ? this.zoneField.blendDetails() : List.of();
+    }
+
     public StabMode flightMode() {
         DroneSim s = this.sim();
         return s != null ? s.telemetry().mode : this.modes.mode();
@@ -285,6 +342,35 @@ public final class PilotSession {
         RadioState radio = RadioState.INSTANCE;
         return this.isActive() && this.testSticks == null
                 && this.modes.keyOverridesSwitch(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
+    }
+
+    public StabMode previewFlightMode(String guid, int active, int readable) {
+        if (!this.previewsRadio(guid)) {
+            return this.flightMode();
+        }
+        RescueState rescue = RescueState.INSTANCE;
+        return rescue.active() && rescue.forceSelfLevel() ? StabMode.ANGLE : this.modes.preview(true, active, readable);
+    }
+
+    public boolean keyOverridesModeSwitch(String guid, int active, int readable) {
+        return this.previewsRadio(guid) && this.modes.keyOverridesSwitch(true, active, readable);
+    }
+
+    public boolean previewMode3d(String guid, int active, int readable, boolean unlocked) {
+        if (!this.previewsRadio(guid)) {
+            return this.mode3dActive();
+        }
+        return this.mode3d.preview(true, active, readable)
+                && Mode3dSelector.block(unlocked, mode3dAllowed(), RescueState.INSTANCE.active()) == Mode3dSelector.Block.NONE;
+    }
+
+    public boolean keyOverridesMode3dSwitch(String guid, int active, int readable) {
+        return this.previewsRadio(guid) && this.mode3d.keyOverridesSwitch(true, active, readable);
+    }
+
+    private boolean previewsRadio(String guid) {
+        RadioState radio = RadioState.INSTANCE;
+        return this.isActive() && this.testSticks == null && radioUsable(radio) && guid.equals(radio.deviceGuid());
     }
 
     public boolean armed() {
@@ -344,6 +430,11 @@ public final class PilotSession {
         this.testArm = false;
         this.testMode = null;
         this.testMode3d = null;
+        this.testTurtle = null;
+    }
+
+    public void setTestTurtle(@Nullable Boolean active) {
+        this.testTurtle = active;
     }
 
     public void setTestMode3d(@Nullable Boolean active) {
@@ -432,6 +523,9 @@ public final class PilotSession {
         if (pressed(InputKeys.MODE_3D, this.mode3dKey)) {
             this.toggleMode3d(mc);
         }
+        if (pressed(InputKeys.TURTLE, this.turtleKey)) {
+            this.toggleTurtle(mc);
+        }
         while (InputKeys.FLIP_UPRIGHT.consumeClick()) {
             this.flipUpright(mc);
         }
@@ -458,20 +552,30 @@ public final class PilotSession {
         if (mc.isPaused()) {
             return;
         }
+        if (this.resetHoldUntil != 0L) {
+            if (now - this.resetHoldUntil < 0L && !columnLoaded(d.level(), d.getX(), d.getZ())) {
+                return;
+            }
+            this.resetHoldUntil = 0L;
+        }
         frameNanos = Math.max(0L, Math.min(MAX_FRAME_NANOS, frameNanos));
+        this.frameSeconds = frameNanos * 1.0E-9;
         this.syncConfiguration(d, s);
         this.updateLinkQuality(mc, d);
         this.applySwitches(mc, now);
         this.applyLedSwitch();
         this.fillInput();
+        AddonFlightClient.INSTANCE.beforeFrame(mc, d, s, this.input, this.appliedBuild);
         this.announceMode3d(mc);
         this.fillEnvironment(d);
+        s.setVideoPowerDelta(VtxRuntime.INSTANCE.frame(mc, d, s, frameNanos * 1.0E-9));
         int slices = this.sliceCount(s, frameNanos);
         long remaining = frameNanos;
         for (int i = 0; i < slices; i++) {
             long part = i == slices - 1 ? remaining : frameNanos / slices;
             remaining -= part;
             EdgeGuard.INSTANCE.apply(mc, s, now);
+            PilotInteraction.INSTANCE.beforeStep(d, s, this.environment, part);
             s.step(part, this.input, this.environment, this.result);
             this.moveEntity(d, s);
             this.collectImpacts(d, s);
@@ -524,12 +628,21 @@ public final class PilotSession {
         this.snapshot.qy = simQ.y;
         this.snapshot.qz = simQ.z;
         s.copyStateFrom(this.snapshot);
+        if (payload.home()) {
+            s.forceDisarm(DisarmReason.FORCED);
+            s.requireArmSwitchReset();
+            this.motorsPacked = 0;
+            this.resetHoldUntil = Util.getNanos() + RESET_HOLD_NANOS;
+        }
         this.bodyOrientation.set(body);
         this.comPosition.set(payload.x(), payload.y() + com, payload.z());
         VideoState.INSTANCE.cut(Util.getNanos());
         d.snapClientPose(new Vec3(payload.x(), payload.y(), payload.z()), body);
         d.applyLocalState(body, s.telemetry().armed, (float) s.telemetry().batteryCharge, this.motorsPacked, this.ledsOff);
         this.lastSendNanos = 0L;
+        if (payload.home()) {
+            HOME_RESET.fire(listener -> listener.accept(d));
+        }
     }
 
     void onDisconnect(Minecraft mc) {
@@ -587,6 +700,7 @@ public final class PilotSession {
         InputKeys.drain(InputKeys.POS_HOLD);
         InputKeys.drain(InputKeys.MODE_3D);
         InputKeys.drain(InputKeys.FLIP_UPRIGHT);
+        InputKeys.drain(InputKeys.TURTLE);
         InputKeys.drain(InputKeys.EXIT);
         this.armKey.sync(InputKeys.ARM.isDown());
         this.cycleKey.sync(InputKeys.FLIGHT_MODE.isDown());
@@ -596,6 +710,7 @@ public final class PilotSession {
         this.altHoldKey.sync(InputKeys.ALT_HOLD.isDown());
         this.posHoldKey.sync(InputKeys.POS_HOLD.isDown());
         this.mode3dKey.sync(InputKeys.MODE_3D.isDown());
+        this.turtleKey.sync(InputKeys.TURTLE.isDown());
     }
 
     private static boolean pressed(KeyMapping key, KeyRepeatFilter filter) {
@@ -620,9 +735,13 @@ public final class PilotSession {
         DroneBuild build = PilotInteraction.flightBuild(d);
         AirframeSpec p = AirframeSpec.of(build);
         long seed = d.getUUID().getMostSignificantBits() ^ Util.getNanos();
-        PhysicsRules rules = ClientWorldRules.INSTANCE.physics();
-        this.physicsModified = rules.modified();
-        DroneSim s = new DroneSim(p, TuneMapping.toConfig(d.tune().values(), p), simTuning(rules), seed);
+        this.zoneField.reset();
+        this.zoneField.update(ClientZones.INSTANCE.zones(), ClientZones.dimension(d.level()), ClientWorldRules.INSTANCE.physics(), d.getX(), d.getY(),
+                d.getZ(), 0.0);
+        PhysicsRules rules = this.zoneField.rules();
+        this.appliedPhysics = rules;
+        this.physicsModified = this.zoneField.assisted();
+        DroneSim s = new DroneSim(p, TuneMapping.toConfig(d.tune().values(), p), this.zoneField.apply(simTuning(rules)), seed);
         s.setBatteryCharge(d.batteryCharge());
         s.setWear(d.wear());
         double com = -p.hitboxFootOffset;
@@ -647,6 +766,7 @@ public final class PilotSession {
         EdgeGuard.INSTANCE.reset();
         this.appliedRulesVersion = ClientWorldRules.INSTANCE.version();
         this.epoch = d.resetEpoch();
+        this.resetHoldUntil = 0L;
         this.armLatch = false;
         RadioState radio = RadioState.INSTANCE;
         if (radio.source() == RadioSource.KEYBOARD) {
@@ -654,6 +774,8 @@ public final class PilotSession {
         }
         this.modes.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
         this.mode3d.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
+        this.turtle.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
+        this.turtleFlip = false;
         this.mode3dActive = this.mode3d.active(InputConfig.get().mode3dUnlocked, mode3dAllowed(), false);
         this.lastMode3dAnnounced = this.mode3dActive;
         this.mode3dBlockShown = Mode3dSelector.Block.NONE;
@@ -744,6 +866,7 @@ public final class PilotSession {
             this.suppressedPilotUpdates = d.pilotUpdates();
         }
         d.clearLocalState();
+        AddonFlightClient.INSTANCE.end();
         if (this.mode == PilotMode.LINE_OF_SIGHT) {
             this.restoreCameraType(mc);
         }
@@ -776,9 +899,13 @@ public final class PilotSession {
         this.input.altHold = false;
         this.input.posHold = false;
         this.input.mode3d = false;
+        this.input.turtle = false;
+        this.turtleFlip = false;
         this.mode3dActive = false;
         TransmitterInput.INSTANCE.setThrottle3d(false);
         this.physicsModified = false;
+        this.appliedPhysics = PhysicsRules.DEFAULT;
+        this.zoneField.reset();
         FpvView.setPilotBody(null);
         if (mc.getCameraEntity() == d && mc.player != null) {
             mc.setCameraEntity(mc.player);
@@ -814,23 +941,25 @@ public final class PilotSession {
             this.appliedTune = tune;
             s.setConfig(TuneMapping.toConfig(tune.values(), s.params()));
         }
+        s.setWaterproof(d.waterproof() || ClientWorldRules.INSTANCE.on(WorldRuleSpecs.WATERPROOF_DRONES));
         PartWear wear = d.wear();
         if (!wear.equals(this.appliedWear)) {
             this.appliedWear = wear;
             s.setWear(wear);
         }
         int rulesVersion = ClientWorldRules.INSTANCE.version();
-        PhysicsRules rules = ClientWorldRules.INSTANCE.physics();
-        if (this.appliedRulesVersion != rulesVersion) {
+        boolean zones = this.zoneField.update(ClientZones.INSTANCE.zones(), ClientZones.dimension(d.level()), ClientWorldRules.INSTANCE.physics(),
+                d.getX(), d.getY(), d.getZ(), this.frameSeconds);
+        if (this.appliedRulesVersion != rulesVersion || zones) {
             this.appliedRulesVersion = rulesVersion;
-            s.setTuning(simTuning(rules));
-            if (rules.modified()) {
-                this.physicsModified = true;
+            PhysicsRules rules = this.zoneField.rules();
+            s.setTuning(this.zoneField.apply(simTuning(rules)));
+            if (this.appliedPhysics.infiniteBattery() && !rules.infiniteBattery()) {
+                s.keepBatteryCharge();
             }
+            this.appliedPhysics = rules;
         }
-        if (!s.telemetry().armed && !rules.modified()) {
-            this.physicsModified = false;
-        }
+        this.physicsModified = this.zoneField.assisted();
     }
 
     void applyTuneLocally(FlightTune tune) {
@@ -842,6 +971,7 @@ public final class PilotSession {
     }
 
     private void updateLinkQuality(Minecraft mc, QuadcopterEntity d) {
+        this.rssiDbm = Double.NaN;
         if (this.testSticks != null) {
             this.linkStrength = 1.0F;
             return;
@@ -855,7 +985,9 @@ public final class PilotSession {
         double creativeRange = ContentIds.wornGogglesSystem(mc.player).filter(system -> system == VideoSystem.CREATIVE).isPresent()
                 ? VideoSettings.get().creativeRangeBlocks : 0.0;
         double serverLimit = ClientServerRules.INSTANCE.maxPilotDistance();
-        float direct = RadioLink.quality(distance, serverLimit, free, creativeRange);
+        double shadow = free ? 0.0 : ControlLinkScan.INSTANCE.videoBandLossDb(d);
+        float direct = RadioLink.quality(distance, serverLimit, free, creativeRange, shadow);
+        this.rssiDbm = free ? Double.NaN : RadioLink.rssiDbm(distance, shadow);
         this.linkStrength = RelayControl.INSTANCE.quality(mc.level, mc.player.position(), d.position(), direct, serverLimit, free, creativeRange,
                 RelayClient.relayLimit());
     }
@@ -879,6 +1011,7 @@ public final class PilotSession {
         boolean unlocked = InputConfig.get().mode3dUnlocked;
         boolean allowed = mode3dAllowed();
         boolean threeD;
+        boolean turtleOn;
         float throttle;
         if (test != null) {
             sticks = test.clamped();
@@ -888,6 +1021,7 @@ public final class PilotSession {
             altHold = this.keyAltHold;
             posHold = this.keyPosHold;
             threeD = this.testMode3d != null ? this.testMode3d : this.mode3d.active(unlocked, allowed, rescueActive);
+            turtleOn = this.testTurtle != null ? this.testTurtle : this.turtle.selected();
             throttle = sticks.throttle();
         } else {
             this.armGuard.check(radio.armRevision(), this.sim);
@@ -920,6 +1054,7 @@ public final class PilotSession {
                 this.heldPosHold = posHold;
                 this.modes.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
                 this.mode3d.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
+                this.turtle.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
                 boolean radioArm = radio.isActive(SwitchFunction.ARM);
                 armSwitch = radioArm || this.armLatch;
                 this.heldArmSwitch = radioArm;
@@ -931,6 +1066,7 @@ public final class PilotSession {
                 posHold = false;
             }
             threeD = this.mode3d.active(unlocked, allowed, rescueActive);
+            turtleOn = this.turtle.selected() && !rescueActive;
             throttle = !threeD ? sticks.throttle() : radioLost ? 0.5F : radio.throttle3d();
         }
         this.mode3dActive = threeD;
@@ -940,6 +1076,7 @@ public final class PilotSession {
         in.yaw = sticks.yaw();
         in.throttle = throttle;
         in.mode3d = threeD;
+        in.turtle = turtleOn;
         in.mode = mode;
         in.armSwitch = armSwitch;
         in.linkOk = linkOk;
@@ -960,7 +1097,9 @@ public final class PilotSession {
         double z = d.getZ();
         SimEnvironment env = this.environment;
         env.groundDistance = this.groundDistance(level, d, x, y, z);
+        env.solidDistance = env.groundDistance < SOLID_PROBE ? solidDistance(level, d, x, y, z) : Double.POSITIVE_INFINITY;
         env.fluid = fluidAt(level, x, y, z);
+        env.waterSurface = WaterSurface.relative(level, x, y, z);
         env.airDensity = 1.225 * Math.exp(-Math.max(0.0, y - level.getSeaLevel()) / 8500.0);
         env.ambientTempC = 20.0;
         env.skyView = this.skyView.sample(level, x, y, z, Util.getNanos());
@@ -983,6 +1122,12 @@ public final class PilotSession {
             return probeEnd <= floor ? y - floor : Double.POSITIVE_INFINITY;
         }
         return Math.max(0.0, y - hit.getLocation().y);
+    }
+
+    private static double solidDistance(Level level, QuadcopterEntity d, double x, double y, double z) {
+        BlockHitResult hit = level.clip(new ClipContext(new Vec3(x, y, z), new Vec3(x, y - SOLID_PROBE, z), ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE, d));
+        return hit.getType() == HitResult.Type.MISS ? Double.POSITIVE_INFINITY : Math.max(0.0, y - hit.getLocation().y);
     }
 
     static boolean columnLoaded(Level level, double x, double z) {
@@ -1054,10 +1199,10 @@ public final class PilotSession {
         r.hitX = Math.abs(ax - ex) > HIT_EPSILON;
         r.hitY = Math.abs(ay - ey) > HIT_EPSILON;
         r.hitZ = Math.abs(az - ez) > HIT_EPSILON;
-        if (r.hitX || r.hitY || r.hitZ || r.obliqueContact()) {
+        Telemetry t = s.telemetry();
+        if (r.hitX || r.hitY || r.hitZ || r.obliqueContact() || t.grounded) {
             this.fillSurface(d, r);
         }
-        Telemetry t = s.telemetry();
         if (t.grounded || t.sleeping) {
             r.supportGap = d.supportGap(SUPPORT_PROBE);
         }
@@ -1106,7 +1251,7 @@ public final class PilotSession {
         Quaternionf q = this.bodyOrientation;
         ClientNet.sendToServer(new DroneStateC2S(d.getId(), this.epoch, d.getX(), d.getY(), d.getZ(), q.x, q.y, q.z, q.w,
                 (float) this.velocity.x, (float) this.velocity.y, (float) this.velocity.z, t.armed, (float) t.batteryCharge,
-                this.motorsPacked, this.physicsModified, this.ledsOff));
+                this.motorsPacked, this.physicsModified, this.ledsOff, RadioState.INSTANCE.isActive(SwitchFunction.BEEPER)));
     }
 
     private void collectImpacts(QuadcopterEntity d, DroneSim s) {
@@ -1163,13 +1308,20 @@ public final class PilotSession {
         EventQueue events = s.events();
         for (int i = 0; i < events.size(); i++) {
             switch (events.type(i)) {
-                case ARMED -> AudioHooks.beep(Beep.ARM);
+                case ARMED -> {
+                    AudioHooks.beep(Beep.ARM);
+                    if (events.value(i) > 0.5) {
+                        this.turtleFlip = true;
+                        overlay(mc, Component.translatable("propwash.drone.turtle.armed"), Palette.WARNING);
+                    }
+                }
                 case DISARMED -> {
                     AudioHooks.beep(Beep.DISARM);
                     int reason = (int) events.value(i);
                     if (reason != DisarmReason.SWITCH.ordinal()) {
                         this.armLatch = false;
                     }
+                    this.turtleDisarmed(mc, reason);
                 }
                 case ARM_BLOCKED -> {
                     this.armLatch = false;
@@ -1282,6 +1434,26 @@ public final class PilotSession {
                 : Component.translatable(on ? "propwash.drone.mode3d.on" : "propwash.drone.mode3d.off");
         overlay(mc, text, on ? Palette.WARNING : Palette.INFO);
         this.lastMode3dAnnounced = this.mode3d.active(InputConfig.get().mode3dUnlocked, mode3dAllowed(), RescueState.INSTANCE.active());
+    }
+
+    private void toggleTurtle(Minecraft mc) {
+        boolean on = this.turtle.toggle();
+        DroneSim s = this.sim;
+        boolean flying = s != null && s.telemetry().armed && !s.turtleArmed();
+        String key = !on ? "propwash.drone.turtle.off" : flying ? "propwash.drone.turtle.on_flying" : "propwash.drone.turtle.on";
+        overlay(mc, Component.translatable(key), on ? Palette.WARNING : Palette.INFO);
+    }
+
+    private void turtleDisarmed(Minecraft mc, int reason) {
+        if (!this.turtleFlip) {
+            return;
+        }
+        this.turtleFlip = false;
+        if (reason == DisarmReason.TURTLE_OFF.ordinal()) {
+            overlay(mc, Component.translatable("propwash.drone.turtle.ended"), Palette.INFO);
+        } else if (this.turtle.releaseKey()) {
+            overlay(mc, Component.translatable("propwash.drone.turtle.off"), Palette.INFO);
+        }
     }
 
     private void announceMode3d(Minecraft mc) {

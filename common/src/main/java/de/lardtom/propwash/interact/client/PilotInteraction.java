@@ -1,5 +1,7 @@
 package de.lardtom.propwash.interact.client;
 
+import de.lardtom.propwash.accessory.AccessoryContents;
+import de.lardtom.propwash.accessory.AccessoryPayload;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.input.RadioState;
@@ -16,6 +18,7 @@ import de.lardtom.propwash.sim.CrashDamage;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.ImpactLog;
 import de.lardtom.propwash.sim.ImpactSample;
+import de.lardtom.propwash.sim.SimEnvironment;
 import de.lardtom.propwash.core.client.ClientBus;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.Entity;
@@ -53,17 +56,18 @@ public final class PilotInteraction {
     public static DroneBuild flightBuild(QuadcopterEntity drone) {
         DroneBuild base = drone.build();
         float grams = drone.cargoGrams();
+        AccessoryContents contents = drone.accessoryContents();
         FlightBuild last = lastFlightBuild;
-        if (last != null && last.base() == base && last.grams() == grams) {
+        if (last != null && last.base() == base && last.grams() == grams && last.contents() == contents) {
             return last.flown();
         }
-        DroneBuild flown = CargoMass.withPayload(base, grams);
-        lastFlightBuild = new FlightBuild(base, grams, flown);
+        DroneBuild flown = AccessoryPayload.withPayload(CargoMass.withPayload(base, grams), contents);
+        lastFlightBuild = new FlightBuild(base, grams, contents, flown);
         return flown;
     }
 
     public static boolean sameAirframe(DroneBuild a, DroneBuild b) {
-        return a != null && b != null && CargoMass.unladen(a).equals(CargoMass.unladen(b));
+        return a != null && b != null && AccessoryPayload.unladen(a).equals(AccessoryPayload.unladen(b));
     }
 
     public void start() {
@@ -79,6 +83,8 @@ public final class PilotInteraction {
         this.dropRequested = false;
         this.switchHeld = false;
         PilotBreaks.INSTANCE.reset();
+        PilotSnags.INSTANCE.reset();
+        PilotBells.INSTANCE.reset();
     }
 
     public void requestDrop() {
@@ -89,7 +95,17 @@ public final class PilotInteraction {
         return this.strikesSent;
     }
 
+    public void beforeStep(QuadcopterEntity drone, DroneSim sim, SimEnvironment env, long sliceNanos) {
+        PilotSnags.INSTANCE.beforeStep(drone, sim, env, sliceNanos);
+    }
+
     public Vec3 clip(QuadcopterEntity drone, DroneSim sim, Vec3 delta) {
+        Vec3 out = this.clipEntities(drone, sim, delta);
+        PilotBells.INSTANCE.beforeMove(drone, sim, out);
+        return out;
+    }
+
+    private Vec3 clipEntities(QuadcopterEntity drone, DroneSim sim, Vec3 delta) {
         PilotBreaks.INSTANCE.beforeMove(drone, sim, delta);
         this.contacts.clear();
         if (!ClientInteractRules.dronesHitEntities() || delta.lengthSqr() <= 0.0 || drone.noPhysics) {
@@ -138,6 +154,7 @@ public final class PilotInteraction {
     }
 
     public void afterMove(QuadcopterEntity drone) {
+        PilotBells.INSTANCE.afterMove(drone);
         if (this.contacts.isEmpty()) {
             return;
         }
@@ -170,6 +187,8 @@ public final class PilotInteraction {
 
     public void afterFrame(QuadcopterEntity drone, int epoch) {
         PilotBreaks.INSTANCE.afterFrame(drone, epoch);
+        PilotSnags.INSTANCE.afterFrame(drone, epoch);
+        PilotBells.INSTANCE.afterFrame(drone, epoch);
         boolean session = ClientBus.inSession();
         boolean held = RadioState.INSTANCE.isActive(SwitchFunction.CARGO_DROP);
         if (held && !this.switchHeld) {
@@ -222,6 +241,6 @@ public final class PilotInteraction {
     record Contact(Entity entity, int axis, boolean positive, double vx, double vy, double vz) {
     }
 
-    private record FlightBuild(DroneBuild base, float grams, DroneBuild flown) {
+    private record FlightBuild(DroneBuild base, float grams, AccessoryContents contents, DroneBuild flown) {
     }
 }

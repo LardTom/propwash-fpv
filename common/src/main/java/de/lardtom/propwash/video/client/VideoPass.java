@@ -20,7 +20,9 @@ import com.mojang.renderpearl.api.textures.GpuTextureView;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.compat.iris.client.IrisCompat;
 import de.lardtom.propwash.video.EffectParams;
+import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.ImageArea;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MappableRingBuffer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
@@ -47,11 +49,26 @@ public final class VideoPass {
             .withColorTargetState(ColorTargetState.DEFAULT)
             .build();
 
+    public static final String LENS_BLOCK = "PropwashLens";
+    public static final BindGroupLayout LENS_LAYOUT = BindGroupLayout.builder()
+            .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
+            .withUniform(LENS_BLOCK, UniformType.UNIFORM_BUFFER)
+            .build();
+    public static final RenderPipeline LENS_PIPELINE = RenderPipeline.builder(RenderPipelines.POST_PROCESSING_SNIPPET)
+            .withLocation(Constants.id("pipeline/fpv_lens"))
+            .withVertexShader(Identifier.withDefaultNamespace("core/screenquad"))
+            .withFragmentShader(Constants.id("post/fpv_lens"))
+            .withBindGroupLayout(LENS_LAYOUT)
+            .withColorTargetState(ColorTargetState.DEFAULT)
+            .build();
+
+    private static final int LENS_UBO_SIZE = new Std140SizeCalculator().putVec4().putVec4().putVec4().putVec4().get();
     private static final int UBO_SIZE = new Std140SizeCalculator()
             .putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().get();
     private static final long HOOK_TIMEOUT_NANOS = 1_000_000_000L;
 
     private @Nullable MappableRingBuffer ubo;
+    private @Nullable MappableRingBuffer lensUbo;
     private @Nullable TextureTarget frame;
     private @Nullable TextureTarget history;
     private boolean frameStale = true;
@@ -61,7 +78,10 @@ public final class VideoPass {
     private boolean hookSeen;
     private long lastHookNanos;
     private long framesDrawn;
+    private long lensFramesDrawn;
     private boolean hookWarningLogged;
+    private @Nullable Failure lensFailure;
+    private @Nullable String lensFailureDetail;
 
     private VideoPass() {
     }
@@ -72,25 +92,50 @@ public final class VideoPass {
         this.lastHookNanos = now;
         VideoState state = VideoState.INSTANCE;
         EffectParams params = state.params();
-        boolean usable = state.active() && this.failure == null && this.overlayReason(now) == null;
-        if (!usable) {
+        FisheyeLens lens = this.lensFailure == null ? FpvLens.INSTANCE.rendered() : null;
+        boolean effects = state.active() && this.failure == null && this.overlayReason(now) == null;
+        if (!effects && lens == null) {
             if (this.holdsResources()) {
                 this.release();
             }
             return;
         }
-        if (!params.needsPass()) {
+        boolean pass = effects && params.needsPass();
+        if (!pass) {
             if (params.frameAdvanced) {
                 this.frameStale = true;
             }
-            return;
+            if (lens == null) {
+                return;
+            }
         }
         try {
-            this.draw(main, params);
+            this.draw(main, params, pass, lens);
         } catch (RuntimeException exception) {
-            this.fail(Failure.ERROR, exception);
+            if (pass) {
+                this.fail(Failure.ERROR, exception);
+            }
+            if (lens != null) {
+                this.failLens(Failure.ERROR, exception);
+            }
             this.release();
         }
+    }
+
+    public boolean lensReady(long now) {
+        return this.lensFailure == null && this.hookSeen && now - this.lastHookNanos <= HOOK_TIMEOUT_NANOS;
+    }
+
+    public @Nullable Failure lensFailure() {
+        return this.lensFailure;
+    }
+
+    public @Nullable String lensFailureDetail() {
+        return this.lensFailureDetail;
+    }
+
+    public long lensFramesDrawn() {
+        return this.lensFramesDrawn;
     }
 
     public Status status() {
@@ -132,11 +177,13 @@ public final class VideoPass {
     public void retry() {
         this.failure = null;
         this.failureDetail = null;
+        this.lensFailure = null;
+        this.lensFailureDetail = null;
         this.hookWarningLogged = false;
     }
 
     void retryAfterCompileFailure() {
-        if (this.failure == Failure.COMPILE) {
+        if (this.failure == Failure.COMPILE || this.lensFailure == Failure.COMPILE) {
             this.retry();
         }
     }
@@ -145,6 +192,10 @@ public final class VideoPass {
         if (this.ubo != null) {
             this.ubo.close();
             this.ubo = null;
+        }
+        if (this.lensUbo != null) {
+            this.lensUbo.close();
+            this.lensUbo = null;
         }
         if (this.frame != null) {
             this.frame.destroyBuffers();
@@ -159,7 +210,7 @@ public final class VideoPass {
     }
 
     public boolean holdsResources() {
-        return this.ubo != null || this.frame != null || this.history != null;
+        return this.ubo != null || this.lensUbo != null || this.frame != null || this.history != null;
     }
 
     @Nullable Failure overlayReason(long now) {
@@ -181,34 +232,128 @@ public final class VideoPass {
         return null;
     }
 
-    private void draw(RenderTarget main, EffectParams params) {
-        CompiledRenderPipeline compiled = RenderSystem.getCompiledPipelineNullable(PIPELINE);
-        if (compiled == null) {
-            this.fail(Failure.COMPILE, null);
-            return;
-        }
+    private void draw(RenderTarget main, EffectParams params, boolean effectPass, @Nullable FisheyeLens wanted) {
         GpuTextureView output = main.getColorTextureView();
         if (output == null || main.width <= 0 || main.height <= 0) {
             return;
         }
-        boolean fresh = this.ensureTargets(main.width, main.height);
-        MappableRingBuffer buffer = this.ubo;
-        if (this.frame == null || this.history == null || buffer == null) {
+        boolean pass = effectPass;
+        CompiledRenderPipeline feed = null;
+        if (pass) {
+            feed = RenderSystem.getCompiledPipelineNullable(PIPELINE);
+            if (feed == null) {
+                this.fail(Failure.COMPILE, null);
+                pass = false;
+            }
+        }
+        FisheyeLens lens = wanted;
+        CompiledRenderPipeline dewarp = null;
+        if (lens != null) {
+            dewarp = RenderSystem.getCompiledPipelineNullable(LENS_PIPELINE);
+            if (dewarp == null) {
+                this.failLens(Failure.COMPILE, null);
+                lens = null;
+            }
+        }
+        if (!pass && lens == null) {
             return;
         }
-        if (fresh || this.frameStale) {
-            this.frame.copyColorFrom(main);
-            this.historyValid = false;
-            this.frameStale = false;
-        } else if (params.frameAdvanced) {
-            TextureTarget shown = this.frame;
-            this.frame = this.history;
-            this.history = shown;
-            this.frame.copyColorFrom(main);
-            this.historyValid = true;
+        boolean fresh = this.ensureTargets(main.width, main.height);
+        if (this.frame == null || this.history == null) {
+            return;
         }
+        if (!pass) {
+            this.frame.copyColorFrom(main);
+            this.frameStale = true;
+            this.historyValid = false;
+            GpuTextureView raw = this.frame.getColorTextureView();
+            if (raw != null) {
+                this.dewarp(dewarp, raw, output, lens, main.width, main.height);
+            }
+            return;
+        }
+        try {
+            if (fresh || this.frameStale) {
+                this.capture(main, this.frame, dewarp, lens);
+                this.historyValid = false;
+                this.frameStale = false;
+            } else if (params.frameAdvanced) {
+                TextureTarget shown = this.frame;
+                this.frame = this.history;
+                this.history = shown;
+                this.capture(main, this.frame, dewarp, lens);
+                this.historyValid = true;
+            }
+            this.feed(main, output, feed, params);
+        } catch (RuntimeException exception) {
+            this.fail(Failure.ERROR, exception);
+            this.release();
+        }
+    }
+
+    private void capture(RenderTarget main, TextureTarget into, @Nullable CompiledRenderPipeline dewarp, @Nullable FisheyeLens lens) {
+        GpuTextureView source = main.getColorTextureView();
+        GpuTextureView target = into.getColorTextureView();
+        if (lens == null || dewarp == null || source == null || target == null) {
+            into.copyColorFrom(main);
+            return;
+        }
+        this.dewarp(dewarp, source, target, lens, main.width, main.height);
+    }
+
+    private void dewarp(@Nullable CompiledRenderPipeline pipeline, GpuTextureView source, GpuTextureView target, @Nullable FisheyeLens lens,
+                        int width, int height) {
+        if (pipeline == null || lens == null) {
+            return;
+        }
+        try {
+            if (this.lensUbo == null) {
+                this.lensUbo = new MappableRingBuffer(() -> "propwash fpv lens uniforms", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE,
+                        LENS_UBO_SIZE);
+            }
+            MappableRingBuffer buffer = this.lensUbo;
+            float fov = Minecraft.getInstance().gameRenderer.mainCamera().getFov();
+            double tanY = fov > 1.0F && fov < 179.0F ? Math.tan(Math.toRadians(fov) * 0.5) : lens.tanY();
+            double tanX = tanY * width / height;
+            ImageArea area = FpvImage.area(width, height);
+            GpuBuffer uniforms = buffer.currentBuffer();
+            try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
+                Std140Builder.intoBuffer(view.data())
+                        .putVec4(width, height, 1.0F / width, 1.0F / height)
+                        .putVec4((float) area.x() / area.screenWidth(), (float) area.y() / area.screenHeight(), (float) area.widthShare(),
+                                (float) area.heightShare())
+                        .putVec4((float) lens.focal(), (float) lens.circleRadius(), (float) tanX, (float) tanY)
+                        .putVec4((float) FisheyeLens.EDGE_PX, (float) lens.bend(), 0.0F, 0.0F);
+            }
+            GpuSampler sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
+                    .createRenderPass(() -> "propwash fpv lens", target, Optional.empty())) {
+                pass.setPipeline(pipeline);
+                RenderSystem.bindDefaultUniforms(pass);
+                pass.setUniform("InSampler", source, sampler);
+                pass.setUniform(LENS_BLOCK, uniforms);
+                pass.draw(3, 1, 0, 0);
+            }
+            buffer.rotate();
+            this.lensFramesDrawn++;
+        } catch (RuntimeException exception) {
+            this.failLens(Failure.ERROR, exception);
+        }
+    }
+
+    private void feed(RenderTarget main, GpuTextureView output, @Nullable CompiledRenderPipeline compiled, EffectParams params) {
+        if (compiled == null) {
+            return;
+        }
+        if (this.ubo == null) {
+            this.ubo = new MappableRingBuffer(() -> "propwash video feed uniforms", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, UBO_SIZE);
+        }
+        MappableRingBuffer buffer = this.ubo;
         TextureTarget current = this.frame;
         TextureTarget previous = this.historyValid ? this.history : current;
+        if (current == null || previous == null) {
+            return;
+        }
         GpuTextureView currentView = current.getColorTextureView();
         GpuTextureView previousView = previous.getColorTextureView();
         if (currentView == null || previousView == null) {
@@ -244,9 +389,6 @@ public final class VideoPass {
     }
 
     private boolean ensureTargets(int width, int height) {
-        if (this.ubo == null) {
-            this.ubo = new MappableRingBuffer(() -> "propwash video feed uniforms", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_MAP_WRITE, UBO_SIZE);
-        }
         if (this.frame == null || this.history == null) {
             if (this.frame != null) {
                 this.frame.destroyBuffers();
@@ -283,6 +425,16 @@ public final class VideoPass {
             Constants.LOG.warn("Video-Effekt: Pipeline {} nicht verfügbar, nutze das Ersatz-Overlay", PIPELINE.getLocation());
         } else {
             Constants.LOG.error("Video-Effekt: Fehler im Render-Pass, nutze das Ersatz-Overlay", cause);
+        }
+    }
+
+    private void failLens(Failure reason, @Nullable Throwable cause) {
+        this.lensFailure = reason;
+        this.lensFailureDetail = cause == null ? null : cause.getClass().getSimpleName() + ": " + cause.getMessage();
+        if (cause == null) {
+            Constants.LOG.warn("Fisheye-Objektiv: Pipeline {} nicht verfügbar, zeichne das FPV-Bild flach", LENS_PIPELINE.getLocation());
+        } else {
+            Constants.LOG.error("Fisheye-Objektiv: Fehler im Render-Pass, zeichne das FPV-Bild flach", cause);
         }
     }
 

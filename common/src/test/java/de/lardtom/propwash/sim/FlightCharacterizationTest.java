@@ -45,7 +45,7 @@ class FlightCharacterizationTest {
         List<Check> c = new ArrayList<>();
         double[][] twr = {{3.0, 4.0}, {3.5, 7.0}, {8.0, 12.0}, {0.0, 0.0}, {3.5, 7.0}};
         double[][] hover = {{45.0, 60.0}, {35.0, 45.0}, {20.0, 30.0}, {0.0, 0.0}, {25.0, 35.0}};
-        double[][] top = {{30.0, 52.0}, {80.0, 100.0}, {130.0, 150.0}, {160.0, 180.0}, {100.0, 120.0}};
+        double[][] top = {{30.0, 52.0}, {80.0, 100.0}, {130.0, 150.0}, {140.0, 160.0}, {100.0, 120.0}};
         for (int k = 0; k < r.length; k++) {
             FlightCharacterization.Result x = r[k];
             String n = NAMES[k];

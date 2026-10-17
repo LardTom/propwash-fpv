@@ -64,7 +64,7 @@ und Golems werden wütend auf den Piloten. Tags: `minecraft:no_knockback` (der R
 festen 0,4 von Vanilla) und `minecraft:panic_causes` (Tiere laufen weg). Todesmeldung
 `death.attack.propwash.drone_strike` („%1$s wurde von der Drohne von %2$s getroffen“). Treffer an Lebewesen verändern
 keine Blöcke; zerbrechliche Blöcke wie Glas behandelt die Welt-Regel `propwash:drones_break_blocks` (Standard aus,
-`docs/design/drone-break-blocks.md`).
+`docs/design/drone-break-blocks.md`), Spinnweben, Fäden, Ranken und Glocken `docs/design/drone-snags.md`.
 
 ### 1.4 Spielregel
 `propwash:drone_hits_entities` (Boolean, Standard an) ist eine Welt-Regel im Katalog `server.rules.WorldRuleSpecs`

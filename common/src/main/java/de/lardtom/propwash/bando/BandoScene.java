@@ -19,6 +19,8 @@ public final class BandoScene {
     public static final String ID = "bandos";
     public static final String DRONE = "drone";
     public static final String CHEST = "chest";
+    public static final String MAP = "map";
+    public static final String MAP_ITEM = "propwash:bando_map";
     public static final DroneBuild BUILD = DroneBuild.FREESTYLE;
     public static final ScenePos CHEST_POS = new ScenePos(-1.5F, 1.0F, -0.5F);
     public static final ScenePos ROOF_HOLE = new ScenePos(1.5F, 5.0F, 0.0F);
@@ -137,6 +139,14 @@ public final class BandoScene {
                     }
                     s.at(50.0F).callout("chest", Anchor.on(CHEST, 0.0F, 0.2F, 0.0F), Cue.Side.RIGHT, 0.0F);
                     s.at(126.0F).despawn(CHEST, 10.0F);
+                })
+                .step("map", 130.0F, s -> {
+                    ScenePos above = new ScenePos(0.5F, EAVE + 2.4F, 0.5F);
+                    s.at(0.0F).camera(OVERVIEW.add(0.0F, 1.6F, 0.0F), 150.0F, 18.0F, 1.0F, 24.0F);
+                    s.at(10.0F).spawn(MAP, new ActorSpec.Item(MAP_ITEM, 4.5F, false), above.add(0.0F, 1.2F, 0.0F), 150.0F, Cue.Appear.POP, 10.0F);
+                    s.at(10.0F).move(MAP, 18.0F, Ease.OUT, above);
+                    s.at(36.0F).callout("map", Anchor.on(MAP, 0.0F, 0.8F, 0.0F), Cue.Side.RIGHT, 0.0F);
+                    s.at(118.0F).despawn(MAP, 10.0F);
                 })
                 .step("locate", 120.0F, s -> {
                     s.at(0.0F).camera(OVERVIEW.add(0.0F, 0.6F, 0.0F), 215.0F, 30.0F, 0.9F, 30.0F);

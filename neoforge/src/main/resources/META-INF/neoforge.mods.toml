@@ -42,6 +42,8 @@ config = "${mod_id}.content.mixins.json"
 config = "${mod_id}.join.mixins.json"
 [[mixins]]
 config = "${mod_id}.bando.mixins.json"
+[[mixins]]
+config = "${mod_id}.zone.mixins.json"
 
 [[dependencies.${mod_id}]]
 modId = "neoforge"

@@ -109,6 +109,13 @@ final class NavHold {
     void update(HoldSettings s, boolean armed, boolean failsafe, boolean grounded, PilotInput in, double skyView, RigidBody b,
                 double sfWx, double sfWy, double sfWz, double airspeed, double heightAboveGround, double thrustRatio,
                 double propWash, double vibration, double hoverStick, PidProfile pid) {
+        this.update(s, armed, failsafe, grounded, in, skyView, b, sfWx, sfWy, sfWz, airspeed, heightAboveGround, thrustRatio, propWash,
+                vibration, hoverStick, pid, null);
+    }
+
+    void update(HoldSettings s, boolean armed, boolean failsafe, boolean grounded, PilotInput in, double skyView, RigidBody b,
+                double sfWx, double sfWy, double sfWz, double airspeed, double heightAboveGround, double thrustRatio,
+                double propWash, double vibration, double hoverStick, PidProfile pid, AssistBridge guide) {
         SimRandom r = this.rng;
         this.gps.update(r, skyView, b.px, b.py, b.pz, b.vx, b.vy, b.vz);
         double baroAlt = this.baro.update(r, b.py, airspeed, heightAboveGround, thrustRatio, propWash);
@@ -147,6 +154,10 @@ final class NavHold {
         if (next == HoldMode.OFF) {
             return;
         }
+        if (guide != null) {
+            this.guided(s, guide, grounded, b, hoverStick, pid, next);
+            return;
+        }
         if (grounded && climbCommand(in.throttle, this.throttleRef, s.throttleDeadbandPercent / 100.0, 1.0) <= 0.0) {
             this.targetAlt = this.zEst;
             this.altI = 0.0;
@@ -162,6 +173,109 @@ final class NavHold {
         if (next == HoldMode.POSHOLD) {
             this.positionControl(s, in, b, pid);
         }
+    }
+
+    private void guided(HoldSettings s, AssistBridge g, boolean grounded, RigidBody b, double hoverStick, PidProfile pid, HoldMode next) {
+        double wantedClimb = g.climb ? g.climbRate : (g.altitude ? g.altitudeTarget - this.zEst : 0.0);
+        if (grounded && wantedClimb <= 0.0) {
+            this.targetAlt = this.zEst;
+            this.altI = 0.0;
+            this.posIx = 0.0;
+            this.posIz = 0.0;
+            this.targetX = this.xEst;
+            this.targetZ = this.zhEst;
+            this.braking = false;
+            return;
+        }
+        double maxClimb = Math.max(s.climbRateCms / 100.0, g.climb ? Math.abs(g.climbRate) : 0.0);
+        double climb = 0.0;
+        if (g.climb) {
+            climb = g.climbRate;
+            this.targetAlt = SimMath.clamp(this.targetAlt + climb * DT, this.zEst - 1.0, this.zEst + 1.0);
+        } else if (g.altitude) {
+            this.targetAlt = g.altitudeTarget;
+        }
+        this.altitudeLoop(s, climb, maxClimb, b, hoverStick, pid);
+        if (next != HoldMode.POSHOLD) {
+            return;
+        }
+        double velX;
+        double velZ;
+        double kPos = 0.5 * s.posP / 30.0;
+        if (g.horizontal == 1) {
+            this.targetX = g.targetX;
+            this.targetZ = g.targetZ;
+            velX = kPos * (this.targetX - this.xEst);
+            velZ = kPos * (this.targetZ - this.zhEst);
+        } else if (g.horizontal == 2) {
+            velX = g.velocityX;
+            velZ = g.velocityZ;
+            this.targetX = this.xEst;
+            this.targetZ = this.zhEst;
+        } else {
+            velX = kPos * (this.targetX - this.xEst);
+            velZ = kPos * (this.targetZ - this.zhEst);
+        }
+        double v = Math.hypot(velX, velZ);
+        double limit = g.maxSpeed;
+        if (v > limit) {
+            velX *= limit / Math.max(v, 1.0E-9);
+            velZ *= limit / Math.max(v, 1.0E-9);
+        }
+        this.braking = false;
+        this.pilotSteering = false;
+        this.velocityLoop(s, velX, velZ, b, pid);
+    }
+
+    private void altitudeLoop(HoldSettings s, double climb, double maxClimb, RigidBody b, double hoverStick, PidProfile pid) {
+        double kPos = 0.9 * s.altP / 50.0;
+        double kVel = 2.2 * s.altD / 40.0;
+        double kI = 0.9 * s.altI / 30.0;
+        double velCmd = SimMath.clamp(climb + kPos * (this.targetAlt - this.zEst), -maxClimb, maxClimb);
+        double ev = velCmd - this.vzEst;
+        this.altI = SimMath.clamp(this.altI + kI * ev * DT, -4.0, 4.0);
+        double g = SimTuning.referenceGravity(this.gravity);
+        double acc = SimMath.clamp(kVel * ev + this.altI, -0.5 * g, 0.8 * g);
+        double cosTilt = Math.max(0.5, b.r11);
+        double factor = Math.max(0.05, (1.0 + acc / g) / cosTilt);
+        double hoverRef = SimMath.clamp(hoverStick * (1.0 + this.hoverBias), 0.05, 0.95);
+        double hoverOut = ThrottleCurve.apply(pid, hoverRef);
+        double out = SimMath.clamp01(hoverOut * Math.sqrt(factor));
+        this.throttleStick = ThrottleCurve.inverse(pid, out);
+    }
+
+    private void velocityLoop(HoldSettings s, double velX, double velZ, RigidBody b, PidProfile pid) {
+        double kVel = 1.4 * s.posD / 40.0;
+        double kI = 0.35 * s.posI / 20.0;
+        double evx = velX - this.vxEst;
+        double evz = velZ - this.vzhEst;
+        double aMax = SimTuning.referenceGravity(this.gravity) * Math.tan(s.posMaxAngleDeg * SimMath.RAD);
+        if (Math.hypot(kVel * evx + this.posIx, kVel * evz + this.posIz) < aMax) {
+            this.posIx += kI * evx * DT;
+            this.posIz += kI * evz * DT;
+            double iMag = Math.hypot(this.posIx, this.posIz);
+            if (iMag > 2.5) {
+                this.posIx *= 2.5 / iMag;
+                this.posIz *= 2.5 / iMag;
+            }
+        }
+        double ax = kVel * evx + this.posIx;
+        double az = kVel * evz + this.posIz;
+        double a = Math.hypot(ax, az);
+        if (a > aMax) {
+            ax *= aMax / a;
+            az *= aMax / a;
+        }
+        double h = b.headingRad() + this.headingErrorRad;
+        double sh = SimMath.sin(h);
+        double ch = SimMath.cos(h);
+        double aFwd = ax * sh + az * ch;
+        double aRight = -ax * ch + az * sh;
+        double limit = Math.max(1.0, pid.angleLimitDeg);
+        double g = SimTuning.referenceGravity(this.gravity);
+        this.pitchStick = SimMath.clamp(StrictMath.atan2(aFwd, g) * SimMath.DEG / limit, -1.0, 1.0);
+        this.rollStick = SimMath.clamp(StrictMath.atan2(aRight, g) * SimMath.DEG / limit, -1.0, 1.0);
+        this.attitudeOverride = true;
     }
 
     private void estimateVertical(double baroAlt, double aym) {

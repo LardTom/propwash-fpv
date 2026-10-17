@@ -24,6 +24,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
+import org.jspecify.annotations.Nullable;
 
 public final class MouseSetupScreen extends Screen implements ThemedScreen {
     private static final int HEADER_SPACE = 36;
@@ -37,6 +38,7 @@ public final class MouseSetupScreen extends Screen implements ThemedScreen {
     private final InputConfig working;
     private final MouseDemoView demo = new MouseDemoView();
     private final MousePreview preview = new MousePreview();
+    private @Nullable CycleButton<Boolean> invertPitch;
     private long liveUntil;
     private int left;
     private int panelWidth;
@@ -64,6 +66,10 @@ public final class MouseSetupScreen extends Screen implements ThemedScreen {
 
     public InputConfig working() {
         return this.working;
+    }
+
+    public @Nullable CycleButton<Boolean> invertPitchButton() {
+        return this.invertPitch;
     }
 
     @Override
@@ -101,10 +107,10 @@ public final class MouseSetupScreen extends Screen implements ThemedScreen {
         sensitivity.setTooltip(Tooltip.create(Component.translatable("propwash.input.mouse.sensitivity.tooltip")));
         this.addRenderableWidget(sensitivity);
         y += Metrics.ROW_HEIGHT;
-        this.addRenderableWidget(CycleButton.onOffBuilder(mouse.invertY)
-                .withTooltip(v -> Tooltip.create(Component.translatable("propwash.input.mouse.invert_y.tooltip")))
-                .create(this.rightX, y, w, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.input.mouse.invert_y"), (b, v) -> {
-                    mouse.invertY = v;
+        this.invertPitch = this.addRenderableWidget(CycleButton.onOffBuilder(this.working.invertPitch)
+                .withTooltip(v -> Tooltip.create(Component.translatable("propwash.input.invert_pitch.tooltip")))
+                .create(this.rightX, y, w, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.input.invert_pitch"), (b, v) -> {
+                    this.working.invertPitch = v;
                     this.changed();
                 }));
         y += Metrics.ROW_HEIGHT + 4;
@@ -181,10 +187,14 @@ public final class MouseSetupScreen extends Screen implements ThemedScreen {
             this.liveUntil = now + LIVE_MILLIS;
         }
         StickPositions live = now < this.liveUntil ? this.preview.sticks() : null;
-        this.demo.extract(g, this.font, this.left, this.contentTop, this.left + this.columnWidth, bottom, this.working.mouse, this.selfLevel(), live);
+        this.demo.mode(this.working.stickMode());
+        this.demo.extract(g, this.font, this.left, this.contentTop, this.left + this.columnWidth, bottom, this.working.mouse, this.working.invertPitch,
+                this.selfLevel(), live);
         MouseDemo.Frame shown = this.demo.lastFrame();
         this.preview.show(live == null && shown != null ? shown.sticks() : null);
-        this.preview.extract(g, this.font, this.rightX, this.previewTop, this.columnWidth, previewHeight, this.working.mouse, mouseX, mouseY);
+        this.preview.mode(this.working.stickMode());
+        this.preview.extract(g, this.font, this.rightX, this.previewTop, this.columnWidth, previewHeight, this.working.mouse, this.working.invertPitch, mouseX,
+                mouseY);
         Component hint = Component.translatable("propwash.input.mouse.wizard.hint");
         ThemeText.fittedCentered(g, this.font, hint, this.width / 2, this.footerY - 16, this.panelWidth, Palette.TEXT_MUTED);
         super.extractRenderState(g, mouseX, mouseY, a);

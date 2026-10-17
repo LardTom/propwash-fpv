@@ -232,6 +232,10 @@ public final class OsdFormat {
         return (int) Math.round(Math.clamp(fraction, 0.0, 1.0) * 100.0);
     }
 
+    public static int rssiDbm(double linkStrength, double measuredDbm) {
+        return Double.isFinite(measuredDbm) ? (int) Math.round(measuredDbm) : rssiDbm(linkStrength);
+    }
+
     public static int rssiDbm(double linkStrength) {
         double lq = Double.isFinite(linkStrength) ? Math.clamp(linkStrength, 0.0, 1.0) : 0.0;
         return (int) Math.round(-115.0 + 65.0 * Math.sqrt(lq));

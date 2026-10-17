@@ -1,7 +1,9 @@
 {
+  "item.propwash.bando_map": "Bando-Karte",
   "propwash.guide.scene.bandos.callout.chest": "Gebrauchte Props, Motoren, Zellen",
   "propwash.guide.scene.bandos.callout.gap": "Zwischen den Trägern hindurch",
   "propwash.guide.scene.bandos.callout.locate": "/locate structure #propwash:bandos",
+  "propwash.guide.scene.bandos.callout.map": "Kartograf: 10 Smaragde + Kompass",
   "propwash.guide.scene.bandos.callout.roof": "Raus durchs Dachloch",
   "propwash.guide.scene.bandos.callout.ruin": "Jeder Bando ist anders gebaut",
   "propwash.guide.scene.bandos.callout.window": "Fenster und Tore",
@@ -14,5 +16,14 @@
   "propwash.guide.scene.bandos.step.fly.title": "Durch Lücken fliegen",
   "propwash.guide.scene.bandos.step.locate.text": "Mit Cheats zeigt /locate structure #propwash:bandos den nächsten Bando. Es gibt sie nur, wenn die Welt Bauwerke erzeugt.",
   "propwash.guide.scene.bandos.step.locate.title": "Gezielt suchen",
-  "propwash.guide.scene.bandos.title": "Bandos: verlassene Spots"
+  "propwash.guide.scene.bandos.step.map.text": "Im Überlebensmodus verkauft der Kartograf ab Geselle eine Bando-Karte zum nächsten unerkundeten Bando. Manchmal liegt eine in Truhen.",
+  "propwash.guide.scene.bandos.step.map.title": "Bando-Karte",
+  "propwash.guide.scene.bandos.title": "Bandos: verlassene Spots",
+  "propwash.help.bando_map.status.blank": "Leer – zeigt noch keinen Bando",
+  "propwash.help.bando_map.summary": "Zeigt zum nächsten unerkundeten Bando",
+  "propwash.help.bando_map.use.1": "Kartograf (Geselle): 10 Smaragde + Kompass",
+  "propwash.help.bando_map.use.2": "Manchmal in Bando- und Kartografen-Truhen",
+  "propwash.help.bando_map.use.3": "Kopieren: mit einer leeren Karte",
+  "propwash.help.bando_map.what.1": "Entdeckerkarte zu einem verlassenen Bauwerk",
+  "propwash.help.bando_map.what.2": "zum Freestyle-Fliegen."
 }

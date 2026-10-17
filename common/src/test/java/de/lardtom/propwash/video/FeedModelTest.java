@@ -198,17 +198,26 @@ class FeedModelTest {
     }
 
     @Test
-    void digitalCutsHardToNoSignalAndRecoversWithHysteresis() {
+    void digitalHoldsTheLastFrameBeforeItCutsAndRecoversWithHysteresis() {
         FeedModel model = new FeedModel(11L);
         FeedInput in = input(FeedLook.DIGITAL, 1.0F, 30);
         in.reduceFlicker = false;
         long now = run(model, in, START, 200);
         in.quality = 0.03F;
-        EffectParams cut = model.update(now, in);
+        assertEquals(0.0F, model.update(now, in).noSignal, 1.0E-6F, "no instant black on a sudden drop");
+        now += FRAME;
+        int grace = (int) (DigitalProfile.ADAPTIVE.lossGraceNanos() / FRAME) - 2;
+        for (int i = 0; i < grace; i++) {
+            EffectParams p = model.update(now, in);
+            assertEquals(0.0F, p.noSignal, 1.0E-6F, "frame " + i + " of the hold");
+            assertTrue(!p.frameAdvanced && !p.continuous, "last frame stays on screen");
+            now += FRAME;
+        }
+        now = run(model, in, now, 10);
+        EffectParams cut = model.params();
         assertEquals(1.0F, cut.noSignal, 1.0E-6F);
         assertTrue(cut.blackout());
-        now += FRAME;
-        in.quality = 0.09F;
+        in.quality = 0.15F;
         now = run(model, in, now, 144);
         assertEquals(1.0F, model.params().noSignal, 1.0E-6F, "must stay lost between enter and exit threshold");
         in.quality = 0.5F;
@@ -219,8 +228,116 @@ class FeedModelTest {
         model.update(now, in);
         now += FRAME;
         in.quality = 0.5F;
+        now = run(model, in, now, 20);
+        assertEquals(0.0F, model.params().noSignal, 1.0E-6F, "a single bad frame never blacks out");
+        in.quality = 0.0F;
+        now = run(model, in, now, (int) (DigitalProfile.ADAPTIVE.lossGraceNanos() / FRAME) + 10);
+        assertEquals(1.0F, model.params().noSignal, 1.0E-6F);
+        in.quality = 0.5F;
         model.update(now, in);
         assertEquals(1.0F, model.params().noSignal, 1.0E-6F, "minimum hold time must prevent fast toggling");
+    }
+
+    @Test
+    void aLongStallAtTheEdgeComesBackWithoutAStrongerSignal() {
+        FeedModel model = new FeedModel(18L);
+        FeedInput in = input(FeedLook.DIGITAL, 1.0F, 30);
+        in.reduceFlicker = false;
+        long now = run(model, in, START, 200);
+        in.quality = 0.1F;
+        int black = 0;
+        int frames = 144 * 60;
+        boolean recovered = false;
+        boolean wasBlack = false;
+        for (int i = 0; i < frames; i++) {
+            EffectParams p = model.update(now, in);
+            boolean isBlack = p.noSignal >= 0.999F;
+            if (isBlack) {
+                black++;
+            } else if (wasBlack) {
+                recovered = true;
+            }
+            wasBlack = isBlack;
+            now += FRAME;
+        }
+        assertTrue(black > 0, "a marginal link stalls into a loss now and then");
+        assertTrue(recovered, "and comes back at the same quality");
+        assertTrue(black < frames / 2, "black " + black + " of " + frames);
+    }
+
+    @Test
+    void lostConnectionStillCutsAtOnce() {
+        FeedModel model = new FeedModel(14L);
+        FeedInput in = input(FeedLook.DIGITAL, 1.0F, 30);
+        in.reduceFlicker = false;
+        long now = run(model, in, START, 200);
+        in.connected = false;
+        assertEquals(1.0F, model.update(now, in).noSignal, 1.0E-6F);
+    }
+
+    @Test
+    void fixedRateLinkCutsSoonerThanAnAdaptiveOne() {
+        assertTrue(DigitalProfile.FIXED_RATE.lossGraceNanos() < DigitalProfile.ADAPTIVE.lossGraceNanos());
+        FeedModel model = new FeedModel(15L);
+        FeedInput in = input(FeedLook.DIGITAL, 1.0F, 14);
+        in.digitalProfile = DigitalProfile.FIXED_RATE;
+        in.reduceFlicker = false;
+        long now = run(model, in, START, 200);
+        in.quality = 0.0F;
+        now = run(model, in, now, (int) (DigitalProfile.FIXED_RATE.lossGraceNanos() / FRAME) + 10);
+        assertEquals(1.0F, model.params().noSignal, 1.0E-6F);
+    }
+
+    @Test
+    void adaptiveLinkGetsLaggierWhileFixedRateKeepsItsLatency() {
+        assertEquals(0L, DigitalProfile.ADAPTIVE.extraLatencyNanos(1.0));
+        assertEquals(0L, DigitalProfile.ADAPTIVE.extraLatencyNanos(DigitalBreakup.CLEAN_ABOVE));
+        assertTrue(DigitalProfile.ADAPTIVE.extraLatencyNanos(0.5) > 10 * MS);
+        assertEquals(DigitalProfile.ADAPTIVE.maxExtraLatencyNanos(), DigitalProfile.ADAPTIVE.extraLatencyNanos(DigitalBreakup.LOSS_ENTER));
+        long previous = -1L;
+        for (double q = 1.0; q >= 0.0; q -= 0.01) {
+            long extra = DigitalProfile.ADAPTIVE.extraLatencyNanos(q);
+            assertTrue(extra >= previous);
+            previous = extra;
+            assertEquals(0L, DigitalProfile.FIXED_RATE.extraLatencyNanos(q));
+        }
+        double adaptive = meanLatency(DigitalProfile.ADAPTIVE, 0.45F);
+        double fixed = meanLatency(DigitalProfile.FIXED_RATE, 0.45F);
+        assertTrue(adaptive > fixed + 15 * MS, "adaptive " + adaptive / MS + " ms, fixed " + fixed / MS + " ms");
+    }
+
+    private static double meanLatency(DigitalProfile profile, float quality) {
+        FeedModel model = new FeedModel(16L);
+        FeedInput in = input(FeedLook.DIGITAL, 1.0F, 20);
+        in.digitalProfile = profile;
+        long now = run(model, in, START, 200);
+        in.quality = quality;
+        double sum = 0.0;
+        int frames = 144 * 5;
+        for (int i = 0; i < frames; i++) {
+            model.update(now, in);
+            sum += model.latencyAt(now);
+            now += FRAME;
+        }
+        return sum / frames;
+    }
+
+    @Test
+    void adaptiveLinkSoftensWhileFixedRateStaysSharpAndBreaksUp() {
+        FeedModel adaptive = new FeedModel(17L);
+        FeedInput in = input(FeedLook.DIGITAL, 0.5F, 30);
+        long now = run(adaptive, in, START, 300);
+        EffectParams a = adaptive.params();
+        assertTrue(a.blurPx > 1.0F && a.resolution < 1.0F, "blur " + a.blurPx + " resolution " + a.resolution);
+        FeedModel fixed = new FeedModel(17L);
+        in.digitalProfile = DigitalProfile.FIXED_RATE;
+        run(fixed, in, now, 300);
+        EffectParams f = fixed.params();
+        assertEquals(0.0F, f.blurPx, 1.0E-6F);
+        assertEquals(1.0F, f.resolution, 1.0E-6F);
+        assertTrue(f.blockiness > 0.1F, "breakup " + f.blockiness);
+        assertEquals(DigitalProfile.FIXED_RATE, DigitalProfile.of(14));
+        assertEquals(DigitalProfile.ADAPTIVE, DigitalProfile.of(26));
     }
 
     @Test
@@ -229,9 +346,12 @@ class FeedModelTest {
         FeedInput in = input(FeedLook.DIGITAL, 1.0F, 30);
         long now = run(model, in, START, 400);
         in.quality = 0.0F;
-        float first = model.update(now, in).noSignal;
-        assertTrue(first < 0.2F, "first frame of the fade " + first);
-        now = run(model, in, now + FRAME, 40);
+        now = run(model, in, now, (int) (DigitalProfile.ADAPTIVE.lossGraceNanos() / FRAME) - 2);
+        assertEquals(0.0F, model.params().noSignal, 1.0E-6F);
+        now = run(model, in, now, 5);
+        float first = model.params().noSignal;
+        assertTrue(first > 0.0F && first < 0.2F, "first frames of the fade " + first);
+        now = run(model, in, now, 40);
         assertEquals(1.0F, model.params().noSignal, 1.0E-6F);
     }
 

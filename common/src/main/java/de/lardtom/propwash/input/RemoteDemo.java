@@ -21,6 +21,7 @@ public final class RemoteDemo {
         PITCH(3.0F),
         YAW(3.0F),
         CHECK(8.4F),
+        TOUR(8.4F),
         CENTER(4.4F),
         CENTER_3D(4.8F),
         EXTREMES(6.4F),
@@ -76,6 +77,10 @@ public final class RemoteDemo {
         CHECK_ROLL,
         CHECK_PITCH,
         CHECK_YAW,
+        TOUR_THROTTLE,
+        TOUR_ROLL,
+        TOUR_PITCH,
+        TOUR_YAW,
         CENTER,
         CENTER_3D,
         CIRCLES,
@@ -101,9 +106,17 @@ public final class RemoteDemo {
 
     public record Frame(float leftX, float leftY, float rightX, float rightY, float switch0, float switch1, float switch2, float switch3,
                         float button0, float button1, float button2, Focus focus, int target, Arrow arrow, Cue cue,
-                        StickChannel channel, float hold) {
+                        StickChannel channel, float hold, StickMode mode) {
         public float throttle() {
-            return (this.leftY + 1.0F) * 0.5F;
+            return (this.axis(StickChannel.THROTTLE) + 1.0F) * 0.5F;
+        }
+
+        public float axis(StickChannel stick) {
+            boolean left = this.mode.left(stick);
+            if (StickMode.vertical(stick)) {
+                return left ? this.leftY : this.rightY;
+            }
+            return left ? this.leftX : this.rightX;
         }
 
         public float switchPosition(int index) {
@@ -148,8 +161,8 @@ public final class RemoteDemo {
             case ANGLE -> new Target(Motion.SWITCH, MODE_SWITCH);
             case HORIZON, POS_HOLD -> new Target(Motion.SWITCH_MID, MODE_SWITCH);
             case BEEPER, RECORD, ALT_HOLD, BLACKBOX -> new Target(Motion.SWITCH, 2);
-            case RESCUE, LEDS_OFF, MODE_3D -> new Target(Motion.SWITCH, 3);
-            case FLIP_OVER, SET_HOME, RACE_RESTART, CARGO_DROP -> new Target(Motion.BUTTON, MOMENTARY_BUTTON);
+            case RESCUE, LEDS_OFF, MODE_3D, TURTLE -> new Target(Motion.SWITCH, 3);
+            case FLIP_OVER, SET_HOME, RESET, CARGO_DROP, VTX_POWER, ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4 -> new Target(Motion.BUTTON, MOMENTARY_BUTTON);
             case COMMAND_1, COMMAND_2, COMMAND_3, COMMAND_4, COMMAND_5, COMMAND_6, COMMAND_7, COMMAND_8 -> new Target(Motion.SWITCH, 2);
         };
     }
@@ -167,7 +180,15 @@ public final class RemoteDemo {
         return frame(new Target(motion, 0), seconds);
     }
 
+    public static Frame frame(Motion motion, float seconds, StickMode mode) {
+        return frame(new Target(motion, 0), seconds, mode);
+    }
+
     public static Frame frame(Target target, float seconds) {
+        return frame(target, seconds, StickMode.DEFAULT);
+    }
+
+    public static Frame frame(Target target, float seconds, StickMode mode) {
         float period = target.motion().period();
         float t = seconds % period;
         if (t < 0.0F || !Float.isFinite(t)) {
@@ -180,6 +201,7 @@ public final class RemoteDemo {
             case PITCH -> stick(b, t, StickChannel.PITCH);
             case YAW -> stick(b, t, StickChannel.YAW);
             case CHECK -> check(b, t);
+            case TOUR -> tour(b, t);
             case CENTER -> center(b, t, false);
             case CENTER_3D -> center(b, t, true);
             case EXTREMES -> extremes(b, t, period);
@@ -191,7 +213,7 @@ public final class RemoteDemo {
             case ARM_AND_MODE -> armAndMode(b, t);
             case PAD_ARM_AND_MODE -> padArmAndMode(b, t);
         }
-        return b.build();
+        return b.build(StickMode.orDefault(mode));
     }
 
     static float progress(float t, float from, float to) {
@@ -269,6 +291,17 @@ public final class RemoteDemo {
             }
             case THROTTLE -> b.leftY = value * 2.0F - 1.0F;
         }
+    }
+
+    private static void tour(Builder b, float t) {
+        check(b, t);
+        b.cue = switch (b.cue) {
+            case CHECK_THROTTLE -> Cue.TOUR_THROTTLE;
+            case CHECK_ROLL -> Cue.TOUR_ROLL;
+            case CHECK_PITCH -> Cue.TOUR_PITCH;
+            case CHECK_YAW -> Cue.TOUR_YAW;
+            default -> b.cue;
+        };
     }
 
     private static void check(Builder b, float t) {
@@ -479,10 +512,15 @@ public final class RemoteDemo {
             }
         }
 
-        Frame build() {
-            return new Frame(clamp(this.leftX), clamp(this.leftY), clamp(this.rightX), clamp(this.rightY), this.switches[0], this.switches[1],
-                    this.switches[2], this.switches[3], this.buttons[0], this.buttons[1], this.buttons[2], this.focus, this.target, this.arrow,
-                    this.cue, this.channel, this.hold);
+        Frame build(StickMode mode) {
+            StickMode.Sticks sticks = mode.fromMode2(clamp(this.leftX), clamp(this.leftY), clamp(this.rightX), clamp(this.rightY));
+            Focus shown = this.focus;
+            if ((shown == Focus.LEFT_STICK || shown == Focus.RIGHT_STICK) && this.channel != null) {
+                shown = mode.left(this.channel) ? Focus.LEFT_STICK : Focus.RIGHT_STICK;
+            }
+            return new Frame(sticks.leftX(), sticks.leftY(), sticks.rightX(), sticks.rightY(), this.switches[0], this.switches[1],
+                    this.switches[2], this.switches[3], this.buttons[0], this.buttons[1], this.buttons[2], shown, this.target, this.arrow,
+                    this.cue, this.channel, this.hold, mode);
         }
 
         private static float clamp(float value) {

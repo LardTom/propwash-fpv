@@ -56,7 +56,7 @@ Fall aus dem Schweben bei 0 % Gas, Idle:
 | `propwash:whoop_65` | 28,1 | 50,9 | 4347 (43669) | 1,0 / 1,4 | 3,94 / 5,98 / 6,74 / 6,79 | 0,98 / 3,55 / 10,07 / 16,84 |
 | `propwash:cinewhoop_3` | 286,7 | 34,0 | 3607 (24463) | 2,2 / 3,3 | 4,39 / 8,24 / 12,68 / 14,25 | 1,06 / 4,27 / 15,06 / 28,68 |
 | `propwash:freestyle_5` | 525,2 | 22,0 | 2144 (10509) | 4,2 / 5,7 | 4,38 / 8,24 / 13,04 / 14,96 | 1,08 / 4,27 / 15,23 / 29,39 |
-| `propwash:race_5` | 430,2 | 17,9 | 2274 (9511) | 5,7 / 7,8 | 4,30 / 8,25 / 13,69 / 16,30 | 1,05 / 4,22 / 15,47 / 30,65 |
+| `propwash:race_5` (seit 11.10. mit dem 2,9″-Prop) | 430,6 | 17,8 | 2273 (9438) | 5,8 / 7,9 | 4,31 / 8,25 / 13,69 / 16,30 | 1,05 / 4,22 / 15,47 / 30,65 |
 | `propwash:long_range_7` | 846,2 | 24,6 | 1541 (8216) | 3,5 / 5,2 | 4,36 / 8,37 / 13,72 / 16,12 | 1,05 / 4,27 / 15,62 / 30,72 |
 | `justmoreparts:whoop85_2s` | 56,7 | 25,7 | 5551 (29621) | 3,5 / 4,8 | 3,93 / 6,26 / 7,39 / 7,49 | 0,97 / 3,60 / 10,63 / 18,08 |
 | `justmoreparts:bash5_6s` | 541,8 | 20,2 | 2403 (10985) | 4,8 / 6,5 | 4,34 / 8,13 / 12,73 / 14,51 | 1,07 / 4,22 / 14,97 / 28,75 |
@@ -71,7 +71,7 @@ Endgeschwindigkeiten, Steigen und Punch-and-Cut:
 | `propwash:whoop_65` | 6,8 | 1,4 / 98,6 | 6,8 | 10,7 | 6,9 | 11,3 (41) | 7,6 | 7,3 | 0,61 / 2,07 | 0,74 / 2,71 |
 | `propwash:cinewhoop_3` | 14,9 | 3,3 / 96,7 | 14,9 | 19,3 | 15,2 | 25,2 (91) | 20,9 | 18,0 | 1,38 / 10,83 | 1,83 / 16,43 |
 | `propwash:freestyle_5` | 15,9 | 5,7 / 94,3 | 15,9 | 27,0 | 16,4 | 37,2 (134) | 35,4 | 34,2 | 1,91 / 23,62 | 3,48 / 59,56 |
-| `propwash:race_5` | 18,0 | 7,8 / 92,2 | 18,0 | 30,5 | 18,8 | 42,2 (152) | 43,1 | 41,7 | 2,24 / 32,78 | 4,25 / 88,67 |
+| `propwash:race_5` (seit 11.10. mit dem 2,9″-Prop) | 18,0 | 7,9 / 92,1 | 18,0 | 30,3 | 18,8 | 38,7 (139) | 39,5 | 38,8 | 2,17 / 30,46 | 3,96 / 76,75 |
 | `propwash:long_range_7` | 17,5 | 5,2 / 94,8 | 17,5 | 29,8 | 18,0 | 29,6 (107) | 25,2 | 22,7 | 1,69 / 16,31 | 2,31 / 26,20 |
 | `justmoreparts:whoop85_2s` | 7,5 | 4,8 / 95,2 | 7,5 | 12,0 | 7,7 | 16,2 (58) | 14,4 | 14,4 | 0,89 / 4,99 | 1,47 / 10,56 |
 | `justmoreparts:bash5_6s` | 15,4 | 6,5 / 93,5 | 15,4 | 26,2 | 15,9 | 36,1 (130) | 35,8 | 34,9 | 1,89 / 23,38 | 3,56 / 62,10 |
@@ -121,7 +121,8 @@ ergeben 49 % weniger. Propwash: Nase unten 27,0 statt 15,9 m/s beim 5″ – `C_
 
 ### 3.4 Sturzflug mit Vollgas
 
-Kopfüber mit Vollgas (Schub nach unten): 5″ Freestyle 134 km/h, Race 152 km/h, Long Range 107 km/h. Ein typischer
+Kopfüber mit Vollgas (Schub nach unten): 5″ Freestyle 134 km/h, Race 152 km/h (seit dem 11.10.2026 mit dem flachen
+2,9″-Prop 139 km/h, `motors-props.md` §12), Long Range 107 km/h. Ein typischer
 6S-5″-Freestyle fliegt rund 150 km/h ([Unmanned Tech][utech]); `TopSpeedTest` hält den Vollgas-Sturzflug wie bisher bei
 höchstens 1,15× der Geradeaus-Höchstgeschwindigkeit. Unverändert und plausibel.
 

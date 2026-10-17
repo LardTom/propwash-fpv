@@ -11,6 +11,7 @@ import java.util.Map;
 public final class DeviceProfile {
     public static final float MAX_DEADBAND = 0.3F;
     private static final String[] KEYS = keys();
+    public static final Map<String, SwitchFunction> RENAMED = Map.of("race_restart", SwitchFunction.RESET);
 
     public String name = "";
     public boolean gamepadLayout = false;
@@ -39,6 +40,20 @@ public final class DeviceProfile {
             keys[function.ordinal()] = function.name().toLowerCase(Locale.ROOT);
         }
         return keys;
+    }
+
+    private void migrateRenamed() {
+        for (Map.Entry<String, SwitchFunction> renamed : RENAMED.entrySet()) {
+            if (!this.switches.containsKey(renamed.getKey())) {
+                continue;
+            }
+            Map<String, SwitchAssignment> copy = new LinkedHashMap<>(this.switches);
+            SwitchAssignment old = copy.remove(renamed.getKey());
+            if (old != null) {
+                copy.putIfAbsent(key(renamed.getValue()), old);
+            }
+            this.switches = copy;
+        }
     }
 
     public ChannelMapping channel(StickChannel channel) {
@@ -304,6 +319,7 @@ public final class DeviceProfile {
         this.throttleRate = ChannelMapping.clamp(this.throttleRate, 0.1F, 5.0F);
         Map<String, SwitchAssignment> clean = new LinkedHashMap<>();
         if (this.switches != null) {
+            this.migrateRenamed();
             for (SwitchFunction function : SwitchFunction.values()) {
                 SwitchAssignment b = this.switches.get(key(function));
                 if (b != null) {

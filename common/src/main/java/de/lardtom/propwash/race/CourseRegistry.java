@@ -823,14 +823,14 @@ public final class CourseRegistry {
         return best;
     }
 
-    public boolean submitAssistedLap(Course course, ServerPlayer player, String frame, long lapNanos, int assist) {
+    public boolean submitAssistedLap(Course course, ServerPlayer player, String frame, long lapNanos, AssistReasons assist) {
         boolean best = this.board(course).submitAssisted(player.getUUID(), player.getGameProfile().name(), frame, lapNanos,
                 System.currentTimeMillis(), assist);
         this.records.changed();
         return best;
     }
 
-    public boolean submitAssistedRace(Course course, ServerPlayer player, int laps, long totalNanos, int assist) {
+    public boolean submitAssistedRace(Course course, ServerPlayer player, int laps, long totalNanos, AssistReasons assist) {
         boolean best = this.board(course).submitAssistedRace(player.getUUID(), laps, totalNanos, assist);
         this.records.changed();
         return best;

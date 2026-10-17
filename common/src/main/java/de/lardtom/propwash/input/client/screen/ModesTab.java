@@ -83,6 +83,7 @@ public final class ModesTab extends InputTab {
     private static final int INVERT_COLUMN = InputGui.INVERT_WIDTH + 8;
     private static final int PAGE_TAB_GAP = 2;
     private static final int STACK_BELOW = 110;
+    private static final long ADOPT_NANOS = 250_000_000L;
 
     private final SwitchEvaluator evaluator = new SwitchEvaluator();
     private final List<MicrosField> rangeFields = new ArrayList<>();
@@ -94,6 +95,10 @@ public final class ModesTab extends InputTab {
     private int dragRow = -1;
     private boolean dragHigh;
     private int liveBits;
+    private int liveReadable;
+    private @Nullable String liveGuid;
+    private boolean liveOverride;
+    private long liveNanos;
     private int minLabelX = -1;
     private int maxLabelX = -1;
 
@@ -751,6 +756,15 @@ public final class ModesTab extends InputTab {
     }
 
     @Override
+    public void save() {
+        super.save();
+        String guid = this.liveGuid;
+        if (guid != null && Util.getNanos() - this.liveNanos < ADOPT_NANOS) {
+            TransmitterInput.INSTANCE.adoptSwitches(guid, this.evaluator);
+        }
+    }
+
+    @Override
     public void tick() {
         if (this.listening != null) {
             TransmitterInput.INSTANCE.requestCapture();
@@ -785,8 +799,12 @@ public final class ModesTab extends InputTab {
         boolean[] buttons = device ? raw.buttons(profile) : new boolean[0];
         boolean pad = device && raw.usesGamepadLayout(profile);
         int buttonCount = device ? raw.buttonCount() : -1;
+        this.liveGuid = device ? raw.device().guid() : null;
         if (device) {
+            TransmitterInput.INSTANCE.followSwitches(this.evaluator, raw.device().guid(), profile);
             this.liveBits = this.evaluator.evaluate(profile, axes, buttons);
+            this.liveReadable = SwitchEvaluator.readable(profile, axes, buttons);
+            this.liveNanos = Util.getNanos();
             this.updateListening(profile, axes, buttons, pad);
         }
 
@@ -818,7 +836,7 @@ public final class ModesTab extends InputTab {
             int rowY = this.rowY(i);
             int nameTy = stacked ? rowY + 2 : rowY + (rowHeight - 1 - 8) / 2;
             int ty = this.areaTextY(font, rowY, nameTy);
-            boolean active = lit(entry, device, this.liveBits);
+            boolean active = this.lamp(entry);
             if (entry == this.selected) {
                 g.fill(this.x, rowY, this.x + this.width, rowY + rowHeight - 1, Palette.HOVER_TINT);
                 g.verticalLine(this.x, rowY, rowY + rowHeight - 2, InputGui.ACCENT);
@@ -889,8 +907,11 @@ public final class ModesTab extends InputTab {
         }
         int hintY = (this.hintsBelow() ? this.detailTop() + this.detailHeight() : this.rowY(rows.length)) + HINT_GAP;
         PilotSession session = PilotSession.INSTANCE;
-        boolean override = session.keyOverridesModeSwitch();
-        boolean override3d = !override && session.keyOverridesMode3dSwitch();
+        String guid = this.liveGuid;
+        boolean override = guid != null ? session.keyOverridesModeSwitch(guid, this.liveBits, this.liveReadable) : session.keyOverridesModeSwitch();
+        boolean override3d = !override && (guid != null ? session.keyOverridesMode3dSwitch(guid, this.liveBits, this.liveReadable)
+                : session.keyOverridesMode3dSwitch());
+        this.liveOverride = override || override3d;
         Component hint = override
                 ? Component.translatable("propwash.input.modes.key_override", PilotSession.modeName(session.flightMode()))
                 : override3d ? Component.translatable(session.mode3dSelected() ? "propwash.input.modes.key_override_3d_on"
@@ -1060,6 +1081,36 @@ public final class ModesTab extends InputTab {
         }
     }
 
+    public boolean lit(SwitchFunction function) {
+        return this.lamp(Row.of(function));
+    }
+
+    public boolean acroLit() {
+        return this.lamp(Row.ACRO);
+    }
+
+    public boolean keyOverrideShown() {
+        return this.liveOverride;
+    }
+
+    private boolean lamp(Row row) {
+        String guid = this.liveGuid;
+        PilotSession session = PilotSession.INSTANCE;
+        StabMode mode = row.mode();
+        if (guid == null) {
+            return lit(row, false, 0);
+        }
+        if (mode != null && session.isActive()) {
+            return session.previewFlightMode(guid, this.liveBits, this.liveReadable) == mode;
+        }
+        if (row == Row.MODE_3D) {
+            boolean unlocked = this.working().mode3dUnlocked;
+            return session.isActive() ? session.previewMode3d(guid, this.liveBits, this.liveReadable, unlocked)
+                    : unlocked && deviceActive(row, this.liveBits);
+        }
+        return deviceActive(row, this.liveBits);
+    }
+
     public static boolean modeLit(StabMode mode, boolean device, int bits) {
         for (Row row : FLIGHT_ROWS) {
             if (row.mode() == mode) {
@@ -1082,6 +1133,9 @@ public final class ModesTab extends InputTab {
         if (row == Row.MODE_3D) {
             return session.isActive() ? session.mode3dActive() : device && deviceActive(row, bits) && InputConfig.get().mode3dUnlocked;
         }
+        if (row == Row.TURTLE && session.isActive()) {
+            return session.turtleSelected();
+        }
         return device ? deviceActive(row, bits) : keyboardActive(row);
     }
 
@@ -1094,6 +1148,7 @@ public final class ModesTab extends InputTab {
             case HORIZON -> session.isActive() && session.flightMode() == StabMode.HORIZON;
             case ALT_HOLD -> session.isActive() && session.altHoldRequested();
             case POS_HOLD -> session.isActive() && session.posHoldRequested();
+            case TURTLE -> session.isActive() && session.turtleSelected();
             default -> row.function != null && RadioState.INSTANCE.isActive(row.function);
         };
     }
@@ -1228,7 +1283,7 @@ public final class ModesTab extends InputTab {
             return;
         }
         DeviceProfile saved = profile.copy();
-        DeviceProfile defaults = ProfileDefaults.reset(profile, raw.gamepadCapable(), raw.axisCount());
+        DeviceProfile defaults = ProfileDefaults.reset(profile, raw.gamepadCapable(), raw.axisCount(), this.working().stickMode());
         profile.copySwitchesFrom(defaults);
         profile.moveSwitchesOffSticks(defaults.stickAxes());
         profile.keepCommandsFrom(saved);
@@ -1270,13 +1325,19 @@ public final class ModesTab extends InputTab {
         POS_HOLD(SwitchFunction.POS_HOLD, KeyDefaults.POS_HOLD),
         RESCUE(SwitchFunction.RESCUE, KeyDefaults.RESCUE),
         FLIP_OVER(SwitchFunction.FLIP_OVER, KeyDefaults.FLIP_UPRIGHT),
+        TURTLE(SwitchFunction.TURTLE, KeyDefaults.TURTLE),
         SET_HOME(SwitchFunction.SET_HOME, KeyDefaults.SET_HOME),
         BEEPER(SwitchFunction.BEEPER, KeyDefaults.BEEPER),
-        RACE_RESTART(SwitchFunction.RACE_RESTART, KeyDefaults.RACE_RESTART),
+        RESET(SwitchFunction.RESET, KeyDefaults.RESET),
         RECORD(SwitchFunction.RECORD, KeyDefaults.ACTION_CAM_RECORD),
         LEDS_OFF(SwitchFunction.LEDS_OFF, KeyDefaults.LEDS),
         CARGO_DROP(SwitchFunction.CARGO_DROP, KeyDefaults.CARGO_DROP),
         BLACKBOX(SwitchFunction.BLACKBOX, KeyDefaults.BLACKBOX),
+        VTX_POWER(SwitchFunction.VTX_POWER, KeyDefaults.VTX_POWER),
+        ACCESSORY_1(SwitchFunction.ACCESSORY_1, KeyDefaults.ACCESSORY_1),
+        ACCESSORY_2(SwitchFunction.ACCESSORY_2, KeyDefaults.ACCESSORY_2),
+        ACCESSORY_3(SwitchFunction.ACCESSORY_3, KeyDefaults.ACCESSORY_3),
+        ACCESSORY_4(SwitchFunction.ACCESSORY_4, KeyDefaults.ACCESSORY_4),
         COMMAND_1(SwitchFunction.COMMAND_1, KeyDefaults.COMMANDS.get(0)),
         COMMAND_2(SwitchFunction.COMMAND_2, KeyDefaults.COMMANDS.get(1)),
         COMMAND_3(SwitchFunction.COMMAND_3, KeyDefaults.COMMANDS.get(2)),

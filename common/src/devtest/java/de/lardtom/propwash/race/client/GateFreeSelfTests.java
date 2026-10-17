@@ -21,6 +21,8 @@ import de.lardtom.propwash.race.GateSize;
 import de.lardtom.propwash.race.GateStacking;
 import de.lardtom.propwash.race.GateTilt;
 import de.lardtom.propwash.race.RaceModule;
+import de.lardtom.propwash.ui.client.FirstUseHints;
+import de.lardtom.propwash.ui.client.theme.Metrics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.player.LocalPlayer;
@@ -85,6 +87,8 @@ public final class GateFreeSelfTests {
     private static final int SHOT_OFFSET_X = -30;
     private static final int SMALL_GUI_WIDTH = 480;
     private static final int SMALL_GUI_HEIGHT = 270;
+    private static final int TINY_GUI_WIDTH = 320;
+    private static final int TINY_GUI_HEIGHT = 240;
     private static final int SHOT_OFFSET_Z = -260;
     private static final double VIEW_X = -2.5;
     private static final double VIEW_Z = 20.5;
@@ -567,6 +571,8 @@ public final class GateFreeSelfTests {
         int stage = (int) ctx.state().getOrDefault("stage", 0);
         if (stage == 0) {
             ctx.state().put("home", minecraft.player.position());
+            FirstUseHints.forget(GateEditor.MOUSE_HINT);
+            GateEditor.muteStartNotice(false);
             ctx.state().put(FUTURE, ctx.onServer(server -> {
                 ServerPlayer player = player(server);
                 Vec3 stand = beside(gate.geometry(), rig.origin().getY());
@@ -607,6 +613,24 @@ public final class GateFreeSelfTests {
             if (editor.status() != GateEditor.Status.SAME) {
                 return StepResult.fail("Gate einstellen startet mit Änderung: " + editor.status());
             }
+            if (!GateEditor.tipHighlighted() || FirstUseHints.count(GateEditor.MOUSE_HINT) != 1) {
+                return StepResult.fail("Hinweis zur freien Maus ist beim ersten Öffnen nicht hervorgehoben (gezählt "
+                        + FirstUseHints.count(GateEditor.MOUSE_HINT) + ")");
+            }
+            String notice = GateEditor.startNotice(gate.kind()).getString();
+            if (!GateEditor.startNoticeShown() || !notice.contains(GateEditor.cursorKeyName().getString())
+                    || !notice.contains(GateEditPanel.title(gate.kind()).getString())) {
+                return StepResult.fail("Start-Hinweis zur freien Maus fehlt oder nennt die Taste nicht: „" + notice + "“, sichtbar "
+                        + GateEditor.startNoticeShown());
+            }
+            GateEditor.freezeTipGlow(1.0F);
+            boolean bright = GateEditor.tipGlow() == 1.0F;
+            GateEditor.freezeTipGlow(Float.NaN);
+            float live = GateEditor.tipGlow();
+            if (!bright || live < 0.0F || live > 1.0F) {
+                return StepResult.fail("Hervorhebung des Hinweises pulsiert nicht zwischen 0 und 1: " + live);
+            }
+            ctx.log("Start-Hinweis: „" + notice + "“, Hinweis im Panel: „" + GateEditPanel.mouseTip(false).getString() + "“");
             GateGeometry start = gate.geometry();
             ctx.state().put("start", start);
             editor.set(start.heading(), 0.0F, 0.0F, 3.0, 3.0);
@@ -634,6 +658,22 @@ public final class GateFreeSelfTests {
             BlockPos block = (BlockPos) ctx.state().get("block");
             if (!minecraft.level.getBlockState(block).is(Blocks.STONE)) {
                 return ctx.tick() > 250 ? StepResult.fail("Block beim Client nicht da") : StepResult.pending();
+            }
+            int[] box = GateEditor.startNoticeBox();
+            if (box == null) {
+                if (!GateEditor.startNoticeShown()) {
+                    GateEditor.showStartNotice();
+                }
+                int frames = (int) ctx.state().merge("noticeWait", 1, (a, b) -> (int) a + 1);
+                return frames > 60 ? StepResult.fail("Start-Hinweis zur freien Maus wird nicht gezeichnet") : StepResult.pending();
+            }
+            int guiWidth = minecraft.getWindow().getGuiScaledWidth();
+            int guiHeight = minecraft.getWindow().getGuiScaledHeight();
+            GateEditPanel shown = new GateEditPanel(editor, false);
+            shown.layout(guiWidth, guiHeight);
+            if (box[0] < 0 || box[1] < guiHeight / 2 || box[2] > shown.left() || box[3] > guiHeight - 60 || box[2] - box[0] < 60) {
+                return StepResult.fail("Start-Hinweis zur freien Maus liegt nicht frei links neben dem Panel über der Schnellleiste: "
+                        + box[0] + "/" + box[1] + "–" + box[2] + "/" + box[3] + ", Panel ab " + shown.left() + ", Bild " + guiWidth + " × " + guiHeight);
             }
             editor.set(start.heading() + 90.0F, 0.0F, 0.0F, 3.0, 3.0);
             if (editor.status() != GateEditor.Status.BLOCKED || editor.pending() == null || GateEditor.replaces(gate)) {
@@ -686,6 +726,13 @@ public final class GateFreeSelfTests {
                     return StepResult.fail("Panel passt nicht in " + SMALL_GUI_WIDTH + " × " + SMALL_GUI_HEIGHT + " (GUI-Skala 4 bei 1080p): "
                             + probe.left() + "/" + probe.top() + "–" + probe.bottom());
                 }
+                String tip = GateEditDriver.mouseTipProblem(editor, interactive, SMALL_GUI_WIDTH, SMALL_GUI_HEIGHT, true);
+                if (tip == null) {
+                    tip = GateEditDriver.mouseTipProblem(editor, interactive, TINY_GUI_WIDTH, TINY_GUI_HEIGHT, false);
+                }
+                if (tip != null) {
+                    return StepResult.fail(tip);
+                }
             }
             ctx.state().put("heading", heading);
             Vec3 at = minecraft.player.position();
@@ -719,6 +766,15 @@ public final class GateFreeSelfTests {
                         : StepResult.pending();
             }
             GateEditPanel panel = screen.panel();
+            if (GateEditor.tipHighlighted() || FirstUseHints.fresh(GateEditor.MOUSE_HINT, GateEditor.MOUSE_HINT_TIMES)) {
+                return StepResult.fail("Nach dem ersten Gebrauch der freien Maus bleibt der Hinweis hervorgehoben");
+            }
+            if (GateEditor.startNoticeShown()) {
+                return StepResult.fail("Start-Hinweis bleibt stehen, obwohl die freie Maus schon benutzt wird");
+            }
+            if (panel.tipBottom() - panel.tipTop() < Metrics.LINE_HEIGHT || panel.tipTop() < panel.top()) {
+                return StepResult.fail("Panel mit freier Maus zeigt den Hinweis zum Loslassen nicht: " + panel.tipTop() + "–" + panel.tipBottom());
+            }
             AbstractWidget plus = panel.plus(GateEditModel.Row.WIDTH);
             editor.model().select(GateEditModel.Row.PITCH);
             if (plus == null || !GateEditDriver.click(minecraft, plus) || editor.model().width() != 4.5) {
@@ -755,6 +811,9 @@ public final class GateFreeSelfTests {
             if (again == null || again.status() != GateEditor.Status.SAME) {
                 return StepResult.fail("Nach dem Übernehmen bleibt eine Änderung offen");
             }
+            if (GateEditor.tipHighlighted()) {
+                return StepResult.fail("Hinweis zur freien Maus ist nach dem Gebrauch beim nächsten Öffnen wieder hervorgehoben");
+            }
             GateEditDriver.scroll(minecraft, 3);
             if (again.status() == GateEditor.Status.SAME) {
                 return StepResult.fail("Mausrad ändert nach dem Neustart nichts");
@@ -762,6 +821,28 @@ public final class GateFreeSelfTests {
             GateEditDriver.press(minecraft, InputConstants.KEY_ESCAPE);
             if (GateEditor.current() != null || minecraft.gui.screen() != null) {
                 return StepResult.fail("Esc bricht nicht ab oder öffnet das Spielmenü");
+            }
+            FirstUseHints.forget(GateEditor.MOUSE_HINT);
+            for (int time = 1; time <= GateEditor.MOUSE_HINT_TIMES + 1; time++) {
+                GateEditor.start(gate);
+                boolean fresh = GateEditor.tipHighlighted();
+                GateEditor.stop();
+                if (fresh != (time <= GateEditor.MOUSE_HINT_TIMES)) {
+                    return StepResult.fail("Hinweis zur freien Maus beim " + time + ". Öffnen " + (fresh ? "noch" : "nicht mehr") + " hervorgehoben");
+                }
+            }
+            if (GateEditor.current() != null || FirstUseHints.fresh(GateEditor.MOUSE_HINT, GateEditor.MOUSE_HINT_TIMES)) {
+                return StepResult.fail("Zählung des Hinweises zur freien Maus endet nicht nach " + GateEditor.MOUSE_HINT_TIMES + " Malen");
+            }
+            if (GateEditor.startNoticeShown()) {
+                return StepResult.fail("Start-Hinweis bleibt nach dem Schließen stehen");
+            }
+            GateEditor.muteStartNotice(true);
+            GateEditor.start(gate);
+            boolean muted = !GateEditor.startNoticeShown();
+            GateEditor.stop();
+            if (!muted) {
+                return StepResult.fail("Test-Schalter blendet den Start-Hinweis nicht aus");
             }
             ctx.state().put("stage", 7);
             ctx.state().put("since", ctx.tick());
@@ -897,13 +978,19 @@ public final class GateFreeSelfTests {
                 new View(origin, new Vec3(33.0, 1.0, -3.0), new Vec3(37.5, 8.0, 8.0), null));
         Screenshots.step("bildschirmfotos: Gates in eigener Größe von 1 × 1 bis 12 × 12", "gate_free_sizes", 40,
                 new View(origin, new Vec3(20.0, 8.0, 16.0), new Vec3(21.0, 4.0, 34.0), null));
-        Screenshots.step("bildschirmfotos: Gate einstellen im Spiel mit Live-Vorschau", "gate_edit_mode", 30, new EditView(origin, false, false));
-        Screenshots.step("bildschirmfotos: Gate einstellen mit freier Maus", "gate_edit_cursor", 30, new EditView(origin, false, true));
+        Screenshots.step("bildschirmfotos: Gate einstellen im Spiel mit Live-Vorschau", "gate_edit_mode", 30, new EditView(origin, false, false, false));
+        Screenshots.step("bildschirmfotos: Gate einstellen mit freier Maus", "gate_edit_cursor", 30, new EditView(origin, false, true, false));
+        Screenshots.step("bildschirmfotos: Gate einstellen, Hinweis zur freien Maus beim ersten Mal hervorgehoben", "gate_edit_mouse_tip", 30,
+                new EditView(origin, false, false, true));
         SelfTest.clientStep("bildschirmfotos: frei gedrehte Gates aufräumen", 200, GateFreeSelfTests::cleanupShotsStep);
     }
 
     public static Screenshots.Scene editScene(Supplier<BlockPos> base) {
-        return new EditView(() -> base.get().offset(SHOT_OFFSET_X, 0, SHOT_OFFSET_Z), true, false);
+        return new EditView(() -> base.get().offset(SHOT_OFFSET_X, 0, SHOT_OFFSET_Z), true, false, false);
+    }
+
+    public static Screenshots.Scene firstEditScene(Supplier<BlockPos> base) {
+        return new EditView(() -> base.get().offset(SHOT_OFFSET_X, 0, SHOT_OFFSET_Z), true, false, true);
     }
 
     private static StepResult cleanupShotsStep(SelfTest.StepContext ctx) {
@@ -1052,11 +1139,13 @@ public final class GateFreeSelfTests {
     private static final class EditView extends View {
         private final boolean standalone;
         private final boolean cursor;
+        private final boolean first;
 
-        private EditView(Supplier<BlockPos> origin, boolean standalone, boolean cursor) {
+        private EditView(Supplier<BlockPos> origin, boolean standalone, boolean cursor, boolean first) {
             super(origin, new Vec3(9.5, 0.0, 3.0), new Vec3(9.0, 1.2, 9.0), () -> new ItemStack(RaceModule.gateItem(GateSize.MEDIUM).orElseThrow()));
             this.standalone = standalone;
             this.cursor = cursor;
+            this.first = first;
         }
 
         @Override
@@ -1072,10 +1161,18 @@ public final class GateFreeSelfTests {
             }
             GateEditor editor = GateEditor.current();
             if (editor == null || editor.gate() != gate) {
+                if (this.first) {
+                    FirstUseHints.forget(GateEditor.MOUSE_HINT);
+                    GateEditor.freezeTipGlow(1.0F);
+                    GateEditor.muteStartNotice(false);
+                }
                 GateEditor.start(gate);
                 editor = GateEditor.current();
                 if (editor == null) {
                     return StepResult.fail("Gate einstellen startet nicht");
+                }
+                if (GateEditor.tipHighlighted() != this.first) {
+                    return StepResult.fail("Hinweis zur freien Maus " + (this.first ? "nicht hervorgehoben" : "hervorgehoben, obwohl bekannt"));
                 }
                 GateGeometry g = gate.geometry();
                 editor.set(g.heading() + 30.0F, 20.0F, 15.0F, 4.0, 3.5);
@@ -1100,6 +1197,9 @@ public final class GateFreeSelfTests {
             if (this.cursor) {
                 this.cursorOpen(Minecraft.getInstance());
             }
+            if (this.first && GateEditor.active()) {
+                GateEditor.showStartNotice();
+            }
         }
 
         private boolean cursorOpen(Minecraft mc) {
@@ -1120,6 +1220,11 @@ public final class GateFreeSelfTests {
         public void finish(SelfTest.StepContext ctx) {
             Minecraft mc = Minecraft.getInstance();
             GateEditor.stop();
+            if (this.first) {
+                GateEditor.freezeTipGlow(Float.NaN);
+                GateEditor.muteStartNotice(true);
+                FirstUseHints.learned(GateEditor.MOUSE_HINT, GateEditor.MOUSE_HINT_TIMES);
+            }
             Screenshots.parkMouse(mc);
             super.finish(ctx);
             Rig rig = SHOT_RIG.get();

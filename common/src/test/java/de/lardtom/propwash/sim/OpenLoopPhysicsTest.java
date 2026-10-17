@@ -227,7 +227,8 @@ class OpenLoopPhysicsTest {
         pack.forceBatteryCurrent(current, h, true, true);
         double ocv = lr.cells * CellCurve.ocv(lr.chemistry, pack.soc);
         double drop = ocv - pack.busVoltage;
-        assertEquals(lr.packResistance * current, drop, 0.02 * lr.packResistance * current);
+        double ohmic = (1.0 - ModelConstants.SAG_FAST_FRACTION) * lr.packResistance;
+        assertEquals(ohmic * current, drop, 0.02 * ohmic * current);
         for (int k = 1; k < 25 * DroneSim.PHYSICS_HZ; k++) {
             pack.forceBatteryCurrent(current, h, true, true);
         }
@@ -236,13 +237,22 @@ class OpenLoopPhysicsTest {
         drop = ocv - pack.busVoltage;
         double expected = (lr.packResistance + lr.polarizationResistance) * current;
         assertEquals(expected, drop, 0.02 * expected);
-        double initialPol = pack.polarization;
-        int n = 0;
-        while (pack.polarization > initialPol * Math.exp(-1.0) && n < 40 * DroneSim.PHYSICS_HZ) {
+        assertEquals(ModelConstants.SAG_FAST_FRACTION * lr.packResistance * current, pack.fastPolarization, 1e-6);
+        double initialFast = pack.fastPolarization;
+        double initialSlow = pack.polarization;
+        int fast = 0;
+        int slow = 0;
+        for (int n = 1; n <= 40 * DroneSim.PHYSICS_HZ && (fast == 0 || slow == 0); n++) {
             pack.forceBatteryCurrent(0.0, h, true, true);
-            n++;
+            if (fast == 0 && pack.fastPolarization <= initialFast * Math.exp(-1.0)) {
+                fast = n;
+            }
+            if (slow == 0 && pack.polarization <= initialSlow * Math.exp(-1.0)) {
+                slow = n;
+            }
         }
-        assertEquals(5.0, n * h, 0.5);
+        assertEquals(ModelConstants.SAG_FAST_TAU, fast * h, 0.05);
+        assertEquals(ModelConstants.POL_TAU, slow * h, 0.5);
     }
 
     private static double bisectBus(AirframeSpec p, PowerSystem ps, double[] duty) {
@@ -468,8 +478,8 @@ class OpenLoopPhysicsTest {
 
     @Test
     void punchFromHover() {
-        double[] vy = {10.3, 19.6, 36.4, 44.3, 25.0};
-        double[] g = {2.79, 4.20, 9.34, 11.27, 5.51};
+        double[] vy = {11.0, 21.2, 39.2, 44.3, 27.9};
+        double[] g = {2.98, 4.69, 10.44, 12.77, 6.47};
         for (int k = 0; k < PRESETS.length; k++) {
             FlatWorld w = Tests.hovering(PRESETS[k], Tests.quietTuning(), 20.0, StabMode.ANGLE, 1.0);
             w.sim.setBatteryCharge(1.0);

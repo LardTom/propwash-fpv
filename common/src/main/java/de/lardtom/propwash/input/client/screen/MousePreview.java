@@ -5,8 +5,11 @@ import de.lardtom.propwash.input.MouseAxis;
 import de.lardtom.propwash.input.MouseMode;
 import de.lardtom.propwash.input.MouseSettings;
 import de.lardtom.propwash.input.MouseSticks;
+import de.lardtom.propwash.input.StickChannel;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.input.client.MouseCapture;
+import de.lardtom.propwash.input.client.StickModes;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
@@ -31,6 +34,7 @@ public final class MousePreview {
     private final MouseSticks sticks = new MouseSticks();
     private MouseSticks.Output output = MouseSticks.Output.CENTER;
     private MouseSticks.@Nullable Output shown;
+    private @Nullable StickMode mode;
     private MouseCapture.Frame consumed = MouseCapture.Frame.EMPTY;
     private long lastNanos;
     private boolean dragging;
@@ -78,6 +82,10 @@ public final class MousePreview {
         this.acro = acro;
     }
 
+    public void mode(@Nullable StickMode next) {
+        this.mode = next;
+    }
+
     public StickPositions sticks() {
         return new StickPositions(this.output.roll(), this.output.pitch(), this.output.yaw(), 0.0F);
     }
@@ -115,11 +123,12 @@ public final class MousePreview {
         this.shown = sticks;
     }
 
-    public void feed(float dx, float dy, float dt, MouseSettings settings) {
-        this.output = this.sticks.update(dx, dy, dt, settings, !this.acro);
+    public void feed(float dx, float dy, float dt, MouseSettings settings, boolean invertPitch) {
+        this.output = this.sticks.update(dx, dy, dt, settings, !this.acro, invertPitch);
     }
 
-    public int extract(GuiGraphicsExtractor g, Font font, int x, int y, int w, int maxHeight, MouseSettings settings, int mouseX, int mouseY) {
+    public int extract(GuiGraphicsExtractor g, Font font, int x, int y, int w, int maxHeight, MouseSettings settings, boolean invertPitch, int mouseX,
+                       int mouseY) {
         long now = Util.getNanos();
         float dt = this.lastNanos == 0L ? 0.0F : Math.min(0.1F, (now - this.lastNanos) / 1.0E9F);
         this.lastNanos = now;
@@ -132,7 +141,7 @@ public final class MousePreview {
         }
         this.consumed = frame;
         if (dt > 0.0F) {
-            this.feed(dx, dy, dt, settings);
+            this.feed(dx, dy, dt, settings, invertPitch);
         }
         int gimbal = gimbalSize(w, maxHeight);
         int pad = padHeight(maxHeight - gimbal - 2 * LABEL_SPACE - GAP);
@@ -141,11 +150,12 @@ public final class MousePreview {
         int rightX = x + half + (half - gimbal) / 2;
         boolean yaw = settings.xAxis == MouseAxis.YAW;
         MouseSticks.Output shown = this.shown != null && !this.dragging ? this.shown : this.output;
-        gimbal(g, leftX, y, gimbal, shown.yaw(), -1.0F, yaw ? Palette.YAW : Palette.TEXT_FAINT, 0);
-        gimbal(g, rightX, y, gimbal, shown.roll(), shown.pitch(), yaw ? Palette.TEXT_FAINT : Palette.ROLL, Palette.PITCH);
+        StickMode stickMode = this.mode != null ? this.mode : StickModes.current();
+        this.stick(g, stickMode, true, leftX, y, gimbal, shown, yaw);
+        this.stick(g, stickMode, false, rightX, y, gimbal, shown, yaw);
         int labelY = y + gimbal + 2;
-        Component left = Component.translatable(yaw ? "propwash.input.mouse.preview.left_yaw" : "propwash.input.mouse.preview.left");
-        Component right = Component.translatable(yaw ? "propwash.input.mouse.preview.right_yaw" : "propwash.input.mouse.preview.right");
+        Component left = stickLabel(stickMode, true, yaw);
+        Component right = stickLabel(stickMode, false, yaw);
         ThemeText.fittedCentered(g, font, left, x + half / 2, labelY, half - 2, Palette.TEXT_MUTED);
         ThemeText.fittedCentered(g, font, right, x + half + half / 2, labelY, half - 2, Palette.TEXT_MUTED);
         Component mode = modeLine(settings, shown.holdY());
@@ -220,6 +230,50 @@ public final class MousePreview {
     static Component modeLine(MouseSettings settings, boolean holding) {
         Component how = Component.translatable(holding ? "propwash.input.mouse.preview.hold" : "propwash.input.mouse.preview.rate");
         return Component.translatable("propwash.input.mouse.preview.mode", Component.translatable(settings.mode.translationKey()), how);
+    }
+
+    private void stick(GuiGraphicsExtractor g, StickMode mode, boolean left, int x0, int y0, int size, MouseSticks.Output shown, boolean yaw) {
+        StickChannel horizontal = mode.channel(left, false);
+        StickChannel vertical = mode.channel(left, true);
+        gimbal(g, x0, y0, size, value(horizontal, shown), value(vertical, shown), color(horizontal, yaw), color(vertical, yaw));
+    }
+
+    private static float value(StickChannel channel, MouseSticks.Output shown) {
+        return switch (channel) {
+            case ROLL -> shown.roll();
+            case PITCH -> shown.pitch();
+            case YAW -> shown.yaw();
+            case THROTTLE -> -1.0F;
+        };
+    }
+
+    private static boolean mouseDriven(StickChannel channel, boolean yaw) {
+        return switch (channel) {
+            case PITCH -> true;
+            case ROLL -> !yaw;
+            case YAW -> yaw;
+            case THROTTLE -> false;
+        };
+    }
+
+    private static int color(StickChannel channel, boolean yaw) {
+        if (channel == StickChannel.THROTTLE) {
+            return 0;
+        }
+        if (channel == StickChannel.PITCH) {
+            return Palette.PITCH;
+        }
+        return mouseDriven(channel, yaw) ? InputGui.channelColor(channel) : Palette.TEXT_FAINT;
+    }
+
+    static Component stickLabel(StickMode mode, boolean left, boolean yaw) {
+        StickChannel vertical = mode.channel(left, true);
+        StickChannel horizontal = mode.channel(left, false);
+        boolean first = mouseDriven(vertical, yaw);
+        boolean second = mouseDriven(horizontal, yaw);
+        String key = second ? "propwash.input.mouse.preview.pair_mouse" : first ? "propwash.input.mouse.preview.pair_first_mouse"
+                : "propwash.input.mouse.preview.pair";
+        return Component.translatable(key, Component.translatable(vertical.translationKey()), Component.translatable(horizontal.translationKey()));
     }
 
     static void gimbal(GuiGraphicsExtractor g, int x0, int y0, int size, float x, float y, int colorX, int colorY) {

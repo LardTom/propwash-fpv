@@ -156,6 +156,8 @@ final class PartsRenderShowcase {
                 new CloseUpScene(() -> addonPreset(JMP_RACE_SLIM), "Race 5 Zoll (Slim)", () -> addonPaint(JMP_RACE_SLIM), 4.0, 2, 90.0F));
         Screenshots.step(RACE_BATTERY + "Freestyle zum Vergleich von unten", "race_battery_hover_below_freestyle", 25,
                 new LosHoverScene(() -> DroneBuild.FREESTYLE, 2.8, 1.5, 120.0F));
+        Screenshots.step("bildschirmfotos: Race-Preset – True-X von oben", "race_preset_top", 25,
+                new CloseUpScene(() -> Optional.of(DroneBuild.RACER), "Race 5 Zoll", () -> DronePaint.DEFAULT, 62.0, 2, 180.0F, 0.85));
         Screenshots.step("bildschirmfotos: Inventar mit Teilen des Beispiel-Addons", "inventory_addon_parts", 30, new InventoryScene());
         SelfTest.setupStep("bildschirmfotos: Nahaufnahmen und FPV-Bilder – aufräumen", 200, PartsRenderShowcase::cleanupStep);
     }
@@ -386,6 +388,7 @@ final class PartsRenderShowcase {
         private final double pitchDegrees;
         private final int standHeight;
         private final float droneYaw;
+        private final double minDistance;
         private double aimHeight;
 
         private CloseUpScene(Predicate<FrameType> accepts, String what, Supplier<DronePaint> paint) {
@@ -396,6 +399,7 @@ final class PartsRenderShowcase {
             this.pitchDegrees = CLOSE_UP_PITCH_DEGREES;
             this.standHeight = 1;
             this.droneYaw = 215.0F;
+            this.minDistance = CLOSE_UP_MIN_DISTANCE;
         }
 
         private CloseUpScene(Supplier<Optional<DroneBuild>> builds, String what, Supplier<DronePaint> paint) {
@@ -404,6 +408,11 @@ final class PartsRenderShowcase {
 
         private CloseUpScene(Supplier<Optional<DroneBuild>> builds, String what, Supplier<DronePaint> paint, double pitchDegrees,
                              int standHeight, float droneYaw) {
+            this(builds, what, paint, pitchDegrees, standHeight, droneYaw, CLOSE_UP_MIN_DISTANCE);
+        }
+
+        private CloseUpScene(Supplier<Optional<DroneBuild>> builds, String what, Supplier<DronePaint> paint, double pitchDegrees,
+                             int standHeight, float droneYaw, double minDistance) {
             this.accepts = null;
             this.builds = builds;
             this.what = what;
@@ -411,6 +420,7 @@ final class PartsRenderShowcase {
             this.pitchDegrees = pitchDegrees;
             this.standHeight = standHeight;
             this.droneYaw = droneYaw;
+            this.minDistance = minDistance;
         }
 
         @Override
@@ -427,7 +437,7 @@ final class PartsRenderShowcase {
             }
             if (!state.containsKey(FUTURE)) {
                 float radius = DroneVisuals.estimatedRadiusBlocks(build.get());
-                double distance = Math.max(CLOSE_UP_MIN_DISTANCE, radius * CLOSE_UP_RADII);
+                double distance = Math.max(this.minDistance, radius * CLOSE_UP_RADII);
                 double aim = this.standHeight + radius * CLOSE_UP_AIM;
                 double rise = distance * Math.tan(Math.toRadians(this.pitchDegrees));
                 this.aimHeight = aim;

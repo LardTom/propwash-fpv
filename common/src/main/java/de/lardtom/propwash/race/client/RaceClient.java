@@ -1,8 +1,8 @@
 package de.lardtom.propwash.race.client;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.core.client.ClientBus;
+import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.race.CourseLaps;
 import de.lardtom.propwash.race.GateEntity;
@@ -10,14 +10,12 @@ import de.lardtom.propwash.race.RaceModule;
 import de.lardtom.propwash.race.RacePayloads;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
 public final class RaceClient {
     private static boolean initialized;
-    private static KeyMapping restartKey;
     private static int sentLaps = CourseLaps.UNSET;
 
     private RaceClient() {
@@ -36,7 +34,6 @@ public final class RaceClient {
         ClientNet.handle(RacePayloads.GhostS2C.TYPE, (payload, context) -> ClientRaceTracker.INSTANCE.ghosts().accept(payload));
         ClientNet.handle(RacePayloads.LobbyS2C.TYPE, (payload, context) -> ClientRaceTracker.INSTANCE.onLobby(payload));
         ClientNet.handle(RacePayloads.RaceStartS2C.TYPE, (payload, context) -> ClientRaceTracker.INSTANCE.onStart(context.minecraft(), payload));
-        restartKey = ClientRegistrar.keyMapping("race_restart", InputConstants.KEY_BACKSPACE);
         GateMountKeys.register();
         GateEditor.register();
         GateEntity.setEditor(GateEditor::start);
@@ -44,7 +41,7 @@ public final class RaceClient {
         ClientBus.TICK_END.register(GateEditor::tick);
         ClientBus.TICK_END.register(RaceClient::syncDefaults);
         ClientBus.LOGIN.register(minecraft -> sentLaps = CourseLaps.UNSET);
-        ClientRaceTracker.INSTANCE.setRestartKey(restartKey);
+        PilotSession.HOME_RESET.register(ClientRaceTracker.INSTANCE::onHomeReset);
         ClientBus.FRAME_START.register((minecraft, deltaTracker) -> ClientRaceTracker.INSTANCE.onFrame(minecraft));
         ClientBus.DISCONNECT.register(minecraft -> {
             ClientRaceTracker.INSTANCE.reset();
@@ -64,10 +61,6 @@ public final class RaceClient {
         ClientBus.SUBMIT_WORLD_GEOMETRY.register(GatePreview::submit);
         ClientBus.SUBMIT_WORLD_GEOMETRY.register(GateEditor::submit);
         ConfigTabs.register(RaceConfigTab::new);
-    }
-
-    public static KeyMapping restartKey() {
-        return restartKey;
     }
 
     private static void syncDefaults(Minecraft minecraft) {

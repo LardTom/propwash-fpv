@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "mass_g": 4.4,
+  "diameter_mm": 130,
+  "pitch_in": 2.9,
+  "blades": 3,
+  "ct": 0.122,
+  "cp": 0.065,
+  "material": "polycarbonate",
+  "sort": 5,
+  "visual": {"accent": "#f2463a"}
+}

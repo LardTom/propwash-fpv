@@ -99,6 +99,7 @@ public final class BandoSelfTests {
         SelfTest.clientStep("bando: Weltgenerator findet jede Familie wie /locate, Seltenheit", 2400, BandoSelfTests::locateStep);
         SelfTest.clientStep("bando: alle Varianten in die Testwelt gesetzt und geprüft", 1200, BandoSelfTests::placeStep);
         SelfTest.clientStep("bando: Truhe würfelt gebrauchte Propwash-Teile", 200, BandoSelfTests::lootStep);
+        BandoMapTests.registerClient();
         SelfTest.clientStep("bando: Flugschul-Szene angemeldet", 5, ctx -> StepResult.check(GuideScenes.byId(BandoScene.ID) != null
                 && GuideScenes.all().stream().anyMatch(scene -> scene.id().equals(BandoScene.ID)), "Szene bandos fehlt in der Flugschule"));
         if (Screenshots.enabled()) {
@@ -488,7 +489,8 @@ public final class BandoSelfTests {
 
     private static final List<SceneShot> SCENE_SHOTS = List.of(
             new SceneShot("flight_school_bandos_fly", 1, 78.0F),
-            new SceneShot("flight_school_bandos_chest", 2, 70.0F));
+            new SceneShot("flight_school_bandos_chest", 2, 70.0F),
+            new SceneShot("flight_school_bandos_map", 3, 60.0F));
 
     @SuppressWarnings("unchecked")
     private static StepResult sceneShots(SelfTest.StepContext ctx) {

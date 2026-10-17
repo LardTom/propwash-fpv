@@ -13,10 +13,13 @@ public enum LapAssist {
     CREATIVE_DRONE,
     PARTS_MISMATCH,
     GOGGLES_LATENCY,
-    OTHER;
+    OTHER,
+    ZONE_PHYSICS;
 
     public static final int NONE = 0;
     public static final int ALL = (1 << values().length) - 1;
+    public static final int SERVER_REASONS = WORLD_PHYSICS.bit() | CREATIVE_DRONE.bit() | PARTS_MISMATCH.bit() | ZONE_PHYSICS.bit();
+    public static final int CLIENT_REASONS = ALL & ~SERVER_REASONS;
 
     private final String key = this.name().toLowerCase(Locale.ROOT);
 
@@ -57,6 +60,19 @@ public enum LapAssist {
             mask |= GOGGLES_LATENCY.bit();
         }
         return mask;
+    }
+
+    public static LapAssist byKey(String key) {
+        for (LapAssist assist : values()) {
+            if (assist.key.equals(key)) {
+                return assist;
+            }
+        }
+        return OTHER;
+    }
+
+    public boolean serverSide() {
+        return this.in(SERVER_REASONS);
     }
 
     public static List<LapAssist> list(int mask) {

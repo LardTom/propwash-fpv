@@ -1,5 +1,6 @@
 package de.lardtom.propwash;
 
+import de.lardtom.propwash.accessory.AccessoryModule;
 import de.lardtom.propwash.apiimpl.ApiModule;
 import de.lardtom.propwash.audio.AudioModule;
 import de.lardtom.propwash.bando.BandoModule;
@@ -22,6 +23,7 @@ import de.lardtom.propwash.parts.PartsModule;
 import de.lardtom.propwash.trick.TrickModule;
 import de.lardtom.propwash.ui.UiModule;
 import de.lardtom.propwash.video.VideoModule;
+import de.lardtom.propwash.zone.ZoneModule;
 
 public final class PropwashCommon {
     private static boolean initialized;
@@ -41,6 +43,7 @@ public final class PropwashCommon {
         RaceModule.init();
         BandoModule.init();
         ServerModule.init();
+        ZoneModule.init();
         RescueModule.init();
         InputModule.init();
         VideoModule.init();
@@ -50,6 +53,7 @@ public final class PropwashCommon {
         TrickModule.init();
         BlackboxModule.init();
         InteractModule.init();
+        AccessoryModule.init();
         CreativeModule.init();
         OsdModule.init();
         GuideModule.init();

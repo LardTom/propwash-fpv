@@ -6,8 +6,8 @@ import de.lardtom.propwash.build.VideoType;
 public final class LinkBudget {
     public static final double ANALOG_LOST_DB = -6.0;
     public static final double ANALOG_CLEAN_DB = 12.0;
-    public static final double DIGITAL_LOST_DB = -2.0;
-    public static final double DIGITAL_CLEAN_DB = 4.0;
+    public static final double DIGITAL_LOST_DB = -5.0;
+    public static final double DIGITAL_CLEAN_DB = 7.0;
     public static final double MAX_LOSS_DB = 60.0;
 
     private LinkBudget() {

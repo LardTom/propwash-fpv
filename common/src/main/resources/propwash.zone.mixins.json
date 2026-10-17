@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "de.lardtom.propwash.mixin.zone",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "client": ["client.KeyboardHandlerMixin", "client.MinecraftMixin", "client.MouseHandlerMixin"],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

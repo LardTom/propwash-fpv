@@ -18,7 +18,7 @@ public final class FunctionKeys {
             case FLIP_OVER -> KeyDefaults.FLIP_UPRIGHT;
             case SET_HOME -> KeyDefaults.SET_HOME;
             case BEEPER -> KeyDefaults.BEEPER;
-            case RACE_RESTART -> KeyDefaults.RACE_RESTART;
+            case RESET -> KeyDefaults.RESET;
             case RECORD -> KeyDefaults.ACTION_CAM_RECORD;
             case LEDS_OFF -> KeyDefaults.LEDS;
             case ALT_HOLD -> KeyDefaults.ALT_HOLD;
@@ -26,6 +26,9 @@ public final class FunctionKeys {
             case CARGO_DROP -> KeyDefaults.CARGO_DROP;
             case MODE_3D -> KeyDefaults.MODE_3D;
             case BLACKBOX -> KeyDefaults.BLACKBOX;
+            case VTX_POWER -> KeyDefaults.VTX_POWER;
+            case TURTLE -> KeyDefaults.TURTLE;
+            case ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4 -> KeyDefaults.accessory(function);
             case COMMAND_1, COMMAND_2, COMMAND_3, COMMAND_4, COMMAND_5, COMMAND_6, COMMAND_7, COMMAND_8 -> KeyDefaults.command(function);
         };
     }

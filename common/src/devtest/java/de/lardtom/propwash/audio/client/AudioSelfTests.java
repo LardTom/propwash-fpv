@@ -50,6 +50,7 @@ public final class AudioSelfTests {
         SelfTest.clientStep("audio: Pieptöne", 40, AudioSelfTests::beepStep);
         SelfTest.clientStep("audio: Motor-Stream startet und stoppt", 600, AudioSelfTests::streamStep);
         AudioReachSelfTests.register();
+        LocatorBeeperSelfTests.register();
         SelfTest.afterLeaveStep("audio: Stimmen freigegeben", 40, ctx -> StepResult.check(
                 MotorVoices.trackedDrones() == 0 && AudioPump.size() == 0,
                 "nach dem Verlassen noch " + MotorVoices.trackedDrones() + " Drohnen-Stimmen und " + AudioPump.size() + " gepumpte Kanäle"));

@@ -1,12 +1,14 @@
 package de.lardtom.propwash.audio;
 
 import de.lardtom.propwash.build.DroneBuild;
+import de.lardtom.propwash.build.PropType;
 import org.junit.jupiter.api.Test;
 
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,6 +18,7 @@ class MotorSynthTest {
     private static final int RATE = MotorSynth.SAMPLE_RATE;
     private static final int CHUNK = 720;
     private static final String PILOT_MIX = "e704e7c18f0d44f3881b38c4";
+    private static final String PILOT_MIX_RACER_050 = "2d2f0542701a136c5c1bc26c";
 
     @Test
     void samplesStayBoundedForEveryPresetAndHostileInput() {
@@ -168,10 +171,17 @@ class MotorSynthTest {
 
     @Test
     void pilotMixStaysBitIdentical() throws Exception {
+        List<DroneBuild> presets040 = DroneBuild.PRESETS.stream()
+                .map(preset -> preset == DroneBuild.RACER ? preset.withProp(PropType.P51_3B) : preset).toList();
+        assertEquals(PILOT_MIX, pilotMix(presets040), "Motorklang des Piloten hat sich geändert");
+        assertEquals(PILOT_MIX_RACER_050, pilotMix(List.of(DroneBuild.RACER)), "Motorklang des Racers hat sich geändert");
+    }
+
+    private static String pilotMix(List<DroneBuild> builds) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         float[] chunk = new float[CHUNK];
         ByteBuffer bytes = ByteBuffer.allocate(chunk.length * 4);
-        for (DroneBuild build : DroneBuild.PRESETS) {
+        for (DroneBuild build : builds) {
             MotorTimbre timbre = MotorTimbre.of(build);
             MotorControl control = new MotorControl();
             MotorSynth synth = new MotorSynth(timbre, control, 17L);
@@ -198,7 +208,7 @@ class MotorSynthTest {
                 digest.update(bytes.array());
             }
         }
-        assertEquals(PILOT_MIX, HexFormat.of().formatHex(digest.digest()).substring(0, 24), "Motorklang des Piloten hat sich geändert");
+        return HexFormat.of().formatHex(digest.digest()).substring(0, 24);
     }
 
     @Test

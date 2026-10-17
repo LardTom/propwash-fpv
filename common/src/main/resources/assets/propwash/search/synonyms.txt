@@ -30,7 +30,10 @@ tricks|trick|freestyle|stunts
 speed|geschwindigkeit|tempo|units|einheit|einheiten|km h|mph
 recording|record|aufnahme|aufnehmen|action cam|actioncam
 spectate|spectator|zuschauen|zuschauer
-3d mode|3d modus|reverse|umkehren|turtle
+3d mode|3d modus|reverse|umkehren
+turtle|turtle mode|turtle modus|flip over after crash|crashflip|crash flip|umdrehen|flip over|schildkröte
+crash disarm|disarm on crash|nach absturz abschalten|stay armed|scharf bleiben|crash detection|absturzerkennung|disarm|entschärfen|entschärft
+waterproof|wasserdicht|water|wasser|underwater|unter wasser|coating|beschichtung|wasserschutz
 preset|presets|voreinstellung|voreinstellungen|vorlage|vorlagen|profile|profil|template|templates
 reset|defaults|default|standard|standardwerte|zurücksetzen
 altitude hold|alt hold|höhe halten|höhe|position hold|poshold|position halten|hold

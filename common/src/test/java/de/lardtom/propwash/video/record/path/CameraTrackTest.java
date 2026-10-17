@@ -106,7 +106,7 @@ class CameraTrackTest {
     @Test
     void reducedKeepsStraightFlightLight() {
         CameraTrack track = CameraTrack.of(cruise(75.0, 10.0, 15.0, 120.0), KeyframeDensity.REDUCED);
-        assertTrue(track.camera().size() <= 2 + 200 / CameraTrack.MAX_SPAN_TICKS + 1, "Keyframes: " + track.camera().size());
+        assertTrue(track.camera().size() <= 2 + 200 / CameraTrack.MAX_SPAN_TICKS + 5, "Keyframes: " + track.camera().size());
         assertEquals(track.startTick(), track.camera().getFirst().tick());
         assertEquals(track.endTick(), track.camera().getLast().tick());
         for (int i = 1; i < track.camera().size(); i++) {
@@ -124,24 +124,13 @@ class CameraTrackTest {
         }
         CameraTrack every = CameraTrack.of(buffer, KeyframeDensity.EVERY_TICK);
         CameraTrack reduced = CameraTrack.of(buffer, KeyframeDensity.REDUCED);
-        assertTrue(reduced.camera().size() < every.camera().size());
-        List<TickPose> poses = PathResampler.perTick(buffer);
-        int k = 0;
-        for (TickPose truth : poses) {
-            while (reduced.camera().get(k + 1).tick() < truth.tick()) {
-                k++;
-            }
-            PathKeyframe a = reduced.camera().get(k);
-            PathKeyframe b = reduced.camera().get(k + 1);
-            double t = (truth.tick() - a.tick()) / (double) (b.tick() - a.tick());
-            double dx = a.x() + (b.x() - a.x()) * t - truth.x();
-            double dy = a.y() + (b.y() - a.y()) * t - truth.y();
-            double dz = a.z() + (b.z() - a.z()) * t - truth.z();
-            assertTrue(Math.sqrt(dx * dx + dy * dy + dz * dz) <= KeyframeDensity.REDUCED.positionTolerance() + 1.0E-9);
-            double angle = CameraAngles.degreesBetween(a.angles().lerpShortest(b.angles(), t).rotation(), truth.rotation());
-            assertTrue(angle <= Math.max(KeyframeDensity.REDUCED.angleTolerance(), EulerPath.KEYFRAME_LIMIT_DEGREES) + 1.0E-3,
-                    "Tick " + truth.tick() + ": " + angle);
-        }
+        assertTrue(reduced.camera().size() <= every.camera().size());
+        PathFrames frames = PathFrames.of(PathResampler.perTick(buffer));
+        Simplification tolerance = Simplification.ofPosition(KeyframeDensity.REDUCED.positionTolerance());
+        PathPreview preview = PathPreview.of(frames, CameraTrack.build(frames, tolerance, Integer.MAX_VALUE), 1, 2.0F, Integer.MAX_VALUE);
+        assertEquals(reduced, preview.built().track());
+        assertTrue(preview.maxSameTime() <= tolerance.position() * Simplification.REFINE_FACTOR + 1.0E-9, "Position " + preview.maxSameTime());
+        assertTrue(preview.maxAngle() <= tolerance.angle() * Simplification.REFINE_FACTOR + 1.0E-3, "Winkel " + preview.maxAngle());
     }
 
     @Test

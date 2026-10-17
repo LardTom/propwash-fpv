@@ -1,5 +1,7 @@
 package de.lardtom.propwash.drone;
 
+import de.lardtom.propwash.accessory.AccessoryComponents;
+import de.lardtom.propwash.accessory.AccessoryContents;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.ActionCamSpec;
 import de.lardtom.propwash.build.BatteryType;
@@ -23,6 +25,7 @@ import de.lardtom.propwash.core.WearCodecs;
 import de.lardtom.propwash.core.event.Event;
 import de.lardtom.propwash.drone.bind.BindCodecs;
 import de.lardtom.propwash.drone.bind.BindComponents;
+import de.lardtom.propwash.drone.coating.CoatingComponents;
 import de.lardtom.propwash.drone.bind.ReceiverBind;
 import de.lardtom.propwash.drone.net.DroneStateC2S;
 import de.lardtom.propwash.drone.net.MoveBudget;
@@ -30,9 +33,12 @@ import de.lardtom.propwash.drone.net.StateValidation;
 import de.lardtom.propwash.drone.tag.DroneTagRules;
 import de.lardtom.propwash.drone.tag.DroneTags;
 import de.lardtom.propwash.interact.DroneCargo;
+import de.lardtom.propwash.rescue.HomePoint;
+import de.lardtom.propwash.rescue.HomePointCodecs;
 import de.lardtom.propwash.rescue.ReturnPlan;
 import de.lardtom.propwash.sim.AirframeSpec;
 import net.minecraft.core.Direction;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -73,6 +79,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -80,6 +87,9 @@ public class QuadcopterEntity extends Entity {
     public static final Event<Consumer<QuadcopterEntity>> CLIENT_TICK = new Event<>("drone_client_tick");
     public static final Event<PilotListener> PILOT_CHANGED = new Event<>("drone_pilot_changed");
     public static final Event<ServerMoveListener> SERVER_MOVED = new Event<>("drone_server_moved");
+    public static final Event<Consumer<QuadcopterEntity>> HOME_EDITED = new Event<>("drone_home_edited");
+    public static final Event<BiConsumer<QuadcopterEntity, ServerPlayer>> HOME_RESET = new Event<>("drone_home_reset");
+    public static final Event<Consumer<QuadcopterEntity>> SERVER_TICK = new Event<>("drone_server_tick");
 
     public static final int MOTORS = 4;
     public static final int INTERPOLATION_STEPS = 2;
@@ -88,6 +98,9 @@ public class QuadcopterEntity extends Entity {
     public static final double GROUND_PROBE_RAISE = 0.02;
     public static final String RETURN_PLAN_KEY = "ReturnPlan";
     public static final String RECEIVER_BIND_KEY = "ReceiverBind";
+    public static final String WATERPROOF_KEY = "Waterproof";
+    public static final String ACCESSORY_CONTENTS_KEY = "AccessoryContents";
+    public static final String BEEPER_KEY = "LocatorBeeper";
     private static final float[] PROP_SPIN = {-1.0F, 1.0F, 1.0F, -1.0F};
     private static final float PROP_IDLE_SPEED = 0.9F;
     private static final float PROP_MAX_SPEED = 3.2F;
@@ -120,6 +133,8 @@ public class QuadcopterEntity extends Entity {
             SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<PartWear> DATA_WEAR =
             SynchedEntityData.defineId(QuadcopterEntity.class, CoreComponents.PART_WEAR_SERIALIZER);
+    private static final EntityDataAccessor<Optional<EntityReference<LivingEntity>>> DATA_BEEPER =
+            SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.OPTIONAL_LIVING_ENTITY_REFERENCE);
     private static final EntityDataAccessor<Boolean> DATA_LEDS_OFF =
             SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<DronePaint> DATA_PAINT =
@@ -128,6 +143,11 @@ public class QuadcopterEntity extends Entity {
             SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<ItemStack> DATA_CARGO_ITEM =
             SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Boolean> DATA_WATERPROOF =
+            SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<AccessoryContents> DATA_ACCESSORY_CONTENTS =
+            SynchedEntityData.defineId(QuadcopterEntity.class, AccessoryComponents.CONTENTS_SERIALIZER);
+    private static DamageFilter damageFilter = (drone, level, source, damage) -> damage;
 
     private static volatile Predicate<UUID> localPlayerCheck = uuid -> false;
     private static volatile Predicate<QuadcopterEntity> serverAutopilot = drone -> false;
@@ -141,6 +161,12 @@ public class QuadcopterEntity extends Entity {
     private final DroneCargo.Hold cargo = new DroneCargo.Hold();
     private @Nullable ReturnPlan returnPlan;
     private @Nullable ReceiverBind receiverBind;
+    private @Nullable HomePoint homePoint;
+    private int homeAck;
+    private boolean homeEdited;
+    private @Nullable Vec3 launchPoint;
+    private long lastHomeResetTick = Long.MIN_VALUE;
+    private double beeperDrain;
 
     private final Quaternionf renderAttitude = new Quaternionf();
     private final Quaternionf prevRenderOrientation = new Quaternionf();
@@ -174,6 +200,18 @@ public class QuadcopterEntity extends Entity {
         serverAutopilot = Objects.requireNonNull(autopilot, "autopilot");
     }
 
+    public static void setDamageFilter(DamageFilter filter) {
+        damageFilter = Objects.requireNonNull(filter, "filter");
+    }
+
+    public AccessoryContents accessoryContents() {
+        return this.entityData.get(DATA_ACCESSORY_CONTENTS);
+    }
+
+    public void setAccessoryContents(AccessoryContents contents) {
+        this.entityData.set(DATA_ACCESSORY_CONTENTS, contents == null ? AccessoryContents.EMPTY : contents);
+    }
+
     public @Nullable ReturnPlan returnPlan() {
         return this.returnPlan;
     }
@@ -188,6 +226,35 @@ public class QuadcopterEntity extends Entity {
 
     public @Nullable ReceiverBind receiverBind() {
         return this.receiverBind;
+    }
+
+    public @Nullable HomePoint homePoint() {
+        return this.homePoint;
+    }
+
+    public int homeAck() {
+        return this.homeAck;
+    }
+
+    public void setHomePoint(@Nullable HomePoint home) {
+        this.homePoint = home;
+    }
+
+    public void setHomePoint(@Nullable HomePoint home, int ack) {
+        this.homePoint = home;
+        this.homeAck = ack;
+    }
+
+    public @Nullable Vec3 launchPoint() {
+        return this.launchPoint;
+    }
+
+    public long lastHomeResetTick() {
+        return this.lastHomeResetTick;
+    }
+
+    public void markHomeReset(long gameTime) {
+        this.lastHomeResetTick = gameTime;
     }
 
     public void setReceiverBind(@Nullable ReceiverBind bind) {
@@ -210,9 +277,20 @@ public class QuadcopterEntity extends Entity {
         builder.define(DATA_CAMERA_CHARGE, 1.0F);
         builder.define(DATA_WEAR, PartWear.PRISTINE);
         builder.define(DATA_LEDS_OFF, false);
+        builder.define(DATA_BEEPER, Optional.empty());
         builder.define(DATA_PAINT, DronePaint.DEFAULT);
         builder.define(DATA_CARGO_GRAMS, 0.0F);
         builder.define(DATA_CARGO_ITEM, ItemStack.EMPTY);
+        builder.define(DATA_WATERPROOF, false);
+        builder.define(DATA_ACCESSORY_CONTENTS, AccessoryContents.EMPTY);
+    }
+
+    public boolean waterproof() {
+        return this.entityData.get(DATA_WATERPROOF);
+    }
+
+    public void setWaterproof(boolean waterproof) {
+        this.entityData.set(DATA_WATERPROOF, waterproof);
     }
 
     @Override
@@ -254,7 +332,9 @@ public class QuadcopterEntity extends Entity {
             CameraCharging.tick(this);
         }
         DroneCargo.tick(this);
+        this.tickBeeper();
         this.syncFlightTags(autonomous);
+        SERVER_TICK.fire(listener -> listener.accept(this));
     }
 
     private void syncFlightTags(boolean serverFlies) {
@@ -527,6 +607,7 @@ public class QuadcopterEntity extends Entity {
             if (current.isPresent()) {
                 this.returnPlan = null;
             }
+            this.homeAck = 0;
             this.entityData.set(DATA_LEDS_OFF, false);
             this.stateSentTick = this.level().getGameTime();
             this.moveBudget.restart();
@@ -552,6 +633,44 @@ public class QuadcopterEntity extends Entity {
 
     public boolean hasBattery() {
         return this.entityData.get(DATA_HAS_BATTERY);
+    }
+
+    public Optional<UUID> beeperBy() {
+        return this.entityData.get(DATA_BEEPER).map(EntityReference::getUUID);
+    }
+
+    public boolean beeping() {
+        return this.entityData.get(DATA_BEEPER).isPresent();
+    }
+
+    public void setBeeper(@Nullable UUID by) {
+        Optional<EntityReference<LivingEntity>> next = by == null ? Optional.empty() : Optional.of(EntityReference.of(by));
+        if (!next.map(EntityReference::getUUID).equals(this.beeperBy())) {
+            this.entityData.set(DATA_BEEPER, next);
+        }
+    }
+
+    private void tickBeeper() {
+        if (!this.beeping()) {
+            this.beeperDrain = 0.0;
+            return;
+        }
+        if (!this.hasBattery() || this.batteryCharge() <= 0.0F) {
+            this.setBeeper(null);
+            return;
+        }
+        if (this.pilot().isPresent() || this.isArmed()) {
+            return;
+        }
+        this.beeperDrain += LocatorBeeperPower.drainPerTick(this.build());
+        if (this.beeperDrain >= LocatorBeeperPower.SYNC_STEP || this.beeperDrain >= this.batteryCharge()) {
+            float left = (float) Math.max(0.0, this.batteryCharge() - this.beeperDrain);
+            this.beeperDrain = 0.0;
+            this.setBatteryCharge(left);
+            if (left <= 0.0F) {
+                this.setBeeper(null);
+            }
+        }
     }
 
     public boolean ledsOff() {
@@ -581,6 +700,7 @@ public class QuadcopterEntity extends Entity {
         ItemStack stack = this.batteryStack();
         this.entityData.set(DATA_HAS_BATTERY, false);
         this.setBatteryCharge(0.0F);
+        this.setBeeper(null);
         this.setWear(this.wear().withBattery(PartWear.NEW));
         return stack;
     }
@@ -777,7 +897,11 @@ public class QuadcopterEntity extends Entity {
     }
 
     void applyPilotState(DroneStateC2S state, Quaternionf orientation, float battery, long gameTime) {
+        boolean wasArmed = this.isArmed();
         this.setPos(state.x(), state.y(), state.z());
+        if (state.armed() && !wasArmed) {
+            this.launchPoint = this.position();
+        }
         this.setOnGround(false);
         this.setAttitude(orientation);
         this.setYRot(yawDegrees(orientation));
@@ -786,11 +910,7 @@ public class QuadcopterEntity extends Entity {
         this.setBatteryCharge(battery);
         this.setMotorOutputsPacked(state.armed() ? state.motors() : 0);
         this.setLedsOff(state.ledsOff());
-        if (state.physicsModified()) {
-            this.physicsModified = true;
-        } else if (!state.armed()) {
-            this.physicsModified = false;
-        }
+        this.physicsModified = state.physicsModified();
         this.stateSentTick = gameTime;
     }
 
@@ -815,6 +935,8 @@ public class QuadcopterEntity extends Entity {
         this.setCameraCharge(stack.getOrDefault(CoreComponents.CAMERA_CHARGE.get(), 1.0F));
         this.setPaint(PaintItems.paint(stack));
         this.receiverBind = BindComponents.of(stack);
+        this.setWaterproof(CoatingComponents.coated(stack));
+        this.setAccessoryContents(stack.getOrDefault(AccessoryComponents.CONTENTS.get(), AccessoryContents.EMPTY));
     }
 
     public ItemStack toStack() {
@@ -844,10 +966,18 @@ public class QuadcopterEntity extends Entity {
         }
         PaintItems.store(stack, this.paint());
         BindComponents.store(stack, this.receiverBind);
+        CoatingComponents.coat(stack, this.build(), this.waterproof());
+        if (!this.accessoryContents().isEmpty()) {
+            stack.set(AccessoryComponents.CONTENTS.get(), this.accessoryContents());
+        }
         return stack;
     }
 
     public void resetTo(Vec3 pos, Quaternionfc orientation) {
+        this.resetTo(pos, orientation, false);
+    }
+
+    public void resetTo(Vec3 pos, Quaternionfc orientation, boolean home) {
         if (this.level().isClientSide()) {
             throw new IllegalStateException("QuadcopterEntity#resetTo nur auf dem Server");
         }
@@ -858,7 +988,7 @@ public class QuadcopterEntity extends Entity {
         this.entityData.set(DATA_EPOCH, this.resetEpoch() + 1);
         this.stateSentTick = this.level().getGameTime();
         this.moveBudget.restart();
-        DronePiloting.broadcastReset(this);
+        DronePiloting.broadcastReset(this, home);
     }
 
     @Override
@@ -890,6 +1020,10 @@ public class QuadcopterEntity extends Entity {
             return true;
         }
         if (this.isInvulnerableToBase(source)) {
+            return false;
+        }
+        damage = damageFilter.filter(this, level, source, damage);
+        if (!(damage >= 0.0F)) {
             return false;
         }
         if (source.getEntity() instanceof Player player) {
@@ -967,6 +1101,13 @@ public class QuadcopterEntity extends Entity {
         DroneCargo.load(this, input.read(DroneCargo.SAVE_KEY, DroneCargo.SAVE_CODEC).orElse(List.of()));
         this.returnPlan = input.read(RETURN_PLAN_KEY, ReturnPlan.CODEC).orElse(null);
         this.receiverBind = input.read(RECEIVER_BIND_KEY, BindCodecs.CODEC).orElse(null);
+        HomePoint home = input.read(HomePointCodecs.KEY, HomePointCodecs.CODEC)
+                .map(p -> p.resolved(HomePointCodecs.dimension(this.level()), this.level().getGameTime())).orElse(null);
+        this.homeEdited = !Objects.equals(home, this.homePoint);
+        this.homePoint = home;
+        this.setWaterproof(input.getBooleanOr(WATERPROOF_KEY, false));
+        this.setAccessoryContents(input.read(ACCESSORY_CONTENTS_KEY, AccessoryContents.CODEC).orElse(AccessoryContents.EMPTY));
+        this.setBeeper(input.read(BEEPER_KEY, UUIDUtil.CODEC).orElse(null));
         if (!this.level().isClientSide()) {
             this.syncFlightTags(false);
         }
@@ -991,11 +1132,33 @@ public class QuadcopterEntity extends Entity {
         }
         output.storeNullable(RETURN_PLAN_KEY, ReturnPlan.CODEC, this.returnPlan);
         output.storeNullable(RECEIVER_BIND_KEY, BindCodecs.CODEC, this.receiverBind);
+        output.storeNullable(HomePointCodecs.KEY, HomePointCodecs.CODEC, this.homePoint);
+        output.storeNullable(BEEPER_KEY, UUIDUtil.CODEC, this.beeperBy().orElse(null));
+        if (this.waterproof()) {
+            output.putBoolean(WATERPROOF_KEY, true);
+        }
+        if (!this.accessoryContents().isEmpty()) {
+            output.store(ACCESSORY_CONTENTS_KEY, AccessoryContents.CODEC, this.accessoryContents());
+        }
+    }
+
+    @Override
+    public void postDataManipulated() {
+        super.postDataManipulated();
+        if (this.homeEdited && !this.level().isClientSide()) {
+            this.homeEdited = false;
+            HOME_EDITED.fire(listener -> listener.accept(this));
+        }
     }
 
     @FunctionalInterface
     public interface PilotListener {
         void onPilotChanged(QuadcopterEntity drone, Optional<UUID> previous, Optional<UUID> current);
+    }
+
+    @FunctionalInterface
+    public interface DamageFilter {
+        float filter(QuadcopterEntity drone, ServerLevel level, DamageSource source, float damage);
     }
 
     public interface ServerMoveListener {

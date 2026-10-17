@@ -5,7 +5,7 @@ import de.lardtom.propwash.api.part.VideoDefinition;
 import de.lardtom.propwash.api.part.VideoLink;
 import de.lardtom.propwash.build.VideoType;
 
-final class EnergyModel {
+public final class EnergyModel {
     static final double AVIONICS_BASE_W = 0.6;
     static final double DRIVE_LOSS_W = 1.03;
     static final double DRIVE_LOSS_MASS_EXP = 0.5;
@@ -80,6 +80,14 @@ final class EnergyModel {
             case LONG_RANGE -> 63.0 / 3.6;
             case X_CLASS -> 65.0 / 3.6;
         };
+    }
+
+    public static double videoSupplyW(VideoType video) {
+        return videoPower(video);
+    }
+
+    public static double standbyW(VideoType video) {
+        return AVIONICS_BASE_W + videoPower(video);
     }
 
     static double videoPower(VideoType video) {
@@ -187,7 +195,7 @@ final class EnergyModel {
     }
 
     static double loadedVoltage(AirframeSpec p, double soc, double current) {
-        double r = OperatingPoints.internalResistance(p, current, soc) + p.polarizationResistance;
+        double r = OperatingPoints.dcResistance(p, current, soc);
         return OperatingPoints.emf(p, soc) - r * current;
     }
 

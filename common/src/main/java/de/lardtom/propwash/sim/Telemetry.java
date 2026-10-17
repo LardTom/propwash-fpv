@@ -16,6 +16,9 @@ public final class Telemetry {
     public boolean motorSaturated;
     public boolean inGroundEffect;
     public boolean mode3d;
+    public boolean turtle;
+    public boolean waterproof;
+    public double submerged;
     public StabMode mode = StabMode.ACRO;
     public DisarmReason lastDisarmReason = DisarmReason.NONE;
     public BatteryState batteryState = BatteryState.OK;
@@ -84,6 +87,8 @@ public final class Telemetry {
     public double holdPositionError;
     public double gpsPositionError;
     public double headingErrorDeg;
+    public String assistLabel;
+    public int externalPushes;
 
     public Telemetry() {
     }
@@ -104,6 +109,9 @@ public final class Telemetry {
         dst.motorSaturated = this.motorSaturated;
         dst.inGroundEffect = this.inGroundEffect;
         dst.mode3d = this.mode3d;
+        dst.turtle = this.turtle;
+        dst.waterproof = this.waterproof;
+        dst.submerged = this.submerged;
         dst.mode = this.mode;
         dst.lastDisarmReason = this.lastDisarmReason;
         dst.batteryState = this.batteryState;
@@ -172,5 +180,7 @@ public final class Telemetry {
         dst.holdPositionError = this.holdPositionError;
         dst.gpsPositionError = this.gpsPositionError;
         dst.headingErrorDeg = this.headingErrorDeg;
+        dst.assistLabel = this.assistLabel;
+        dst.externalPushes = this.externalPushes;
     }
 }

@@ -1,6 +1,7 @@
 package de.lardtom.propwash.drone.client;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.accessory.AccessoryBehaviors;
 import de.lardtom.propwash.build.BatteryFit;
 import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
@@ -34,6 +35,7 @@ import de.lardtom.propwash.ui.client.widget.NumberInput;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageFormat;
 import de.lardtom.propwash.video.client.FpvImage;
+import de.lardtom.propwash.video.client.FpvLens;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
@@ -115,6 +117,7 @@ public class DroneServiceScreen extends AbstractContainerScreen<DroneServiceMenu
     private float occlusionTilt = Float.NaN;
     private double occlusionPercent;
     private double occlusionAspect = FpvRig.ASPECT;
+    private int occlusionLens = -1;
     private @Nullable FlatButton bindButton;
     private @Nullable FlatButton bindConfirm;
     private long bindArmedUntil;
@@ -168,6 +171,20 @@ public class DroneServiceScreen extends AbstractContainerScreen<DroneServiceMenu
         this.bindConfirm = this.addRenderableWidget(new FlatButton(this.leftPos + RX_X0, this.topPos + RX_Y0, RX_SIZE, RX_SIZE, Component.empty(),
                 FlatButton.Style.DANGER, this::confirmBindReset));
         this.updateBindButtons();
+        if (AccessoryBehaviors.INSTANCE.hasInventory(drone.build())) {
+            Component label = Component.translatable("propwash.accessory.service.button");
+            int width = this.font.width(label) + 12;
+            FlatButton accessories = new FlatButton(this.leftPos + WIDTH - 3 - width, this.topPos + 3, width, HEADER_HEIGHT - 2, label,
+                    FlatButton.Style.NORMAL, this::openAccessories);
+            accessories.setTooltip(Tooltip.create(Component.translatable("propwash.accessory.service.tooltip")));
+            this.addRenderableWidget(accessories);
+        }
+    }
+
+    private void openAccessories() {
+        if (this.minecraft != null && this.minecraft.gameMode != null) {
+            this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, DroneServiceMenu.ACCESSORY_BUTTON);
+        }
     }
 
     private Component cameraTooltip(CameraMount.Range range) {
@@ -249,12 +266,16 @@ public class DroneServiceScreen extends AbstractContainerScreen<DroneServiceMenu
 
     private double propsInView(DroneBuild build, float tilt) {
         double aspect = FpvImage.formatFor(build.video().system).boxed() ? ImageFormat.FOUR_THREE_ASPECT : FpvRig.ASPECT;
-        if (build != this.occlusionBuild || tilt != this.occlusionTilt || aspect != this.occlusionAspect) {
+        int lens = FpvLens.INSTANCE.strengthPercent();
+        if (build != this.occlusionBuild || tilt != this.occlusionTilt || aspect != this.occlusionAspect || lens != this.occlusionLens) {
             this.occlusionBuild = build;
             this.occlusionTilt = tilt;
             this.occlusionAspect = aspect;
+            this.occlusionLens = lens;
             FpvRig rig = FpvRig.of(build);
-            this.occlusionPercent = CameraOcclusion.percent(rig, tilt, rig.horizontalFovDeg(), aspect, OCCLUSION_ROWS);
+            this.occlusionPercent = lens > 0
+                    ? CameraOcclusion.fisheyePercent(rig, tilt, rig.horizontalFovDeg(), aspect, CameraOcclusion.FISHEYE_ROWS, lens / 100.0)
+                    : CameraOcclusion.percent(rig, tilt, rig.horizontalFovDeg(), aspect, OCCLUSION_ROWS);
         }
         return this.occlusionPercent;
     }

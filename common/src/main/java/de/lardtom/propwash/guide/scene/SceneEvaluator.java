@@ -1,5 +1,7 @@
 package de.lardtom.propwash.guide.scene;
 
+import de.lardtom.propwash.input.StickMode;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -16,6 +18,10 @@ public final class SceneEvaluator {
     }
 
     public static SceneState evaluate(Scene scene, float time) {
+        return evaluate(scene, time, StickMode.MODE_2);
+    }
+
+    public static SceneState evaluate(Scene scene, float time, StickMode mode) {
         float total = scene.duration();
         float t = Float.isFinite(time) ? Math.clamp(time, 0.0F, total) : 0.0F;
         boolean atEnd = t >= total - END_EPSILON;
@@ -53,14 +59,15 @@ public final class SceneEvaluator {
         for (Pending entry : pending) {
             switch (entry.cue()) {
                 case Cue.Callout callout -> {
-                    ScenePos anchor = callout.anchor().resolve(actors);
+                    ScenePos anchor = callout.anchor().resolve(actors, mode);
                     if (anchor != null) {
-                        callouts.add(new SceneState.CalloutView(callout.textKey(), anchor, callout.side(), entry.alpha(), entry.age(), entry.id()));
+                        Cue.Side side = callout.anchor().mirrored(mode) ? mirror(callout.side()) : callout.side();
+                        callouts.add(new SceneState.CalloutView(callout.textKey(), anchor, side, entry.alpha(), entry.age(), entry.id()));
                     }
                 }
                 case Cue.Highlight highlight -> highlights.add(new SceneState.HighlightView(highlight.min(), highlight.max(), entry.alpha(), entry.age()));
                 case Cue.Keys hint -> {
-                    ScenePos anchor = hint.anchor() != null ? hint.anchor().resolve(actors) : null;
+                    ScenePos anchor = hint.anchor() != null ? hint.anchor().resolve(actors, mode) : null;
                     if (hint.anchor() == null || anchor != null) {
                         keys.add(new SceneState.KeyHintView(hint.textKey(), hint.keys(), anchor, entry.alpha()));
                     }
@@ -203,6 +210,14 @@ public final class SceneEvaluator {
         float[] progress = new float[part.slots()];
         Arrays.fill(progress, 1.0F - Ease.clamp01(p));
         return new ActorState.PartState(part, true, detach.to(), progress);
+    }
+
+    static Cue.Side mirror(Cue.Side side) {
+        return switch (side) {
+            case LEFT -> Cue.Side.RIGHT;
+            case RIGHT -> Cue.Side.LEFT;
+            default -> side;
+        };
     }
 
     public static ScenePos path(ScenePos from, List<ScenePos> points, float t) {

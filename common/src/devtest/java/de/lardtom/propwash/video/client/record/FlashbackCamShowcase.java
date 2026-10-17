@@ -19,7 +19,6 @@ import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
-import de.lardtom.propwash.video.record.path.KeyframeDensity;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
@@ -276,7 +275,7 @@ public final class FlashbackCamShowcase {
                 this.saved = RecordingConfig.get().copy();
                 RecordingConfig config = RecordingConfig.get().copy();
                 config.flashbackAutoRecord = true;
-                config.flashbackDensity = KeyframeDensity.EVERY_TICK;
+                config.flashbackSimplify = 0.0;
                 RecordingConfig.CONFIG.set(config);
                 state.put(PHASE, 1);
                 if (this.handedOver && !cam.recording()) {

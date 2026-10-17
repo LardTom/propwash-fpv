@@ -116,12 +116,13 @@ public final class GateFreeScene {
                 .items(GATE_SMALL, GATE_LARGE, COURSE_TOOL, FREEFORM_GATE)
                 .view(5.3F)
                 .camera(OVERVIEW, 26.0F, 34.0F, 1.0F)
-                .step("edit", 110.0F, s -> {
+                .step("edit", 170.0F, s -> {
                     SceneKit.ground(s.at(0.0F), -6, -5, 6, 5, GRASS, GRASS, 0.6F, 10.0F);
                     s.at(16.0F).spawn(PILOT, new ActorSpec.Pilot("", GATE_MEDIUM), PILOT_POS, SceneKit.pilotYaw(PILOT_POS, GATE_POS), Cue.Appear.POP,
                             10.0F);
                     s.at(24.0F).spawn(GATE, new ActorSpec.Gate("medium"), GATE_POS, YAW, Cue.Appear.POP, 10.0F);
                     s.at(40.0F).keysAt("edit", overHead, 60.0F, KeyToken.sneak(), KeyToken.use());
+                    s.at(106.0F).keysAt("mouse", overHead, 58.0F, KeyToken.mapping(SceneKit.KEY_GATE_EDIT_MOUSE));
                     s.at(46.0F).callout("edit", Anchor.at(top), Cue.Side.ABOVE, 0.0F);
                 })
                 .step("angles", 150.0F, s -> {

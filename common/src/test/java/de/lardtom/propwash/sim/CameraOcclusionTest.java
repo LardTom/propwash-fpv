@@ -196,7 +196,7 @@ class CameraOcclusionTest {
 
     @Test
     void builtinPresetsMatchTheRenderedFpvImage() {
-        double[] rendered = {6.22, 1.93, 8.38, 10.96, 9.48};
+        double[] rendered = {6.22, 1.93, 8.38, 6.36, 9.48};
         for (int i = 0; i < DroneBuild.PRESETS.size(); i++) {
             DroneBuild build = DroneBuild.PRESETS.get(i);
             FpvRig rig = FpvRig.of(build);

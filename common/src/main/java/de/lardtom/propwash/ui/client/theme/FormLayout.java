@@ -25,7 +25,7 @@ public final class FormLayout {
     private record Section(Component title, int y) {
     }
 
-    private record Step(@Nullable Component section, @Nullable AbstractWidget widget, boolean wide, int space) {
+    private record Step(@Nullable Component section, @Nullable AbstractWidget widget, boolean wide, int space, int height) {
     }
 
     public FormLayout(int x, int y, int width) {
@@ -66,30 +66,36 @@ public final class FormLayout {
     }
 
     public FormLayout section(Component title) {
-        this.steps.add(new Step(title, null, false, 0));
+        this.steps.add(new Step(title, null, false, 0, 0));
         this.applySection(title);
         return this;
     }
 
     public <T extends AbstractWidget> T place(T widget) {
-        this.steps.add(new Step(null, widget, false, 0));
-        this.applyWidget(widget, false);
+        this.steps.add(new Step(null, widget, false, 0, 0));
+        this.applyWidget(widget, false, 0);
         return widget;
     }
 
     public <T extends AbstractWidget> T placeWide(T widget) {
-        this.steps.add(new Step(null, widget, true, 0));
-        this.applyWidget(widget, true);
+        this.steps.add(new Step(null, widget, true, 0, 0));
+        this.applyWidget(widget, true, 0);
+        return widget;
+    }
+
+    public <T extends AbstractWidget> T placeWide(T widget, int height) {
+        this.steps.add(new Step(null, widget, true, 0, height));
+        this.applyWidget(widget, true, height);
         return widget;
     }
 
     public void endRow() {
-        this.steps.add(new Step(null, null, false, 0));
+        this.steps.add(new Step(null, null, false, 0, 0));
         this.applyEndRow();
     }
 
     public void space(int pixels) {
-        this.steps.add(new Step(null, null, false, pixels));
+        this.steps.add(new Step(null, null, false, pixels, 0));
         this.applyEndRow();
         this.y += pixels;
     }
@@ -138,7 +144,7 @@ public final class FormLayout {
             if (step.section() != null) {
                 this.applySection(step.section());
             } else if (step.widget() != null) {
-                this.applyWidget(step.widget(), step.wide());
+                this.applyWidget(step.widget(), step.wide(), step.height());
             } else {
                 this.applyEndRow();
                 this.y += step.space();
@@ -155,11 +161,12 @@ public final class FormLayout {
         this.y += Metrics.SECTION_HEIGHT;
     }
 
-    private void applyWidget(AbstractWidget widget, boolean wide) {
+    private void applyWidget(AbstractWidget widget, boolean wide, int height) {
         if (wide) {
             this.applyEndRow();
-            widget.setRectangle(this.width(), Metrics.CONTROL_HEIGHT, this.left, this.y);
-            this.y += Metrics.ROW_HEIGHT;
+            int tall = Math.max(Metrics.CONTROL_HEIGHT, height);
+            widget.setRectangle(this.width(), tall, this.left, this.y);
+            this.y += Metrics.ROW_HEIGHT + tall - Metrics.CONTROL_HEIGHT;
             return;
         }
         widget.setRectangle(this.columnWidth, Metrics.CONTROL_HEIGHT, this.columnX(this.column), this.y);

@@ -15,6 +15,7 @@ import de.lardtom.propwash.input.RadioState;
 import de.lardtom.propwash.input.SetupStatus;
 import de.lardtom.propwash.input.StickChannel;
 import de.lardtom.propwash.input.StickMapper;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.input.SwitchAssignment;
 import de.lardtom.propwash.input.SwitchFunction;
@@ -24,6 +25,7 @@ import de.lardtom.propwash.input.client.DeviceInfo;
 import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.input.client.MacControllers;
 import de.lardtom.propwash.input.client.RawInput;
+import de.lardtom.propwash.input.client.StickModes;
 import de.lardtom.propwash.input.client.TransmitterInput;
 import de.lardtom.propwash.ui.client.config.StepSlider;
 import de.lardtom.propwash.ui.client.search.SearchTags;
@@ -74,6 +76,10 @@ public final class ReceiverTab extends InputTab {
     private double scrollOffset;
     private boolean mouseLayout;
     private final MousePreview mousePreview = new MousePreview();
+    private @Nullable CycleButton<Boolean> invertPitch;
+    private @Nullable CycleButton<StickMode> stickModeButton;
+    private int stickModeY = -1;
+    private @Nullable AbstractWidget sourceButton;
     private int mouseTitleY = -1;
     private int keyboardTitleY = -1;
     private int previewX;
@@ -133,7 +139,7 @@ public final class ReceiverTab extends InputTab {
                 current = choice;
             }
         }
-        SearchTags.label(this.place(CycleButton.builder(Choice::label, current).withValues(choices)
+        this.sourceButton = SearchTags.label(this.place(CycleButton.builder(Choice::label, current).withValues(choices)
                 .withTooltip(v -> Tooltip.create(Component.translatable("propwash.input.device.tooltip")))
                 .create(bx, by, columnWidth, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.input.device"), (b, v) -> {
                     boolean mouseBefore = this.working().mouseSelected();
@@ -147,6 +153,11 @@ public final class ReceiverTab extends InputTab {
                 })), Component.translatable("propwash.input.device"), Component.translatable("propwash.input.mouse_keyboard"),
                 Component.translatable("propwash.input.mouse.search"));
         by += Metrics.ROW_HEIGHT;
+        this.invertPitch = null;
+        if (this.working().pitchSwitchApplies(raw != null)) {
+            by = this.buildInvertPitch(bx, by, columnWidth);
+        }
+        by = this.buildStickMode(bx, by, columnWidth, origin);
         if (this.mouseLayout) {
             by = this.buildMouse(bx, by, columnWidth, origin);
         }
@@ -232,6 +243,78 @@ public final class ReceiverTab extends InputTab {
         return widget;
     }
 
+    private int buildStickMode(int bx, int by, int w, int origin) {
+        Component label = Component.translatable("propwash.input.stick_mode");
+        this.stickModeButton = SearchTags.label(this.place(CycleButton.builder(StickModes::name, this.working().stickMode())
+                .withValues(StickMode.values())
+                .withTooltip(m -> Tooltip.create(Component.translatable("propwash.input.stick_mode.tooltip")))
+                .create(bx, by, w, Metrics.CONTROL_HEIGHT, label, (b, v) -> this.changeStickMode(v))),
+                label, Component.translatable("propwash.input.stick_mode.search"));
+        by += Metrics.ROW_HEIGHT;
+        this.stickModeY = by - origin;
+        return by + StickModeDiagram.COMPACT_HEIGHT + Metrics.SECTION_GAP;
+    }
+
+    private void changeStickMode(StickMode next) {
+        InputConfig.StickModeChange change = this.working().changeStickMode(next);
+        RawInput raw = this.raw();
+        String guid = raw == null ? "" : raw.device().guid();
+        Component name = StickModes.name(change.to());
+        if (change.customised(guid)) {
+            this.notice = Component.translatable("propwash.input.stick_mode.custom", name);
+            this.noticeUntil = Util.getMillis() + NOTICE_MILLIS;
+        } else if (change.remapped().contains(guid)) {
+            this.notice = Component.translatable("propwash.input.stick_mode.remapped", name);
+            this.noticeUntil = Util.getMillis() + NOTICE_MILLIS;
+        }
+        this.mapper.reset();
+        this.mousePreview.reset();
+        this.markChanged();
+        this.rebuildLater();
+    }
+
+    public @Nullable CycleButton<StickMode> stickModeButton() {
+        return this.stickModeButton;
+    }
+
+    public StickMode shownStickMode() {
+        return this.working().stickMode();
+    }
+
+    private void extractStickMode(GuiGraphicsExtractor g, net.minecraft.client.gui.Font font, int top) {
+        if (this.stickModeY >= 0) {
+            StickModeDiagram.extractCompact(g, font, this.working().stickMode(), this.x, top + this.stickModeY, this.columnWidth);
+        }
+    }
+
+    private int buildInvertPitch(int bx, int by, int w) {
+        Component label = Component.translatable("propwash.input.invert_pitch");
+        this.invertPitch = SearchTags.label(this.place(CycleButton.onOffBuilder(this.working().invertPitch)
+                .withTooltip(v -> Tooltip.create(Component.translatable("propwash.input.invert_pitch.tooltip")))
+                .create(bx, by, w, Metrics.CONTROL_HEIGHT, label, (b, v) -> {
+                    this.working().invertPitch = v;
+                    this.mousePreview.reset();
+                    this.markChanged();
+                })), label, Component.translatable("propwash.input.invert_pitch.search"), Component.translatable("propwash.input.mouse.search"));
+        return by + Metrics.ROW_HEIGHT;
+    }
+
+    public @Nullable CycleButton<Boolean> invertPitchButton() {
+        return this.invertPitch;
+    }
+
+    public @Nullable AbstractWidget sourceButton() {
+        return this.sourceButton;
+    }
+
+    public boolean pitchInverted() {
+        return this.working().invertPitch;
+    }
+
+    public List<InputGui.KeyRow> shownMouseKeyRows() {
+        return mouseKeyRows(this.working().mouse, this.working().invertPitch);
+    }
+
     private int buildMouse(int bx, int by, int w, int origin) {
         MouseSettings mouse = this.working().mouse;
         Component keyword = Component.translatable("propwash.input.mouse.search");
@@ -261,14 +344,6 @@ public final class ReceiverTab extends InputTab {
                 v -> Component.translatable("propwash.input.mouse.sensitivity", Math.round(v * 100.0F)), v -> mouse.sensitivity = v, true, keyword);
         by = this.mouseSlider(bx, by, w, MouseSettings.MIN_DPI, 12800.0F, 50.0F, mouse.dpi, "dpi",
                 v -> Component.translatable("propwash.input.mouse.dpi", Math.round(v)), v -> mouse.dpi = Math.round(v), true, keyword);
-        SearchTags.label(this.place(CycleButton.onOffBuilder(mouse.invertY)
-                .withTooltip(v -> Tooltip.create(Component.translatable("propwash.input.mouse.invert_y.tooltip")))
-                .create(bx, by, w, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.input.mouse.invert_y"), (b, v) -> {
-                    mouse.invertY = v;
-                    this.mousePreview.reset();
-                    this.markChanged();
-                })), Component.translatable("propwash.input.mouse.invert_y"), keyword);
-        by += Metrics.ROW_HEIGHT;
         boolean rate = mouse.mode != MouseMode.HOLD || mouse.xAxis == MouseAxis.YAW;
         boolean hold = mouse.mode != MouseMode.RATE;
         by = this.mouseSlider(bx, by, w, 0.0F, MouseSettings.MAX_SMOOTHING_MS, 1.0F, mouse.smoothingMs, "smoothing",
@@ -475,6 +550,7 @@ public final class ReceiverTab extends InputTab {
         DeviceProfile profile = this.profile(raw);
         RadioSource source = RadioState.INSTANCE.source();
         this.extractStatus(g, font, this.y, mouseX, mouseY);
+        this.extractStickMode(g, font, this.contentTop());
         if (this.macTitleY >= 0) {
             ThemeDraw.sectionTitle(g, font, Component.translatable("propwash.input.apple_gc.section"), this.x, this.contentTop() + this.macTitleY,
                     this.columnWidth);
@@ -521,7 +597,8 @@ public final class ReceiverTab extends InputTab {
             this.reportBottom(y0 + InputGui.keyTable(g, font, x0, y0, w, bottom, List.of(
                     keyRow(StickChannel.THROTTLE, InputKeys.THROTTLE_UP, InputKeys.THROTTLE_DOWN),
                     keyRow(StickChannel.YAW, InputKeys.YAW_LEFT, InputKeys.YAW_RIGHT),
-                    keyRow(StickChannel.PITCH, InputKeys.PITCH_FORWARD, InputKeys.PITCH_BACK),
+                    this.working().invertPitch ? keyRow(StickChannel.PITCH, InputKeys.PITCH_BACK, InputKeys.PITCH_FORWARD)
+                            : keyRow(StickChannel.PITCH, InputKeys.PITCH_FORWARD, InputKeys.PITCH_BACK),
                     keyRow(StickChannel.ROLL, InputKeys.ROLL_LEFT, InputKeys.ROLL_RIGHT),
                     new InputGui.KeyRow(Component.translatable("propwash.input.switch.arm"), InputKeys.label(InputKeys.ARM)),
                     new InputGui.KeyRow(Component.translatable("propwash.input.tab.key_flight_mode"), InputKeys.label(InputKeys.FLIGHT_MODE)))));
@@ -543,6 +620,7 @@ public final class ReceiverTab extends InputTab {
         }
         int top = panel.top();
         this.extractStatus(g, font, top, mouseX, mouseY);
+        this.extractStickMode(g, font, top);
         if (this.mouseTitleY >= 0) {
             ThemeDraw.sectionTitle(g, font, Component.translatable("propwash.input.mouse.section"), this.x, top + this.mouseTitleY, this.columnWidth);
         }
@@ -555,11 +633,13 @@ public final class ReceiverTab extends InputTab {
         int py = top + this.previewY;
         ThemeDraw.sectionTitle(g, font, Component.translatable("propwash.input.mouse.preview.title"), this.previewX, py - Metrics.SECTION_HEIGHT,
                 this.previewWidth);
-        int used = this.mousePreview.extract(g, font, this.previewX, py, this.previewWidth, this.previewHeight, this.working().mouse, mouseX, mouseY);
+        this.mousePreview.mode(this.working().stickMode());
+        int used = this.mousePreview.extract(g, font, this.previewX, py, this.previewWidth, this.previewHeight, this.working().mouse,
+                this.working().invertPitch, mouseX, mouseY);
         int ky = py + used + Metrics.SECTION_GAP;
         ThemeDraw.sectionTitle(g, font, Component.translatable("propwash.input.tab.keyboard_keys"), this.previewX, ky, this.previewWidth);
         ky += Metrics.SECTION_HEIGHT;
-        InputGui.keyTable(g, font, this.previewX, ky, this.previewWidth, this.y + this.height, mouseKeyRows(this.working().mouse));
+        InputGui.keyTable(g, font, this.previewX, ky, this.previewWidth, this.y + this.height, mouseKeyRows(this.working().mouse, this.working().invertPitch));
         panel.extractScrollbar(g);
     }
 
@@ -612,10 +692,10 @@ public final class ReceiverTab extends InputTab {
         }
     }
 
-    static List<InputGui.KeyRow> mouseKeyRows(MouseSettings mouse) {
+    static List<InputGui.KeyRow> mouseKeyRows(MouseSettings mouse, boolean invertPitch) {
         boolean yaw = mouse.xAxis == MouseAxis.YAW;
         Component mouseX = Component.translatable("propwash.input.mouse.key.mouse_x");
-        Component mouseY = Component.translatable("propwash.input.mouse.key.mouse_y");
+        Component mouseY = Component.translatable(invertPitch ? "propwash.input.mouse.key.mouse_y_inverted" : "propwash.input.mouse.key.mouse_y");
         Component throttleKeys = Component.translatable("propwash.input.tab.key_pair", InputKeys.label(InputKeys.THROTTLE_UP), InputKeys.label(InputKeys.THROTTLE_DOWN));
         Component throttle = mouse.wheelThrottle() ? Component.translatable("propwash.input.mouse.key.with_wheel", throttleKeys) : throttleKeys;
         Component sideKeys = Component.translatable("propwash.input.tab.key_pair", InputKeys.label(InputKeys.YAW_LEFT), InputKeys.label(InputKeys.YAW_RIGHT));
@@ -719,11 +799,12 @@ public final class ReceiverTab extends InputTab {
         DeviceProfile profile = this.profile(raw);
         if (raw != null && profile != null) {
             int[] sticksBefore = profile.stickAxes();
-            profile.copyReceiverFrom(ProfileDefaults.reset(profile, raw.gamepadCapable(), raw.axisCount()));
+            profile.copyReceiverFrom(ProfileDefaults.reset(profile, raw.gamepadCapable(), raw.axisCount(), this.working().stickMode()));
             this.noteMovedSwitches(profile.moveSwitchesOffSticks(sticksBefore), raw, profile);
         }
         this.working().keyboardFallback = true;
         this.working().appleGameController = false;
+        this.working().invertPitch = false;
         this.working().keyboard = new KeyboardSettings();
         this.working().mouse = new MouseSettings();
         this.mousePreview.reset();

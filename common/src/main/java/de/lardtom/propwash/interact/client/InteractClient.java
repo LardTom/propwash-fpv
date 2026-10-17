@@ -1,6 +1,7 @@
 package de.lardtom.propwash.interact.client;
 
 import de.lardtom.propwash.core.client.ClientBus;
+import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.interact.net.DroneBreakClearS2C;
 import de.lardtom.propwash.interact.net.DroneBreakDeniedS2C;
@@ -20,6 +21,7 @@ public final class InteractClient {
         initialized = true;
         CargoKeys.bootstrap();
         ClientBus.TICK_END.register(InteractClient::onClientTick);
+        QuadcopterEntity.CLIENT_TICK.register(SnagEffects::onDroneTick);
         ClientBus.DISCONNECT.register(mc -> {
             PilotInteraction.INSTANCE.reset();
             PilotBreaks.INSTANCE.forget();

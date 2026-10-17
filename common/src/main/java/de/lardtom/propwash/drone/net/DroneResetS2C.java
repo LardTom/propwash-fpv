@@ -6,7 +6,8 @@ import net.minecraft.network.VarInt;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
-public record DroneResetS2C(int entityId, int epoch, double x, double y, double z, float qx, float qy, float qz, float qw)
+public record DroneResetS2C(int entityId, int epoch, double x, double y, double z, float qx, float qy, float qz, float qw,
+                           boolean home)
         implements CustomPacketPayload {
     public static final Type<DroneResetS2C> TYPE = new Type<>(Constants.id("drone_reset"));
     public static final StreamCodec<ByteBuf, DroneResetS2C> CODEC = CustomPacketPayload.codec(DroneResetS2C::write, DroneResetS2C::read);
@@ -21,11 +22,12 @@ public record DroneResetS2C(int entityId, int epoch, double x, double y, double 
         buf.writeFloat(this.qy);
         buf.writeFloat(this.qz);
         buf.writeFloat(this.qw);
+        buf.writeBoolean(this.home);
     }
 
     private static DroneResetS2C read(ByteBuf buf) {
         return new DroneResetS2C(VarInt.read(buf), VarInt.read(buf), buf.readDouble(), buf.readDouble(), buf.readDouble(),
-                buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat());
+                buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readBoolean());
     }
 
     @Override

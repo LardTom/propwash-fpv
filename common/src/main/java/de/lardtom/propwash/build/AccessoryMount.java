@@ -7,7 +7,8 @@ import java.util.Optional;
 
 public enum AccessoryMount {
     TOP("top", true),
-    BOTTOM("bottom", false);
+    BOTTOM("bottom", false),
+    FRONT("front", false);
 
     private final String key;
     private final boolean hasBase;
@@ -33,6 +34,7 @@ public enum AccessoryMount {
         return switch (this) {
             case TOP -> AccessorySlot.TOP;
             case BOTTOM -> AccessorySlot.BOTTOM;
+            case FRONT -> AccessorySlot.FRONT;
         };
     }
 
@@ -40,6 +42,7 @@ public enum AccessoryMount {
         return switch (slot) {
             case TOP -> TOP;
             case BOTTOM -> BOTTOM;
+            case FRONT -> FRONT;
         };
     }
 

@@ -36,10 +36,10 @@ Ohne Flashback (NeoForge oder Fabric ohne die Mod) gibt es das Item trotzdem; de
 | Zeitbasis: geschriebene Ticks der Flashback-Aufnahme (`Recorder.writtenTicks`, privates Feld) plus Teil-Tick des Bildes; eine Probe pro Bild, danach auf ganze Ticks abgetastet | stimmt mit Flashbacks Zeitleiste überein, Pausen in Flashback und im Spiel fallen heraus; pro Bild statt pro Tick, weil Ticks im Bildraster ruckeln | Probe am Tick-Ende |
 | Pose: Schwerpunkt der Drohne aus der Physik + Linsen-Offset + Uptilt, **ohne** Videolatenz; Sichtfeld aus dem Videomodul (bzw. Kreativ-Brille) als vertikaler Wert für 16:9 | die Kamera sitzt in der Wiederholung in der Drohne, nicht 30 ms dahinter; 16:9 wie die Videos der anderen Action-Cams und Flashbacks Standard-Export | das angezeigte, verzögerte FPV-Bild; Sichtfeld fürs Seitenverhältnis des Fensters |
 | Winkel im Format von Minecraft/Flashback (Gier, Neigung in −90…90, Roll lokal um die Blickachse); nahe der Senkrechten werden Gier und Roll so verteilt, dass Flashbacks Interpolation auf dem kürzesten Weg nicht verdreht (`EulerPath`, Keyframe-Fehler ≤ 2°) | Flips führen durch die Senkrechte; ohne Korrektur dreht sich das Bild dort um bis zu 180° | Quaternionen (Flashback kennt nur Winkel) |
-| Keyframes: Standard „Jeder Tick“; wahlweise „Ausgedünnt“ (≤ 1 cm und 0,5° gegen lineare Interpolation, höchstens 10 Ticks Abstand) | gemessen gegen Flashbacks eigene Interpolation: genau unter 4 cm zur gleichen Zeit und unter 1 cm neben der Bahn; ausgedünnt bleibt die Bahn auf 1 cm, aber Flashback gleicht zwischen Keyframes das Tempo aus (bis etwa 0,2–0,3 Blöcke vor oder nach) | Ausdünnen als Standard (Tempo schwankt sichtbar in Zeitlupe) |
+| Keyframes (seit 0.5.2): Regler „Vereinfachung“ von „Aus“ (jeder Tick) bis 20 cm / 10°, Standard 1 cm / 0,5° (das frühere „Ausgedünnt“); jede Strecke wird zusätzlich gegen Flashbacks eigene Spline geprüft und bei mehr als dem 1,5-Fachen der Toleranz geteilt | gespeicherter Pfad bleibt auch zur gleichen Zeit in der angezeigten Toleranz (früher bis 0,3 Blöcke vor oder nach), Details in [`flashback-keyframe-budget.md`](flashback-keyframe-budget.md) | Auswahl „Jeder Tick / Ausgedünnt“ (nur lineare Prüfung, Tempo schwankte in Zeitlupe) |
 | Sichtfeld-Spur mit HOLD-Keyframes am Anfang, bei Änderungen über 0,05° und am Ende | Flashback wendet einen einzelnen Keyframe nur an genau seinem Tick an | ein Keyframe pro Tick |
 | Drohne in der Wiederholung ausblenden, wenn die Kamera in ihr sitzt (`ReplayView`: näher als 0,5 Blöcke, oder näher als 0,5 Blöcke + 2 Ticks Flugweg und nicht vor der Kamera) | gemessen: die wiedergegebene Drohne läuft etwa einen Tick hinter dem Kamerapfad; so sieht man nie das Innere der Drohne, freie Kameras, die auf die Drohne schauen, sehen sie weiter | Flashbacks „beim Export ausblenden“ (gilt für alle Szenen und nicht in der Vorschau) |
-| Höchstens 15 Minuten je Flug | Flashbacks Zeitleiste zeichnet jeden Keyframe; 18 000 Keyframes je Spur sind noch bedienbar | keine Grenze |
+| Höchstens 15 Minuten je Flug; Keyframes je Flug durch das Budget der Zeitleiste begrenzt (Obergrenze beim Speichern, Standard an) | Flashbacks Zeitleiste zeichnet jeden Keyframe der Szene in eine ImGui-Liste mit höchstens 65.536 Eckpunkten, darüber stürzt das Spiel beim Öffnen ab (0.43.6; die frühere Annahme „18 000 Keyframes sind bedienbar“ war falsch) | keine Grenze |
 | Werte des Bauteils: oben, 36 g, 42 × 28 × 24 mm, 3 W am Flugakku, Stirnfläche 0,0012 m²; kein `action_cam`-Block (nimmt kein Video auf) | kleine Kamera mit IMU und Speicher, leichter als die Light; ohne Videoformat-Zeilen im Tooltip | eine Video-Kamera, die zusätzlich den Pfad schreibt |
 | Rezept: Uhr, zwei Glasscheiben, HD-Videochip, zwei Kupferbarren, Platine; nicht in Truhen | „Zeit“ als Erkennungszeichen; ohne Flashback nutzlos, deshalb kein Fundstück | Truhen-Beute wie Light und Heavy |
 | Kein Netzwerk, keine Server-Logik, kein neues Protokoll, keine API-Änderung | Flashback läuft nur auf dem Client; Teil-Liste und Registerabgleich decken das neue Item ab | Synchronisieren des Kamerapfads |
@@ -49,16 +49,37 @@ Ohne Flashback (NeoForge oder Fabric ohne die Mod) gibt es das Item trotzdem; de
 | Datei | Inhalt |
 |---|---|
 | `build/AccessoryType#ACTION_CAM_FLASHBACK`, `FLASHBACK_CAM_ID`, `FLASHBACK_MOD_ID`, `isFlashbackCam()`; `build/Accessories#flashbackCam()` | Bauteil (Daten in `data/propwash/propwash_parts/accessory/action_cam_flashback.json`, `sort` 3) |
-| `video/record/path/*` (reines Java, JOML) | `PathSample`, `CameraPathBuffer` (kompakte Proben, steigende Zeit, eine Quaternion-Halbkugel), `PathResampler` (`perTick`, `at`), `CameraAngles` (Quaternion ↔ Gier/Neigung/Roll wie `Camera#setRotation` + `rotateZ`), `EulerPath` (Winkel ohne Verdrehen), `KeyframeDensity`, `CameraTrack` (Kamera- und Sichtfeld-Keyframes, Ausdünnen), `PathKeyframe`, `FovKeyframe`, `TickPose` |
+| `video/record/path/*` (reines Java, JOML) | `PathSample`, `CameraPathBuffer` (kompakte Proben, steigende Zeit, eine Quaternion-Halbkugel), `PathResampler` (`perTick`, `at`), `CameraAngles` (Quaternion ↔ Gier/Neigung/Roll wie `Camera#setRotation` + `rotateZ`), `EulerPath` (Winkel ohne Verdrehen), `CameraTrack` (Kamera- und Sichtfeld-Keyframes, Ausdünnen, Obergrenze), `PathKeyframe`, `FovKeyframe`, `TickPose`; seit 0.5.2 `FlashbackBudget`, `Simplification`, `FlashbackSpline`, `TrackThinner`, `PathFrames`, `LiveTrackCounter`, `PathPreview`, `SamplePath` (siehe [`flashback-keyframe-budget.md`](flashback-keyframe-budget.md)); `KeyframeDensity` nur noch zum Übernehmen alter Einstellungen |
 | `compat/flashback/client/FlashbackBridge` | Reflection auf Flashback 0.43.x: Status (`ABSENT`/`READY`/`INCOMPATIBLE` mit Grund), Recorder, Pause, Schreibbereitschaft, geschriebene Ticks, UUID der Aufnahme, Aufnahme starten und beenden, Marker, Szene schreiben, Datenordner |
 | `compat/flashback/client/FlashbackScene`, `ReplayView` | Daten einer Szene; Ausblenden der Drohne in der Wiederholung (`QuadcopterRenderer#shouldRender`) |
 | `video/client/record/FlashbackCam` | Sitzung: Start (Ergebnisse `STARTED`, `NO_SESSION`, `NO_CAMERA`, `NEEDS_FLASHBACK`, `INCOMPATIBLE`, `IN_REPLAY`, `NOT_RECORDING`, `FLASHBACK_REFUSED` …), Proben in `ClientBus.FRAME_START` nach `PilotSession`, Stopp-Gründe (Knopf, Entschärfen, Sitzungsende, Flashback beendet, 15 min, Trennen), Rechnen im Hintergrund, Übergabe auf dem Render-Thread, Toasts |
 | `video/client/record/ActionCamRecorder` | leitet Taste und Funkenschalter an `FlashbackCam`, wenn die Drohne die Action-Cam (Flashback) trägt |
-| `video/client/record/RecordingConfig` (`action_cam.json`) | `flashbackAutoRecord` (Standard an), `flashbackDensity` (Standard `EVERY_TICK`) |
+| `video/client/record/RecordingConfig` (`action_cam.json`) | `flashbackAutoRecord` (Standard an), `flashbackSimplify` (0–1, Standard 1 cm), `flashbackKeyframeLimit` (Standard an); ein altes `flashbackDensity` wird beim Laden übernommen |
 | `video/client/record/ActionCamTab`, `RecordingHud`, `osd/client/LiveOsdSource` | Abschnitt „Flashback“ (nur mit Flashback), Statuszeilen, Hinweis; trägt die Drohne die Action-Cam (Flashback), heißt der Abschnitt der Videoeinstellungen „Videoaufnahme (Action-Cam (Light) und (Heavy))“, der Hinweis beschreibt den Kamerapfad (FPV und Sichtflug, kein Video) und die Statuszeile sagt entweder „zeichnet den Kamerapfad auf“ (Flashback bereit) oder „nimmt nichts auf“ (Flashback fehlt oder passt nicht), nie beides; Feld im Sichtflug; REC im OSD |
 | `content/PartItem`, `PartTooltips` | Statuszeile „Flashback erkannt“/„Braucht die Mod Flashback (Fabric)“, Zeile „Aufnahme: Kamerapfad für Flashback“ |
 | `platform/IPlatformHelper#modVersion` | Version einer anderen Mod (Fabric, NeoForge) |
 | `guide/scenes/ActionCamScene` | fünfter Schritt „Kamerapfad für Flashback“ |
+
+## Lange Flüge (für Spieler)
+
+Flashbacks Zeitleiste kann nur eine begrenzte Zahl Keyframes auf einmal zeichnen – je nach Bildschirmskalierung etwa
+600 bis 1.900 pro Flug. Darüber beendet sich das Spiel beim Öffnen der Aufnahme. Propwash passt deshalb auf:
+
+- Während der Aufnahme zeigt das OSD-Element „Flashback-Zeitleiste“ (`FB 43%`), wie voll die Zeitleiste mit diesem Flug
+  wäre. Ab 75 % wird es gelb, über 100 % erscheint bei eingeschalteter Obergrenze ein kleines Zeichen „wird
+  ausgedünnt“.
+- Mit der „Flashback-Obergrenze“ (Standard an, Tab Action-Cam) dünnt Propwash lange Flüge beim Speichern weiter aus,
+  bis sie passen. Der Toast nennt dann die erreichte Genauigkeit, etwa „bis 4 cm / 2°“.
+- Ohne Obergrenze bleibt jeder Keyframe erhalten. Wird es zu viel, blinkt `FB` rot, die Warnung „FLASHBACK VOLL“
+  erscheint und der Toast warnt nach dem Speichern.
+- Der Regler „Vereinfachung“ legt fest, wie genau der Pfad mindestens bleibt. Die Vorschau darunter zeigt deinen letzten
+  Flug (ab 10 Sekunden, sonst einen Beispielflug): tatsächlicher Pfad hell, gespeicherter Pfad gelb, die größte
+  Abweichung rot umkreist, dazu Keyframes, Budget und wie viele Minuten mit dieser Einstellung passen. „Größer“ öffnet
+  eine Ansicht mit Zoom, Zeit-Schieber und dem Verlauf der Abweichung.
+- Alte Aufnahmen, die schon zu groß sind: „Aufnahmen prüfen“ im Tab Action-Cam listet die Propwash-Szenen aller
+  Flashback-Aufnahmen und dünnt eine zu große Szene mit Vorschau aus. Die alte Datei bleibt als `.bak` daneben liegen.
+
+![OSD-Element „Flashback-Zeitleiste“ bei aktiver Obergrenze](../screenshots/osd_flashback_budget_thinning.png)
 
 ## Grenzen
 
@@ -73,6 +94,9 @@ Ohne Flashback (NeoForge oder Fabric ohne die Mod) gibt es das Item trotzdem; de
 
 ## Prüfungen
 
+- Budget (0.5.2): `FlashbackBudgetTest`, `SimplificationTest`, `FlashbackSplineTest` (auch gegen die im Selbsttest mit
+  Flashbacks `CatmullRom` erzeugte Tabelle), `TrackThinnerTest`, `SampleFlightTest`, `OsdFlashbackBudgetTest`; Selbsttests
+  `video: Flashback-Budget – …` (siehe [`flashback-keyframe-budget.md`](flashback-keyframe-budget.md)).
 - JUnit: `CameraAnglesTest`, `EulerPathTest` (Flips ohne Verdrehen: ohne Korrektur über 90°, mit unter 25°),
   `CameraTrackTest` (Abtastung, Ausdünnen, Sichtfeld, Puffer), `ReplayViewTest`.
 - Selbsttest (Fabric mit Flashback im Mod-Ordner des Selbsttests): echter Flug; beim Schweben in den ersten Sekunden der

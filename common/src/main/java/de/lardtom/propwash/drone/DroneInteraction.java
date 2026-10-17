@@ -7,6 +7,7 @@ public final class DroneInteraction {
         GOGGLES,
         BATTERY,
         PROP,
+        COATING,
         OTHER
     }
 
@@ -21,7 +22,8 @@ public final class DroneInteraction {
         OPEN_SERVICE_MENU,
         LOCKED,
         PICK_UP,
-        OCCUPIED
+        OCCUPIED,
+        COAT
     }
 
     private DroneInteraction() {
@@ -43,6 +45,7 @@ public final class DroneInteraction {
             case GOGGLES -> Action.CHECK_GOGGLES;
             case BATTERY -> Action.HINT_BATTERY;
             case PROP -> Action.HINT_PROPS;
+            case COATING -> pilotedByOther ? Action.OCCUPIED : Action.COAT;
             case EMPTY -> pilotedByOther ? Action.OCCUPIED : pilotedBySelf ? Action.PASS : Action.PICK_UP;
             case OTHER -> Action.PASS;
         };

@@ -81,6 +81,10 @@ public final class RangeManager {
         return GeneratedArea.scan(chunks, chunkX, chunkZ, AnchorRules.DRONE_TICKET_RADIUS).generatedWithin(AnchorRules.DRONE_TICKET_RADIUS);
     }
 
+    public static GeneratedArea.Status generatedStatus(ServerLevel level, int chunkX, int chunkZ, int radius) {
+        return GeneratedArea.scan(GENERATED.computeIfAbsent(level, GeneratedChunks::new), chunkX, chunkZ, radius).within(radius);
+    }
+
     public static void keepSimulated(ServerLevel level, ChunkPos center) {
         TICKETS.want(level, ServerModule.DRONE_TICKET.get(), center, AnchorRules.DRONE_TICKET_RADIUS);
     }

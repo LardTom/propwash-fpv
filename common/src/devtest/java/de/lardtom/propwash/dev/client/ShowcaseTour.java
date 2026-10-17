@@ -52,6 +52,7 @@ import de.lardtom.propwash.drone.TuneMapping;
 import de.lardtom.propwash.drone.client.DroneServiceScreen;
 import de.lardtom.propwash.drone.client.trail.TrailShowcase;
 import de.lardtom.propwash.drone.client.Mode3dShowcase;
+import de.lardtom.propwash.drone.client.WaterproofTurtleShowcase;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.drone.client.WearWeightSelfTests;
 import de.lardtom.propwash.drone.client.dust.DustConfig;
@@ -73,10 +74,13 @@ import de.lardtom.propwash.input.client.ThrottleWizardSelfTests;
 import de.lardtom.propwash.input.client.TransmitterInput;
 import de.lardtom.propwash.input.client.MouseSelfTests;
 import de.lardtom.propwash.input.client.SwitchCommandSelfTests;
+import de.lardtom.propwash.input.client.StickModeSelfTests;
 import de.lardtom.propwash.input.client.WizardRemoteSelfTests;
 import de.lardtom.propwash.input.client.screen.ReceiverWizardScreen;
 import de.lardtom.propwash.osd.OsdConfig;
+import de.lardtom.propwash.osd.client.BatterySagSelfTests;
 import de.lardtom.propwash.osd.client.OsdClient;
+import de.lardtom.propwash.osd.client.StickOverlaySelfTests;
 import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.race.CourseData;
 import de.lardtom.propwash.race.CourseRegistry;
@@ -87,6 +91,7 @@ import de.lardtom.propwash.race.GhostTrack;
 import de.lardtom.propwash.race.LapTracker;
 import de.lardtom.propwash.race.Leaderboard;
 import de.lardtom.propwash.race.RaceModule;
+import de.lardtom.propwash.race.client.AssistCheckSelfTests;
 import de.lardtom.propwash.race.client.AssistedLapSelfTests;
 import de.lardtom.propwash.race.client.ClientCourses;
 import de.lardtom.propwash.race.client.ClientLeaderboards;
@@ -128,6 +133,7 @@ import de.lardtom.propwash.video.client.FpvImage;
 import de.lardtom.propwash.video.client.Headlight;
 import de.lardtom.propwash.video.client.HeadlightShowcase;
 import de.lardtom.propwash.video.client.ShadowSelfTests;
+import de.lardtom.propwash.video.client.VtxPowerShowcase;
 import de.lardtom.propwash.video.client.SpectateSession;
 import de.lardtom.propwash.video.client.VideoBreakupProbe;
 import de.lardtom.propwash.video.client.VideoConfig;
@@ -142,6 +148,7 @@ import de.lardtom.propwash.server.client.GenerationEdgeSelfTests;
 import de.lardtom.propwash.server.client.WorldRulesSelfTests;
 import de.lardtom.propwash.server.rules.RulePreset;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
+import de.lardtom.propwash.zone.client.ZoneScenes;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -275,6 +282,11 @@ public final class ShowcaseTour {
         Screenshots.step("bildschirmfotos: Weltrand im FPV mit OSD-Warnung", "world_edge_fpv", 20, GenerationEdgeSelfTests.fpvScene());
         Screenshots.step("bildschirmfotos: Bestenliste mit Abschnitt Mit Flughilfe und Tooltip", "leaderboard_assisted", 20, AssistedLapSelfTests.boardScene());
         Screenshots.step("bildschirmfotos: Rennen im FPV mit Flughilfe", "race_fpv_assisted", 10, AssistedLapSelfTests.raceScene());
+        Screenshots.step("bildschirmfotos: Flughilfe-Prüfung im Race-Tab mit Gründen", "configurator_race_assist_check", 20,
+                AssistCheckSelfTests.tabScene(true));
+        Screenshots.step("bildschirmfotos: Flughilfe-Prüfung im Race-Tab ohne Gründe", "configurator_race_assist_clean", 20,
+                AssistCheckSelfTests.tabScene(false));
+        ZoneScenes.registerScreenshots(false);
         Screenshots.step("bildschirmfotos: Empfänger-Tab mit langem Funkennamen, Statuszeile bricht um", "configurator_receiver_status_wrapped", 20,
                 HoverSweepSelfTests.statusScene());
         SelfTest.switchStep("bildschirmfotos: Sprache Deutsch", "bildschirmfotos: Sprache zurücksetzen", 1200,
@@ -307,6 +319,10 @@ public final class ShowcaseTour {
         Screenshots.step("bildschirmfotos: Bestenliste mit Abschnitt Mit Flughilfe und Tooltip deutsch", "leaderboard_assisted_de", 20,
                 AssistedLapSelfTests.boardScene());
         Screenshots.step("bildschirmfotos: Rennen im FPV mit Flughilfe deutsch", "race_fpv_assisted_de", 10, AssistedLapSelfTests.raceScene());
+        Screenshots.step("bildschirmfotos: Flughilfe-Prüfung im Race-Tab mit Gründen deutsch", "configurator_race_assist_check_de", 20,
+                AssistCheckSelfTests.tabScene(true));
+        Screenshots.step("bildschirmfotos: Flughilfe-Prüfung im Race-Tab ohne Gründe deutsch", "configurator_race_assist_clean_de", 20,
+                AssistCheckSelfTests.tabScene(false));
         CourseEditSelfTests.registerGermanScreenshots();
         Screenshots.step("bildschirmfotos: Flugschule, Rahmen lehnt zu schweren Akku ab deutsch", "flight_school_battery_fit_de", 30,
                 GuideSelfTests.sceneShot(BatteryScene.ID, 3, BatteryScene.REFUSED_AT + 26.0F));
@@ -321,6 +337,7 @@ public final class ShowcaseTour {
         Screenshots.step("bildschirmfotos: Empfänger-Assistent, Gas nach dem Weg nach oben deutsch", "receiver_wizard_throttle_de", 6,
                 ThrottleWizardSelfTests.throttleScene());
         WizardRemoteSelfTests.registerScreenshots(true);
+        StickModeSelfTests.registerScreenshots(true);
         SwitchCommandSelfTests.registerScreenshots(true);
         ConfigInputSelfTests.registerScreenshots(true);
         MouseSelfTests.registerScreenshots(true);
@@ -328,6 +345,8 @@ public final class ShowcaseTour {
         Screenshots.step("bildschirmfotos: Shift-Tooltip Gate mit Taste R deutsch", "tooltip_gate_rotate_de", 30, GateKeySelfTests.tooltipScene(false));
         Screenshots.step("bildschirmfotos: Gate einstellen im Spiel mit Live-Vorschau deutsch", "gate_edit_mode_de", 30,
                 GateFreeSelfTests.editScene(ShowcaseTour::base));
+        Screenshots.step("bildschirmfotos: Gate einstellen, Hinweis zur freien Maus beim ersten Mal hervorgehoben deutsch", "gate_edit_mouse_tip_de",
+                30, GateFreeSelfTests.firstEditScene(ShowcaseTour::base));
         Screenshots.step("bildschirmfotos: Shift-Tooltip Kurs-Werkzeug mit Taste R deutsch", "tooltip_course_tool_rotate_de", 30,
                 GateKeySelfTests.tooltipScene(true));
         Screenshots.step("bildschirmfotos: Tauchwürfel einstellen im Spiel mit Ausgang deutsch", "course_element_edit_mode_de", 30,
@@ -342,6 +361,7 @@ public final class ShowcaseTour {
                 WearWeightSelfTests.tooltipScene(WearWeightSelfTests::droneStack));
         BindSelfTests.registerScreenshots(true);
         VideoTabSelfTests.registerScreenshots(true);
+        ZoneScenes.registerScreenshots(true);
         SelfTest.clientStep("bildschirmfotos: Sprache zurücksetzen", 1200, Screenshots::restoreLanguage);
         Screenshots.step("bildschirmfotos: Steuerung mit R für Flugmodus und Gate drehen", "controls_shared_key", 20,
                 Screenshots.guiScale(2, GateKeySelfTests.controlsScene()));
@@ -387,6 +407,8 @@ public final class ShowcaseTour {
         Screenshots.step("bildschirmfotos: Empfänger-Assistent, Prüfansicht nach der Kanalerkennung", "receiver_wizard_check", 6,
                 ThrottleWizardSelfTests.checkScene());
         WizardRemoteSelfTests.registerScreenshots(false);
+        StickModeSelfTests.registerScreenshots(false);
+        StickOverlaySelfTests.registerScreenshots();
         SwitchCommandSelfTests.registerScreenshots(false);
         ConfigInputSelfTests.registerScreenshots(false);
         MouseSelfTests.registerScreenshots(false);
@@ -487,6 +509,7 @@ public final class ShowcaseTour {
         FlashbackCamShowcase.register();
         FfmpegShowcase.register();
         Mode3dShowcase.register();
+        WaterproofTurtleShowcase.register();
         CreativeShowcase.register();
         GateFreeSelfTests.registerScreenshots(ShowcaseTour::base);
         CourseElementSelfTests.registerScreenshots(ShowcaseTour::base);
@@ -496,7 +519,9 @@ public final class ShowcaseTour {
         CourseEditSelfTests.registerScreenshots();
         PropRepairShowcase.register();
         BlackboxShowcase.register();
+        VtxPowerShowcase.register();
         TrailShowcase.register();
+        BatterySagSelfTests.registerShowcase();
         SelfTest.setupStep("bildschirmfotos: Aufräumen", 200, ShowcaseTour::cleanupStep);
     }
 
@@ -1573,7 +1598,11 @@ public final class ShowcaseTour {
                     return StepResult.fail("Empfänger-Assistent fehlt: " + mc.gui.screen());
                 }
                 MacControllers.overrideOptionShown(this.macOption);
-                mc.gui.setScreen(ReceiverWizardScreen.standalone(null));
+                ReceiverWizardScreen wizard = ReceiverWizardScreen.standalone(null);
+                mc.gui.setScreen(wizard);
+                if (this.macOption) {
+                    wizard.showPage(ReceiverWizardScreen.Page.DEVICE);
+                }
                 return StepResult.pending();
             }
             return StepResult.pass();

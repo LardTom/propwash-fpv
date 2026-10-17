@@ -322,6 +322,21 @@
           "weight": 1
         }
       ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 9
+        },
+        {
+          "type": "minecraft:item",
+          "name": "propwash:bando_map",
+          "weight": 1,
+          "modifier": "propwash:bando_map"
+        }
+      ]
     }
   ]
 }

@@ -12,6 +12,7 @@ import de.lardtom.propwash.guide.scene.SceneFraming;
 import de.lardtom.propwash.guide.scene.ScenePlayback;
 import de.lardtom.propwash.guide.scene.SceneProjection;
 import de.lardtom.propwash.guide.scene.SceneState;
+import de.lardtom.propwash.input.client.StickModes;
 import de.lardtom.propwash.ui.client.theme.GuiLayerAccess;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
@@ -424,7 +425,7 @@ public final class SceneScreen extends Screen implements ThemedScreen {
             this.resetViewButton.active = this.userYaw != 0.0F || this.userPitch != 0.0F || this.userZoom != 1.0F;
         }
 
-        SceneState state = this.playback.evaluate();
+        SceneState state = this.playback.evaluate(StickModes.current());
         this.lastState = state;
         CameraSpec camera = state.camera().withOffsets(this.shownYaw, this.shownPitch, 1.0F);
         ScreenRectangle vp = this.viewport;
@@ -578,7 +579,7 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         int width = this.captionWidth(windowWidth);
         int lines = CAPTION_LINES;
         for (int step = 0; step < this.scene.stepCount(); step++) {
-            lines = Math.max(lines, ThemeText.balanced(this.font, Component.translatable(this.scene.stepTextKey(step)), width).size());
+            lines = Math.max(lines, ThemeText.balanced(this.font, StickModes.translatable(this.scene.stepTextKey(step)), width).size());
         }
         int fit = (room - MIN_STAGE) / this.textScale - CAPTION_HEAD - 2;
         return Math.max(CAPTION_LINES, Math.min(lines, fit / CAPTION_LINE));
@@ -613,7 +614,7 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         int badgeWidth = ThemeDraw.badge(g, this.font, counter, x0, y0 + 1, y0 + 13, Palette.ACCENT, Palette.ACCENT_TEXT);
         Component title = Component.translatable(this.scene.stepTitleKey(step)).withStyle(ChatFormatting.BOLD);
         ThemeText.fitted(g, this.font, title, x0 + badgeWidth + 6, y0 + 3, x1 - x0 - badgeWidth - 8, Palette.ACCENT);
-        Component text = Component.translatable(this.scene.stepTextKey(step));
+        Component text = StickModes.translatable(this.scene.stepTextKey(step));
         List<FormattedCharSequence> lines = ThemeText.balanced(this.font, text, Math.max(40, x1 - x0));
         int shown = ThemeText.shownLines(text, lines.size(), this.captionLines);
         int ty = y0 + CAPTION_HEAD;

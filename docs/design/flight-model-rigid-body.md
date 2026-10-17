@@ -774,10 +774,18 @@ oder sie > 0,5 m entfernt ist. Rückfall bei fester AABB: `d = min(AABB-Fläche,
 gekippte Hüllpunkte nicht schlagartig 5–10 cm tief „im Boden“ starten. `telemetry.onGround` = Bodenebene mit
 `F_n > 0`.
 
-Stand 0.5.0: Umgesetzt ist der Rückfall mit fester AABB – der Boden hält die Höhe des Schwerpunkts, ein
-Aufrichtmoment `m·g·a·sin θ` bringt die Drohne in die flache Lage. Unscharf wirkt ab 3,4° Schräglage der volle Hebel
-`m·g·a` (`GroundRest`, `SimTuning.restFlat`), damit sie flach fällt statt schief einzuschlafen; was das Modell dabei
-zeigt, regelt der Renderer (`ground-contact.md`).
+Stand 0.5.0 bis 0.5.1: Umgesetzt war der Rückfall mit fester AABB – der Boden hielt die Höhe des Schwerpunkts, ein
+Aufrichtmoment `m·g·a·sin θ` brachte die Drohne in die flache Lage (unscharf mit vollem Hebel, `GroundRest`).
+
+Stand 0.5.2: Kontaktpunkte statt Federn (`sim.GroundSolver`, `ground-contact.md` §6). Je Punkt ein Normalimpuls ≥ 0
+und Coulomb-Reibung, gelöst als projiziertes Gauss-Seidel in jedem Substep (Warmstart, bis 64 Durchläufe), die Ebene
+aus der AABB-Auflage oder dem Strahl auf festen Boden. Die Federn oben (12 Hz) wurden verworfen: Ein harter Aufsetzer
+mit 3 m/s hätte 4 cm Eindringen gebraucht, und die Kappung bei 1 cm hätte die Drohne weich und schwammig durch den
+Boden drehen lassen. Die AABB bleibt das Entity; liegt die Drohne schief, schwebt sie um die Hubhöhe über dem Boden.
+Der Stoß beim Aufsetzen der AABB läuft über denselben Löser (nicht mehr über §8.2, das für Wände und Decken bleibt).
+Seit der zweiten Runde von 0.5.2 (`ground-contact.md` §7) fällt die Rückprallzahl am Boden über 0,3 · Crash-Geschwindigkeit
+mit (v/v₀)^(−1/4) statt linear um bis zu 60 %, und Prop-Spitzen, Motorböden und Kamera-Nase haken bei einem harten
+Einschlag ein (Reibungszahl bis ×5, solange der Punkt am Boden bleibt).
 
 ### 8.4 Klassifikation und Folgen
 

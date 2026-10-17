@@ -33,9 +33,10 @@ import de.lardtom.propwash.ui.client.theme.ThemedToast;
 import de.lardtom.propwash.video.record.path.CameraAngles;
 import de.lardtom.propwash.video.record.path.CameraPathBuffer;
 import de.lardtom.propwash.video.record.path.CameraTrack;
-import de.lardtom.propwash.video.record.path.KeyframeDensity;
 import de.lardtom.propwash.video.record.path.PathResampler;
+import de.lardtom.propwash.video.record.path.FlashbackSpline;
 import de.lardtom.propwash.video.record.path.PathSample;
+import de.lardtom.propwash.video.record.path.Simplification;
 import net.minecraft.client.Camera;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -125,6 +126,14 @@ public final class FlashbackCamSelfTests {
     private FlashbackCamSelfTests() {
     }
 
+    static @Nullable UUID recordedReplay() {
+        return recordedReplay;
+    }
+
+    static @Nullable CameraTrack recordedTrack() {
+        return recordedTrack;
+    }
+
     public static boolean flashbackPresent() {
         return Services.PLATFORM.isModLoaded(FlashbackBridge.MOD_ID);
     }
@@ -155,7 +164,9 @@ public final class FlashbackCamSelfTests {
         } else {
             SelfTest.clientStep("video: Action-Cam (Flashback) ohne Flashback zeigt nur einen Hinweis", 200, FlashbackCamSelfTests::absentStep);
         }
+        FlashbackBudgetSelfTests.registerInFlight();
         SelfTest.clientStep("video: Action-Cam (Flashback) aufräumen", 200, FlashbackCamSelfTests::cleanupStep);
+        FlashbackBudgetSelfTests.registerAfterFlight();
         SelfTest.afterLeaveStep("video: Action-Cam (Flashback) nach dem Verlassen im Leerlauf", 200, FlashbackCamSelfTests::afterLeaveStep);
     }
 
@@ -196,9 +207,12 @@ public final class FlashbackCamSelfTests {
         ActionCamTab tab = new ActionCamTab();
         tab.attach(host(widgets), 0, 0, 480, 280);
         String autoLabel = Component.translatable("propwash.video.record.tab.flashback_auto").getString();
-        String densityLabel = Component.translatable("propwash.video.record.tab.flashback_density").getString();
+        String simplifyLabel = Component.translatable("propwash.video.record.tab.flashback_simplify").getString();
+        String limitLabel = Component.translatable("propwash.video.record.tab.flashback_limit").getString();
         boolean shown = widgets.stream().anyMatch(widget -> widget.getMessage().getString().startsWith(autoLabel))
-                && widgets.stream().anyMatch(widget -> widget.getMessage().getString().startsWith(densityLabel));
+                && widgets.stream().anyMatch(widget -> widget.getMessage().getString().startsWith(simplifyLabel))
+                && widgets.stream().anyMatch(widget -> widget.getMessage().getString().startsWith(limitLabel))
+                && widgets.stream().anyMatch(widget -> widget instanceof PathPreviewWidget);
         if (shown != flashbackPresent()) {
             return StepResult.fail("Flashback-Abschnitt im Tab " + (shown ? "ohne" : "trotz") + " Flashback: " + widgets.size() + " Bedienelemente");
         }
@@ -339,7 +353,7 @@ public final class FlashbackCamSelfTests {
                     FlashbackProbe.quicksave(true);
                     RecordingConfig config = RecordingConfig.get().copy();
                     config.flashbackAutoRecord = true;
-                    config.flashbackDensity = KeyframeDensity.EVERY_TICK;
+                    config.flashbackSimplify = 0.0;
                     RecordingConfig.CONFIG.set(config);
                     KeyMapping.click(InputConstants.getKey(RecordingKeys.RECORD.saveString()));
                     state.put(PHASE, 1);
@@ -400,6 +414,10 @@ public final class FlashbackCamSelfTests {
                     }
                     ctx.log("Kamerapfad " + String.format(Locale.ROOT, "%.2f", cam.recordedSeconds()) + " s, " + cam.samples()
                             + " Proben, Flashback-Ticks " + FlashbackProbe.writtenTicks());
+                    StepResult live = FlashbackBudgetSelfTests.liveBefore(ctx);
+                    if (live.status() == StepResult.Status.FAIL) {
+                        return live;
+                    }
                     KeyMapping.click(InputConstants.getKey(RecordingKeys.RECORD.saveString()));
                     state.put(MARK, ctx.tick());
                     state.put(PHASE, 3);
@@ -419,6 +437,10 @@ public final class FlashbackCamSelfTests {
                     }
                     if (FlashbackBridge.recording()) {
                         return StepResult.fail("mitgestartete Flashback-Aufnahme läuft nach dem Kamerapfad weiter");
+                    }
+                    StepResult liveAfter = FlashbackBudgetSelfTests.liveAfter(ctx, handover);
+                    if (liveAfter.status() == StepResult.Status.FAIL) {
+                        return liveAfter;
                     }
                     StepResult scene = checkScene(ctx, replay, handover, 1, true, ANGLE_LIMIT, EXACT_POSITION_LIMIT);
                     if (scene.status() == StepResult.Status.PASS) {
@@ -516,12 +538,19 @@ public final class FlashbackCamSelfTests {
         PathSample first = path.get(0);
         Quaterniond start = new Quaterniond(first.qx(), first.qy(), first.qz(), first.qw());
         int probes = 0;
+        double replicaPosition = 0.0;
+        double replicaAngle = 0.0;
         for (double t = track.startTick() + 0.25; t < track.endTick(); t += 0.5) {
             PathSample truth = PathResampler.at(path, t).orElse(null);
             FlashbackProbe.Camera camera = editor.camera(scene, 0, (float) t);
             if (truth == null || camera == null) {
                 continue;
             }
+            FlashbackSpline.Pose replica = FlashbackSpline.at(track.camera(), (float) t);
+            replicaPosition = Math.max(replicaPosition, Math.abs(replica.x() - camera.x()) + Math.abs(replica.y() - Avatar.DEFAULT_EYE_HEIGHT - camera.y())
+                    + Math.abs(replica.z() - camera.z()));
+            replicaAngle = Math.max(replicaAngle, Math.max(Math.abs(replica.yaw() - camera.yaw()), Math.max(Math.abs(replica.pitch() - camera.pitch()),
+                    Math.abs(replica.roll() - camera.roll()))));
             double dx = camera.x() - truth.x();
             double dy = camera.y() + Avatar.DEFAULT_EYE_HEIGHT - truth.y();
             double dz = camera.z() - truth.z();
@@ -542,6 +571,12 @@ public final class FlashbackCamSelfTests {
                 + "größte Drehung gegen den Start %.0f°", worstPosition, worstSpatial, worstAngle, worstFov, turned));
         if (probes < 20) {
             return StepResult.fail("zu wenige Prüfpunkte im Kamerapfad: " + probes);
+        }
+        ctx.log(String.format(Locale.ROOT, "Nachbildung der Flashback-Spline: höchstens %.2e Blöcke und %.2e° neben Flashbacks eigener Interpolation",
+                replicaPosition, replicaAngle));
+        if (replicaPosition > 1.0E-4 || replicaAngle > 1.0E-3) {
+            return StepResult.fail(String.format(Locale.ROOT, "Nachbildung der Flashback-Spline weicht ab: %.6f Blöcke, %.5f°", replicaPosition,
+                    replicaAngle));
         }
         if (worstPosition < 1.0E-6 && worstAngle < 1.0E-6 && turned < 1.0) {
             return StepResult.fail("die Drohne hat sich während des Kamerapfads nicht bewegt");
@@ -671,9 +706,16 @@ public final class FlashbackCamSelfTests {
                     return StepResult.pending();
                 }
                 case 4 -> {
-                    StepResult shots = replayShots(ctx, minecraft, path, track);
-                    if (shots.status() != StepResult.Status.PASS) {
-                        return shots;
+                    if (!state.containsKey("shotsDone")) {
+                        StepResult shots = replayShots(ctx, minecraft, path, track);
+                        if (shots.status() != StepResult.Status.PASS) {
+                            return shots;
+                        }
+                        state.put("shotsDone", Boolean.TRUE);
+                    }
+                    StepResult budget = FlashbackBudgetSelfTests.measureInReplay(ctx, track);
+                    if (budget.status() != StepResult.Status.PASS) {
+                        return budget;
                     }
                     minecraft.schedule(() -> minecraft.disconnectFromWorld(Component.literal("Flashback-Prüfung beendet")));
                     state.put(PHASE, 5);
@@ -829,7 +871,7 @@ public final class FlashbackCamSelfTests {
                 case 0 -> {
                     RecordingConfig config = RecordingConfig.get().copy();
                     config.flashbackAutoRecord = false;
-                    config.flashbackDensity = KeyframeDensity.REDUCED;
+                    config.flashbackSimplify = Simplification.DEFAULT_SLIDER;
                     RecordingConfig.CONFIG.set(config);
                     FlashbackCam.Result refused = cam.start(minecraft, false);
                     if (refused != FlashbackCam.Result.NOT_RECORDING) {
@@ -884,6 +926,10 @@ public final class FlashbackCamSelfTests {
                     if (cam.recordedSeconds() < 1.5) {
                         return ctx.tick() > 2000 ? StepResult.fail("Kamerapfad wächst nicht") : StepResult.pending();
                     }
+                    StepResult live = FlashbackBudgetSelfTests.liveBefore(ctx);
+                    if (live.status() == StepResult.Status.FAIL) {
+                        return live;
+                    }
                     if (phase == 8) {
                         FlashbackBridge.finishRecording();
                     } else {
@@ -911,6 +957,10 @@ public final class FlashbackCamSelfTests {
                         }
                     } else if (!FlashbackBridge.recording()) {
                         return StepResult.fail("Flashback-Aufnahme endet mit dem Kamerapfad, obwohl der Spieler sie gestartet hat");
+                    }
+                    StepResult liveAfter = FlashbackBudgetSelfTests.liveAfter(ctx, handover);
+                    if (liveAfter.status() == StepResult.Status.FAIL) {
+                        return liveAfter;
                     }
                     UUID replay = (UUID) state.get(REPLAY);
                     StepResult scene = checkScene(ctx, replay, handover, flight, false, phase == 9 ? FLIP_ANGLE_LIMIT : ANGLE_LIMIT,

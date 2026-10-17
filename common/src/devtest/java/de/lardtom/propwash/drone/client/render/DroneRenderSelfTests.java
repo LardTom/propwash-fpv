@@ -238,6 +238,7 @@ public final class DroneRenderSelfTests {
         LedSelfTests.register();
         PartsRenderSelfTests.register();
         RaceBatterySelfTests.register();
+        RacePresetSelfTests.register();
     }
 
     private static StepResult afterWaterStep() {

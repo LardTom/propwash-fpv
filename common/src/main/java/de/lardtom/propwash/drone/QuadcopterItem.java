@@ -10,6 +10,7 @@ import de.lardtom.propwash.content.Batteries;
 import de.lardtom.propwash.content.BatteryItem;
 import de.lardtom.propwash.content.DroneAssembly;
 import de.lardtom.propwash.content.ItemHelp;
+import de.lardtom.propwash.drone.coating.CoatingComponents;
 import de.lardtom.propwash.content.PartCondition;
 import de.lardtom.propwash.content.PartItem;
 import de.lardtom.propwash.content.PartTooltips;
@@ -142,6 +143,9 @@ public class QuadcopterItem extends Item {
             status.add(Component.translatable("propwash.drone.tooltip.unrealistic_status").withStyle(ChatFormatting.GOLD));
         }
         BindTooltips.line(stack).ifPresent(status::add);
+        if (CoatingComponents.coated(stack)) {
+            status.add(Component.translatable("propwash.drone.tooltip.waterproof").withStyle(ChatFormatting.AQUA));
+        }
         ItemHelp.summary(ItemHelp.PREFIX + "drone.summary", name)
                 .status(status)
                 .what(ItemHelp.PREFIX + "drone")

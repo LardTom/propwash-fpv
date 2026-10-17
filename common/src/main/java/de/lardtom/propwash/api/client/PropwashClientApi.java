@@ -1,9 +1,14 @@
 package de.lardtom.propwash.api.client;
 
+import de.lardtom.propwash.accessory.client.AddonCamera;
+import de.lardtom.propwash.accessory.client.AddonHud;
+import de.lardtom.propwash.accessory.client.ClientInputImpl;
 import de.lardtom.propwash.api.build.BuildSpec;
 import de.lardtom.propwash.api.build.DroneData;
 import de.lardtom.propwash.api.build.ImportRequest;
 import de.lardtom.propwash.api.build.ImportResult;
+import de.lardtom.propwash.api.client.camera.GimbalProvider;
+import de.lardtom.propwash.api.client.hud.HudElement;
 import de.lardtom.propwash.api.part.PartKind;
 import de.lardtom.propwash.apiimpl.BuildAccessImpl;
 import de.lardtom.propwash.apiimpl.client.ClientApiImpl;
@@ -111,6 +116,18 @@ public final class PropwashClientApi {
 
     public static OsdLayoutAccess osd() {
         return ClientApiImpl.OSD;
+    }
+
+    public static void registerHudElement(String id, HudElement element) {
+        AddonHud.register(id, element);
+    }
+
+    public static void registerGimbal(String id, GimbalProvider provider) {
+        AddonCamera.register(id, provider);
+    }
+
+    public static ClientInput input() {
+        return ClientInputImpl.INSTANCE;
     }
 
     public static ClientTune tune() {

@@ -10,6 +10,13 @@ Outputs (never edit by hand, change this script instead):
   common/src/main/resources/data/propwash/tags/worldgen/structure/bandos.json
   common/src/main/resources/data/propwash/worldgen/structure_set/bandos.json
   common/src/main/resources/data/propwash/loot_table/chests/bando.json
+  common/src/main/resources/data/propwash/item_modifier/bando_map.json
+  common/src/main/resources/data/propwash/villager_trade/cartographer/3/emerald_and_compass_bando_map.json
+  common/src/main/resources/data/minecraft/tags/villager_trade/cartographer/level_3.json
+  common/src/main/resources/data/minecraft/tags/item/clonable_maps.json
+
+Bando map: explorer map (item propwash:bando_map, decoration propwash:bando) to the nearest unexplored bando, sold by
+journeyman cartographers and found in bando and village cartographer chests (docs/design/bandos.md "Bando-Karte").
 
 The buildings themselves are not templates: bando.plan.* generates every bando procedurally from the seed of its
 structure start. The families must match bando.plan.BandoFamily. Balance and layout rules: docs/design/bandos.md.
@@ -26,6 +33,7 @@ import survival  # noqa: E402
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 DATA = REPO / "common" / "src" / "main" / "resources" / "data" / "propwash"
+MC_DATA = REPO / "common" / "src" / "main" / "resources" / "data" / "minecraft"
 FAMILY_JAVA = REPO / "common" / "src" / "main" / "java" / "de" / "lardtom" / "propwash" / "bando" / "plan" / "BandoFamily.java"
 NS = "propwash"
 VANILLA = survival.VANILLA
@@ -91,10 +99,38 @@ LOOT = {
     "bonus": [survival.empty(84), worn("m2207_1750", 4, 2), part("analog_race", 3), part("aio_20", 2), worn("freestyle_5", 2),
               part("b6s_1100", 2), part("action_cam_light", 1)],
 }
+MAP = {"search_radius": 16, "zoom": 2, "chest_chance": (1, 10)}
+TRADE = {"level": 3, "emeralds": 10, "max_uses": 12, "xp": 10, "reputation_discount": 0.2}
+TRADE_ID = f"cartographer/{TRADE['level']}/emerald_and_compass_bando_map"
 ALLOWED_VANILLA = {mc(n) for n in ("string", "iron_nugget", "copper_ingot", "redstone", "torch")}
 BETTER = {"m2207_1750", "analog_race", "aio_20", "freestyle_5", "b6s_1100", "action_cam_light"}
 TOP_PARTS = {"digital_hd", "m2306_1860", "b6s_1300", "b6s_4000_lion", "goggles_digital", "race_5", "stack_30", "hd_chip",
              "action_cam_heavy", "goggles_creative", "gate_small", "gate_medium", "gate_large", "drone"}
+
+
+def map_functions():
+    return [
+        {"type": mc("exploration_map"), "decoration": p("bando"), "destination": f"#{NS}:bandos",
+         "search_radius": MAP["search_radius"], "zoom": MAP["zoom"]},
+        {"type": mc("filtered"), "item_filter": {"predicates": {mc("map_id"): {}}}, "on_fail": {"type": mc("discard")}},
+    ]
+
+
+def map_pool():
+    found, out_of = MAP["chest_chance"]
+    return {"rolls": 1, "entries": [survival.empty(out_of - found), survival.bando_map(found)]}
+
+
+def map_trade():
+    return {
+        "additional_wants": {"id": mc("compass")},
+        "given_item_modifier": map_functions(),
+        "gives": {"id": p("bando_map")},
+        "max_uses": TRADE["max_uses"],
+        "reputation_discount": TRADE["reputation_discount"],
+        "wants": {"count": TRADE["emeralds"], "id": mc("emerald")},
+        "xp": TRADE["xp"],
+    }
 
 
 def loot_table():
@@ -102,6 +138,7 @@ def loot_table():
     return {"type": mc("chest"), "pools": [
         {"rolls": {"type": mc("uniform"), "min": lo, "max": hi}, "entries": LOOT["common"]},
         {"rolls": 1, "entries": LOOT["bonus"]},
+        map_pool(),
     ]}
 
 
@@ -132,6 +169,10 @@ def outputs():
         "structures": [{"structure": p(f"bando/{f}"), "weight": 1} for f in FAMILIES],
     }
     files[DATA / "loot_table" / "chests" / "bando.json"] = loot_table()
+    files[DATA / "item_modifier" / "bando_map.json"] = {"type": mc("sequence"), "functions": map_functions()}
+    files[DATA / "villager_trade" / f"{TRADE_ID}.json"] = map_trade()
+    files[MC_DATA / "tags" / "villager_trade" / "cartographer" / f"level_{TRADE['level']}.json"] = {"values": [p(TRADE_ID)]}
+    files[MC_DATA / "tags" / "item" / "clonable_maps.json"] = {"values": [p("bando_map")]}
     return files
 
 
@@ -216,6 +257,36 @@ def check_loot():
         error(f"Propwash-Teile nur {parts / total:.0%} des gewöhnlichen Pools (mindestens 70 %)")
 
 
+def check_map():
+    if not 4 <= MAP["search_radius"] <= 32:
+        error(f"Suchradius der Bando-Karte {MAP['search_radius']} Zellen außerhalb 4–32")
+    found, out_of = MAP["chest_chance"]
+    if not 0.05 <= found / out_of <= 0.15:
+        error(f"Bando-Karte in {found / out_of:.0%} der Bando-Truhen (erlaubt 5–15 %)")
+    if not 2 <= TRADE["level"] <= 4:
+        error(f"Kartograf-Stufe {TRADE['level']} außerhalb Lehrling–Experte")
+    if "bando_map" not in survival.PROPWASH_ITEMS:
+        error("bando_map fehlt in survival.PROPWASH_ITEMS")
+    if VANILLA is None:
+        return
+    vanilla = VANILLA / "data" / "minecraft"
+    tag = vanilla / "tags" / "villager_trade" / "cartographer" / f"level_{TRADE['level']}.json"
+    trade_set = vanilla / "trade_set" / "cartographer" / f"level_{TRADE['level']}.json"
+    if not tag.exists() or not trade_set.exists():
+        error(f"Vanilla-Kartograf Stufe {TRADE['level']} ohne Tag oder Handelsset")
+    elif json.loads(trade_set.read_text()).get("trades") != f"#minecraft:cartographer/level_{TRADE['level']}":
+        error("Handelsset des Kartografen liest nicht mehr das Tag")
+    monument = vanilla / "villager_trade" / "cartographer" / "3" / "emerald_and_compass_ocean_monument_map.json"
+    if monument.exists():
+        reference = json.loads(monument.read_text())
+        if set(reference) != set(map_trade()):
+            error(f"Felder des Kartenhandels weichen von Vanilla ab: {sorted(set(reference) ^ set(map_trade()))}")
+        if [f["type"] for f in reference["given_item_modifier"]] != [f["type"] for f in map_functions()]:
+            error("Funktionen der Bando-Karte weichen von der Vanilla-Entdeckerkarte ab")
+    if not (vanilla / "tags" / "item" / "clonable_maps.json").exists():
+        error("Vanilla-Tag minecraft:clonable_maps fehlt")
+
+
 def check_files(files, write):
     for path, obj in files.items():
         data = (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
@@ -240,6 +311,7 @@ def main():
     check_families()
     check_references()
     check_loot()
+    check_map()
     check_files(outputs(), write)
     if errors:
         for e in errors:

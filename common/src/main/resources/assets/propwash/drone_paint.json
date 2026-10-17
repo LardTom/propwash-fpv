@@ -395,6 +395,60 @@
         "base": "#1fc3d6"
       }
     ],
+    "prop/p51_29_3b": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_blur": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_broken": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_broken_ccw": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_ccw": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_damaged": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_damaged_ccw": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_worn": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
+    "prop/p51_29_3b_worn_ccw": [
+      {
+        "channel": "prop",
+        "base": "#f2463a"
+      }
+    ],
     "prop/p51_3b": [
       {
         "channel": "prop",

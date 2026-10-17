@@ -85,6 +85,7 @@ public final class RaceModule {
         ServerBus.TICK_END.register(RaceServer::onServerTick);
         ServerBus.TICK_END.register(server -> GateSignals.tick());
         QuadcopterEntity.SERVER_MOVED.register(RaceServer::onDroneMoved);
+        QuadcopterEntity.HOME_RESET.register(RaceServer::onHomeReset);
         ServerBus.PLAYER_JOIN.register(player -> {
             CourseRegistry registry = CourseRegistry.get();
             if (registry != null) {

@@ -30,8 +30,13 @@ class RemoteDemoTest {
     private static final int AUX = 4;
 
     private static float[] radio(RemoteDemo.Frame f, boolean invertedThrottle) {
-        float throttle = invertedThrottle ? -f.leftY() : f.leftY();
-        return new float[]{f.rightX(), f.rightY(), throttle, f.leftX(), f.switch0(), f.switch1(), f.switch2(), f.switch3()};
+        float throttle = invertedThrottle ? -f.axis(StickChannel.THROTTLE) : f.axis(StickChannel.THROTTLE);
+        return new float[]{f.axis(StickChannel.ROLL), f.axis(StickChannel.PITCH), throttle, f.axis(StickChannel.YAW), f.switch0(), f.switch1(),
+                f.switch2(), f.switch3()};
+    }
+
+    private static float[] gamepad(RemoteDemo.Frame f) {
+        return new float[]{f.leftX(), -f.leftY(), f.rightX(), -f.rightY(), 0.0F, 0.0F};
     }
 
     private static boolean[] buttons(RemoteDemo.Frame f) {
@@ -240,5 +245,69 @@ class RemoteDemoTest {
         }
         fail("Sprachdateien des Moduls input nicht gefunden (Arbeitsverzeichnis " + Path.of("").toAbsolutePath() + ")");
         return Path.of(".");
+    }
+
+    @ParameterizedTest
+    @EnumSource(StickMode.class)
+    void everyModeShowsTheSameChannelValuesOnItsOwnSticks(StickMode mode) {
+        for (RemoteDemo.Motion motion : RemoteDemo.Motion.values()) {
+            for (float t = 0.0F; t < motion.period(); t += 0.1F) {
+                RemoteDemo.Frame base = RemoteDemo.frame(motion, t);
+                RemoteDemo.Frame shown = RemoteDemo.frame(motion, t, mode);
+                for (StickChannel channel : StickChannel.values()) {
+                    assertEquals(base.axis(channel), shown.axis(channel), 1.0E-6F, mode + " " + motion + " " + channel + " bei " + t);
+                }
+                assertEquals(base.throttle(), shown.throttle(), 1.0E-6F);
+                assertEquals(base.cue(), shown.cue());
+                if (shown.channel() != null && (shown.focus() == RemoteDemo.Focus.LEFT_STICK || shown.focus() == RemoteDemo.Focus.RIGHT_STICK)) {
+                    RemoteDemo.Focus expected = mode.left(shown.channel()) ? RemoteDemo.Focus.LEFT_STICK : RemoteDemo.Focus.RIGHT_STICK;
+                    assertEquals(expected, shown.focus(), mode + " " + motion + " zeigt den falschen Knüppel bei " + t);
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(StickMode.class)
+    void stickPromptsPointAtThePhysicalStickOfTheMode(StickMode mode) {
+        for (StickChannel channel : StickChannel.values()) {
+            RemoteDemo.Frame frame = RemoteDemo.frame(RemoteDemo.forChannel(channel), channel == StickChannel.THROTTLE ? 1.3F : 1.0F, mode);
+            boolean left = frame.focus() == RemoteDemo.Focus.LEFT_STICK;
+            assertEquals(mode.left(channel), left, mode + " " + channel);
+            float moved = StickMode.vertical(channel) ? (left ? frame.leftY() : frame.rightY()) : (left ? frame.leftX() : frame.rightX());
+            assertTrue(moved > 0.9F, mode + " " + channel + " bewegt den Knüppel nicht: " + moved);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(StickMode.class)
+    void gamepadDefaultsOfEveryModeMatchTheAnimatedStick(StickMode mode) {
+        for (StickChannel channel : List.of(StickChannel.ROLL, StickChannel.PITCH, StickChannel.YAW)) {
+            RemoteDemo.Motion motion = RemoteDemo.forChannel(channel);
+            ChannelDetector detector = ChannelDetector.centered(gamepad(RemoteDemo.frame(motion, 0.0F, mode)), new boolean[ProfileDefaults.PAD_AXES]);
+            StickDetector.Detection result = null;
+            for (float t = 0.0F; t < motion.period() && result == null; t += FRAME_S) {
+                result = detector.update(gamepad(RemoteDemo.frame(motion, t, mode)), nanos(t));
+            }
+            assertNotNull(result, mode + " " + channel + " nicht erkannt");
+            ChannelMapping expected = ProfileDefaults.padStick(mode, channel);
+            assertEquals(expected.axis, result.axis(), mode + " " + channel);
+            assertEquals(expected.invert, result.invert(), mode + " " + channel);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(StickMode.class)
+    void radioDetectionIgnoresTheMode(StickMode mode) {
+        for (StickChannel channel : List.of(StickChannel.ROLL, StickChannel.PITCH, StickChannel.YAW)) {
+            RemoteDemo.Motion motion = RemoteDemo.forChannel(channel);
+            ChannelDetector detector = ChannelDetector.centered(radio(RemoteDemo.frame(motion, 0.0F, mode), false), new boolean[8]);
+            StickDetector.Detection result = null;
+            for (float t = 0.0F; t < motion.period() && result == null; t += FRAME_S) {
+                result = detector.update(radio(RemoteDemo.frame(motion, t, mode), false), nanos(t));
+            }
+            assertNotNull(result, mode + " " + channel);
+            assertEquals(ProfileDefaults.radio("EdgeTX", 8).channel(channel).axis, result.axis(), mode + " " + channel);
+        }
     }
 }

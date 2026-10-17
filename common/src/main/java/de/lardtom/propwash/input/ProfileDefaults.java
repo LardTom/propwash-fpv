@@ -1,7 +1,10 @@
 package de.lardtom.propwash.input;
 
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public final class ProfileDefaults {
     public static final int PAD_LEFT_X = 0;
@@ -60,7 +63,11 @@ public final class ProfileDefaults {
     }
 
     public static DeviceProfile create(String name, boolean gamepad, int axisCount) {
-        return prefersGamepadLayout(name, gamepad) ? gamepad(name) : radio(name, axisCount);
+        return create(name, gamepad, axisCount, StickMode.DEFAULT);
+    }
+
+    public static DeviceProfile create(String name, boolean gamepad, int axisCount, StickMode mode) {
+        return prefersGamepadLayout(name, gamepad) ? gamepad(name, mode) : radio(name, axisCount);
     }
 
     public static DeviceProfile radio(String name, int axisCount) {
@@ -90,13 +97,18 @@ public final class ProfileDefaults {
     }
 
     public static DeviceProfile gamepad(String name) {
+        return gamepad(name, StickMode.DEFAULT);
+    }
+
+    public static DeviceProfile gamepad(String name, StickMode mode) {
         DeviceProfile p = new DeviceProfile();
         p.name = name == null ? "" : name;
         p.gamepadLayout = true;
-        p.roll = new ChannelMapping(PAD_RIGHT_X, false);
-        p.pitch = new ChannelMapping(PAD_RIGHT_Y, true);
-        p.yaw = new ChannelMapping(PAD_LEFT_X, false);
-        p.throttle = new ChannelMapping(PAD_LEFT_Y, true);
+        StickMode m = StickMode.orDefault(mode);
+        p.roll = padStick(m, StickChannel.ROLL);
+        p.pitch = padStick(m, StickChannel.PITCH);
+        p.yaw = padStick(m, StickChannel.YAW);
+        p.throttle = padStick(m, StickChannel.THROTTLE);
         p.deadband = 0.08F;
         p.throttleMode = ThrottleMode.UPPER_HALF;
         p.throttleRate = 0.8F;
@@ -106,8 +118,76 @@ public final class ProfileDefaults {
         p.setBinding(SwitchFunction.RESCUE, SwitchAssignment.toggleButton(PAD_EAST));
         p.setBinding(SwitchFunction.BEEPER, SwitchAssignment.toggleButton(PAD_NORTH));
         p.setBinding(SwitchFunction.SET_HOME, SwitchAssignment.button(PAD_START, false));
-        p.setBinding(SwitchFunction.RACE_RESTART, SwitchAssignment.button(PAD_BACK, false));
+        p.setBinding(SwitchFunction.RESET, SwitchAssignment.button(PAD_BACK, false));
         return p;
+    }
+
+    public static int padAxis(StickMode mode, StickChannel channel) {
+        boolean left = mode.left(channel);
+        if (StickMode.vertical(channel)) {
+            return left ? PAD_LEFT_Y : PAD_RIGHT_Y;
+        }
+        return left ? PAD_LEFT_X : PAD_RIGHT_X;
+    }
+
+    public static ChannelMapping padStick(StickMode mode, StickChannel channel) {
+        return new ChannelMapping(padAxis(mode, channel), StickMode.vertical(channel));
+    }
+
+    public static boolean padSticksMatch(DeviceProfile profile, StickMode mode) {
+        for (StickChannel channel : StickChannel.values()) {
+            ChannelMapping mapping = profile.channel(channel);
+            ChannelMapping expected = padStick(mode, channel);
+            if (mapping == null || mapping.axis != expected.axis || mapping.invert != expected.invert) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static PadRemap remapPadSticks(DeviceProfile profile, StickMode from, StickMode to) {
+        if (!profile.gamepadLayout) {
+            return PadRemap.NOT_GAMEPAD;
+        }
+        if (padSticksMatch(profile, to)) {
+            return PadRemap.ALREADY;
+        }
+        if (!padSticksMatch(profile, from)) {
+            return PadRemap.CUSTOM;
+        }
+        applyPadSticks(profile, to);
+        return PadRemap.REMAPPED;
+    }
+
+    public static void applyPadSticks(DeviceProfile profile, StickMode to) {
+        Map<Integer, ChannelMapping> byAxis = new HashMap<>();
+        for (StickChannel channel : StickChannel.values()) {
+            ChannelMapping mapping = profile.channel(channel);
+            if (mapping != null && mapping.assigned()) {
+                byAxis.put(mapping.axis, mapping);
+            }
+        }
+        Map<StickChannel, ChannelMapping> next = new EnumMap<>(StickChannel.class);
+        for (StickChannel channel : StickChannel.values()) {
+            ChannelMapping fresh = padStick(to, channel);
+            ChannelMapping old = byAxis.get(fresh.axis);
+            if (old != null) {
+                fresh.min = old.min;
+                fresh.center = old.center;
+                fresh.max = old.max;
+            }
+            next.put(channel, fresh);
+        }
+        for (StickChannel channel : StickChannel.values()) {
+            profile.setChannel(channel, next.get(channel));
+        }
+    }
+
+    public enum PadRemap {
+        NOT_GAMEPAD,
+        ALREADY,
+        REMAPPED,
+        CUSTOM
     }
 
     private static SwitchAssignment high(int axis) {
@@ -136,8 +216,12 @@ public final class ProfileDefaults {
     }
 
     public static DeviceProfile reset(DeviceProfile current, boolean gamepadCapable, int axisCount) {
+        return reset(current, gamepadCapable, axisCount, StickMode.DEFAULT);
+    }
+
+    public static DeviceProfile reset(DeviceProfile current, boolean gamepadCapable, int axisCount, StickMode mode) {
         boolean pad = current.gamepadLayout && gamepadCapable;
-        return pad ? gamepad(current.name) : radio(current.name, axisCount);
+        return pad ? gamepad(current.name, mode) : radio(current.name, axisCount);
     }
 
     private static ChannelMapping axisOrNone(int axis, int axisCount, boolean invert) {

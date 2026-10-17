@@ -8,6 +8,7 @@ public final class Flight {
     static final int MOTORS = 4;
     static final double BARO_MIN_STD = 0.05;
     static final double GPS_MIN_SATS = 6;
+    static final double AMPS_PER_COUNT = 0.01;
 
     public final double rate;
     public final int n;
@@ -30,6 +31,8 @@ public final class Flight {
     public final double[] baro;
     public final double[] gpsSpeed;
     public final double[] selfLevel;
+    public final double[] amps;
+    public boolean hasAmps;
     public boolean hasGps;
     public boolean hasBaro;
     public final boolean[] valid;
@@ -60,6 +63,7 @@ public final class Flight {
         this.baro = new double[n];
         this.gpsSpeed = new double[n];
         this.selfLevel = new double[n];
+        this.amps = new double[n];
         this.valid = new boolean[n];
     }
 
@@ -141,8 +145,9 @@ public final class Flight {
         double[] gs = d.has("GPS_speed") && d.has("GPS_numSat") ? d.column("GPS_speed") : null;
         double[] sats = gs != null ? d.column("GPS_numSat") : null;
         double[] modes = d.has("flightModeFlags") ? d.column("flightModeFlags") : null;
+        double[] am = d.has("amperageLatest") ? d.column("amperageLatest") : null;
         int[] count = new int[bins];
-        double[][] sums = new double[13][bins];
+        double[][] sums = new double[14][bins];
         for (int r = 0; r < time.length; r++) {
             long b = (long) Math.floor((time[r] - t0) / width);
             if (b < 0 || b >= bins) {
@@ -175,8 +180,10 @@ public final class Flight {
             sums[10][i] += ba != null ? ba[r] / 100.0 : Double.NaN;
             sums[11][i] += gs != null && sats[r] >= GPS_MIN_SATS ? gs[r] : Double.NaN;
             sums[12][i] += modes != null ? modes[r] : Double.NaN;
+            sums[13][i] += am != null ? am[r] * AMPS_PER_COUNT : Double.NaN;
         }
-        double[][] outs = {f.duty, f.fz, f.fxy, f.gyro, f.tilt, f.vbat, f.rpm, f.throttle, f.stickRoll, f.setpointRoll, f.baro, f.gpsSpeed, f.selfLevel};
+        double[][] outs = {f.duty, f.fz, f.fxy, f.gyro, f.tilt, f.vbat, f.rpm, f.throttle, f.stickRoll, f.setpointRoll, f.baro, f.gpsSpeed, f.selfLevel,
+                f.amps};
         for (int i = 0; i < bins; i++) {
             f.valid[i] = count[i] > 0;
             for (int c = 0; c < outs.length; c++) {
@@ -206,6 +213,7 @@ public final class Flight {
         }
         f.hasBaro = ba != null && Signals.std(f.baro, 0, f.n) > BARO_MIN_STD;
         f.hasGps = gs != null && !Double.isNaN(Signals.max(f.gpsSpeed, 0, f.n));
+        f.hasAmps = am != null;
         return f;
     }
 
@@ -245,6 +253,7 @@ public final class Flight {
             f.baro[i] = Double.NaN;
             f.gpsSpeed[i] = Double.NaN;
             f.selfLevel[i] = Double.NaN;
+            f.amps[i] = Double.NaN;
             f.valid[i] = true;
         }
         return f;

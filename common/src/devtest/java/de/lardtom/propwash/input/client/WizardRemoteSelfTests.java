@@ -629,7 +629,7 @@ public final class WizardRemoteSelfTests {
 
         private static @Nullable Stop position(ReceiverWizardScreen w) {
             return switch (w.page()) {
-                case DEVICE -> null;
+                case MODE, DEVICE -> null;
                 case CHANNELS -> {
                     StickChannel channel = w.currentChannel();
                     if (channel == null) {
@@ -697,7 +697,7 @@ public final class WizardRemoteSelfTests {
                 return this.conflict(w, tick);
             }
             if (at == null) {
-                if (w.page() == ReceiverWizardScreen.Page.DEVICE) {
+                if (w.page() == ReceiverWizardScreen.Page.MODE || w.page() == ReceiverWizardScreen.Page.DEVICE) {
                     this.press(w, "propwash.input.wizard.next", tick);
                 } else if (w.page() == ReceiverWizardScreen.Page.CHANNELS && w.currentChannel() != null && w.currentChannel() != StickChannel.THROTTLE) {
                     this.press(w, "propwash.input.wizard.skip_channel", tick);

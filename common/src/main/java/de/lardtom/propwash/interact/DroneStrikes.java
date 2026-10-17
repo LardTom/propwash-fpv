@@ -1,6 +1,9 @@
 package de.lardtom.propwash.interact;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.accessory.AccessoryPayload;
+import de.lardtom.propwash.accessory.AddonEvents;
+import de.lardtom.propwash.api.event.EntityHit;
 import de.lardtom.propwash.core.event.Event;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.net.StateValidation;
@@ -96,8 +99,12 @@ public final class DroneStrikes {
         double ny = payload.axis() == 1 ? sign : 0.0;
         double nz = payload.axis() == 2 ? sign : 0.0;
         double closing = StrikeMath.closingSpeed(relative.x, relative.y, relative.z, nx, ny, nz);
-        double massKg = AirframeSpec.of(drone.build()).massKg + drone.cargoGrams() / 1000.0;
+        double massKg = AirframeSpec.of(drone.build()).massKg + drone.cargoGrams() / 1000.0 + AccessoryPayload.payloadGrams(drone) / 1000.0;
         StrikeMath.Strike strike = StrikeMath.of(massKg, closing);
+        if (AddonEvents.wantsHits()) {
+            EntityHit hit = AddonEvents.entityHit(drone, player, target, relative, closing, new Vec3(nx, ny, nz), strike.damage(), strike.knockback());
+            strike = new StrikeMath.Strike(strike.momentum(), hit.damage(), hit.knockback());
+        }
         if (!strike.hits()) {
             return;
         }
@@ -116,7 +123,8 @@ public final class DroneStrikes {
             }
             target.knockback(strike.knockback(), -hx, -hz, source.get(), strike.damage());
         }
-        STRUCK.fire(listener -> listener.onStruck(drone, target, strike, hurt));
+        StrikeMath.Strike landed = strike;
+        STRUCK.fire(listener -> listener.onStruck(drone, target, landed, hurt));
     }
 
     public static Optional<DamageSource> damageSource(ServerLevel level, QuadcopterEntity drone, Entity pilot) {

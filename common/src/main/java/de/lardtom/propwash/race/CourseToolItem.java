@@ -168,7 +168,7 @@ public class CourseToolItem extends Item {
                 .clearUse()
                 .useLine(ItemHelp.line("propwash.race.tool.tooltip.click"))
                 .useLine(ItemHelp.line("propwash.race.tool.tooltip.air"))
-                .useLine(ItemHelp.line("propwash.race.tool.tooltip.sneak_gate"))
+                .useLine(ItemHelp.line("propwash.race.tool.tooltip.sneak_gate", Component.keybind(GateItem.EDIT_MOUSE_KEY)))
                 .useLine(ItemHelp.line("propwash.race.tool.tooltip.rotate", Component.keybind(GateItem.ROTATE_KEY)))
                 .useLine(ItemHelp.line("propwash.race.tool.tooltip.sneak_air"))
                 .useLine(ItemHelp.line("propwash.race.tool.tooltip.sneak_air_2"))

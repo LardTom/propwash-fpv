@@ -38,6 +38,7 @@ import java.util.function.Consumer;
 
 public class GateItem extends Item {
     public static final String ROTATE_KEY = "key.propwash.gate_rotate";
+    public static final String EDIT_MOUSE_KEY = "key.propwash.gate_edit_cursor";
     public static final String FLIGHT_MODE_KEY = "key.propwash.drone_flight_mode";
     public static final double THROUGH_SOFT = 3.0;
     public static final double ATTACHED = 0.1;
@@ -372,6 +373,7 @@ public class GateItem extends Item {
                 .what(ItemHelp.PREFIX + "gate")
                 .use(ItemHelp.PREFIX + "gate")
                 .args(ItemHelp.PREFIX + "gate.use.3", Component.keybind(ROTATE_KEY), Component.keybind(ROTATE_KEY))
+                .args(ItemHelp.PREFIX + "gate.use.5", Component.keybind(EDIT_MOUSE_KEY))
                 .args(ItemHelp.PREFIX + "gate.use.8", Component.keybind(FLIGHT_MODE_KEY))
                 .specs(out -> out.accept(Component.translatable("propwash.race.gate.tooltip.size", (int) this.size.width(),
                         (int) this.size.height()).withStyle(ChatFormatting.GRAY)))

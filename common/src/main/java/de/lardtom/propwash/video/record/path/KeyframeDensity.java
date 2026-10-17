@@ -25,8 +25,4 @@ public enum KeyframeDensity {
     public double angleTolerance() {
         return this.angleTolerance;
     }
-
-    public String translationKey() {
-        return "propwash.video.flashback.density." + this.key;
-    }
 }

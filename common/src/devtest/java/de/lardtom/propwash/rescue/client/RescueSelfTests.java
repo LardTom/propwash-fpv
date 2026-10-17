@@ -48,6 +48,8 @@ public final class RescueSelfTests {
         SelfTest.clientStep("rescue: Konfigurator-Tab bei 427x240 und 320x240", 200, RescueSelfTests::tabLayoutStep);
         SelfTest.clientStep("rescue: Heimflug aus 40 m in der Flachwelt", 600, ctx -> flightStep(ctx.tick(), ctx.state()));
         AutonomousRescueSelfTests.register();
+        HomePointSelfTests.register();
+        HomeResetSelfTests.register();
     }
 
     private static StepResult tabLayoutStep(SelfTest.StepContext ctx) {

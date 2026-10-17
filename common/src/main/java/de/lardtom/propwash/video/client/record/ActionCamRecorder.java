@@ -18,8 +18,10 @@ import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemedToast;
+import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.ImageArea;
 import de.lardtom.propwash.video.client.FpvImage;
+import de.lardtom.propwash.video.client.FpvLens;
 import de.lardtom.propwash.video.record.Backpressure;
 import de.lardtom.propwash.video.record.BuiltinEncoder;
 import de.lardtom.propwash.video.record.CamPower;
@@ -173,6 +175,10 @@ public final class ActionCamRecorder {
 
     public float cameraCharge() {
         return this.cameraCharge;
+    }
+
+    public float[] lastTangents() {
+        return this.tangents.clone();
     }
 
     public long capturedFrames() {
@@ -490,8 +496,9 @@ public final class ActionCamRecorder {
         float tanSourceX = tanSourceY * aspect;
         float zoom = Stabilizer.zoom(this.stabilization, this.strength);
         ImageArea area = FpvImage.area(main.width, main.height);
-        float imageX = (float) area.imageTangentX(tanSourceX);
-        float wideY = (float) area.wideTangentY(tanSourceX, tanSourceY);
+        FisheyeLens lens = FpvLens.INSTANCE.rendered();
+        float imageX = lens != null ? (float) lens.flatTangent() : (float) area.imageTangentX(tanSourceX);
+        float wideY = lens != null ? imageX * main.height / main.width : (float) area.wideTangentY(tanSourceX, tanSourceY);
         float baseY = Math.min(wideY, imageX / ASPECT);
         float tanOutY = baseY / zoom;
         float tanOutX = tanOutY * ASPECT;

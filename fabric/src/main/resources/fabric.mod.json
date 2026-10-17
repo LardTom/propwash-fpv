@@ -40,7 +40,8 @@
         "${mod_id}.ui.mixins.json",
         "${mod_id}.content.mixins.json",
         "${mod_id}.join.mixins.json",
-        "${mod_id}.bando.mixins.json"
+        "${mod_id}.bando.mixins.json",
+        "${mod_id}.zone.mixins.json"
     ],
     "depends": {
         "fabricloader": ">=${fabric_loader_version}",

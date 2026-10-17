@@ -112,7 +112,7 @@ public final class PartsSelfTests {
         if (!PartIndex.isFrozen()) {
             return StepResult.fail("Bauteil-Register ist nach dem Start nicht eingefroren");
         }
-        int[] builtins = {5, 4, 6, 5, 4, 5, 5};
+        int[] builtins = {5, 4, 6, 6, 4, 5, 5};
         for (PartKind kind : PartKind.values()) {
             long count = PartIndex.all(kind).stream().filter(PartInfo::builtin).count();
             if (count != builtins[kind.ordinal()]) {

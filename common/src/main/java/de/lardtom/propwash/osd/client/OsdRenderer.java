@@ -1,5 +1,7 @@
 package de.lardtom.propwash.osd.client;
 
+import de.lardtom.propwash.input.InputConfig;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.osd.FlightStats;
 import de.lardtom.propwash.osd.OsdColors;
 import de.lardtom.propwash.osd.OsdCondition;
@@ -12,6 +14,8 @@ import de.lardtom.propwash.osd.OsdInterference;
 import de.lardtom.propwash.osd.OsdProjection;
 import de.lardtom.propwash.osd.OsdStatsLayout;
 import de.lardtom.propwash.osd.OsdWarnings;
+import de.lardtom.propwash.osd.VoltageDisplay;
+import de.lardtom.propwash.video.record.path.FlashbackBudget;
 import de.lardtom.propwash.sim.BatteryState;
 import de.lardtom.propwash.sim.HoldMode;
 import de.lardtom.propwash.sim.StabMode;
@@ -70,10 +74,14 @@ public final class OsdRenderer {
     private static final String LABEL_THROTTLE = "propwash.osd.label.throttle";
     private static final String LABEL_FLY = "propwash.osd.label.fly";
     private static final String LABEL_REC = "propwash.osd.label.rec";
+    private static final String LABEL_FLASHBACK = "propwash.osd.label.flashback";
+    private static final int THIN_MARK = 5;
+    private static final long FLASHBACK_THINNING_KEY = 1L << 40;
     private static final String LABEL_SAVING = "propwash.osd.label.saving";
     private static final String LABEL_LEDS_OFF = "propwash.osd.label.leds_off";
     private static final String LABEL_SAT = "propwash.osd.label.sat";
     private static final String LABEL_VTX = "propwash.osd.label.vtx";
+    private static final String LABEL_VTX_AUTO = "propwash.osd.label.vtx_auto";
     private static final String LABEL_RELAY = "propwash.osd.label.relay";
     private static final long SAVING_KEY = 1L << 40;
     private static final int REC_MARK = 5;
@@ -109,11 +117,13 @@ public final class OsdRenderer {
     private final List<OsdWarnings.Warning> warnings = new ArrayList<>();
     private final EnumMap<OsdElement, float[]> bounds = new EnumMap<>(OsdElement.class);
     private final EnumSet<OsdElement> drawn = EnumSet.noneOf(OsdElement.class);
+    private final int[] shownSticks = new int[4];
     private final int[] rectBuffer = new int[96];
     private final long[] textKeys = new long[OsdElement.values().length];
     private final @Nullable String[] texts = new String[OsdElement.values().length];
     private final Map<String, String> translations = new HashMap<>();
     private final LongFunction<String> speedText = this::speedText;
+    private final LongFunction<String> vtxPowerText = this::vtxPowerText;
     private final long[] statKeys = new long[STAT_COUNT];
     private final OsdStatsLayout statsLayout = new OsdStatsLayout();
     private final EnumMap<OsdElement, OsdConfig.Slot> statsSlots = new EnumMap<>(OsdElement.class);
@@ -182,7 +192,7 @@ public final class OsdRenderer {
         return out;
     }
 
-    public record View(Quaternionfc rotation, float fovDeg, double x, double y, double z) {
+    public record View(Quaternionfc rotation, float fovDeg, double x, double y, double z, float fisheyeDeg, float fisheyeBend) {
     }
 
     public void setEditorFocus(@Nullable OsdElement focus) {
@@ -351,7 +361,11 @@ public final class OsdRenderer {
         float centerX = this.grid.centerX();
         float centerY = this.grid.centerY();
         if (view != null) {
-            this.projection.setup(view.rotation(), view.fovDeg(), centerX, centerY, this.grid.height());
+            if (view.fisheyeDeg() > 0.0F) {
+                this.projection.setupFisheye(view.rotation(), view.fisheyeDeg(), view.fisheyeBend(), centerX, centerY, this.grid.width());
+            } else {
+                this.projection.setup(view.rotation(), view.fovDeg(), centerX, centerY, this.grid.height());
+            }
             this.viewX = view.x();
             this.viewY = view.y();
             this.viewZ = view.z();
@@ -393,9 +407,11 @@ public final class OsdRenderer {
             case ARMED_STATUS -> !d.armed || d.armedSeconds < ARMED_VISIBLE_SECONDS;
             case ARTIFICIAL_HORIZON -> this.hasView;
             case RECORDING -> d.recording != OsdData.REC_OFF;
+            case FLASHBACK_BUDGET -> Double.isFinite(d.flashbackFill);
             case LEDS_OFF -> d.ledsOff;
             case GPS_SATS -> d.gpsKnown;
             case VTX_CHANNEL -> !d.vtxChannel.isEmpty();
+            case VTX_POWER -> d.vtxPowerMw > 0;
             case RELAY -> d.relayHops > 0;
             case TRICKS -> d.tricksOn && d.trickType != null && d.trickPopup != OsdData.TRICK_NONE
                     && d.trickAgeSeconds < (d.trickPopup == OsdData.TRICK_LOST ? TRICK_LOST_SECONDS : TRICK_VISIBLE_SECONDS);
@@ -417,7 +433,7 @@ public final class OsdRenderer {
             case HOME_DISTANCE -> this.keyed(element, slot, LABEL_HOME, OsdFormat.distanceKey(d.homeDistance(), unit), OsdFormat::distanceText, this.color);
             case LINK_QUALITY -> this.keyed(element, slot, LABEL_LQ, OsdFormat.percent(d.linkStrength), Long::toString, this.qualityColor(d.linkStrength));
             case VIDEO_SIGNAL -> this.keyed(element, slot, LABEL_VIDEO, OsdFormat.percent(d.videoSignal), Long::toString, this.qualityColor(d.videoSignal));
-            case RSSI_DBM -> this.keyed(element, slot, LABEL_RSSI, OsdFormat.rssiDbm(d.linkStrength), Long::toString, this.qualityColor(d.linkStrength));
+            case RSSI_DBM -> this.keyed(element, slot, LABEL_RSSI, OsdFormat.rssiDbm(d.linkStrength, d.rssiDbm), Long::toString, this.qualityColor(d.linkStrength));
             case GATE -> this.keyed(element, slot, LABEL_GATE, gateKey(d), OsdRenderer::gateText, this.color);
             case SPEED -> this.keyed(element, slot, null, OsdFormat.quantize(OsdFormat.speed(d.speed, unit), 0), this.speedText, this.color);
             case PITCH_ANGLE -> this.keyed(element, slot, LABEL_PITCH, OsdFormat.angleKey(d.pitchDeg), OsdFormat::signedAngleText, this.color);
@@ -426,8 +442,8 @@ public final class OsdRenderer {
             case CURRENT -> this.keyed(element, slot, null, OsdFormat.quantize(d.currentA, 1), AMPS_TEXT, this.color);
             case POWER -> this.keyed(element, slot, null, OsdFormat.quantize(d.powerW, 0), WATTS_TEXT, this.color);
             case MAH_DRAWN -> this.keyed(element, slot, null, OsdFormat.quantize(d.mAhUsed, 0), MAH_TEXT, this.color);
-            case BATTERY_VOLTAGE -> this.keyed(element, slot, null, OsdFormat.quantize(d.packVoltage, 1), PACK_VOLTS_TEXT, this.batteryColor());
-            case CELL_VOLTAGE -> this.keyed(element, slot, null, OsdFormat.quantize(d.cellVoltage, 2), CELL_VOLTS_TEXT, this.batteryColor());
+            case BATTERY_VOLTAGE -> this.voltage(element, slot, OsdFormat.quantize(d.packVoltage, 1), PACK_VOLTS_TEXT);
+            case CELL_VOLTAGE -> this.voltage(element, slot, OsdFormat.quantize(d.cellVoltage, 2), CELL_VOLTS_TEXT);
             case COORDINATES -> this.coordinates(slot);
             case POST_FLIGHT_STATS -> this.stats(slot);
             case SPLIT_DELTA -> this.keyed(element, slot, null, OsdFormat.deltaKey(d.splitDeltaNanos), OsdFormat::deltaText,
@@ -461,8 +477,11 @@ public final class OsdRenderer {
             case GPS_SATS -> this.keyed(element, slot, LABEL_SAT, Math.max(0, d.gpsSatellites), Long::toString,
                     d.gpsFix ? this.color : this.caution());
             case VTX_CHANNEL -> this.text(element, slot, this.vtxText(d), this.color);
+            case VTX_POWER -> this.keyed(element, slot, null, d.vtxPowerMw * 2L + (d.vtxPowerAuto ? 1L : 0L), this.vtxPowerText,
+                    d.vtxThrottled ? this.caution() : this.color);
             case RELAY -> this.text(element, slot, this.relayText(d), this.qualityColor(weakestRelayHop(d)));
             case TRICKS -> this.tricks(slot);
+            case FLASHBACK_BUDGET -> this.flashbackBudget(slot);
         }
     }
 
@@ -493,6 +512,11 @@ public final class OsdRenderer {
             this.vtxText = this.tr(LABEL_VTX) + " " + channel;
         }
         return this.vtxText;
+    }
+
+    private String vtxPowerText(long key) {
+        String power = (key / 2L) + "MW";
+        return (key & 1L) != 0L ? this.tr(LABEL_VTX_AUTO) + " " + power : power;
     }
 
     private String relayText(OsdData d) {
@@ -542,6 +566,35 @@ public final class OsdRenderer {
         this.text(element, slot, this.cachedText(element, labelKey, key, formatter), textColor);
     }
 
+    private void voltage(OsdElement element, OsdConfig.Slot slot, long key, LongFunction<String> formatter) {
+        if (!this.editor && this.data.voltageAlert != VoltageDisplay.NONE && !OsdWarnings.blinkOn(this.data.blinkSeconds)) {
+            String text = this.cachedText(element, null, key, formatter);
+            float width = this.draw.width(text, this.scale);
+            float anchorX = this.grid.anchorX(slot.col, element.align());
+            float x = switch (element.align()) {
+                case LEFT -> anchorX;
+                case CENTER -> anchorX - width * 0.5F;
+                case RIGHT -> anchorX - width;
+            };
+            float y = this.textTop(slot.row);
+            this.record(element, x - this.scale, y - this.scale, x + width, y + (OsdDraw.GLYPH_HEIGHT + 2) * this.scale);
+            return;
+        }
+        this.keyed(element, slot, null, key, formatter, this.voltageColor());
+    }
+
+    private int voltageColor() {
+        int alert = this.data.voltageAlert;
+        BatteryState state = this.data.batteryState;
+        if (alert == VoltageDisplay.CRITICAL || state == BatteryState.CRITICAL || state == BatteryState.EMPTY) {
+            return this.critical();
+        }
+        if (alert == VoltageDisplay.WARNING || state == BatteryState.LOW) {
+            return this.caution();
+        }
+        return this.color;
+    }
+
     private static String headingText(long key) {
         return OsdFormat.headingText(key) + "°";
     }
@@ -585,6 +638,12 @@ public final class OsdRenderer {
     private String modeText(OsdData d) {
         if (d.rescueActive) {
             return this.tr("propwash.osd.mode.rescue");
+        }
+        if (d.turtle) {
+            return this.tr("propwash.osd.mode.turtle");
+        }
+        if (d.assistLabel != null) {
+            return d.assistLabel.toUpperCase(Locale.ROOT);
         }
         if (d.holdMode == HoldMode.POSHOLD) {
             return this.tr("propwash.osd.mode.poshold");
@@ -730,6 +789,41 @@ public final class OsdRenderer {
         }
         this.draw.text(text, x + mark, y, this.scale, paused ? this.caution() : saving ? this.color : this.recColor());
         this.record(OsdElement.RECORDING, x - this.scale, y - this.scale, x + width, y + (OsdDraw.GLYPH_HEIGHT + 2) * this.scale);
+    }
+
+    private void flashbackBudget(OsdConfig.Slot slot) {
+        OsdData d = this.data;
+        double fill = Math.max(0.0, d.flashbackFill);
+        boolean over = fill > 1.0;
+        boolean thinning = over && d.flashbackLimit;
+        long percent = Math.round(Math.min(thinning ? 1.0 : 9.99, fill) * 100.0);
+        int textColor = over && !thinning ? this.critical() : fill >= FlashbackBudget.CAUTION_FILL ? this.caution() : this.color;
+        String text = this.cachedText(OsdElement.FLASHBACK_BUDGET, LABEL_FLASHBACK, percent + (thinning ? FLASHBACK_THINNING_KEY : 0L),
+                key -> (key % FLASHBACK_THINNING_KEY) + "%");
+        float textWidth = this.draw.width(text, this.scale);
+        float mark = thinning ? (REC_GAP + THIN_MARK) * this.scale : 0.0F;
+        float width = textWidth + mark;
+        float anchor = this.grid.anchorX(slot.col, OsdElement.FLASHBACK_BUDGET.align());
+        float x = switch (OsdElement.FLASHBACK_BUDGET.align()) {
+            case LEFT -> anchor;
+            case CENTER -> anchor - width * 0.5F;
+            case RIGHT -> anchor - width;
+        };
+        x = this.snap(x);
+        float y = this.snap(this.textTop(slot.row));
+        this.textBox(x, y, width);
+        boolean shown = this.editor || !over || thinning || OsdWarnings.blinkOn(d.blinkSeconds);
+        if (shown) {
+            this.draw.text(text, x, y, this.scale, textColor);
+        }
+        if (thinning) {
+            float markX = this.snap(x + textWidth + REC_GAP * this.scale);
+            float markY = this.snap(y + (OsdDraw.GLYPH_HEIGHT - THIN_MARK) * 0.5F * this.scale);
+            this.draw.push(markX, markY, 0.0F, this.scale);
+            this.draw.rects(textColor, 0, 0, THIN_MARK, 1, 1, 2, THIN_MARK - 1, 3, 2, 4, THIN_MARK - 2, THIN_MARK);
+            this.draw.pop();
+        }
+        this.record(OsdElement.FLASHBACK_BUDGET, x - this.scale, y - this.scale, x + width, y + (OsdDraw.GLYPH_HEIGHT + 2) * this.scale);
     }
 
     private void tricks(OsdConfig.Slot slot) {
@@ -1049,13 +1143,26 @@ public final class OsdRenderer {
         this.draw.push(x, y, 0.0F, this.scale);
         this.draw.frame(-19, -8, -3, 8, this.color);
         this.draw.frame(3, -8, 19, 8, this.color);
-        int leftX = -11 + Math.round(Math.clamp(d.stickYaw, -1.0F, 1.0F) * 6.0F);
-        int leftY = Math.round((0.5F - Math.clamp(d.stickThrottle, 0.0F, 1.0F)) * 12.0F);
-        int rightX = 11 + Math.round(Math.clamp(d.stickRoll, -1.0F, 1.0F) * 6.0F);
-        int rightY = Math.round(-Math.clamp(d.stickPitch, -1.0F, 1.0F) * 6.0F);
+        int[] dots = stickDots(d, InputConfig.get().stickMode());
+        System.arraycopy(dots, 0, this.shownSticks, 0, dots.length);
+        int leftX = dots[0];
+        int leftY = dots[1];
+        int rightX = dots[2];
+        int rightY = dots[3];
         this.draw.rects(this.color, leftX - 1, leftY - 1, leftX + 1, leftY + 1, rightX - 1, rightY - 1, rightX + 1, rightY + 1);
         this.draw.pop();
         this.record(OsdElement.STICK_OVERLAY, x - 20 * this.scale, y - 9 * this.scale, x + 20 * this.scale, y + 9 * this.scale);
+    }
+
+    static int[] stickDots(OsdData d, StickMode mode) {
+        StickMode.Sticks sticks = StickMode.orDefault(mode).place(Math.clamp(d.stickRoll, -1.0F, 1.0F), Math.clamp(d.stickPitch, -1.0F, 1.0F),
+                Math.clamp(d.stickYaw, -1.0F, 1.0F), Math.clamp(d.stickThrottle, 0.0F, 1.0F) * 2.0F - 1.0F);
+        return new int[]{-11 + Math.round(sticks.leftX() * 6.0F), Math.round(-sticks.leftY() * 6.0F), 11 + Math.round(sticks.rightX() * 6.0F),
+                Math.round(-sticks.rightY() * 6.0F)};
+    }
+
+    int[] shownSticks() {
+        return this.shownSticks.clone();
     }
 
     private void armedStatus(OsdConfig.Slot slot) {

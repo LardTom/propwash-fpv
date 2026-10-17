@@ -96,6 +96,7 @@ public final class ExampleAddon {
         PropwashApi.parts().register(prop13());
         PropwashApi.parts().register(stretchedFrame());
         bundled = PropwashApi.parts().loadBundled(RESOURCE_MOD);
+        ExampleAccessories.registerParts();
         PropwashApi.partItems().registerItem(MOTOR_2806, properties -> properties.rarity(Rarity.EPIC));
         PropwashApi.partItems().registerItems(NAMESPACE);
         PropwashApi.builds().registerPreset(new DronePreset(PRESET_XCLASS, xclass(), false));
@@ -104,6 +105,7 @@ public final class ExampleAddon {
                 .icon(FRAME_XCLASS)
                 .order(TAB_ORDER.toArray(TabSection[]::new))
                 .add(ExampleAddon::creativeEntries);
+        ExampleAccessories.init();
     }
 
     public static boolean showcase() {

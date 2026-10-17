@@ -18,7 +18,7 @@ class MouseConfigTest {
         MouseSettings s = new MouseSettings();
         assertEquals(MouseMode.AUTO, s.mode);
         assertEquals(MouseAxis.ROLL, s.xAxis);
-        assertFalse(s.invertY);
+        assertFalse(new InputConfig().invertPitch);
         assertTrue(s.wheelThrottle());
         assertTrue(s.mode.holds(true));
         assertFalse(s.mode.holds(false));

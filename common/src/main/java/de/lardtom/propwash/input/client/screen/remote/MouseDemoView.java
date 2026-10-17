@@ -6,8 +6,11 @@ import de.lardtom.propwash.input.MouseAxis;
 import de.lardtom.propwash.input.MouseDemo;
 import de.lardtom.propwash.input.MouseSettings;
 import de.lardtom.propwash.input.MouseSticks;
+import de.lardtom.propwash.input.StickChannel;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.input.client.InputKeys;
+import de.lardtom.propwash.input.client.StickModes;
 import de.lardtom.propwash.ui.client.theme.GuiLayerAccess;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
@@ -40,6 +43,15 @@ public final class MouseDemoView {
     private MouseDemo.@Nullable Frame lastFrame;
     private boolean drawn;
     private long frames;
+    private @Nullable StickMode mode;
+
+    public void mode(@Nullable StickMode next) {
+        this.mode = next;
+    }
+
+    public StickMode mode() {
+        return this.mode != null ? this.mode : StickModes.current();
+    }
 
     public void restart() {
         this.startNanos = Util.getNanos();
@@ -72,8 +84,8 @@ public final class MouseDemoView {
         return width >= MIN_WIDTH && height >= MIN_HEIGHT;
     }
 
-    public void extract(GuiGraphicsExtractor g, Font font, int x0, int y0, int x1, int y1, MouseSettings settings, boolean selfLevel,
-                        @Nullable StickPositions live) {
+    public void extract(GuiGraphicsExtractor g, Font font, int x0, int y0, int x1, int y1, MouseSettings settings, boolean invertPitch,
+                        boolean selfLevel, @Nullable StickPositions live) {
         this.drawn = false;
         if (!fits(x1 - x0, y1 - y0)) {
             return;
@@ -88,7 +100,7 @@ public final class MouseDemoView {
         if (stageBottom - stageTop < 30) {
             return;
         }
-        MouseDemo.Frame frame = MouseDemo.frame(settings, selfLevel, this.seconds());
+        MouseDemo.Frame frame = MouseDemo.frame(settings, selfLevel, this.seconds(), invertPitch);
         this.lastFrame = frame;
         MouseSticks.Output out = frame.sticks();
         StickPositions sticks = live != null ? live : new StickPositions(out.roll(), out.pitch(), out.yaw(), 0.0F);
@@ -109,7 +121,7 @@ public final class MouseDemoView {
         float my = live != null ? 0.0F : frame.mouseY();
         boolean moving = live == null && frame.cue().moving();
         mousePad(g, padX0, padY0, padX0 + padSize, padY0 + padSize, mx, my, moving);
-        Component caption = live != null ? Component.translatable("propwash.input.mouse.demo.live") : caption(frame.cue(), settings, out);
+        Component caption = live != null ? Component.translatable("propwash.input.mouse.demo.live") : caption(frame.cue(), settings, invertPitch, out, this.mode());
         List<FormattedCharSequence> lines = font.split(caption, width);
         int count = ThemeText.shownLines(caption, lines.size(), CAPTION_LINES);
         int y = captionTop + (CAPTION_LINES - count) * Metrics.LINE_HEIGHT / 2;
@@ -120,11 +132,16 @@ public final class MouseDemoView {
         }
     }
 
-    public static Component caption(MouseDemo.Cue cue, MouseSettings settings, MouseSticks.Output out) {
+    public static Component caption(MouseDemo.Cue cue, MouseSettings settings, boolean invertPitch, MouseSticks.Output out) {
+        return caption(cue, settings, invertPitch, out, StickModes.current());
+    }
+
+    public static Component caption(MouseDemo.Cue cue, MouseSettings settings, boolean invertPitch, MouseSticks.Output out, StickMode mode) {
         String base = cue.translationKey();
         return switch (cue) {
+            case START -> startCaption(base, settings.xAxis == MouseAxis.YAW, mode);
             case RIGHT -> Component.translatable(base + (settings.xAxis == MouseAxis.YAW ? ".yaw" : ".roll"));
-            case FORWARD -> Component.translatable(base + (settings.invertY ? ".inverted" : ".normal"));
+            case FORWARD -> Component.translatable(base + (invertPitch ? ".inverted" : ".normal"));
             case STOP_SIDE, STOP_FORWARD -> {
                 boolean hold = cue == MouseDemo.Cue.STOP_SIDE ? out.holdX() : out.holdY();
                 yield Component.translatable(hold ? (settings.returnSpeed > 0.0F ? base + ".hold_return" : base + ".hold") : base + ".rate");
@@ -136,6 +153,20 @@ public final class MouseDemoView {
         };
     }
 
+    static Component startCaption(String base, boolean yaw, StickMode mode) {
+        StickChannel side = yaw ? StickChannel.YAW : StickChannel.ROLL;
+        boolean pitchLeft = mode.left(StickChannel.PITCH);
+        if (pitchLeft == mode.left(side)) {
+            return Component.translatable(pitchLeft ? base + ".left" : base);
+        }
+        Component word = Component.translatable(yaw ? "propwash.input.mouse.demo.yaw_word" : "propwash.input.mouse.demo.roll_word");
+        return Component.translatable(base + ".split", sideWord(pitchLeft), word, sideWord(!pitchLeft));
+    }
+
+    private static Component sideWord(boolean left) {
+        return Component.translatable(left ? "propwash.input.mouse.demo.side.left" : "propwash.input.mouse.demo.side.right");
+    }
+
     private boolean submit(GuiGraphicsExtractor g, StickPositions sticks, RemoteProjection projection, int x0, int y0, int x1, int y1) {
         if (!(g instanceof GuiLayerAccess access)) {
             return false;
@@ -144,7 +175,7 @@ public final class MouseDemoView {
         if (remote.isEmpty()) {
             return false;
         }
-        RemoteGimbalRenderer.Pose pose = RemoteGimbalRenderer.Pose.of(sticks);
+        RemoteGimbalRenderer.Pose pose = RemoteGimbalRenderer.Pose.of(sticks, this.mode());
         Minecraft minecraft = Minecraft.getInstance();
         RemoteGimbalRenderer.extractPosed(remote, pose,
                 () -> minecraft.getItemModelResolver().updateForTopItem(this.item, remote, ItemDisplayContext.NONE, minecraft.level, null, 0));

@@ -1,6 +1,9 @@
 package de.lardtom.propwash.video.client;
 
 import de.lardtom.propwash.build.VideoSystem;
+import de.lardtom.propwash.content.Numbers;
+import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.DroneContext;
 import de.lardtom.propwash.ui.client.tab.UiTab;
@@ -13,6 +16,11 @@ import de.lardtom.propwash.ui.client.widget.FlatButton;
 import de.lardtom.propwash.ui.client.widget.ScrollPanel;
 import de.lardtom.propwash.video.VideoChannels;
 import de.lardtom.propwash.video.VtxSettings;
+import de.lardtom.propwash.video.VtxTables;
+import de.lardtom.propwash.video.vtx.VtxHeat;
+import de.lardtom.propwash.video.vtx.VtxPowerSettings;
+import de.lardtom.propwash.video.vtx.VtxTable;
+import de.lardtom.propwash.video.vtx.VtxUnit;
 import de.lardtom.propwash.video.net.ChannelListS2C;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -30,12 +38,16 @@ public final class ChannelTab extends UiTab {
     public static final String ID = "video_channel";
     private static final int LIST_ROW = 20;
     private static final int TOGGLE_VALUE = 64;
+    public static final int AUTO_POWER = -1;
 
     private final SpectateConfig working = SpectateConfig.get().copy();
     private final List<FlatButton> channelButtons = new ArrayList<>();
     private int column;
     private int vtxStatusTop;
     private int vtxInfoTop;
+    private int powerTop;
+    private int powerInfoTop;
+    private int powerLiveTop = -1;
     private int watchTop;
     private int watchStatusTop;
     private int emptyTop = -1;
@@ -96,6 +108,28 @@ public final class ChannelTab extends UiTab {
         return VtxSettings.channel(this.tune().working(), this.droneSystem());
     }
 
+    public VtxTable vtxTable() {
+        return VtxTables.of(this.context().build().video());
+    }
+
+    public int selectedPower() {
+        VtxTable table = this.vtxTable();
+        VtxPowerSettings.Selection selection = VtxPowerSettings.selection(this.tune().working(), table);
+        return selection.auto() ? AUTO_POWER : table.levelMw(selection.index());
+    }
+
+    public void selectPower(int milliwatts) {
+        this.tune().update(t -> milliwatts == AUTO_POWER ? VtxPowerSettings.withAuto(t) : VtxPowerSettings.withLevel(t, milliwatts), false);
+    }
+
+    public VtxPowerSettings.LowPower selectedLowPower() {
+        return VtxPowerSettings.lowPower(this.tune().working());
+    }
+
+    public void selectLowPower(VtxPowerSettings.LowPower mode) {
+        this.tune().update(t -> VtxPowerSettings.withLowPower(t, mode), false);
+    }
+
     public void selectChannel(int channel) {
         VideoSystem system = this.droneSystem();
         this.tune().update(t -> channel < 0 ? VtxSettings.auto(t) : VtxSettings.with(t, VideoChannels.clamp(system, channel), true), false);
@@ -109,8 +143,10 @@ public final class ChannelTab extends UiTab {
         int w = panel.innerWidth();
         this.column = Math.min(w, Metrics.COLUMN_MAX + 120);
         int left = this.x;
-        int labelWidth = Math.min(this.column / 2, Math.max(Metrics.LABEL_MIN,
-                this.font().width(Component.translatable("propwash.video.channel.choice")) + Metrics.PADDING));
+        int labelWidth = Math.min(this.column / 2, Math.max(Metrics.LABEL_MIN, Math.max(
+                this.font().width(Component.translatable("propwash.video.channel.choice")),
+                Math.max(this.font().width(Component.translatable("propwash.video.vtx.power")),
+                        this.font().width(Component.translatable("propwash.video.vtx.low_power")))) + Metrics.PADDING));
         int cy = Metrics.SECTION_HEIGHT;
         this.vtxStatusTop = cy;
         cy += ThemeText.wrappedHeight(this.font(), this.vtxStatus(), this.column) + 6;
@@ -132,6 +168,48 @@ public final class ChannelTab extends UiTab {
         cy += ROW + 2;
         this.vtxInfoTop = cy;
         cy += ThemeText.wrappedHeight(this.font(), this.vtxInfo(), this.column) + 10;
+
+        this.powerTop = cy;
+        cy += Metrics.SECTION_HEIGHT;
+        VtxTable table = this.vtxTable();
+        List<Integer> powers = new ArrayList<>();
+        if (table.supportsAuto()) {
+            powers.add(AUTO_POWER);
+        }
+        for (int level : table.levels()) {
+            powers.add(level);
+        }
+        int powerLabel = labelWidth;
+        ChoiceButton<Integer> power = this.add(new ChoiceButton<>(left, this.top() + cy, this.column, FIELD,
+                Component.translatable("propwash.video.vtx.power"), powerLabel, powers, this::selectedPower,
+                v -> {
+                    this.selectPower(v);
+                    this.host.rebuild();
+                },
+                this::powerName, () -> table.supportsAuto() ? AUTO_POWER : table.ratedMw()));
+        power.setTooltip(Tooltip.create(Component.translatable(table.digital() ? "propwash.video.vtx.power.tip_digital" : "propwash.video.vtx.power.tip_analog")));
+        power.active = this.vtxEditable() && table.count() > 1;
+        cy += ROW + 2;
+        ChoiceButton<VtxPowerSettings.LowPower> low = this.add(new ChoiceButton<>(left, this.top() + cy, this.column, FIELD,
+                Component.translatable("propwash.video.vtx.low_power"), powerLabel, List.of(VtxPowerSettings.LowPower.values()),
+                this::selectedLowPower, v -> {
+                    this.selectLowPower(v);
+                    this.host.rebuild();
+                },
+                v -> Component.translatable("propwash.video.vtx.low_power." + v.name().toLowerCase(java.util.Locale.ROOT)),
+                () -> VtxPowerSettings.LowPower.OFF));
+        low.setTooltip(Tooltip.create(Component.translatable("propwash.video.vtx.low_power.tip")));
+        low.active = this.vtxEditable() && table.count() > 1;
+        cy += ROW + 2;
+        this.powerInfoTop = cy;
+        cy += ThemeText.wrappedHeight(this.font(), this.powerInfo(), this.column) + 4;
+        if (this.liveUnit() != null) {
+            this.powerLiveTop = cy;
+            cy += this.font().lineHeight + 4;
+        } else {
+            this.powerLiveTop = -1;
+        }
+        cy += 6;
 
         this.watchTop = cy;
         cy += Metrics.SECTION_HEIGHT;
@@ -286,6 +364,60 @@ public final class ChannelTab extends UiTab {
         return Component.translatable(digital ? "propwash.video.channel.info_auto_digital" : "propwash.video.channel.info_auto");
     }
 
+    private Component powerName(Integer value) {
+        if (value == AUTO_POWER) {
+            return Component.translatable("propwash.video.vtx.default", Component.translatable("propwash.video.vtx.auto"));
+        }
+        return Component.translatable("propwash.video.vtx.milliwatts", value);
+    }
+
+    private @Nullable VtxUnit liveUnit() {
+        QuadcopterEntity drone = PilotSession.INSTANCE.drone();
+        return this.context().hasDrone() ? VtxRuntime.INSTANCE.unit(drone) : null;
+    }
+
+    private Component powerInfo() {
+        VtxTable table = this.vtxTable();
+        if (!this.context().hasDrone()) {
+            return Component.translatable("propwash.video.vtx.info_none");
+        }
+        Component key = VtxKeys.STEP.getTranslatedKeyMessage();
+        if (table.count() < 2) {
+            return Component.translatable("propwash.video.vtx.info_single", table.ratedMw());
+        }
+        int selected = this.selectedPower();
+        if (selected == AUTO_POWER) {
+            return Component.translatable(table.digital() ? "propwash.video.vtx.info_auto" : "propwash.video.vtx.info_auto_analog",
+                    table.minMw(), table.maxMw(), key);
+        }
+        int index = table.nearestIndex(selected);
+        int range = (int) Math.round(this.context().build().video().rangeBlocks * table.reachFactor(index));
+        MutableComponent text = Component.translatable("propwash.video.vtx.info_level", selected, range,
+                Numbers.of(table.supplyW(index), 1), key);
+        VtxHeat heat = VtxHeat.of(table, VtxHeat.REFERENCE_AMBIENT_C);
+        double seconds = heat.secondsToLimit(table.heatW(index), 0.0, VtxHeat.REFERENCE_AMBIENT_C);
+        if (Double.isFinite(seconds)) {
+            text.append(" ").append(Component.translatable("propwash.video.vtx.info_heat", Numbers.of(Math.max(0.5, seconds / 60.0), 1)));
+        }
+        if (!table.digital()) {
+            text.append(" ").append(Component.translatable("propwash.video.vtx.info_analog"));
+        }
+        return text;
+    }
+
+    private Component powerLive(VtxUnit unit) {
+        MutableComponent text = Component.translatable("propwash.video.vtx.live", unit.effectiveMw(), Numbers.of(unit.tempC(), 0),
+                Numbers.of(unit.supplyW(), 1));
+        if (unit.throttled()) {
+            text.append(" · ").append(Component.translatable("propwash.video.vtx.live.throttled"));
+        } else if (unit.lowPowerActive()) {
+            text.append(" · ").append(Component.translatable("propwash.video.vtx.live.low_power"));
+        } else if (unit.auto()) {
+            text.append(" · ").append(Component.translatable("propwash.video.vtx.auto"));
+        }
+        return text;
+    }
+
     private Component watchStatus() {
         Minecraft minecraft = this.host.minecraft();
         SpectateSession session = SpectateSession.INSTANCE;
@@ -316,6 +448,13 @@ public final class ChannelTab extends UiTab {
         ThemeText.wrapped(g, this.font(), this.vtxStatus(), left, top + this.vtxStatusTop, this.column,
                 this.vtxEditable() ? Palette.TEXT_MUTED : Palette.WARNING);
         ThemeText.wrapped(g, this.font(), this.vtxInfo(), left, top + this.vtxInfoTop, this.column, Palette.TEXT_FAINT);
+        this.section(g, Component.translatable("propwash.video.vtx.section"), left, top + this.powerTop, this.column);
+        ThemeText.wrapped(g, this.font(), this.powerInfo(), left, top + this.powerInfoTop, this.column, Palette.TEXT_FAINT);
+        VtxUnit live = this.liveUnit();
+        if (live != null && this.powerLiveTop >= 0) {
+            ThemeText.text(g, this.font(), this.powerLive(live), left, top + this.powerLiveTop,
+                    live.throttled() || live.hot() ? Palette.WARNING : Palette.TEXT_MUTED);
+        }
         this.section(g, Component.translatable("propwash.video.channel.section.watch"), left, top + this.watchTop, this.column);
         ThemeText.wrapped(g, this.font(), this.watchStatus(), left, top + this.watchStatusTop, this.column,
                 this.watchWarning() ? Palette.WARNING : Palette.TEXT_MUTED);
@@ -330,7 +469,7 @@ public final class ChannelTab extends UiTab {
     @Override
     public void resetDefaults() {
         if (this.vtxEditable()) {
-            this.tune().update(t -> VtxSettings.auto(t), false);
+            this.tune().update(t -> VtxPowerSettings.withLowPower(VtxPowerSettings.withLevel(VtxSettings.auto(t), 0), VtxPowerSettings.LowPower.OFF), false);
         }
         this.working.showPilotOsd = true;
         this.working.showBanner = true;

@@ -11,6 +11,7 @@ import de.lardtom.propwash.guide.scene.ScenePos;
 import de.lardtom.propwash.guide.scene.SceneProjection;
 import de.lardtom.propwash.guide.scene.SceneEvaluator;
 import de.lardtom.propwash.guide.scene.SceneState;
+import de.lardtom.propwash.input.client.StickModes;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.ui.client.theme.ThemeText;
@@ -74,7 +75,7 @@ public final class SceneOverlay {
             }
             projection.project(callout.anchor().x(), callout.anchor().y(), callout.anchor().z(), point);
             ScreenBox own = owner(callout.anchor(), actors);
-            Component text = Component.translatable(callout.textKey());
+            Component text = StickModes.translatable(callout.textKey());
             List<List<FormattedCharSequence>> wrapped = new ArrayList<>();
             List<CalloutLayout.Size> sizes = new ArrayList<>();
             for (int wrap : new int[]{maxWidth, Math.max(MIN_WRAP, Math.round(maxWidth * NARROW_WRAP))}) {

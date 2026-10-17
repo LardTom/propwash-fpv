@@ -319,5 +319,13 @@
   "propwash.osd.mode_3d.angle": "ANGL 3D",
   "propwash.osd.mode_3d.horizon": "HOR 3D",
   "propwash.osd.warning.arm_throttle_3d": "GAS NICHT MITTE",
-  "propwash.osd.warning.world_edge": "WELTRAND"
+  "propwash.osd.warning.world_edge": "WELTRAND",
+  "propwash.osd.element.flashback_budget": "Flashback-Zeitleiste",
+  "propwash.osd.label.flashback": "FB",
+  "propwash.osd.warning.flashback_full": "FLASHBACK VOLL",
+  "propwash.osd.element.vtx_power": "Sendeleistung (VTX)",
+  "propwash.osd.label.vtx_auto": "AUTO",
+  "propwash.osd.warning.vtx_hot": "VTX ÜBERHITZT",
+  "propwash.osd.warning.arm_turtle": "TURTLE: ERST LANDEN",
+  "propwash.osd.mode.turtle": "TURTLE"
 }

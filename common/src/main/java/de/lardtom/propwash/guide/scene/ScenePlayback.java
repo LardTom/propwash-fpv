@@ -1,5 +1,7 @@
 package de.lardtom.propwash.guide.scene;
 
+import de.lardtom.propwash.input.StickMode;
+
 import java.util.Objects;
 
 public final class ScenePlayback {
@@ -113,5 +115,9 @@ public final class ScenePlayback {
 
     public SceneState evaluate() {
         return SceneEvaluator.evaluate(this.scene, this.time);
+    }
+
+    public SceneState evaluate(StickMode mode) {
+        return SceneEvaluator.evaluate(this.scene, this.time, mode);
     }
 }

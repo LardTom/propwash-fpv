@@ -146,6 +146,7 @@ public final class AccessoryType implements PartInfo {
         return switch (this.mount) {
             case TOP -> new double[]{-this.widthMm / 2.0, HINGE_CLEARANCE_MM, -this.depthMm / 2.0};
             case BOTTOM -> new double[]{-this.widthMm / 2.0, -this.heightMm, -this.depthMm / 2.0};
+            case FRONT -> new double[]{-this.widthMm / 2.0, -this.heightMm, -this.depthMm};
         };
     }
 
@@ -153,6 +154,7 @@ public final class AccessoryType implements PartInfo {
         return switch (this.mount) {
             case TOP -> new double[]{this.widthMm / 2.0, HINGE_CLEARANCE_MM + this.heightMm, this.depthMm / 2.0};
             case BOTTOM -> new double[]{this.widthMm / 2.0, 0.0, this.depthMm / 2.0};
+            case FRONT -> new double[]{this.widthMm / 2.0, 0.0, 0.0};
         };
     }
 

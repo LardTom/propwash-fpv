@@ -1,5 +1,6 @@
 package de.lardtom.propwash.drone.client;
 
+import de.lardtom.propwash.accessory.client.AddonCamera;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.video.client.SpectateSession;
 import de.lardtom.propwash.video.client.VideoState;
@@ -108,7 +109,10 @@ public final class FpvView {
         SAMPLE_ROT.transform(LENS);
         outPosition.set(SAMPLE_POS.x + LENS.x, SAMPLE_POS.y + LENS.y, SAMPLE_POS.z + LENS.z);
         outRotation.set(SAMPLE_ROT).rotateX((float) Math.toRadians(session.cameraUptiltDeg()));
-        FpvShake.INSTANCE.apply(VideoState.INSTANCE.lastSampleNanos(), outRotation);
+        QuadcopterEntity flown = session.drone();
+        if (flown == null || !AddonCamera.apply(flown, SAMPLE_ROT, session.cameraUptiltDeg(), outRotation, false)) {
+            FpvShake.INSTANCE.apply(VideoState.INSTANCE.lastSampleNanos(), outRotation);
+        }
         return true;
     }
 
@@ -131,6 +135,7 @@ public final class FpvView {
         SAMPLE_ROT.transform(LENS);
         outPosition.set(SAMPLE_POS.x + LENS.x, SAMPLE_POS.y + LENS.y, SAMPLE_POS.z + LENS.z);
         outRotation.set(SAMPLE_ROT).rotateX((float) Math.toRadians(spectate.cameraUptiltDeg(drone)));
+        AddonCamera.apply(drone, SAMPLE_ROT, (float) spectate.cameraUptiltDeg(drone), outRotation, true);
         return true;
     }
 }

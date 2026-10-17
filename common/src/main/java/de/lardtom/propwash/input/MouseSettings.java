@@ -25,7 +25,6 @@ public final class MouseSettings {
     public float deadzone = DEFAULT_DEADZONE;
     public float expo = DEFAULT_EXPO;
     public float returnSpeed = DEFAULT_RETURN_SPEED;
-    public boolean invertY = false;
     public float wheelStep = DEFAULT_WHEEL_STEP;
 
     public MouseSettings copy() {
@@ -38,7 +37,6 @@ public final class MouseSettings {
         copy.deadzone = this.deadzone;
         copy.expo = this.expo;
         copy.returnSpeed = this.returnSpeed;
-        copy.invertY = this.invertY;
         copy.wheelStep = this.wheelStep;
         return copy;
     }

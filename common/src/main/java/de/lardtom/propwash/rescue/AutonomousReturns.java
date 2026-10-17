@@ -14,6 +14,7 @@ import de.lardtom.propwash.server.RangeManager;
 import de.lardtom.propwash.server.ServerRules;
 import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
+import de.lardtom.propwash.sim.DroneSim;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -72,6 +73,11 @@ public final class AutonomousReturns {
 
     public static int descents() {
         return DESCENTS.size();
+    }
+
+    public static @Nullable DroneSim sim(QuadcopterEntity drone) {
+        ServerReturnFlight flight = FLIGHTS.get(drone);
+        return flight == null ? null : flight.sim();
     }
 
     public static boolean flying(QuadcopterEntity drone) {

@@ -1,6 +1,7 @@
 package de.lardtom.propwash.sim;
 
 import de.lardtom.propwash.build.DroneBuild;
+import de.lardtom.propwash.video.FisheyeLens;
 
 import java.util.Arrays;
 
@@ -8,6 +9,8 @@ public final class CameraOcclusion {
     public static final double DEFAULT_FOV_DEG = 120.0;
     public static final double ASPECT = FpvRig.ASPECT;
     public static final int ROWS = 1080;
+    public static final int FISHEYE_ROWS = 180;
+    private static final double UNBOUNDED = 1.0E9;
     static final double MIN_DEPTH_MM = 0.25;
 
     private CameraOcclusion() {
@@ -52,6 +55,56 @@ public final class CameraOcclusion {
             covered += union(from, to, n) / (2.0 * tanH);
         }
         return 100.0 * covered / count;
+    }
+
+    public static double fisheyePercent(FpvRig rig, double tiltDeg, double horizontalFovDeg, double aspect, int rows) {
+        return fisheyePercent(rig, tiltDeg, horizontalFovDeg, aspect, rows, FisheyeLens.DEFAULT_STRENGTH);
+    }
+
+    public static double fisheyePercent(FpvRig rig, double tiltDeg, double horizontalFovDeg, double aspect, int rows, double strength) {
+        double fov = Double.isFinite(horizontalFovDeg) ? SimMath.clamp(horizontalFovDeg, 1.0, 179.0) : DEFAULT_FOV_DEG;
+        double ratio = Double.isFinite(aspect) && aspect > 1.0E-3 ? aspect : ASPECT;
+        int count = Math.max(1, rows);
+        int columns = Math.max(1, (int) Math.round(count * ratio));
+        FisheyeLens lens = FisheyeLens.of(fov, strength, columns, count, columns, count);
+        double tilt = Math.toRadians(Double.isFinite(tiltDeg) ? tiltDeg : 0.0);
+        double cos = Math.cos(tilt);
+        double sin = Math.sin(tilt);
+        double[] lensMm = rig.lensMm();
+        double[][] centers = new double[FpvRig.SLOTS][];
+        for (int i = 0; i < FpvRig.SLOTS; i++) {
+            double[] c = rig.discCenterMm(i);
+            double dx = c[0] - lensMm[0];
+            double dy = c[1] - lensMm[1];
+            double dz = c[2] - lensMm[2];
+            centers[i] = new double[]{dx, dy * cos + dz * sin, -dy * sin + dz * cos};
+        }
+        double outer = rig.radiusMm();
+        double inner = rig.hubRadiusMm();
+        double[] from = new double[4 * FpvRig.SLOTS];
+        double[] to = new double[4 * FpvRig.SLOTS];
+        double[] tangent = new double[2];
+        long covered = 0L;
+        for (int row = 0; row < count; row++) {
+            double py = count * 0.5 - (row + 0.5);
+            for (int column = 0; column < columns; column++) {
+                double px = column + 0.5 - columns * 0.5;
+                if (!lens.covers(px, py) || !lens.tangentAt(px, py, tangent)) {
+                    continue;
+                }
+                int n = 0;
+                for (double[] c : centers) {
+                    n = rowIntervals(c, cos, -sin, tangent[1], outer, inner, UNBOUNDED, from, to, n);
+                }
+                for (int k = 0; k < n; k++) {
+                    if (tangent[0] >= from[k] && tangent[0] <= to[k]) {
+                        covered++;
+                        break;
+                    }
+                }
+            }
+        }
+        return 100.0 * covered / ((double) count * columns);
     }
 
     private static int rowIntervals(double[] c, double ny, double nz, double v, double outer, double inner, double tanH,

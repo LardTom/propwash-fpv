@@ -18,6 +18,7 @@ public final class AudioClient {
         AudioConfig.CONFIG.load();
         QuadcopterEntity.CLIENT_TICK.register(AudioHooks::onDroneClientTick);
         ClientBus.TICK_END.register(MotorVoices::onTickEnd);
+        ClientBus.TICK_END.register(LocatorBeeper::onTickEnd);
         ClientBus.FRAME_START.register(MotorVoices::onFrame);
         ClientBus.DISCONNECT.register(minecraft -> MotorVoices.clear());
         ConfigTabs.register(AudioConfigTab::new);

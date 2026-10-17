@@ -77,6 +77,9 @@ reicht seitlich über das Bild hinaus; diese Streifen decken die Ränder ab.
   Bildpunkten (bei 1920 × 1080 aus 1440 × 810) – ähnlich wie der Zuschnitt der Stabilisierung.
 - **Kamerapfad für Flashback**: eigenes Exportformat 16:9 aus dem horizontalen Sichtfeld.
 - **FPV-Auge** (`FpvEyeGuard`): prüft die Sichtpyramide des ganzen Fensters, bei 4:3 also etwas großzügiger.
+- **Fisheye-Objektiv** (seit 0.5.2, Standard 80 %, Regler 0–100 %): das Bild spannt weiter die Breite des
+  Bildbereichs; senkrecht zeigt ein Fischauge bei gleicher Breite weniger Winkel in der Bildmitte, in den Ecken mehr
+  (16:9 bei 130° und 80 %: 73° statt 100,7° hoch, 149° diagonal; bei 100 %: 68° hoch, 155° diagonal). Rendern, Entzerren, OSD, Action-Cam und Props im Bild: `docs/design/fisheye-lens.md`.
 
 ## Entscheidungen
 

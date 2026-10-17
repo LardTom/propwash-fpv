@@ -6,6 +6,7 @@ import de.lardtom.propwash.api.build.ImportResult;
 import de.lardtom.propwash.api.part.PartDefinition;
 import de.lardtom.propwash.api.part.PartRegistry;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 
 public final class PropwashEvents {
@@ -15,6 +16,9 @@ public final class PropwashEvents {
     public static final PropwashEvent<DroneDisassembled> DRONE_DISASSEMBLED = new PropwashEvent<>("drone_disassembled");
     public static final PropwashEvent<BuildImported> BUILD_IMPORTED = new PropwashEvent<>("build_imported");
     public static final PropwashEvent<EscBurned> ESC_BURNED = new PropwashEvent<>("esc_burned");
+    public static final PropwashEvent<DroneHitEntity> DRONE_HIT_ENTITY = new PropwashEvent<>("drone_hit_entity");
+    public static final PropwashEvent<DroneDamaged> DRONE_DAMAGED = new PropwashEvent<>("drone_damaged");
+    public static final PropwashEvent<AccessoryActionUsed> ACCESSORY_ACTION = new PropwashEvent<>("accessory_action");
 
     private PropwashEvents() {
     }
@@ -47,5 +51,20 @@ public final class PropwashEvents {
     @FunctionalInterface
     public interface EscBurned {
         void onEscBurned(ServerPlayer player, ItemStack drone, DroneData data, int cells);
+    }
+
+    @FunctionalInterface
+    public interface DroneHitEntity {
+        void onDroneHitEntity(EntityHit hit);
+    }
+
+    @FunctionalInterface
+    public interface DroneDamaged {
+        void onDroneDamaged(DroneDamage damage);
+    }
+
+    @FunctionalInterface
+    public interface AccessoryActionUsed {
+        void onAccessoryAction(ServerPlayer player, Entity drone, int number, boolean pressed);
     }
 }

@@ -11,6 +11,8 @@ public final class PilotInput {
     public boolean altHold;
     public boolean posHold;
     public boolean mode3d;
+    public boolean turtle;
+    public int actions;
 
     public PilotInput() {
     }
@@ -26,5 +28,7 @@ public final class PilotInput {
         dst.altHold = this.altHold;
         dst.posHold = this.posHold;
         dst.mode3d = this.mode3d;
+        dst.turtle = this.turtle;
+        dst.actions = this.actions;
     }
 }

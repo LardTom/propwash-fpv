@@ -426,7 +426,7 @@ final class BindingSelfTests {
 
     private static StepResult restoreSource(InputConfig config, Map<String, Object> state, StepResult result) {
         config.keyboardFallback = (Boolean) state.get("keyboard");
-        TransmitterInput.INSTANCE.setSuppressDevice(false);
+        TransmitterInput.INSTANCE.setSuppressDevice(true);
         return result;
     }
 

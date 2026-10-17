@@ -11,6 +11,7 @@ Wann welche Nummer steigt, regelt [`docs/RELEASING.md`](../RELEASING.md).
 
 | Propwash | Parts-API | Netzprotokoll | Für Addons |
 |---|---|---|---|
+| 0.5.2 | 1.6.0 | 16 | Halterung vorne, Zubehör mit Verhalten, Inventar und Aktionen 1–4, Stöße und Kräfte im Flugmodell, Events für Treffer und Schaden, Drohnen-Abfragen, Flughilfen, Gimbal-Kamera, HUD-Elemente; Leistungsstufen des Videosenders (`vtx_levels_mw`); Homepoint im NBT, Zonen, Block-Tags für Ranken, Bando-Karte, wasserdichte Drohnen, Gründe der Flughilfe im Detail |
 | 0.5.1 | 1.5.0 | 15 | nichts Neues für Addons; Drohnen tragen Entity-Tags für Server-Admins |
 | 0.5.0 | 1.5.0 | 15 | fünf Szenen-Konstanten, Umkehrschub der Props, Welt-Regeln, Schadensart, Bando-Beute, Beitritts-Übersicht aus den Metadaten, Addons nur beim Spieler inaktiv statt Trennung (`isAddonActive`), API unter MIT, Konfigurator-Tabs scrollen von selbst (`ConfigTab.reportBottom`, `scrollsItself`, `ConfigTabHost.contentShift`) |
 | 0.4.0 | 1.4.0 | 8 | erste öffentliche API |
@@ -25,6 +26,132 @@ Client und Server mit verschiedener Protokollnummer trennt schon der Handshake m
 Versionen nennt.
 
 ---
+
+## 0.5.2 — Parts-API 1.6.0, Netzprotokoll 16
+
+Bausteine für die beiden offiziellen Add-ons nach 0.5.2 („Propwash: Mob Defense“ und eine Kino-Drohne im Stil von DJI),
+dazu Leistungsstufen des Videosenders. Vertrag [`docs/design/addon-api-1.6.md`](../design/addon-api-1.6.md), Handbuch
+[`addon-guide.md`](addon-guide.md) Abschnitt 20, Entwürfe [`addon-mob-defense.md`](../design/addon-mob-defense.md) und
+[`addon-cinematic.md`](../design/addon-cinematic.md). Alles ist additiv: Addons für 1.0–1.5 laufen unverändert,
+*Just More Parts* braucht keine Änderung (1.1.1 übernimmt nur die neue Entladekurve). Abfrage:
+`PropwashApi.isCompatible("1.6")`.
+
+### Parts-API 1.6.0
+- **Halterung vorne**: `AccessorySlot.FRONT` (JSON `"slot": "front"`, Rahmen `"accessory_mounts": [..., "front"]`,
+  Anbaupunkt `accessory_anchors.front`). Zubehör vorne hängt unter der Nase und ragt nach vorn. Alle eingebauten Rahmen
+  außer dem Whoop haben sie; die Werkbank hat einen fünfzehnten Slot (`DroneWorkbenchMenu.PART_SLOTS` = 15). Wer
+  `AccessorySlot.values()` durchläuft oder per `switch` unterscheidet, bekommt einen Wert mehr.
+- **Zubehör-Verhalten** (`api.accessory`): `PropwashApi.accessories()` → `AccessoryRegistry` mit `register(id,
+  AccessoryBehavior)`, `behavior`, `accessoryAt`, `contents` (Entity und Item), `inventory` (Server), `itemGrams`.
+  `AccessoryBehavior` (alles Default-Methoden): `slots()` 0–9, `accepts`, `maxStackSize`, `payloadGrams`,
+  `onAction(AccessoryAction)`, `tick(AccessoryContext)`; `AccessoryContext`, `AccessoryAction`, `AccessoryInventory`,
+  `MountPose`. Inventare liegen synchronisiert an der Drohne und als Komponente `propwash:accessory_contents` am
+  Drohnen-Item; die Beladung wiegt im Flugmodell mit; Fenster „Zubehör“ in der Wartung.
+- **Zubehör-Aktionen 1–4**: neue Schalterfunktionen und Tasten (Standard Ziffernblock 9, 0, Enter und +), C2S
+  `propwash:accessory_action` mit Prüfung von Pilot, Epoche und Rate am Server.
+- **Drohnen** (`api.drone`): `PropwashApi.drones()` → `DroneAccess` (`isDrone`, `view` → `DroneView`, `dronesNear`,
+  `nearestDrone`, `physics` → `DronePhysics` mit `impulse`/`push`, `obstacleDistance`, `scan` → `ObstacleScan`, `aim`).
+  Stöße gehen über S2C `propwash:drone_push` an den Piloten.
+- **Flug** (`api.flight`, reines Java): `PropwashApi.flight()` → `FlightExtensions` (`registerAssist`, `registerForces`),
+  `FlightAssist`, `FlightState`, `AssistOutput`, `ForceProvider`, `ForceSink`, `DroneProfile`, `StabilizationMode`,
+  `SensorDirection`, die Helfer `GimbalModel` und `Intercept`.
+- **Events**: `PropwashEvents.DRONE_HIT_ENTITY` (`EntityHit`, Schaden und Rückstoß änderbar), `DRONE_DAMAGED`
+  (`DroneDamage`, Menge änderbar, abbrechbar), `ACCESSORY_ACTION`.
+- **Client**: `PropwashClientApi.registerHudElement(id, HudElement)` (`api.client.hud`: `HudElement`, `HudContext`,
+  `FlightTelemetry`), `registerGimbal(id, GimbalProvider)` (`api.client.camera`: `GimbalProvider`, `GimbalContext`),
+  `input()` → `ClientInput`.
+- Videoteile geben ihre Sendeleistungs-Stufen an: `VideoDefinition#vtxLevelsMw()` (`List<Integer>`, aufsteigend,
+  1–10000 mW, höchstens `VideoDefinition.MAX_VTX_LEVELS` = 8, muss `vtx_power_mw` enthalten), Builder
+  `vtxLevels(int...)`, im Teile-JSON `"vtx_levels_mw": [25, 200, 400, 800]`. Die bisherigen Konstruktoren ohne das Feld
+  bleiben. Ohne Liste leitet Propwash die Stufen aus `vtx_power_mw` ab (analog bis 400 mW 25/100/200/400, darüber
+  25/200/400/800/1600/2000, digital 25/100/400/700/1200, jeweils bis zur Nennleistung).
+- **Verhaltensänderung:** `vtx_power_mw` war bis 1.5 reine Anzeige und ist jetzt die Nennleistung: die Stufe, bei der
+  `range_blocks` und `power_w` gelten (0 = 200 mW). Eine Drohne ohne eigene Einstellung sendet mit *Auto* (analog wie
+  digital, Module mit mehr als einer Stufe); Auto regelt zwischen der niedrigsten und der höchsten Stufe. Bei fester
+  Nennleistung ändert sich für bestehende Teile nichts; höhere Stufen heben die Link-Reserve um 10·log10(P/P_Nenn) dB,
+  kosten Strom (analog 4,3 W, digital 2,5 W je W Sendeleistung) und Wärme. Teile, deren `vtx_power_mw` nicht ihre
+  höchste Stufe ist, geben `vtx_levels_mw` an. Abfrage: `PropwashApi.isCompatible("1.6")`.
+- *Propwash: Just More Parts* braucht keine Änderung: seine Videoteile nennen ihre Höchstleistung als `vtx_power_mw` und
+  bekommen daraus Stufen bis dorthin (z. B. `analog_race_800` 25–800 mW, `analog_whoop_25mw` fest 25 mW).
+
+### Netzprotokoll 16
+0.5.0 und 0.5.1 (Protokoll 15) trennt der Handshake beim Beitreten mit klarer Meldung; Client und Server brauchen beide
+0.5.2. Gründe:
+- Add-on-API: Payloads `propwash:accessory_action` (C2S) und `propwash:drone_push` (S2C), Entity-Daten-Serializer und
+  Item-Komponente `propwash:accessory_contents`, Halterung `front` im Bauplan.
+- Videosender: Nennleistung und Stufen in den Bauteil-Definitionen (geänderter Abgleich der Bauteil-Liste), neue
+  Tuning-Schlüssel `vtx.powerMw`, `vtx.powerAuto`, `vtx.lowPowerDisarm` (Gruppe `TuneGroup.VTX`,
+  [`docs/design/vtx-power.md`](../design/vtx-power.md)).
+- Homepoint: `propwash:home_point_set` (Pilot → Server: Entity, Zähler, x/y/z, Herkunft) und `propwash:home_point`
+  (Server → Pilot: Entity, Quittung, „per `/data` geändert“, Punkt oder keiner).
+- Ranken und Glocken: C2S `propwash:drone_snag_wear` (Prop-Verschleiß beim Verfangen) und `propwash:drone_bell`.
+- Zonen: `propwash:zones` (S2C, Zonen der Dimension und Recht) und `propwash:zone_edit` (C2S, Speichern/Löschen).
+- Flughilfe: `propwash:race_report` und die Zeilen von `propwash:race_leaderboard` tragen die Gründe im Detail (Grund,
+  Gegenstand, Wert, Bezug – z. B. Welt-Regel `gravity_scale` 130 statt 100,
+  [`docs/design/assisted-laps.md`](../design/assisted-laps.md) §6), je Bericht und je Zeile höchstens 16; neuer Grund
+  `zone_physics` (Bit 7).
+- Register-Einträge, die die Loader abgleichen: Items `propwash:bando_map` und `propwash:waterproof_spray`, Kartensymbol
+  `propwash:bando` (`minecraft:map_decoration_type`), Data Component `propwash:waterproof_coating`; synchronisiertes
+  Entity-Feld der Beschichtung.
+
+### Race-Preset: True-X-Rahmen und neues eingebautes Prop
+- Neues eingebautes Bauteil `propwash:p51_29_3b` (5,1″ Durchmesser, 2,9″ Steigung, 3 Blätter, 4,4 g, `ct` 0,122,
+  `cp` 0,065). Es steht als **letztes** eingebautes Prop im Register (`PropType.values()`, `parts().all(PROP)`); die
+  Reihenfolge der bisherigen Teile bleibt. Tabellen, die eingebaute Teile nummerieren (Sharecodes), hängen es an.
+  Addons, die auch mit Propwash 0.4.0 laufen sollen, dürfen es nicht fest in Presets nennen – dort fehlt es.
+- `propwash:race_5` meldet `shape: true_x` statt `stretched_x`, und sein Bild ist True-X (Motoren ±76,0 mm). Ohne
+  `arms` flog der Rahmen schon immer so; Flugdaten, Kamera und Anbaupunkte ändern sich nicht. „Props im Kamerabild“
+  nennt für Bauten auf `race_5` weniger als vorher (Preset 6,4 % statt 11,0 %).
+- Das eingebaute Preset `RACER` nutzt den neuen Prop (Topspeed 147 statt 168 km/h). Diese Änderung allein berührt
+  weder `API_VERSION` noch Netzprotokoll. Einzelheiten: [`docs/design/realism/motors-props.md`](../design/realism/motors-props.md) §12.
+
+### Flughilfen, Zubehör-Fenster und Aktionen (Verhalten)
+- Eine Add-on-Flughilfe (`FlightExtensions#registerAssist`), die gerade etwas ausgibt (Knüppel, Modus, Höhe, Position,
+  Tempo, Gieren), macht die Runde zur Runde mit Flughilfe: Grund `other` mit der Id der Flughilfe als Gegenstand
+  (Zeichen `[a-z0-9_:./-]`, höchstens 48). Hält sie Höhe oder Position, ohne dass der Pilot selbst Halten geschaltet
+  hat, steht nur sie in der Wertung, nicht mehr „Höhe halten war an“. Kräfte (`registerForces`) zählen nicht.
+- Das Fenster „Zubehör“ liest vor jedem Zugriff den Stand der Drohne neu und schreibt nur selbst geänderte Plätze
+  zurück; Schreiben über `AccessoryInventory` am Server und mehrere offene Fenster vertragen sich damit. Shulkerkisten
+  (`Item#canFitInsideContainerItems`) und Drohnen-Items mit eigenem Zubehör-Inhalt nimmt es nie an, auch wenn
+  `accepts` die Vorgabe `true` liefert.
+- Ein Loslassen (`pressed() == false`) erreicht `onAction` und `ACCESSORY_ACTION` nur, wenn die Aktion gerade gehalten
+  ist; doppelte Loslassen-Pakete fallen weg.
+
+### Daten, Welt und Befehle
+- Drohnen speichern ihren GPS-Rescue-Homepoint unter `HomePoint`: `{x, y, z, dimension, game_time, source}` mit
+  `source` = `arm`, `manual`, `pilot` oder `command` ([`docs/design/home-point.md`](../design/home-point.md)).
+  `/data merge`, `modify` und `remove` prüfen ihn vor dem Ändern (andere Dimension, außerhalb der Weltgrenze, mehr als
+  64 Blöcke unter bzw. über der Welt oder ein kaputter Eintrag scheitern mit Meldung); `game_time` und `source` setzt
+  Propwash selbst. Beschichtete Drohnen speichern `Waterproof`, Zubehör-Inhalte `AccessoryContents`.
+- Zonen: Weltdaten `data/propwash/zones.dat`, Befehl `/propwash zone` ([`docs/design/zones.md`](../design/zones.md)).
+  Bestenlisten speichern additiv `assist_details` an Zeiten mit Flughilfe.
+- Block-Tags `propwash:drone_snag_web` (fängt und hält, Spinnweben), `propwash:drone_snag_string` (ruckt an den Props,
+  Stolperdraht) und `propwash:drone_snag_foliage` (bremst leicht: Ranken, Leuchtflechte, Wurzeln, Moos); gewirkt wird
+  mit der Umrissform des Blocks ([`docs/design/drone-snags.md`](../design/drone-snags.md)).
+- Bando-Karte: Item-Modifikator `propwash:bando_map` (Entdeckerkarte zum nächsten unerkundeten Bando, verwirft die Karte
+  ohne Ziel; die Beutetabellen `propwash:chests/bando` und `propwash:inject/village_cartographer` verweisen darauf),
+  Handel `propwash:cartographer/3/emerald_and_compass_bando_map` im Vanilla-Tag `#minecraft:cartographer/level_3`,
+  Bando-Karte im Tag `#minecraft:clonable_maps`. Eigene Strukturen eines Addons kartiert ein Datenpaket mit
+  `minecraft:exploration_map` und `"decoration": "propwash:bando"` ([`docs/design/bandos.md`](../design/bandos.md)).
+- Wasserdichte Drohnen ([`docs/design/waterproof-turtle.md`](../design/waterproof-turtle.md)): Item
+  `propwash:waterproof_spray` (Haltbarkeit 100, 10 je Drohne), Data Component `propwash:waterproof_coating` (Signatur
+  der Elektronik aus den Teile-IDs von Rahmen, Stack, Motor, Video und Zubehör; Teile aus Addons zählen automatisch),
+  Sonderrezept `propwash:waterproof_coating`, Welt-Regel `propwash:waterproof_drones` (Standard aus, „Arcade“ an).
+- Die Welt-Regel `propwash:crash_disarm` heißt im Spiel „Nach Absturz abschalten“ / „Disarm on crash“; ID und Wert
+  bleiben.
+
+### Schalterfunktionen, Tasten und OSD
+- Neue Schalterfunktionen vor den eigenen Befehlen: `VTX_POWER` (Taste `key.propwash.vtx_power`, F10), `TURTLE`
+  (`switches.turtle`, Taste `key.propwash.drone_turtle`, Ziffernblock 8; die Blackbox setzt dafür Betaflights
+  `FLIP_OVER_AFTER_CRASH`) und `ACCESSORY_1`–`ACCESSORY_4` (Ziffernblock 9, 0, Enter und +). `COMMAND_1…8` rücken damit
+  sechs Ordnungszahlen weiter; gespeichert wird weiter nach Namen.
+- Neue OSD-Elemente `vtx_power` und `flashback_budget`, Warnungen `vtx_hot` und `flashback_full`; eigene OSD-Layouts
+  per `OsdLayoutCodec` kennen die Schlüssel ab 0.5.2.
+
+### Umstellung
+Nichts nötig. Wer eine Halterung je Rahmen erwartet hat, prüft `FrameDefinition#accessoryMounts()` auf `FRONT`; wer
+`AccessorySlot.values()` oder `SwitchFunction.values()` durchläuft, bekommt Werte mehr. Videoteile, deren
+`vtx_power_mw` nicht ihre höchste Stufe ist, geben `vtx_levels_mw` an.
 
 ## 0.5.1 — Parts-API 1.5.0, Netzprotokoll 15 (unverändert)
 

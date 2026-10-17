@@ -24,6 +24,7 @@ public final class FlashbackBridge {
     private static @Nullable Status status;
     private static @Nullable String problem;
     private static @Nullable Handles handles;
+    private static volatile boolean replaySeen;
 
     private FlashbackBridge() {
     }
@@ -151,11 +152,31 @@ public final class FlashbackBridge {
             return false;
         }
         try {
-            return (boolean) handles().isInReplay.invoke(null);
+            boolean replay = (boolean) handles().isInReplay.invoke(null);
+            if (replay) {
+                replaySeen = true;
+            }
+            return replay;
         } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
             broken(e);
             return false;
         }
+    }
+
+    public static float editorZoom() {
+        if (!replaySeen || !ready()) {
+            return 1.0F;
+        }
+        try {
+            float zoom = type("editor.ui.ReplayUI").getField("newGlobalScale").getFloat(null);
+            return Float.isFinite(zoom) && zoom > 0.0F ? zoom : 1.0F;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            return 1.0F;
+        }
+    }
+
+    private static Class<?> type(String name) throws ClassNotFoundException {
+        return Class.forName(ROOT + name, false, FlashbackBridge.class.getClassLoader());
     }
 
     public static boolean startRecording() {
@@ -235,6 +256,54 @@ public final class FlashbackBridge {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public static int replaceCameraKeyframes(UUID replay, int sceneIndex, int trackIndex, int expected, List<PathKeyframe> keys, double eyeHeight)
+            throws FlashbackException {
+        Handles h;
+        try {
+            h = handles();
+        } catch (IllegalStateException e) {
+            throw new FlashbackException(e.getMessage(), e);
+        }
+        try {
+            Object state = h.editorGet.invoke(null, replay);
+            long stamp = (long) h.acquireWrite.invoke(state);
+            int written;
+            try {
+                List<Object> scenes = (List<Object>) h.getScenes.invoke(state, stamp);
+                if (sceneIndex < 0 || sceneIndex >= scenes.size()) {
+                    throw new FlashbackException("scene " + sceneIndex + " missing", null);
+                }
+                List<Object> tracks = (List<Object>) h.sceneTracks.get(scenes.get(sceneIndex));
+                if (trackIndex < 0 || trackIndex >= tracks.size()) {
+                    throw new FlashbackException("track " + trackIndex + " missing", null);
+                }
+                Object track = tracks.get(trackIndex);
+                if (h.trackType.get(track) != h.cameraType) {
+                    throw new FlashbackException("track " + trackIndex + " is not a camera track", null);
+                }
+                Map<Integer, Object> map = (Map<Integer, Object>) h.trackKeyframes.get(track);
+                if (map.size() != expected) {
+                    throw new FlashbackException("track changed: " + map.size() + " keyframes instead of " + expected, null);
+                }
+                map.clear();
+                for (PathKeyframe key : keys) {
+                    map.put(key.tick(), h.cameraKeyframe.newInstance(new Vector3d(key.x(), key.y() - eyeHeight, key.z()), key.yaw(), key.pitch(),
+                            key.roll(), h.smooth));
+                }
+                written = map.size();
+            } finally {
+                h.release.invoke(state, stamp);
+            }
+            h.markDirty.invoke(state);
+            h.editorReset.invoke(null);
+            return written;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            broken(e);
+            throw new FlashbackException(e.toString(), e);
+        }
+    }
+
     public static Path dataDirectory() {
         Handles h = handles;
         if (h != null && h.dataDirectory != null) {
@@ -253,7 +322,7 @@ public final class FlashbackBridge {
     }
 
     public static final class FlashbackException extends Exception {
-        public FlashbackException(String message, Throwable cause) {
+        public FlashbackException(String message, @Nullable Throwable cause) {
             super(message, cause);
         }
     }
@@ -284,6 +353,7 @@ public final class FlashbackBridge {
         Field sceneExportEnd;
         Constructor<?> trackCtor;
         Field trackKeyframes;
+        Field trackType;
         Field trackName;
         Field trackColour;
         Object cameraType;
@@ -340,6 +410,7 @@ public final class FlashbackBridge {
             h.sceneExportEnd = scene.getField("exportEndTicks");
             h.trackCtor = track.getConstructor(keyframeType);
             h.trackKeyframes = track.getField("keyframesByTick");
+            h.trackType = track.getField("keyframeType");
             h.trackName = track.getField("customName");
             h.trackColour = track.getField("customColour");
             h.cameraType = type("keyframe.types.CameraKeyframeType").getField("INSTANCE").get(null);

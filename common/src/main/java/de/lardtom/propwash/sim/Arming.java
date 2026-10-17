@@ -15,6 +15,8 @@ final class Arming {
     long landingSubsteps;
     int failsafeStage;
     int blockers;
+    boolean turtle;
+    boolean turtleDone;
     DisarmReason lastDisarmReason = DisarmReason.NONE;
 
     void reset() {
@@ -24,6 +26,8 @@ final class Arming {
         this.linkLostSubsteps = 0;
         this.landingSubsteps = 0;
         this.failsafeStage = 0;
+        this.turtle = false;
+        this.turtleDone = false;
     }
 
     static int conditions(PilotInput in, FlightControllerConfig cfg, double tiltDeg, double soc, boolean buildable,
@@ -51,6 +55,22 @@ final class Arming {
         }
         if (tiltDeg > cfg.armMaxTiltDeg && tiltDeg < 180.0 - cfg.armMaxTiltDeg) {
             mask |= ArmBlocker.TILTED.bit();
+        }
+        return mask | common(in, soc, buildable, crashCooldown, rebooting, fluid, hardwareFault);
+    }
+
+    static int conditionsTurtle(PilotInput in, FlightControllerConfig cfg, double soc, boolean buildable, boolean crashCooldown,
+                                boolean rebooting, Fluid fluid, boolean hardwareFault, boolean resting) {
+        int mask = 0;
+        if (in.mode3d) {
+            if (Math.abs(in.throttle - 0.5) > cfg.deadband3d) {
+                mask |= ArmBlocker.THROTTLE_NOT_CENTERED.bit();
+            }
+        } else if (in.throttle > cfg.armThrottleMax) {
+            mask |= ArmBlocker.THROTTLE_NOT_LOW.bit();
+        }
+        if (!resting) {
+            mask |= ArmBlocker.TURTLE_AIRBORNE.bit();
         }
         return mask | common(in, soc, buildable, crashCooldown, rebooting, fluid, hardwareFault);
     }

@@ -37,7 +37,7 @@ class OsdPresetTest {
         Set<OsdElement> expected = EnumSet.of(OsdElement.CROSSHAIR, OsdElement.BATTERY_VOLTAGE, OsdElement.FLIGHT_TIME,
                 OsdElement.LINK_QUALITY, OsdElement.VIDEO_SIGNAL, OsdElement.FLIGHT_MODE, OsdElement.WARNINGS,
                 OsdElement.LAP, OsdElement.LAP_TIME, OsdElement.RECORDING, OsdElement.LEDS_OFF, OsdElement.VTX_CHANNEL,
-                OsdElement.RELAY, OsdElement.TRICKS);
+                OsdElement.RELAY, OsdElement.TRICKS, OsdElement.FLASHBACK_BUDGET, OsdElement.VTX_POWER);
         Set<OsdElement> enabled = EnumSet.noneOf(OsdElement.class);
         for (OsdElement element : OsdElement.values()) {
             if (OsdPreset.MINIMAL.enabled(element)) {
@@ -76,10 +76,11 @@ class OsdPresetTest {
                 int col = preset.col(element);
                 int row = preset.row(element);
                 assertTrue(col >= 0 && col < OsdGrid.COLS && row >= 0 && row < OsdGrid.ROWS, preset.key() + "/" + element.key());
-                if (!preset.enabled(element) || !element.movable() || element == OsdElement.POST_FLIGHT_STATS) {
+                if (!element.movable() || element == OsdElement.POST_FLIGHT_STATS) {
                     continue;
                 }
-                assertTrue(cells.add(row * OsdGrid.COLS + col), preset.key() + ": " + element.key() + " teilt sich die Zelle " + col + "/" + row);
+                assertTrue(cells.add(row * OsdGrid.COLS + col), preset.key() + ": " + element.key() + " teilt sich die Zelle " + col + "/" + row
+                        + (preset.enabled(element) ? "" : " (Standardplatz beim Einschalten)"));
             }
         }
     }

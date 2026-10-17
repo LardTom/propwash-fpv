@@ -465,3 +465,26 @@ Entscheidung: Für Rahmen mit Ducts gilt die Kamera über den Ducts vor dem Ziel
 Kamera über den Ducts 1–9 % (Just More Parts 1.1.0: Cinewhoop 2,5″ 2,4 %, 3,5″ 13,3 %). Verworfen: Objektiv knapp über
 der Oberkante zwischen den Ducts (mehr Props im Bild, aber 27–33 % Ducts bei 0° und die Kamera passt bei z −48 nicht
 zwischen die vorderen Ducts).
+
+### 9.6 Nachtrag 11.10.2026: der eingebaute Race-Rahmen ist True-X (Propwash 0.5.0)
+
+Rückmeldung aus dem Playtest: 5″-Racer fliegen heute True-X oder nur leicht gestreckt. `race_5` hatte ein gestrecktes
+Bild (Motoren ±68,82 / ±82,58 mm), flog aber ohne eigene Arme schon immer als True-X aus dem Radstand. Der Generator
+zeichnet ihn jetzt so (±76,01 / ±76,01 mm, `layout.py` ohne `stretch`), `shape` der Definition ist `true_x`. Der
+Kamerahalter bleibt, wo er war (Objektiv 18,7 mm hoch, 51,9 mm vor der Mitte, 38° Uptilt) – die Vorderprops stehen
+7,2 mm weiter außen und 6,6 mm weiter hinten und laufen damit weiter vom Objektiv weg.
+
+| Rahmen (Preset) | Form | Kamera | Analyse vorher → nachher | im Spiel (Bild / Analyse, 1708 × 960) | im 4:3-Bereich | Zielbereich |
+|---|---|---|---|---|---|---|
+| `race_5` (RACER) | True-X 5″ (vorher Stretched) | `analog_race`, 125° | 10,97 → **6,40** | 6,36 / 6,39 | 4,77 / 4,80 | 6–10 % (True-X 5″) |
+
+Der Wert liegt am unteren Rand des True-X-Bereichs und unter dem Freestyle-Preset (8,4 %): der Racer schaut mit 38°
+statt 28° Uptilt höher über die Props hinweg, und die analoge Kamera sieht 125° statt 130°. Im Bild stehen die
+Prop-Scheiben als flache Sicheln in den unteren Ecken (`fpv_props_race.png`). Der gestreckte Race-Rahmen von Just More
+Parts (`race_5_stretched`, 9,6–12,2 %) bleibt die Wahl für mehr Prop im Bild; die Reihenfolge aus Abschnitt 6 bei
+gleichen Teilen und gleicher Kamera (Stretched > True-X > Squashed > Deadcat/H) gilt unverändert.
+
+Prüfung: `CameraOcclusionTest#builtinPresetsMatchTheRenderedFpvImage` (Racer 6,36 %), `build.RacePresetTest`
+(6–10 %), Selbsttests „drone-render: Props im FPV-Bild – Analyse gegen gerendertes Bild“ (auch 4:3) und
+„drone-render: Race-Preset – True-X im Bild und im Flugmodell“. Kein Flug-Golden ändert sich durch den Rahmen
+(Kamerapunkt, Hülle und Arme des Flugmodells sind dieselben).

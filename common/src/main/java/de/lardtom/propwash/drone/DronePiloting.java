@@ -10,6 +10,7 @@ import de.lardtom.propwash.core.event.ServerBus;
 import de.lardtom.propwash.drone.bind.BindAccess;
 import de.lardtom.propwash.drone.bind.ReceiverBinds;
 import de.lardtom.propwash.drone.net.DroneResetS2C;
+import de.lardtom.propwash.drone.net.BeeperOffC2S;
 import de.lardtom.propwash.drone.net.DroneStateC2S;
 import de.lardtom.propwash.drone.net.PilotRequestC2S;
 import de.lardtom.propwash.drone.net.StateValidation;
@@ -80,6 +81,7 @@ public final class DronePiloting {
         });
         PropwashNet.registerC2S(PilotRequestC2S.TYPE, PilotRequestC2S.CODEC, DronePiloting::onPilotRequest);
         PropwashNet.registerC2S(DroneStateC2S.TYPE, DroneStateC2S.CODEC, DronePiloting::onState);
+        PropwashNet.registerC2S(BeeperOffC2S.TYPE, BeeperOffC2S.CODEC, LocatorBeepers::onBeeperOff);
         PropwashNet.registerC2S(TuneC2S.TYPE, TuneC2S.CODEC, DronePiloting::onTune);
         PropwashNet.registerC2S(CraftNameC2S.TYPE, CraftNameC2S.CODEC, CraftNames::onCraftName);
         PropwashNet.registerC2S(CameraChargeC2S.TYPE, CameraChargeC2S.CODEC, CameraCharging::onCameraCharge);
@@ -320,10 +322,10 @@ public final class DronePiloting {
         }
     }
 
-    static void broadcastReset(QuadcopterEntity drone) {
+    static void broadcastReset(QuadcopterEntity drone, boolean home) {
         Quaternionf q = new Quaternionf(drone.orientation());
         DroneResetS2C payload = new DroneResetS2C(drone.getId(), drone.resetEpoch(), drone.getX(), drone.getY(), drone.getZ(),
-                q.x, q.y, q.z, q.w);
+                q.x, q.y, q.z, q.w, home);
         PropwashNet.sendToTrackingAndSelf(drone, payload);
         Optional<UUID> pilot = drone.pilot();
         if (pilot.isPresent() && drone.level() instanceof ServerLevel level) {
@@ -466,6 +468,7 @@ public final class DronePiloting {
         if (!drone.isFlownBy(player.getUUID()) || state.epoch() != drone.resetEpoch()) {
             return;
         }
+        drone.setBeeper(state.beeper() && drone.hasBattery() && drone.batteryCharge() > 0.0F ? player.getUUID() : null);
         long now = level.getGameTime();
         if (!drone.moveBudget().admitPacket(now)) {
             return;

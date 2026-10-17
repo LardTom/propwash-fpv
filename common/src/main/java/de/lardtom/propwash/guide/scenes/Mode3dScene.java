@@ -9,6 +9,7 @@ import de.lardtom.propwash.guide.scene.KeyToken;
 import de.lardtom.propwash.guide.scene.Scene;
 import de.lardtom.propwash.guide.scene.SceneBuilder;
 import de.lardtom.propwash.guide.scene.ScenePos;
+import de.lardtom.propwash.input.StickChannel;
 
 import static de.lardtom.propwash.guide.scenes.SceneKit.GRASS;
 import static de.lardtom.propwash.guide.scenes.SceneKit.REMOTE;
@@ -42,7 +43,7 @@ public final class Mode3dScene {
         float lift = 0.16F * DRONE_SCALE / ActorSpec.Drone.STAGE_SCALE;
         Anchor onDrone = Anchor.on(DRONE, 0.0F, lift, 0.0F);
         ScenePos tip = ConfiguratorScene.stickTip(true);
-        Anchor leftStick = Anchor.on(RADIO, tip.x(), tip.y(), tip.z());
+        Anchor leftStick = Anchor.onStick(RADIO, StickChannel.THROTTLE, tip);
         ScenePos top = ConfiguratorScene.radioPoint(0.0F, 0.9F, 0.0F);
         Anchor radioTop = Anchor.on(RADIO, top.x(), top.y(), top.z());
         return SceneBuilder.scene(ID)

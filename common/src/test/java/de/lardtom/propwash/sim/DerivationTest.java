@@ -10,6 +10,8 @@ import de.lardtom.propwash.build.VideoType;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,8 +59,8 @@ class DerivationTest {
     @Test
     void massMatchesPartsForAllCombinations() {
         List<DroneBuild> all = allCombinations();
-        assertEquals(9000, all.size());
-        assertEquals(680, buildableCombinations().size());
+        assertEquals(10800, all.size());
+        assertEquals(824, buildableCombinations().size());
         for (DroneBuild b : all) {
             assertEquals(b.totalMassGrams(), AirframeSpec.of(b).massKg * 1000.0, 1e-9);
         }
@@ -66,11 +68,11 @@ class DerivationTest {
 
     @Test
     void derivedParametersMatchTable() {
-        double[][] inertia = {{7.99, 13.63, 7.75}, {473.08, 820.75, 461.39}, {1469.5, 2398.5, 1408.6}, {1087.1, 1971.7, 1042.2},
+        double[][] inertia = {{7.99, 13.63, 7.75}, {473.08, 820.75, 461.39}, {1469.5, 2398.5, 1408.6}, {1089.6, 1976.3, 1044.6},
                 {3567.8, 5934.4, 3396.6}};
-        double[] j = {46.4, 893.5, 6346, 6365, 17304};
-        double[] kT = {2.8656e-9, 9.3169e-8, 1.0635e-6, 1.0635e-6, 2.8035e-6};
-        double[] kQ = {1.2018e-11, 1.0643e-9, 1.1002e-8, 1.1002e-8, 3.1769e-8};
+        double[] j = {46.4, 893.5, 6346, 6470, 17304};
+        double[] kT = {2.8656e-9, 9.3169e-8, 1.0635e-6, 1.0812e-6, 2.8035e-6};
+        double[] kQ = {1.2018e-11, 1.0643e-9, 1.1002e-8, 1.1919e-8, 3.1769e-8};
         double[] kt = {0.434, 2.076, 5.457, 5.134, 7.346};
         double[] rm = {233.0, 149.0, 60.7, 65.7, 75.7};
         double[] i0 = {0.105, 0.54, 1.35, 1.26, 1.35};
@@ -79,11 +81,11 @@ class DerivationTest {
         double[] icont = {13.5, 61.8, 156, 132, 44};
         double[] paux = {1.80, 3.15, 7.50, 3.00, 7.50};
         double[] vh = {5.69, 7.42, 6.29, 5.70, 5.83};
-        double[] tau = {40.0, 26.0, 12.3, 15.0, 22.6};
-        double[] bRoll = {2557, 1353, 1969, 2439, 1491};
-        double[] bPitch = {2481, 1320, 1887, 2338, 1419};
-        double[] yawStat = {231, 151, 150, 175, 93};
-        double[] yawInst = {1928, 949, 3195, 3386, 1301};
+        double[] tau = {40.0, 26.0, 12.3, 15.2, 22.6};
+        double[] bRoll = {2557, 1353, 1969, 2445, 1491};
+        double[] bPitch = {2481, 1320, 1887, 2344, 1419};
+        double[] yawStat = {231, 151, 150, 187, 93};
+        double[] yawInst = {1928, 949, 3195, 3377, 1301};
         double[] com = {0.7, 10.3, 22.0, -4.2, 28.5};
         double[] ym = {9.3, 1.7, -7.0, 18.7, -13.5};
         for (int k = 0; k < PRESETS.length; k++) {
@@ -115,22 +117,22 @@ class DerivationTest {
 
     @Test
     void stationaryValuesMatchCalibrationTable() {
-        double[][] hoverStick = {{47.8, 55.0}, {32.2, 36.4}, {20.6, 23.4}, {16.7, 19.2}, {22.8, 27.7}};
-        double[] hoverRpm = {43669, 24463, 10509, 9511, 8216};
-        double[] hoverCurrent = {3.54, 5.16, 5.19, 4.03, 6.47};
-        double[] maxThrust = {22, 335, 1397, 1430, 1227};
-        double[] tw = {3.18, 4.67, 10.64, 13.30, 5.80};
-        double[] fullRpm = {77915, 52868, 34284, 34683, 19785};
-        double[] fullCurrent = {10.6, 67.4, 115.6, 124.7, 84.3};
-        double[] fullCell = {4.00, 3.48, 3.54, 3.43, 2.79};
-        double[] topAcro = {47.2, 89, 140, 168, 108};
-        double[] topTilt = {59.3, 62.8, 71.0, 73.4, 54.3};
-        double[] topAngle = {47.2, 84, 108, 120, 108};
-        double[] hoverTime = {3.90, 5.57, 11.09, 12.11, 28.46};
-        double[] cruiseTime = {3.71, 5.15, 7.93, 8.58, 18.10};
-        double[] mixedTime = {2.81, 4.11, 5.67, 3.12, 15.04};
-        double[] aggressiveTime = {2.34, 2.68, 4.07, 2.38, 9.70};
-        double[] tauPhys = {50.5, 26.0, 12.3, 15.0, 22.6};
+        double[][] hoverStick = {{47.8, 55.0}, {32.2, 36.4}, {20.6, 23.4}, {16.6, 19.0}, {22.8, 27.7}};
+        double[] hoverRpm = {43669, 24463, 10509, 9438, 8216};
+        double[] hoverCurrent = {3.54, 5.16, 5.19, 4.13, 6.47};
+        double[] maxThrust = {22, 335, 1397, 1407, 1227};
+        double[] tw = {3.18, 4.67, 10.64, 13.07, 5.80};
+        double[] fullRpm = {77915, 52868, 34284, 34119, 19785};
+        double[] fullCurrent = {10.6, 67.4, 115.6, 130.3, 84.3};
+        double[] fullCell = {4.00, 3.48, 3.54, 3.40, 2.79};
+        double[] topAcro = {47.2, 89, 140, 147, 108};
+        double[] topTilt = {59.3, 62.8, 71.0, 67.8, 54.3};
+        double[] topAngle = {47.2, 84, 108, 123, 108};
+        double[] hoverTime = {3.90, 5.57, 11.09, 11.80, 28.46};
+        double[] cruiseTime = {3.71, 5.15, 7.93, 7.81, 18.10};
+        double[] mixedTime = {2.81, 4.11, 5.67, 2.92, 15.04};
+        double[] aggressiveTime = {2.34, 2.68, 4.07, 2.24, 9.70};
+        double[] tauPhys = {50.5, 26.0, 12.3, 15.2, 22.6};
         for (int k = 0; k < PRESETS.length; k++) {
             DroneBuild b = PRESETS[k];
             AirframeSpec p = AirframeSpec.of(b);
@@ -162,7 +164,7 @@ class DerivationTest {
     @Tag("slow")
     @Test
     void allCombinationsYieldFiniteParametersAndAnalysis() {
-        long start = System.nanoTime();
+        long start = cpuNanos();
         for (DroneBuild b : allCombinations()) {
             AirframeSpec p = AirframeSpec.of(b);
             double[] values = {p.massKg, p.inertiaXx, p.inertiaYy, p.inertiaZz, p.kt, p.rotorInertiaEff, p.omegaMax, p.hoverOmega,
@@ -188,13 +190,18 @@ class DerivationTest {
             PidProfile pid = PidAutoTune.derive(p, new FilterSettings(), new PidProfile());
             assertTrue(Double.isFinite(pid.roll.p + pid.pitch.d + pid.yaw.i + pid.tpaBreakpoint), b.toString());
         }
-        double seconds = (System.nanoTime() - start) * 1e-9;
-        assertTrue(seconds < 45.0, "took " + seconds);
+        double seconds = (cpuNanos() - start) * 1e-9;
+        assertTrue(seconds < 45.0, "took " + seconds + " s CPU");
+    }
+
+    private static long cpuNanos() {
+        ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+        return threads.isCurrentThreadCpuTimeSupported() ? threads.getCurrentThreadCpuTime() : System.nanoTime();
     }
 
     @Test
     void autoTunedPidsMatchTable() {
-        double[][] roll = {{21, 17, 52}, {60, 71, 95}, {42, 49, 31}, {34, 40, 31}, {55, 65, 75}};
+        double[][] roll = {{21, 17, 52}, {60, 71, 95}, {42, 49, 31}, {33, 39, 31}, {55, 65, 75}};
         double[][] pitch = {{22, 17, 53}, {62, 73, 97}, {43, 51, 32}, {35, 41, 32}, {58, 68, 79}};
         double[][] yaw = {{57, 74}, {145, 190}, {51, 67}, {48, 63}, {126, 165}};
         double[] angle = {71, 107, 107, 107, 107};

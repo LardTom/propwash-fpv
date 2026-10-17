@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,8 +51,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class PartJsonTest {
     private static final String SNAPSHOT = "de/lardtom/propwash/build/builtin_definitions.txt";
-    private static final Set<String> ADDED_AFTER_032 = Set.of("gripper", "action_cam_flashback", "creative_fc");
-    private static final List<String> NEUTRAL_ADDITIONS = List.of(", rarity=Optional.empty]", ", reverseThrust=OptionalDouble.empty]");
+    private static final Set<String> ADDED_AFTER_032 = Set.of("gripper", "action_cam_flashback", "creative_fc", "p51_29_3b");
+    private static final List<String> NEUTRAL_ADDITIONS = List.of(", rarity=Optional.empty]", ", reverseThrust=OptionalDouble.empty]", ", FRONT]");
+    private static final Pattern FRONT_ANCHOR = Pattern.compile(", FRONT=AnchorSpec\\[[^\\]]*\\]");
 
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath("justmoreparts", path);
@@ -115,7 +117,7 @@ class PartJsonTest {
         for (String addition : NEUTRAL_ADDITIONS) {
             out = out.replace(addition, "]");
         }
-        return out;
+        return FRONT_ANCHOR.matcher(out).replaceAll("");
     }
 
     @Test

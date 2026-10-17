@@ -113,10 +113,12 @@ final class BandoWorldTests {
     static void register() {
         SelfTest.afterLeaveStep("bando: Welt ohne Bauwerke anlegen (generate-structures aus)", 2400, ctx -> createWorld(ctx, WORLD_OFF, false));
         SelfTest.afterLeaveStep("bando: ohne Bauwerke entsteht kein Bando und /locate findet nichts", 2400, BandoWorldTests::noStructuresStep);
+        BandoMapTests.registerWithoutStructures();
         SelfTest.afterLeaveStep("bando: Chunk-Erzeugung ohne Bauwerke gemessen", 12000, BandoWorldTests::timingWithout);
         SelfTest.afterLeaveStep("bando: Welt ohne Bauwerke verlassen", 1200, BandoWorldTests::leaveStep);
         SelfTest.afterLeaveStep("bando: Welt mit Bauwerken anlegen", 2400, ctx -> createWorld(ctx, WORLD_ON, true));
         SelfTest.afterLeaveStep("bando: /locate structure #propwash:bandos und jede Familie", 4800, BandoWorldTests::locateStep);
+        BandoMapTests.registerWithStructures();
         SelfTest.afterLeaveStep("bando: Chunk-Erzeugung mit Bauwerken gemessen (gleiche Chunks)", 12000, BandoWorldTests::timingWith);
         SelfTest.afterLeaveStep("bando: jede Familie in der echten Welt vollständig erzeugt", 20 * 60 * 4, new VisitTour()::tick);
         BandoPlacementTests.register();

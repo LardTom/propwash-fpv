@@ -1,6 +1,7 @@
 package de.lardtom.propwash.client;
 
 import de.lardtom.propwash.PropwashCommon;
+import de.lardtom.propwash.accessory.client.AccessoryClient;
 import de.lardtom.propwash.apiimpl.client.ApiClient;
 import de.lardtom.propwash.audio.client.AudioClient;
 import de.lardtom.propwash.bando.client.BandoClient;
@@ -23,6 +24,7 @@ import de.lardtom.propwash.parts.client.PartsClient;
 import de.lardtom.propwash.trick.client.TrickClient;
 import de.lardtom.propwash.ui.client.UiClient;
 import de.lardtom.propwash.video.client.VideoClient;
+import de.lardtom.propwash.zone.client.ZoneClient;
 
 public final class PropwashClient {
     private static boolean initialized;
@@ -43,6 +45,7 @@ public final class PropwashClient {
         RaceClient.init();
         BandoClient.init();
         ServerClient.init();
+        ZoneClient.init();
         RescueClient.init();
         InputClient.init();
         VideoClient.init();
@@ -52,6 +55,7 @@ public final class PropwashClient {
         TrickClient.init();
         BlackboxClient.init();
         InteractClient.init();
+        AccessoryClient.init();
         CreativeClient.init();
         OsdClient.init();
         GuideClient.init();

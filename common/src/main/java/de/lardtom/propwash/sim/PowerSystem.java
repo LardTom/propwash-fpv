@@ -17,17 +17,22 @@ final class PowerSystem {
     final int[] mode = new int[AirframeSpec.MOTORS];
     final double[] inputCurrent = new double[AirframeSpec.MOTORS];
     final double[] loadScale = {1.0, 1.0, 1.0, 1.0};
+    final double[] snagLoad = {1.0, 1.0, 1.0, 1.0};
+    final double[] fluidLoad = {1.0, 1.0, 1.0, 1.0};
     final double[] driveSign = {1.0, 1.0, 1.0, 1.0};
     double batteryResistanceScale = 1.0;
     boolean reversible;
 
     private AirframeSpec p;
     private double polarizationCoeff;
+    private double fastCoeff;
     private double heatCoeff;
 
     double soc = 1.0;
     double mAhUsed;
     double polarization;
+    double fastPolarization;
+    double resistanceSoc = 1.0;
     double lastBatteryCurrent;
     double heatCurrent;
     double lastBusVoltage;
@@ -46,6 +51,7 @@ final class PowerSystem {
     void configure(AirframeSpec params, double h) {
         this.p = params;
         this.polarizationCoeff = 1.0 - StrictMath.exp(-h / ModelConstants.POL_TAU);
+        this.fastCoeff = 1.0 - StrictMath.exp(-h / ModelConstants.SAG_FAST_TAU);
         this.heatCoeff = 1.0 - StrictMath.exp(-h / ModelConstants.C_RATE_TAU);
         for (int i = 0; i < AirframeSpec.MOTORS; i++) {
             this.resistance[i] = params.phaseResistance;
@@ -57,6 +63,8 @@ final class PowerSystem {
         this.soc = c;
         this.mAhUsed = (1.0 - c) * this.p.capacityMah;
         this.polarization = 0.0;
+        this.fastPolarization = 0.0;
+        this.resistanceSoc = c;
         this.lastBatteryCurrent = 0.0;
         this.heatCurrent = 0.0;
         this.emf = OperatingPoints.emf(this.p, this.soc);
@@ -66,6 +74,11 @@ final class PowerSystem {
         this.packSoc = c;
         this.packMah = (1.0 - c) * this.p.capacityMah;
         this.packCurrent = 0.0;
+    }
+
+    void keepCharge() {
+        this.mAhUsed = (1.0 - this.soc) * this.p.capacityMah;
+        this.packMah = (1.0 - this.packSoc) * this.p.capacityMah;
     }
 
     void stopRotors() {
@@ -79,6 +92,10 @@ final class PowerSystem {
             this.inputCurrent[i] = 0.0;
             this.driveSign[i] = 1.0;
         }
+    }
+
+    double transientVoltage() {
+        return this.polarization + this.fastPolarization;
     }
 
     static double restingSoc(double soc, boolean sag) {
@@ -95,8 +112,10 @@ final class PowerSystem {
 
     void solveBus(double[] duty, boolean active, boolean sag) {
         AirframeSpec params = this.p;
-        double e = OperatingPoints.emf(params, restingSoc(this.soc, sag)) - (this.stiffBus ? 0.0 : this.polarization);
-        double rInt = this.stiffBus ? 0.0 : OperatingPoints.internalResistance(params, this.heatCurrent, this.soc) * this.batteryResistanceScale;
+        this.resistanceSoc = restingSoc(this.soc, sag);
+        double e = OperatingPoints.emf(params, this.resistanceSoc) - (this.stiffBus ? 0.0 : this.transientVoltage());
+        double rInt = this.stiffBus ? 0.0
+                : OperatingPoints.internalResistance(params, this.heatCurrent, this.resistanceSoc) * this.batteryResistanceScale;
         this.emf = e;
         this.internalResistance = rInt;
         double aux = params.auxPower / Math.max(this.lastBusVoltage, 1.0);
@@ -247,7 +266,10 @@ final class PowerSystem {
         double omegaMax = params.omegaMax;
         for (int i = 0; i < AirframeSpec.MOTORS; i++) {
             double w = this.omega[i];
-            double fq = RotorAero.torqueFactor(lambda[i]) * this.loadScale[i];
+            double fq = RotorAero.torqueFactor(lambda[i]) * this.loadScale[i] * this.fluidLoad[i];
+            if (this.snagLoad[i] != 1.0) {
+                fq *= this.snagLoad[i];
+            }
             double q = kq * fq * w * w;
             double shaft;
             double slope;
@@ -288,7 +310,10 @@ final class PowerSystem {
             double w = this.omega[i];
             double aw = Math.abs(w);
             double kqDir = w < 0.0 ? kq * params.reverseTorque : kq;
-            double fq = RotorAero.torqueFactor(lambda[i]) * this.loadScale[i];
+            double fq = RotorAero.torqueFactor(lambda[i]) * this.loadScale[i] * this.fluidLoad[i];
+            if (this.snagLoad[i] != 1.0) {
+                fq *= this.snagLoad[i];
+            }
             double q = (w < 0.0 ? -1.0 : 1.0) * kqDir * fq * aw * aw;
             double shaft;
             double slope;
@@ -337,7 +362,10 @@ final class PowerSystem {
         if (!infinite) {
             this.soc = Math.max(ModelConstants.SOC_MIN, 1.0 - this.mAhUsed / this.p.capacityMah);
         }
-        this.polarization += (this.p.polarizationResistance * this.batteryCurrent - this.polarization) * this.polarizationCoeff;
+        this.fastPolarization += (OperatingPoints.fastResistance(this.p, this.resistanceSoc) * this.batteryResistanceScale * this.batteryCurrent
+                - this.fastPolarization) * this.fastCoeff;
+        this.polarization += (OperatingPoints.slowResistance(this.p, this.resistanceSoc) * this.batteryCurrent - this.polarization)
+                * this.polarizationCoeff;
         this.heatCurrent += (Math.abs(this.batteryCurrent) - this.heatCurrent) * this.heatCoeff;
         this.lastBatteryCurrent = this.batteryCurrent;
         this.lastBusVoltage = this.busVoltage;
@@ -362,8 +390,9 @@ final class PowerSystem {
 
     void forceBatteryCurrent(double amps, double h, boolean sag, boolean infinite) {
         AirframeSpec params = this.p;
-        double e = OperatingPoints.emf(params, restingSoc(this.soc, sag)) - this.polarization;
-        double rInt = OperatingPoints.internalResistance(params, amps, this.soc) * this.batteryResistanceScale;
+        this.resistanceSoc = restingSoc(this.soc, sag);
+        double e = OperatingPoints.emf(params, this.resistanceSoc) - this.transientVoltage();
+        double rInt = OperatingPoints.internalResistance(params, amps, this.resistanceSoc) * this.batteryResistanceScale;
         this.emf = e;
         this.internalResistance = rInt;
         this.batteryCurrent = amps;

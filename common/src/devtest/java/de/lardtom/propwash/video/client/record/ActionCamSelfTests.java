@@ -25,6 +25,8 @@ import de.lardtom.propwash.osd.OsdElement;
 import de.lardtom.propwash.osd.client.OsdHud;
 import de.lardtom.propwash.ui.client.config.ConfigTabHost;
 import de.lardtom.propwash.ui.client.theme.ThemedToast;
+import de.lardtom.propwash.video.FisheyeLens;
+import de.lardtom.propwash.video.client.FpvLens;
 import de.lardtom.propwash.video.record.CameraLook;
 import de.lardtom.propwash.video.record.ClipInfo;
 import de.lardtom.propwash.video.record.FrameStats;
@@ -61,6 +63,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -89,6 +92,8 @@ public final class ActionCamSelfTests {
         SelfTest.clientStep("video: Action-Cam nimmt 3 Sekunden als MP4 auf", 2400, ActionCamSelfTests::recordStep);
         SelfTest.clientStep("video: Aufnahmen-Liste zeigt das Video mit Vorschaubild und löscht es", 400, ActionCamSelfTests::recordingsStep);
         SelfTest.clientStep("video: Kamera-Akku der Heavy sinkt beim Aufnehmen", 200, ActionCamSelfTests::drainStep);
+        SelfTest.clientStep("video: Action-Cam mit Fisheye-Objektiv – gleicher Ausschnitt wie flach, Aufnahme läuft weiter", 1200,
+                ActionCamSelfTests::fisheyeStep);
         SelfTest.clientStep("video: Heavy-Cam lädt abgestellt per USB aus dem Flugakku", 400, ActionCamSelfTests::usbStep);
         SelfTest.afterLeaveStep("video: Action-Cam nach dem Verlassen aufgeräumt", 200, ActionCamSelfTests::afterLeaveStep);
     }
@@ -439,6 +444,121 @@ public final class ActionCamSelfTests {
             return StepResult.pass();
         }
         return ctx.tick() > 160 ? StepResult.fail("Kamera-Akku auf dem Server nicht gesunken: " + charge) : StepResult.pending();
+    }
+
+    private static StepResult fisheyeStep(SelfTest.StepContext ctx) {
+        Minecraft minecraft = Minecraft.getInstance();
+        ActionCamRecorder recorder = ActionCamRecorder.INSTANCE;
+        Map<String, Object> state = ctx.state();
+        int phase = (int) state.getOrDefault(PHASE, 0);
+        switch (phase) {
+            case 0 -> {
+                FpvLens.INSTANCE.testStrength(0);
+                recorder.overrideFormat(TEST_FORMAT);
+                ActionCamRecorder.Result result = recorder.start(minecraft, false);
+                if (result != ActionCamRecorder.Result.STARTED) {
+                    return fisheyeDone(StepResult.fail("Aufnahme startet nicht: " + result));
+                }
+                state.put(PHASE, 1);
+                return StepResult.pending();
+            }
+            case 1 -> {
+                if (recorder.phase() != ActionCamRecorder.Phase.RECORDING) {
+                    return fisheyeDone(StepResult.fail("Aufnahme endete vorzeitig: " + recorder.lastError()));
+                }
+                if (recorder.recordedNanos() < 800_000_000L) {
+                    return ctx.tick() > 600 ? fisheyeDone(StepResult.fail("Aufnahmezeit läuft nicht")) : StepResult.pending();
+                }
+                state.put("flat", recorder.lastTangents());
+                state.put("frames", recorder.capturedFrames());
+                state.put("since", ctx.tick());
+                FpvLens.INSTANCE.testStrength(FisheyeLens.DEFAULT_PERCENT);
+                state.put(PHASE, 2);
+                return StepResult.pending();
+            }
+            case 2 -> {
+                if (ctx.tick() - (int) state.get("since") < 25 || FpvLens.INSTANCE.rendered() == null) {
+                    return ctx.tick() - (int) state.get("since") > 200 ? fisheyeDone(StepResult.fail("Fisheye wird nicht aktiv")) : StepResult.pending();
+                }
+                float[] flat = (float[]) state.get("flat");
+                float[] fish = recorder.lastTangents();
+                long frames = recorder.capturedFrames() - (long) state.get("frames");
+                ctx.log(String.format(Locale.ROOT, "Action-Cam: Ausschnitt flach %.4f × %.4f aus %.4f, mit Fisheye %d %% %.4f × %.4f aus %.4f, %d Bilder mit Fisheye",
+                        flat[0], flat[1], flat[2], FisheyeLens.DEFAULT_PERCENT, fish[0], fish[1], fish[2], frames));
+                if (Math.abs(fish[0] / flat[0] - 1.0F) > 0.01F || Math.abs(fish[1] / flat[1] - 1.0F) > 0.01F) {
+                    return fisheyeDone(StepResult.fail("Ausschnitt der Aufnahme ändert sich mit dem Objektiv"));
+                }
+                if (fish[2] < flat[2] * 1.1F) {
+                    return fisheyeDone(StepResult.fail("Quelle mit Fisheye nicht breiter gerendert: " + fish[2] + " gegen " + flat[2]));
+                }
+                if (frames < 5) {
+                    return fisheyeDone(StepResult.fail("mit Fisheye nur " + frames + " Bilder aufgenommen"));
+                }
+                state.put("fisheye", fish);
+                state.put("frames", recorder.capturedFrames());
+                state.put("since", ctx.tick());
+                FpvLens.INSTANCE.testStrength(FisheyeLens.MAX_PERCENT);
+                state.put(PHASE, 4);
+                return StepResult.pending();
+            }
+            case 4 -> {
+                FisheyeLens rendered = FpvLens.INSTANCE.rendered();
+                if (ctx.tick() - (int) state.get("since") < 25 || rendered == null || rendered.percent() != FisheyeLens.MAX_PERCENT) {
+                    return ctx.tick() - (int) state.get("since") > 200 ? fisheyeDone(StepResult.fail("Fisheye 100 % wird nicht aktiv"))
+                            : StepResult.pending();
+                }
+                float[] flat = (float[]) state.get("flat");
+                float[] middle = (float[]) state.get("fisheye");
+                float[] strong = recorder.lastTangents();
+                long frames = recorder.capturedFrames() - (long) state.get("frames");
+                recorder.stop(minecraft, ActionCamRecorder.StopReason.USER);
+                ctx.log(String.format(Locale.ROOT, "Action-Cam: mit Fisheye 100 %% Ausschnitt %.4f × %.4f aus %.4f, %d Bilder", strong[0], strong[1], strong[2],
+                        frames));
+                if (Math.abs(strong[0] / flat[0] - 1.0F) > 0.01F || Math.abs(strong[1] / flat[1] - 1.0F) > 0.01F) {
+                    return fisheyeDone(StepResult.fail("Ausschnitt der Aufnahme ändert sich mit der Stärke des Objektivs"));
+                }
+                if (strong[2] < middle[2] * 1.05F) {
+                    return fisheyeDone(StepResult.fail("Quelle mit 100 % nicht breiter als mit " + FisheyeLens.DEFAULT_PERCENT + " %: " + strong[2]
+                            + " gegen " + middle[2]));
+                }
+                if (frames < 5) {
+                    return fisheyeDone(StepResult.fail("mit Fisheye 100 % nur " + frames + " Bilder aufgenommen"));
+                }
+                state.put(PHASE, 3);
+                return StepResult.pending();
+            }
+            default -> {
+                if (recorder.phase() != ActionCamRecorder.Phase.IDLE || !recorder.saving().isEmpty()) {
+                    return ctx.tick() > 1100 ? fisheyeDone(StepResult.fail("Speichern hängt")) : StepResult.pending();
+                }
+                Path file = recorder.lastSaved();
+                if (file == null) {
+                    return fisheyeDone(StepResult.fail("kein Video gespeichert: " + recorder.lastError()));
+                }
+                try {
+                    Mp4Info info = Mp4Reader.read(file);
+                    ctx.log("MP4 mit Fisheye: " + info.width() + "x" + info.height() + ", " + info.sampleCount() + " Bilder");
+                    if (info.sampleCount() < 10) {
+                        return fisheyeDone(StepResult.fail("MP4 mit nur " + info.sampleCount() + " Bildern"));
+                    }
+                    Files.deleteIfExists(file);
+                    Files.deleteIfExists(RecordingLibrary.thumbnailOf(file));
+                } catch (IOException e) {
+                    return fisheyeDone(StepResult.fail("MP4: " + e.getMessage()));
+                }
+                return fisheyeDone(StepResult.pass());
+            }
+        }
+    }
+
+    private static StepResult fisheyeDone(StepResult result) {
+        FpvLens.INSTANCE.testStrength(0);
+        ActionCamRecorder recorder = ActionCamRecorder.INSTANCE;
+        if (recorder.phase() == ActionCamRecorder.Phase.RECORDING) {
+            recorder.stop(Minecraft.getInstance(), ActionCamRecorder.StopReason.USER);
+        }
+        recorder.overrideFormat(null);
+        return result;
     }
 
     private static StepResult usbStep(SelfTest.StepContext ctx) {

@@ -31,6 +31,7 @@ Erzeugt von `tools/data/survival.py` – nicht von Hand bearbeiten. Begründung 
 | pw:p3_3b | 4 | `·K·` / `KNK` | K = dried_kelp, N = iron_nugget | dried_kelp, iron_nugget, jedes Propwash-Item |
 | pw:p51_3b | 4 | `K·K` / `·N·` / `·K·` | K = dried_kelp, N = iron_nugget | dried_kelp, iron_nugget, jedes Propwash-Item |
 | pw:p7_2b | 4 | `K··` / `·C·` / `··K` | K = dried_kelp, C = pw:carbon_plate | dried_kelp, pw:carbon_plate, jedes Propwash-Item |
+| pw:p51_29_3b | 4 | `K·K` / `·G·` / `·K·` | K = dried_kelp, G = gold_nugget | dried_kelp, gold_nugget, jedes Propwash-Item |
 | pw:b1s_300_hv | 1 | formlos | pw:lipo_cell, redstone, copper_nugget | pw:lipo_cell, redstone, copper_nugget, jedes Propwash-Item |
 | pw:b4s_650 | 1 | `LL` / `LL` / `NR` | L = pw:lipo_cell, N = copper_nugget, R = redstone | pw:lipo_cell, copper_nugget, redstone, jedes Propwash-Item |
 | pw:b6s_1100 | 1 | `LLL` / `LLL` / `NGN` | L = pw:lipo_cell, N = copper_nugget, G = gold_ingot | pw:lipo_cell, copper_nugget, gold_ingot, jedes Propwash-Item |
@@ -59,6 +60,7 @@ Erzeugt von `tools/data/survival.py` – nicht von Hand bearbeiten. Begründung 
 | pw:dive_cube | 1 | `BGB` / `B·B` / `BBB` | B = iron_bars, G = glowstone_dust | iron_bars, glowstone_dust, jedes Propwash-Item |
 | pw:freeform_gate | 1 | `GRG` / `R·R` / `GRG` | G = glowstone_dust, R = redstone | glowstone_dust, redstone, jedes Propwash-Item |
 | pw:course_tool | 1 | `R` / `P` / `S` | R = redstone, P = paper, S = stick | redstone, paper, stick, jedes Propwash-Item |
+| pw:waterproof_spray | 1 | `·N·` / `NHN` / `NRN` | N = iron_nugget, H = honeycomb, R = resin_clump | iron_nugget, honeycomb, resin_clump, jedes Propwash-Item |
 | pw:signal_repeater | 2 | `·A·` / `LBL` / `·I·` | A = lightning_rod, L = pw:copper_coil, B = pw:circuit_board, I = iron_ingot | lightning_rod, pw:copper_coil, pw:circuit_board, iron_ingot, jedes Propwash-Item |
 
 ## Sonderrezepte
@@ -68,6 +70,7 @@ Berechnet im Code, ohne Eintrag im Rezeptbuch und ohne Freischaltung.
 | Rezept | Typ | Klasse | Wirkung |
 |---|---|---|---|
 | pw:special/prop_repair | pw:prop_repair | `content.PropRepairRecipe` | zwei beschädigte Props derselben Sorte im 2×2- oder 3×3-Raster → ein Prop, Zustand addiert + 5 %, höchstens 100 %, Komponenten vom ersten; dasselbe am Schleifstein (`mixin.content.GrindstoneMenuMixin`) |
+| pw:special/waterproof_coating | pw:waterproof_coating | `drone.coating.WaterproofCoatingRecipe` | Drohne ohne Beschichtung + Wasserschutz-Spray im Raster → dieselbe Drohne wasserdicht beschichtet; das Spray bleibt mit 10 Haltbarkeit weniger im Raster (nach zehn Drohnen leer) |
 
 ## Truhen-Beute
 
@@ -105,12 +108,13 @@ Truhen: `chests/village/village_toolsmith`
 | pw:led_strip | 1 | 2.9 % |
 | pw:battery_charger | 1 | 1.0 % |
 
-### `pw:inject/village_cartographer` – Fundchance 42 %
+### `pw:inject/village_cartographer` – Fundchance 53 %
 
 Truhen: `chests/village/village_cartographer`
 
 | Item | Anzahl | Chance |
 |---|---|---|
+| pw:bando_map (Bando-Karte zum nächsten unerkundeten Bando, ohne Bauwerke nichts) | 1 | 11.7 % |
 | pw:analog_nano | 1 | 11.7 % |
 | pw:circuit_board | 1–2 | 9.7 % |
 | pw:carbon_plate | 1–2 | 7.8 % |

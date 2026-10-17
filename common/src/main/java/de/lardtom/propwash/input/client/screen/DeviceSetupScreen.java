@@ -1,8 +1,10 @@
 package de.lardtom.propwash.input.client.screen;
 
 import de.lardtom.propwash.input.SetupPrompts;
+import de.lardtom.propwash.input.StickMode;
 import de.lardtom.propwash.input.client.DeviceInfo;
 import de.lardtom.propwash.input.client.DeviceOnboarding;
+import de.lardtom.propwash.input.client.StickModes;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
@@ -58,7 +60,11 @@ public final class DeviceSetupScreen extends Screen implements ThemedScreen {
     }
 
     private Component explanation() {
-        return Component.translatable(this.device.gamepadByDefault() ? "propwash.input.setup.prefill_gamepad" : "propwash.input.setup.prefill_radio");
+        if (this.device.gamepadByDefault()) {
+            StickMode mode = StickModes.current();
+            return Component.translatable("propwash.input.setup.prefill_gamepad", StickModes.name(mode), StickModes.layout(mode));
+        }
+        return Component.translatable("propwash.input.setup.prefill_radio");
     }
 
     private Component hint() {

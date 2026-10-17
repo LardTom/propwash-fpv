@@ -11,10 +11,12 @@ import de.lardtom.propwash.api.part.PropDefinition;
 import de.lardtom.propwash.api.part.PropMaterial;
 import de.lardtom.propwash.api.part.StackDefinition;
 import de.lardtom.propwash.api.part.VideoDefinition;
+import de.lardtom.propwash.api.part.VideoLink;
 import de.lardtom.propwash.build.PartInfo;
 import de.lardtom.propwash.build.PartNames;
 import de.lardtom.propwash.sim.PropFailure;
 import de.lardtom.propwash.video.FovMath;
+import de.lardtom.propwash.video.vtx.VtxTable;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 
@@ -98,8 +100,11 @@ public final class PartDataLines {
 
     private static void video(VideoDefinition video, Consumer<Component> out) {
         out.accept(line("camera_fov", Component.translatable(PartTooltips.PREFIX_UNIT + "degrees", Numbers.of(FovMath.declaredHorizontalDegrees(video), 0))));
-        if (video.vtxPowerMw() > 0) {
-            out.accept(line("vtx_power", Component.translatable(PREFIX + "milliwatts", video.vtxPowerMw())));
+        VtxTable table = VtxTable.of(video.link() == VideoLink.DIGITAL, video.vtxPowerMw(), video.vtxLevelsMw(), 1.0, video.basics().massGrams());
+        if (table.count() > 1) {
+            out.accept(line("vtx_power", Component.translatable(PREFIX + "vtx_levels", table.minMw(), table.maxMw(), table.ratedMw())));
+        } else {
+            out.accept(line("vtx_power", Component.translatable(PREFIX + "milliwatts", table.ratedMw())));
         }
     }
 

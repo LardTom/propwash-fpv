@@ -75,6 +75,7 @@ die eigene Drohne im Schattenpass ganz weglassen (einfacher, aber unrealistisch,
 | Effekt | Verhalten mit Shaderpack | Wo |
 |---|---|---|
 | Video-Effekt (Rauschen, Bildstörung, 4:3-Ränder) | Ersatz-Overlay im HUD statt Post-Pass, OSD und Ränder unverändert | `VideoPass#overlayReason`, `docs/design/image-format.md` |
+| Fisheye-Objektiv (seit 0.5.2, Stärke per Regler) | wirkt auch mit Shaderpack: entzerrt das fertige Bild des Packs am Hook nach `applyPostEffects` (geprüft mit Complementary Reimagined r5.9.3 bei 80 %, Marken im Median unter 1 px an der berechneten Stelle; andere Stärken laufen durch denselben Pass) | `VideoPass`, `docs/design/fisheye-lens.md` |
 | FPV-Scheinwerfer (LED-Streifen) | Aufhell-Kegel in der Bildmitte ohne Tiefe; schwebend und mit wenig Uptilt hellt er eher den Himmel am Horizont auf | `docs/design/led-strip.md` „Grenze mit Shaderpacks“ |
 | Nahebene im FPV | bleibt 50 mm (Packs rechnen mit der Vanilla-Nahebene) | `docs/design/fpv-eye-clearance.md` |
 | Prop-Scheiben (eigene Pipelines) | Iris-Programm `ENTITIES_TRANSLUCENT`, Schatten `SHADOW_ENTITIES` | `AfterWaterRenderTypes`, `IrisCompat.assignPipeline` |

@@ -87,6 +87,7 @@ public final class InteractSelfTests {
     private static final double COW_AHEAD = 3.5;
     private static final double WALL_AHEAD = 3.0;
     private static final double SIDESTEP = 2.0;
+    private static final double LAND_SIDESTEP = GripperSpec.REGRAB_DISTANCE + 1.5;
     static final double HOVER_HEIGHT = 0.5;
     private static final double HOLD_GAIN = 0.3;
     private static final double HOLD_DAMPING = 0.1;
@@ -115,6 +116,11 @@ public final class InteractSelfTests {
     private static final AtomicInteger COW_ID = new AtomicInteger(-1);
     static final AtomicReference<int @Nullable []> ARENA = new AtomicReference<>();
     static final AtomicReference<String> SERVER_REPORT = new AtomicReference<>("");
+    private static final AtomicReference<Vec3> SHIFT_TARGET = new AtomicReference<>();
+    private static final String SHIFT_RETRIES = "shiftRetries";
+    private static final int SHIFT_RETRY_TICKS = 40;
+    private static final int MAX_SHIFT_RETRIES = 3;
+    private static final double SHIFT_TOLERANCE = 0.5;
     private static final AtomicReference<CargoReleaseReason> RELEASED = new AtomicReference<>();
     private static final List<Strike> STRIKES = new CopyOnWriteArrayList<>();
     private static volatile double hoverTarget = HOVER_HEIGHT;
@@ -527,6 +533,11 @@ public final class InteractSelfTests {
                 StepResult result = shot(ctx, "drone_gripper_carry");
                 if (result.status() != StepResult.Status.PENDING) {
                     hoverTarget = HOVER_HEIGHT;
+                    ctx.onServer(server -> {
+                        ServerPlayer player = player(server);
+                        Vec3 start = start(ARENA.get());
+                        player.teleportTo(player.level(), start.x - PLAYER_BACK, ARENA.get()[1], start.z - 1.5, Set.of(), FACING_YAW, 10.0F, true);
+                    });
                 }
                 return result;
             }
@@ -604,9 +615,11 @@ public final class InteractSelfTests {
             case 0 -> {
                 hover(session);
                 RELEASED.set(null);
+                SHIFT_TARGET.set(null);
                 ctx.state().put(FUTURE, ctx.onServer(server -> {
                     QuadcopterEntity serverDrone = serverDrone(server);
-                    shift(serverDrone, SIDESTEP);
+                    shift(serverDrone, LAND_SIDESTEP);
+                    SHIFT_TARGET.set(serverDrone.position());
                     spawnItems(serverDrone, new ItemStack(Items.GOLD_INGOT, GOLD), 0.0);
                 }));
                 next(ctx);
@@ -614,8 +627,25 @@ public final class InteractSelfTests {
             }
             case 1 -> {
                 hover(session);
+                Vec3 target = SHIFT_TARGET.get();
+                if (target != null && since(ctx) % SHIFT_RETRY_TICKS == SHIFT_RETRY_TICKS - 1
+                        && Math.hypot(drone.getX() - target.x, drone.getZ() - target.z) > SHIFT_TOLERANCE) {
+                    int attempt = (int) ctx.state().merge(SHIFT_RETRIES, 1, (a, b) -> (int) a + (int) b);
+                    if (attempt <= MAX_SHIFT_RETRIES) {
+                        ctx.log(String.format(Locale.ROOT, "Drohne vom Gold abgetrieben (Drohne %.2f/%.2f, Ziel %.2f/%.2f, Epoche Sitzung %s, Entity %d), "
+                                + "zurück über das Gold gesetzt (%d)", drone.getX(), drone.getZ(), target.x, target.z, clientEpoch(session), drone.resetEpoch(), attempt));
+                        ctx.onServer(server -> serverDrone(server).resetTo(target, upright()));
+                    }
+                }
                 if (Math.abs(drone.cargoGrams() - GOLD * 10.0) > 0.5) {
-                    return since(ctx) > 200 ? StepResult.fail("Gold nicht aufgenommen (" + drone.cargoGrams() + " g)") : StepResult.pending();
+                    if (since(ctx) == 20 || since(ctx) == 150) {
+                        String client = String.format(Locale.ROOT, "Client Tick %d: Drohne %.2f/%.2f/%.2f, Epoche Sitzung %s, Epoche Entity %d",
+                                since(ctx), drone.getX(), drone.getY(), drone.getZ(), clientEpoch(session), drone.resetEpoch());
+                        ctx.log(client);
+                        ctx.onServer(server -> SERVER_REPORT.set(client + "; " + cargoDiagnosis(serverDrone(server))));
+                    }
+                    return since(ctx) > 200 ? StepResult.fail("Gold nicht aufgenommen (" + drone.cargoGrams() + " g; " + SERVER_REPORT.get() + ")")
+                            : StepResult.pending();
                 }
                 next(ctx);
                 return StepResult.pending();
@@ -634,6 +664,28 @@ public final class InteractSelfTests {
                 return StepResult.fail("unerwartete Phase");
             }
         }
+    }
+
+    private static String clientEpoch(PilotSession session) {
+        try {
+            java.lang.reflect.Field field = PilotSession.class.getDeclaredField("epoch");
+            field.setAccessible(true);
+            return String.valueOf(field.getInt(session));
+        } catch (ReflectiveOperationException e) {
+            return "?";
+        }
+    }
+
+    private static String cargoDiagnosis(QuadcopterEntity drone) {
+        ServerLevel level = (ServerLevel) drone.level();
+        List<ItemEntity> near = level.getEntitiesOfClass(ItemEntity.class, drone.getBoundingBox().inflate(4.0));
+        StringBuilder out = new StringBuilder(String.format(Locale.ROOT, "Server: scharf %s, Pilot %s, Epoche %d, Drohne %.2f/%.2f/%.2f, Greifkasten %s",
+                drone.isArmed(), drone.pilot().isPresent(), drone.resetEpoch(), drone.getX(), drone.getY(), drone.getZ(), DroneCargo.pickupBox(drone)));
+        for (ItemEntity item : near) {
+            out.append(String.format(Locale.ROOT, "; %s ×%d bei %.2f/%.2f/%.2f, Verzögerung %s", item.getItem().getItem(), item.getItem().getCount(),
+                    item.getX(), item.getY(), item.getZ(), item.hasPickUpDelay()));
+        }
+        return out.toString();
     }
 
     private static StepResult crashStep(SelfTest.StepContext ctx) {

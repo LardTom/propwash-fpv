@@ -580,8 +580,16 @@ public final class TrainingScreen extends Screen implements ThemedScreen {
                 .append(Component.translatable(lesson.titleKey())).withStyle(ChatFormatting.BOLD);
         y += ThemeText.wrapped(g, this.font, title, x, y, inner, Palette.TEXT) + 4;
         y += ThemeText.wrapped(g, this.font, Component.translatable(lesson.descriptionKey()), x, y, inner, Palette.TEXT_MUTED) + 5;
-        String mouseTip = InputConfig.get().mouseSelected() ? lesson.tipKey() + "_mouse" : "";
-        boolean mouse = !mouseTip.isEmpty() && Language.getInstance().has(mouseTip);
+        String mouseTip = "";
+        if (InputConfig.get().mouseSelected()) {
+            for (String key : lesson.mouseTipKeys(InputConfig.get().invertPitch)) {
+                if (Language.getInstance().has(key)) {
+                    mouseTip = key;
+                    break;
+                }
+            }
+        }
+        boolean mouse = !mouseTip.isEmpty();
         ThemeText.text(g, this.font, Component.translatable(mouse ? "propwash.guide.training.tip_label_mouse" : "propwash.guide.training.tip_label")
                 .withStyle(ChatFormatting.BOLD), x, y, Palette.ACCENT);
         y += Metrics.LINE_HEIGHT;

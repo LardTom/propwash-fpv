@@ -205,7 +205,7 @@ public final class RaceScene {
                     s.at(0.0F).throttle(DRONE, 0.45F, 20.0F);
                     s.at(0.0F).camera(new ScenePos(-2.4F, 2.4F, -0.4F), 30.0F, 32.0F, 1.6F, 30.0F);
                     s.at(4.0F).callout("lap", onDrone, Cue.Side.RIGHT, 0.0F);
-                    s.at(40.0F).keys("restart", 0.0F, KeyToken.mapping(SceneKit.KEY_RACE_RESTART));
+                    s.at(40.0F).keys("reset", 0.0F, KeyToken.mapping(SceneKit.KEY_RESET));
                 })
                 .step("stack", 180.0F, s -> {
                     s.at(0.0F).despawn(DRONE, 10.0F);

@@ -1,6 +1,7 @@
 package de.lardtom.propwash.input.client;
 
 import de.lardtom.propwash.input.KeyboardSettings;
+import de.lardtom.propwash.input.PitchDirection;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.input.ThrottleCentering;
 import net.minecraft.client.KeyMapping;
@@ -35,11 +36,7 @@ final class KeyboardFlight {
         }
     }
 
-    Output update(float dt, boolean session, boolean keysAvailable, KeyboardSettings settings) {
-        return this.update(dt, session, keysAvailable, settings, false, false);
-    }
-
-    Output update(float dt, boolean session, boolean keysAvailable, KeyboardSettings settings, boolean centered, boolean armed) {
+    Output update(float dt, boolean session, boolean keysAvailable, KeyboardSettings settings, boolean invertPitch, boolean centered, boolean armed) {
         if (!session) {
             this.pendingThrottle = 0.0F;
             if (this.active || this.throttle != 0.0F) {
@@ -61,7 +58,7 @@ final class KeyboardFlight {
                 yawKeys = 0.0F;
             }
             rollTarget = rollKeys * settings.rollPitchLimit;
-            pitchTarget = direction(InputKeys.PITCH_FORWARD, InputKeys.PITCH_BACK) * settings.rollPitchLimit;
+            pitchTarget = PitchDirection.apply(direction(InputKeys.PITCH_FORWARD, InputKeys.PITCH_BACK), invertPitch) * settings.rollPitchLimit;
             yawTarget = yawKeys * settings.yawLimit;
             throttleInput = direction(InputKeys.THROTTLE_UP, InputKeys.THROTTLE_DOWN);
         }

@@ -38,6 +38,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
@@ -46,6 +47,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class SliderTypingSelfTests {
     public static final String PREFIX = "ui: Regler tippen";
@@ -58,6 +60,8 @@ public final class SliderTypingSelfTests {
     private static final double MID_TOLERANCE = 0.03;
     private static final int KEYCODE_TAB = 9;
     private static final String HIDDEN = "nicht sichtbar";
+    private static final String UNTYPED = "bewusst ohne Eingabe";
+    private static final Set<String> UNTYPED_BY_DESIGN = Set.of("propwash.video.record.tab.flashback_simplify.value");
     private static final Map<String, Integer> REQUIRED_STEP_SLIDERS = Map.of(
             RescueConfigTab.ID, 6,
             "race", 3,
@@ -91,6 +95,7 @@ public final class SliderTypingSelfTests {
         private final List<String> passes = new ArrayList<>();
         private final List<String> problems = new ArrayList<>();
         private final List<String> hidden = new ArrayList<>();
+        private final List<String> untyped = new ArrayList<>();
         private final Map<String, Integer> kinds = new LinkedHashMap<>();
         private final Map<String, Integer> stepSliders = new LinkedHashMap<>();
         private final Map<String, List<String>> seen = new LinkedHashMap<>();
@@ -171,6 +176,10 @@ public final class SliderTypingSelfTests {
             run.hidden.add(pass + "/" + describe(widget));
             return StepResult.pending();
         }
+        if (UNTYPED.equals(problem)) {
+            run.untyped.add(pass + "/" + describe(widget));
+            return StepResult.pending();
+        }
         run.total++;
         run.kinds.merge(kind, 1, Integer::sum);
         if (widget instanceof StepSlider) {
@@ -221,6 +230,9 @@ public final class SliderTypingSelfTests {
         run.seen.forEach((pass, widgets) -> ctx.log(pass + ": " + widgets));
         if (!run.hidden.isEmpty()) {
             ctx.log("nicht sichtbar (ausgelassen): " + run.hidden);
+        }
+        if (!run.untyped.isEmpty()) {
+            ctx.log("bewusst ohne Eingabe (ausgelassen): " + run.untyped);
         }
         if (!run.unprepared.isEmpty()) {
             ctx.log("Vorbereitung unvollständig: " + run.unprepared);
@@ -298,6 +310,11 @@ public final class SliderTypingSelfTests {
         return kind(widget) + " „" + (split != null ? split.label().getString() : message.getString()) + "“";
     }
 
+    private static boolean untypedByDesign(AbstractWidget widget) {
+        return widget.getMessage().getContents() instanceof TranslatableContents translatable
+                && UNTYPED_BY_DESIGN.contains(translatable.getKey());
+    }
+
     public static @Nullable String check(Screen screen, @Nullable ConfigTab tab, AbstractWidget widget) {
         if (!(widget instanceof NumberInput input)) {
             return "Regler ohne Texteingabe";
@@ -309,7 +326,7 @@ public final class SliderTypingSelfTests {
             return HIDDEN;
         }
         if (!input.typeable()) {
-            return "nicht tippbar";
+            return untypedByDesign(widget) ? UNTYPED : "nicht tippbar";
         }
         NumberEditor editor = input.editor();
         if (!editor.hasRange()) {
@@ -563,8 +580,10 @@ public final class SliderTypingSelfTests {
         if (ctx.tick() == 0) {
             ConfigInputSelfTests.close();
             simulateRadio();
-            mc.gui.setScreen(new ReceiverWizardScreen(null, InputConfig.get(), result -> {
-            }));
+            ReceiverWizardScreen opened = new ReceiverWizardScreen(null, InputConfig.get(), result -> {
+            });
+            mc.gui.setScreen(opened);
+            opened.showPage(ReceiverWizardScreen.Page.DEVICE);
             return StepResult.pending();
         }
         if (!(mc.gui.screen() instanceof ReceiverWizardScreen wizard)) {

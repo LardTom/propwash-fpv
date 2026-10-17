@@ -26,9 +26,11 @@ public final class VideoClient {
         RecordingKeys.bootstrap();
         SpectateConfig.CONFIG.load();
         SpectateKeys.bootstrap();
+        VtxKeys.bootstrap();
         ClientNet.handle(ChannelListS2C.TYPE, (payload, context) -> SpectateSession.INSTANCE.onChannelList(payload));
         ClientNet.handle(SpectateS2C.TYPE, (payload, context) -> SpectateSession.INSTANCE.onResult(context.minecraft(), payload));
         ClientRegistrar.renderPipeline(VideoPass.PIPELINE);
+        ClientRegistrar.renderPipeline(VideoPass.LENS_PIPELINE);
         ClientRegistrar.renderPipeline(ActionCamCapture.FRAME_PIPELINE);
         ClientRegistrar.renderPipeline(ActionCamCapture.PACK_PIPELINE);
         ClientRegistrar.renderPipeline(HeadlightPass.PIPELINE);
@@ -46,11 +48,14 @@ public final class VideoClient {
         ClientBus.FRAME_START.register(FlashbackCam.INSTANCE::onFrame);
         ClientBus.TICK_END.register(SpectateSession.INSTANCE::onClientTick);
         ClientBus.TICK_END.register(VideoState.INSTANCE::onTick);
+        ClientBus.TICK_END.register(ControlLinkScan.INSTANCE::onTick);
+        ClientBus.TICK_END.register(VtxRuntime.INSTANCE::onTick);
         ClientBus.TICK_END.register(ActionCamRecorder.INSTANCE::onClientTick);
         ClientBus.TICK_END.register(FlashbackCam.INSTANCE::onClientTick);
         ClientBus.DISCONNECT.register(minecraft -> {
             SpectateSession.INSTANCE.onDisconnect(minecraft);
             VideoState.INSTANCE.onDisconnect(minecraft);
+            VtxRuntime.INSTANCE.clear();
             VideoPass.INSTANCE.release();
             VideoPass.INSTANCE.retry();
             ActionCamRecorder.INSTANCE.onDisconnect(minecraft);

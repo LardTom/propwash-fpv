@@ -29,6 +29,7 @@ public final class InputKeys {
     public static final KeyMapping POS_HOLD = register(KeyDefaults.POS_HOLD);
     public static final KeyMapping MODE_3D = register(KeyDefaults.MODE_3D);
     public static final KeyMapping FLIP_UPRIGHT = register(KeyDefaults.FLIP_UPRIGHT);
+    public static final KeyMapping TURTLE = register(KeyDefaults.TURTLE);
     public static final KeyMapping EXIT = register(KeyDefaults.EXIT);
     public static final KeyMapping BEEPER = register(KeyDefaults.BEEPER);
     public static final KeyMapping LEDS = register(KeyDefaults.LEDS);
@@ -43,7 +44,8 @@ public final class InputKeys {
 
     public static List<KeyMapping> all() {
         return List.of(THROTTLE_UP, THROTTLE_DOWN, YAW_LEFT, YAW_RIGHT, PITCH_FORWARD, PITCH_BACK, ROLL_LEFT, ROLL_RIGHT, MOUSE_CENTER,
-                ARM, FLIGHT_MODE, MODE_ACRO, MODE_ANGLE, MODE_HORIZON, ALT_HOLD, POS_HOLD, MODE_3D, FLIP_UPRIGHT, EXIT, BEEPER, LEDS, RECEIVER_WIZARD);
+                ARM, FLIGHT_MODE, MODE_ACRO, MODE_ANGLE, MODE_HORIZON, ALT_HOLD, POS_HOLD, MODE_3D, FLIP_UPRIGHT, TURTLE, EXIT, BEEPER, LEDS,
+                RECEIVER_WIZARD);
     }
 
     public static boolean anyFlightKeyDown() {

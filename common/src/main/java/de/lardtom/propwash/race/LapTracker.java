@@ -82,7 +82,8 @@ public final class LapTracker {
         TIMEOUT,
         LEFT_COURSE,
         COURSE_CHANGED,
-        SESSION_ENDED
+        SESSION_ENDED,
+        RESET
     }
 
     public record Event(EventType type, int lap, int gate, long nanos, long valueNanos, long deltaNanos, boolean best,

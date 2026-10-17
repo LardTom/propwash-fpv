@@ -93,8 +93,12 @@ Controllers, GPU nach `present`, Compositor und Monitor-Elektronik.
   digital Lite 104°, digital HD 130°. Unverändert. Propwash zeichnet geradlinig (Minecraft-Projektion); echte
   FPV-Optiken sind Fischaugen mit Tonnenverzeichnung. Bei gleichem horizontalem Sichtfeld erscheint die Bildmitte
   geradlinig um den Faktor `tan(H/2)/(H/2)` kleiner als bei einer f-θ-Optik: 104° → 1,41, 125° → 1,76, 130° → 1,89
-  (stereografisch 1,3–1,6). Dinge vor der Drohne wirken dadurch weiter weg und langsamer – ein offener Hebel für das
-  Geschwindigkeitsgefühl (§6).
+  (stereografisch 1,3–1,6). Dinge vor der Drohne wirken dadurch weiter weg und langsamer.
+  **Seit 0.5.2** zeichnet Propwash das FPV-Bild standardmäßig als Fischauge (f-θ über die Breite des Videomoduls,
+  breiter gerendert und im Video-Pass entzerrt; Tab „Video“, Regler „Fisheye“ 0–100 %, Standard 80 % = f-θ). Die
+  Bildmitte ist dann 1,41- bis 1,89-mal so groß wie flach (im Selbsttest gemessen 1,36–1,82, je nach Abstand der
+  Marke), bei 100 % 1,51- bis 2,09-mal. Einzelheiten:
+  `docs/design/fisheye-lens.md`.
 
 ## 3. Kamera-Vibration (neu, nur im Bild)
 
@@ -233,6 +237,6 @@ unverändert; gespeicherte Tunes der Spieler bleiben ohnehin unberührt.
 
 ## 6. Offen
 
-- Fischaugen-Projektion (Tonnenverzeichnung) als Option: braucht ein breiteres Rendering und eine Entzerrung im
-  Video-Pass; ohne höhere Renderauflösung wird die Bildmitte um den Faktor 1,4–2,8 hochgerechnet und unscharf.
+- Fischaugen-Projektion: seit 0.5.2 umgesetzt (`docs/design/fisheye-lens.md`); offen bleibt eine höhere
+  Renderauflösung für eine schärfere Bildmitte (dort §4 und §9).
 - Zuschauer-Vibration aus den synchronisierten Motorwerten der fremden Drohne.

@@ -8,6 +8,491 @@ stehen in den Tages-Changelogs unter `changelogs/`.
 
 ---
 
+## 0.5.2
+
+Großes Update auf 0.5.1. **Netzprotokoll 16** (0.5.0/0.5.1: 15): neue Pakete und synchronisierte Daten (Homepoint,
+Ranken und Glocken, Bando-Karte, Zonen, VTX-Leistung, Beschichtung, Zubehör der Add-on-API) – Client und Server
+brauchen beide 0.5.2, ältere Versionen trennt der Handshake mit klarer Meldung. **Parts-API 1.6.0** (additiv: Halterung
+vorne, Zubehör-Verhalten, Flughilfen, Kräfte, Events, `vtx_levels_mw`); Addons für 1.0 bis 1.5 laufen weiter. Welten,
+Drohnen, Kurse, Bestenlisten und Einstellungen aus 0.5.x laden unverändert. Das Flugmodell ändert sich nur beim Akku
+(Entladekurve, Spannungseinbruch) und beim Bodenkontakt; Fisheye, Zonen, Ranken, Wasser, Turtle-Modus und Add-on-Kräfte
+rechnen ohne ihren Auslöser bitgleich wie 0.5.1.
+
+### Videostrecke: Hauswand statt Bunker, Digital mit Standbild vor dem Verlust
+
+Nach dem Spieltest vor dem Release (Details, Szenarientabelle und Entscheidungen in
+[`design/vtx-obstruction.md`](design/vtx-obstruction.md#nachbesserung-in-052-spieltest-hauswand-statt-bunker)):
+
+- Ein Block Baumaterial dämpft wie eine Hauswand: Bretter 4,5 dB, Mauerwerk (Bruchstein, Ziegel, glasierte Terrakotta)
+  7 dB, Stein und Erde 8 dB, Beton 9 dB, Stamm 12 dB, Wolle 2 dB (vorher Stein 286 dB, Beton 34 dB, Stamm 36 dB). Ein
+  durchgehender Lauf aus Baumaterial zählt höchstens 2 m; Gelände, Wasser und Metall summieren sich weiter, Hügel und
+  Höhlen schneiden die Strecke ab. Terrakotta, Sandstein, roter Sandstein und Endstein zählen als Gelände, damit
+  Tafelberge der Badlands, Sandsteinfelsen und End-Inseln die Strecke wie ein Hügel abschneiden (vorher als Mauerwerk mit
+  Laufgrenze nur 13 dB). Der einzelne Baum bleibt bei 13,9 dB.
+- Digital: Fenster der Reserve +7/−5 dB statt +4/−2 dB; Profil aus der Latenz des Moduls (bis 18 ms feste Datenrate wie
+  HDZero, sonst adaptiv wie DJI/Walksnail mit bis zu 40 ms mehr Latenz); bei Verlust erst das letzte Bild (0,7 bzw.
+  0,25 s), dann „NO SIGNAL“; Rückkehr mit Hysterese, nach einem Aussetzer ohne stärkeres Signal.
+- Steuerstrecke: 0,6 × die Abschattung der Videostrecke wirkt auf LQ und RSSI (RSSI jetzt aus Abstand und Abschattung,
+  `OsdData.rssiDbm`), im Sichtflug mit eigener Abtastung (`ControlLinkScan`), die auch Auto der VTX-Leistung nutzt.
+- Keine neuen Netzdaten, Netzprotokoll und API unverändert; Flugmodell, Bewegungs-Goldens und Kalibrierung bitgleich.
+
+### Modi-Tab: Lampen zeigen, was die Drohne fliegt
+
+Mit einer Funke, die Angle (1400–1600 µs) und Horizon (1000–1300 µs) auf einem AUX-Kanal trägt, wanderte die
+Stellungsmarke im Tab „Modi“ richtig in den Angle-Bereich, die Lampe blieb aber bei Horizon. Die Drohne selbst wechselte
+den Modus richtig (Selbsttest im Flug: Drohne, OSD und Lampen), nur die Anzeige stand. Zwei Ursachen:
+
+- Bei laufender Sitzung zeigten die Zeilen Acro, Angle, Horizon und 3D-Modus den geflogenen Modus der Sitzung. Im
+  Einzelspieler pausiert der Konfigurator das Spiel, die Sitzung liest dann keine Schalter – die Lampe stand auf dem
+  Modus vor dem Öffnen. Außerdem rechnet die Sitzung mit der gespeicherten Belegung; ein per „Zuweisen“ gelernter oder
+  von Hand geänderter Bereich galt für die Lampe erst nach dem Speichern. Die anderen Zeilen (Scharf, Piepser, Rescue …)
+  zeigten schon immer den Schalter selbst, deshalb sah es nach einem Fehler nur der Flugmodi aus.
+- Umschalter (Taste oder Kanal im Modus „Umschalten“) starteten im Tab mit ihrem Startzustand, nicht mit dem Zustand
+  der Funke – ein am Gamepad ausgeschaltetes Angle stand im frisch geöffneten Tab wieder auf an.
+
+Seit 0.5.2 fragt der Tab die Sitzung, welchen Modus sie mit den gerade bearbeiteten Bereichen und der aktuellen
+Schalterstellung nach dem Schließen fliegen würde (`FlightModeSelector#preview`, `Mode3dSelector#preview`, ohne den
+Zustand zu ändern). Es gilt dieselbe Regel wie im Flug: Eine Modus-Taste gilt, bis der Schalter sich bewegt – auch eine
+Bewegung im pausierten Menü zählt, und der Hinweis auf den Tasten-Vorrang verschwindet dann sofort. Die Schalter-
+auswertung des Tabs übernimmt jeden Frame die Umschalter-Zustände der Funke für alle Funktionen, deren Belegung
+unverändert ist; Speichern übergibt den Zustand des Tabs an die Funke, damit ein gerade bearbeiteter Umschalter nach dem
+Schließen so steht, wie der Tab ihn zeigte. Ohne Speichern fliegt die Drohne weiter die gespeicherte Belegung. Neue
+Prüfungen: JUnit `ModeSwitchMatrixTest` (alle Funktionen auf einem gemeinsamen und auf eigenen Kanälen, Bereich,
+umgekehrt, Umschalter mit und ohne Startzustand, Tasten, Assistent, pausierte Sitzung mit Zufallsfolgen) und die
+Selbsttests „drone: Modusschalter …“ mit simulierter Boxer-Belegung im Flug und im Modi-Tab.
+
+### Zonen: eigene Simulationswerte für einen Bereich der Welt
+
+Neu: Zonen (Quader oder Zylinder, Name, Priorität) mit eigenen Werten der elf Simulationsregeln, die nur für Drohnen
+darin gelten. Je Einstellung gilt die Zone mit der höchsten Priorität, sonst die Welt-Regel. Rennfreie Zonen zählen
+nicht als Flughilfe; andere Zonen mit veränderter Physik schon, mit dem neuen Grund „Zone „…“ verändert die Physik“
+samt Werten – vom Server an der Drohnenposition erkannt, auch in der Bestenliste gespeichert. Schwerkraft und Wind
+gleiten über die Übergangszeit der Zone (0–5 s), Schalter wechseln am Rand; der Akku fährt beim Verlassen eines
+unendlichen Akkus beim alten Stand fort (behebt denselben Sprung beim Umschalten der Welt-Regel „Akkulaufzeit“ im
+Flug). Bedienung: Abschnitt „Zonen“ oben im Tab „Welt-Regeln“ (direkt unter den Voreinstellungen, vor den Regeln), Editor wie „Gate anpassen“, `/propwash zone`; Recht wie die
+Welt-Regeln. Dezenter Rand in der Welt, OSD-Hinweis beim Ein- und Ausfliegen, autonomer Heimflug rechnet mit denselben
+Zonen. Netz: `propwash:zones`, `propwash:zone_edit` (Protokoll bleibt 16), Weltdaten `data/propwash/zones.dat`
+(`docs/design/zones.md`).
+
+### Flughilfe-Erkennung: Fehlalarme behoben, Gründe sichtbar
+
+Manche Piloten bekamen trotz richtiger Einstellungen „mit Flughilfe“. Ursache: Die Meldung „Physik verändert“, die
+jeder Client im Zustandspaket an den Server schickt, blieb nach einer veränderten Welt-Regel bis zum Entschärfen
+gesetzt – auch wenn alle Regeln längst wieder auf Standard standen. Der Server zählte deshalb jede weitere Runde als
+Flughilfe, die Rennanzeige des Clients aber nicht; mit „Runden mit Flughilfe speichern“ aus fehlte die Zeit ohne
+Erklärung, mit der Regel an stand sie mit dem allgemeinen Grund „Welt-Regeln verändern die Physik“ in der Wertung
+„Mit Flughilfe“. Dazu sammelte der Server Gründe bis zum Annehmen einer Runde, sodass eine Runde, deren Bestätigung
+wartete, Gründe der nächsten Runde bekam. Seit 0.5.2 zeigt die Meldung die Physik, mit der die Sim gerade rechnet, und
+der Server wertet jede Runde in ihrem eigenen Zeitfenster (gemerkte Gründe mit Zeitstempel); für Welt-Physik,
+Kreativ-Drohne und Teile ist er maßgeblich, aus dem Bericht des Clients nimmt er nur Halten, GPS Rescue und
+Brillen-Latenz. Weicht sein Urteil vom Bericht ab, schreibt er dem Piloten eine Chatzeile.
+
+Jeder Grund trägt jetzt Details (Regel mit Wert und Standard, Auslöser von GPS Rescue, Teile-Problem, Latenzen) – in
+der Rennanzeige, in den Chatzeilen, im Tooltip der Bestenliste (gespeichert mit der Zeit) und in der Flugschule, die
+dieselbe Prüfung wie das Rennen nutzt. Neu im Race-Tab: „Flughilfe-Prüfung: Warum zählt meine Runde mit Flughilfe?“
+mit einer Zeile je Kategorie vor dem Flug. Die eigene Latenz der Kreativ-Brille startet beim Umschalten bei der
+Latenz des Videosenders. Netzprotokoll 16 (Rennbericht und Bestenlisten-Zeilen mit Details), Weltdaten additiv
+(`docs/design/assisted-laps.md` §6).
+### Landungen enden nicht mehr so oft auf dem Kopf
+
+Beim Landen lag die Drohne ungewöhnlich oft auf dem Rücken, vor allem auf Stufen und Halbblöcken (bis zur Hälfte der
+Landungen) und beim Whoop schon nach sanften Landungen. Zwei Ursachen im Flugmodell: Der Stoß beim Aufsetzen wirkte an
+einem einzigen Punkt mit Haftreibung und gab der Drohne beim flachen Aufsetzen mit etwas Fahrt oder auf einer Kante
+viel Drall; und am Boden hielt das Modell nur die Höhe des Schwerpunkts, die Drohne konnte ohne Widerstand durch den
+Boden drehen, über 90° legte das Aufrichtmoment sie auf den Rücken. Seit 0.5.2 stützt der Boden die Drohne an ihren
+Kontaktpunkten – Prop-Spitzen, Motorböden, Akku-Ecken und Duct-Ränder – mit einem gemeinsamen Stoß aller Punkte, die
+aufsetzen, und Reibung je Punkt. Wasser trägt nicht. Ergebnis in 160 gescripteten Landungen je Bauform und Art: sanfte
+Landungen enden bei keiner Vorlage mehr auf dem Kopf (Whoop vorher 5 %), auf Halbblock-Kanten und Stufen höchstens
+noch 5 % (vorher bis 52 %). Der Whoop überschlägt sich nach harten Landungen und Abstürzen dafür öfter (hart 10 %,
+Absturz 18 %); vorher stellte ihn nur das künstliche Aufrichtmoment wieder hin. Flug in der Luft ist bit-gleich zu
+0.5.1, die Kalibrierung byte-gleich; neu sind nur die Golden-Werte der Flüge mit Bodenkontakt
+(`docs/design/ground-contact.md` §6, `docs/design/flight-model-rigid-body.md` §8.3). Netzprotokoll und Parts-API
+sind unverändert.
+
+Nach dem Spieltest: Abstürze endeten danach gefühlt immer aufrecht. Gemessen (je Fall 100 gescriptete Abstürze des
+5-Zöllers) endeten Einschläge mit der Nase, Mauer-Treffer und Taumeln schon zufällig, flache Einschläge in den Boden
+aber nie auf dem Kopf (0.5.1 bei 20 m/s noch 70 %, weil die Drohne dort ohne Widerstand durch den Boden drehte). Am
+Boden fiel der Rückprall bei hohen Geschwindigkeiten um bis zu 60 %, sodass jeder zweite Stoß den Drall schluckte, und
+alle Teile rutschten mit Gleitreibung. Jetzt fällt der Rückprall nach dem Stoßgesetz für elastisch-plastischen Kontakt
+nur noch mit (v/v₀)^(−1/4), und Prop-Spitzen, Arm-Enden und Kamera-Nase haken bei harten Einschlägen ein. Flache
+Einschläge enden bei 10 und 20 m/s in 11 und 14 % auf dem Kopf, steile bei 5 m/s in 93 %, Mauer und Taumeln um 50 %;
+sanfte Landungen, Fälle aus geringer Höhe und Stufen bleiben aufrecht. Flug in der Luft bleibt bit-gleich, die
+Kalibrierung byte-gleich, neu sind die Golden-Werte der Flüge mit Bodenstoß (`docs/design/ground-contact.md` §7).
+### Homepoint in den Drohnendaten
+
+Jede Drohne speichert ihren GPS-Rescue-Homepoint jetzt mit: `/data get entity @e[type=propwash:drone,limit=1,sort=nearest]
+HomePoint` zeigt Position, Dimension, Spielzeit beim Setzen (`game_time`, wie `/time query gametime`) und die Herkunft
+(`arm` beim Scharfschalten, `manual` per Taste oder Schalter, `pilot` im Modus „Beim Piloten“, `command` per Befehl). Der
+Punkt überlebt Neuladen und Neustart; wer die Drohne wieder fliegt, bekommt ihn schon vor dem Scharfschalten (Marker,
+OSD), danach setzt GPS Rescue ihn nach denselben Regeln wie bisher. Admins setzen ihn mit `/data merge`/`modify` und
+löschen ihn mit `/data remove`; ein Punkt in einer anderen Dimension, außerhalb der Weltgrenze oder mehr als 64 Blöcke
+unter bzw. über der Welt lässt den Befehl mit Meldung scheitern. Fliegt gerade jemand, bekommt er den neuen Punkt sofort
+mit dem Hinweis „Homepoint auf dem Server geändert“. Aufheben als Item löscht den Punkt. Netzprotokoll 16 (zwei neue
+Pakete), Speicherformat erweitert, ältere Welten laden unverändert. Entwurf:
+[`design/home-point.md`](design/home-point.md).
+
+### Reset zum Homepoint statt „Rennen neu starten“
+
+„Rennen neu starten“ lief nur im Client: Es brach einen Lauf ab oder stellte nahe am Start-Gate auf, versetzte die
+Drohne aber nie und tat weiter weg ohne Meldung nichts. Jetzt heißt die Funktion **Reset** (Rücktaste, Schalterfunktion
+`RESET`; gespeicherte Belegungen von Funke und Tastatur werden beim Laden übernommen) und läuft über den Server: Die
+Drohne des Piloten landet gerade, entschärft und im Stillstand auf ihrem Homepoint, ohne Homepoint auf dem Startpunkt des
+letzten Scharfschaltens; nie über Dimensionen, innerhalb von Weltgrenze und Bauhöhe und nur dorthin, wohin der Pilot
+auch fliegen dürfte (Funkreichweite, Spawn-Schutz, Recht zum Erzeugen von Gelände), bei zugebautem Ziel bis 4 Blöcke
+höher. Ein ferner Ziel-Chunk wird erst geladen, dann wird versetzt. Ein laufendes Rennen bricht ab (Client und Server, die
+Sprung-Strecke zählt keine Runde), Startaufstellung und Heat werden verlassen, Fracht fällt am alten Ort ab. Danach
+stellt das erste Scharfschalten am Start für einen stehenden Start auf, ebenso Scharfschalten bei offener Aufstellung.
+Neue Welt-Regel `propwash:allow_reset` („Reset erlauben“, Standard an, in allen Voreinstellungen an); aus lehnt der
+Server mit Meldung ab. Netzprotokoll bleibt 16 (in 0.5.2 noch unveröffentlicht: neues Paket `home_reset`,
+`drone_reset` mit Kennzeichen „Reset“). Flugmodell, Bewegungs-Goldens und Kalibrierung unverändert. Entwurf:
+[`design/home-point.md`](design/home-point.md) §7.
+
+### Spinnweben, Fäden, Ranken und Glocken
+
+Bis 0.5.1 flogen Drohnen durch alles ohne Kollisionsform hindurch. Jetzt wirken Blöcke in drei Tags auf das Flugmodell
+(`docs/design/drone-snags.md`): Widerstand an den vier Props und der Rahmenmitte (linear und quadratisch, mit
+Drehmoment, wenn nur eine Seite hängen bleibt), eine Haltekraft und schwerer laufende Props (tieferer Motorklang).
+- **Spinnweben** (`propwash:drone_snag_web`) fangen einen 5-Zoll mit 18–20 m/s nach rund 0,4 m, mit 40 m/s nach
+  0,8 m – ohne Absturz. Mit Leerlaufgas sinkt die Drohne höchstens 0,4 m/s, mit Vollgas steigt ein 5-Zoll in 0,3 s
+  aus einem Block Netz, ein 65-mm-Whoop in 0,75 s. Ein Toast sagt beim ersten Festhängen, dass Gas hilft.
+- **Stolperdraht** (`propwash:drone_snag_string`) ruckt: ein gespannter Faden auf Prop-Höhe kostet bei 10 m/s rund
+  30 % Tempo und bremst die Props kurz stark.
+- **Ranken, Leuchtflechte, Wurzeln, Moos** (`propwash:drone_snag_foliage`) bremsen leicht: eine dünne Rankenwand
+  7–10 % bei 15 m/s, eine dicke Wirrranke rund 23 % bei 11 m/s.
+- Die Props nutzen sich ab (Netz 2 %, Faden 3 %, Laub 0,5 % je Sekunde bei Vollgas und voller Berührung), wenn die
+  Welt-Regel Crash-Schaden an ist; der Server begrenzt das je Sekunde. Bröckchen und der Trefferklang des Blocks zeigen
+  allen Spielern, wo Props Fasern oder Blätter fassen. Kein Block wird verändert, auch nicht mit „Drohnen zerbrechen
+  Blöcke“; Stolperdrähte lösen nicht aus.
+- GPS Rescue ohne Pilot spürt dasselbe. Ohne solche Blöcke rechnet das Flugmodell bitgleich wie bisher.
+
+Glocken läuten, wenn eine Drohne mit mindestens 1 m/s seitlich gegen den Glockenkörper fliegt – über denselben
+Vanilla-Weg wie bei einem Pfeil (Statistik des Piloten, Räuber leuchten nach dem Nachklang), außer im Spawn-Schutz.
+
+Netzprotokoll 16 (`propwash:drone_snag_wear`, `propwash:drone_bell`).
+
+### Bando-Karte
+
+Bandos fand man im Überlebensmodus bisher nur zufällig oder mit `/locate`. Jetzt gibt es eine Entdeckerkarte
+(`docs/design/bandos.md` „Bando-Karte“):
+- **Kartograf, Stufe Geselle:** 10 Smaragde + Kompass, 12 Verkäufe, 10 EP. Das Angebot hängt am Vanilla-Tag der Stufe;
+  ein Geselle zieht 2 von jetzt 4 Angeboten (vorher 2 von 3), also hat etwa jeder zweite neue Geselle die Bando-Karte.
+  Kartografen, die schon Geselle sind, behalten ihre Angebote.
+- **Truhen:** 10 % der Bando-Truhen (Karte zu einem anderen Bando) und 11,7 % der Truhen im Haus des Kartografen
+  (Propwash-Fundchance dort 42 → 53 %, die übrigen Funde bleiben gleich häufig).
+- **Ziel:** der nächste Bando, auf den noch keine Karte zeigt, im Umkreis von 16 Zellen des Struktursets (gut 11 km);
+  Maßstab 1 : 4 wie die Vanilla-Entdeckerkarten, mit Biom-Vorschau. Gemessen: 70–75 ms für die Suche beim Kartografen,
+  95–120 ms für eine Truhenkarte (Selbsttest, Seed 20261003).
+- **Ohne Bauwerke** (*Bauwerke generieren: Aus*) entsteht keine Karte: der Kartograf nimmt ein anderes Angebot, die
+  Truhe bleibt ohne Karte.
+- Eigenes Kartensymbol (verfallene Halle mit Schornstein, auch im Item-Rahmen), eigenes Inventar-Symbol, Shift-Tooltip;
+  kopierbar mit einer leeren Karte; zählt wie jedes Propwash-Item als Freischaltung des Rezeptbuchs; nicht im Kreativ-Tab
+  (per Befehl: `/give @s propwash:bando_map`, dann `/item modify entity @s weapon.mainhand propwash:bando_map`).
+- Flugschule, Szene „Bandos“: neuer Schritt „Bando-Karte“.
+- Netzprotokoll 16 (Item und Kartensymbol sind neue Registereinträge).
+
+### VTX-Leistung
+
+Jedes Videomodul hat Leistungsstufen (eingebaut: Analog Nano 25/100/200/400 mW, Analog Race 25/200/400/800/1600 mW,
+Digital Lite 25/100/400/700 mW, Digital HD 25/100/400/700/1200 mW; Addon-Teile bekommen Stufen bis zu ihrem
+`vtx_power_mw` oder geben `vtx_levels_mw` an). Gewählt wird je Drohne im Tab „Videokanal“ (Abschnitt *Sendeleistung*),
+im Flug mit der Schalterfunktion *VTX-Leistung* oder Taste F10 (eine Stufe weiter je Druck, nach der höchsten Auto).
+Standard ist *Auto* für jede Drohne und jedes Videosystem: Drohnen ohne gespeicherte Stufe (aus 0.5.x, neu gebaut,
+aus Vorlagen und Sharecodes) senden mit Auto, eine ausdrücklich gewählte Stufe bleibt. Mit der festen Nennleistung
+bleiben Reichweite und Flugzeit genau wie in 0.5.1.
+
+- Reichweite und Durchdringung: +10·log10(P/P_Nenn) dB Reserve auf jedem Weg (auch über Repeater). Beispiel Analog Race
+  hinter einer 1 Block dicken Steinwand in 32 Blöcken (27 dB): 400 mW kein Bild mehr, 1600 mW verrauscht sichtbar.
+- Strom: analog 4,3 W, digital 2,5 W Leistungsaufnahme je W Sendeleistung (Race 1600 mW +5,2 W, HD Auto auf 25 mW
+  −1,7 W), als Zusatzlast im Flugmodell.
+- Auto: niedrigste Stufe mit genug Reserve, hoch nach 0,25 s, herunter eine Stufe je 2 s und erst mit 3 dB Luft.
+  Digital regelt der Sender nach seiner Videoverbindung (Ziel 10 dB), analog der Flugcontroller über SmartAudio/Tramp
+  nach der Signalstärke der Fernsteuerung, die denselben Weg nimmt (Ziel 15 dB, 3 dB über dem rauschfreien Bild).
+- Wärme: Auslegung 75 °C bei Nennleistung und 22 °C am Boden; Biom-Temperatur an der Drohne (Wüste, Nether 40 °C);
+  Luftstrom aus Fahrt und Propellern kühlt. Ab 80 °C OSD-Warnung „VTX ÜBERHITZT“, ab 85 °C regelt der Sender eine Stufe
+  je 4 s herunter (nur mit der Welt-Regel *Hardware-Grenzen*). Analog Race mit 1600 mW überhitzt am Boden nach ≈ 1,7 min.
+- *Niedrig, wenn unscharf*: Aus, Immer oder Bis zum ersten Scharfschalten (wie `vtx_low_power_disarm`).
+- OSD-Element „Sendeleistung (VTX)“ (`400MW`, `AUTO 25MW`, Warnfarbe im Hitzeschutz), in den Vorlagen links unter dem Kanal.
+  Elemente, die eine Vorlage nicht zeigt, haben dort eigene freie Standardplätze: Wer in *Minimal* die Geschwindigkeit
+  einschaltet, bekommt sie unter der VTX-Leistung statt darauf (der Rest „H“ hinter `400MW` im Spieltest war das Ende
+  von `77KM/H`). Gespeicherte OSD-Layouts (Version 4) ziehen ausgeschaltete Elemente vom alten auf den neuen Platz und
+  eingeschaltete, die genau auf einem anderen liegen, auf ihren freien Platz. Selbsttest `osd: Vorlagen ohne
+  Überlappung`: alle Vorlagen mit allen Elementen auf ihren Standardplätzen, 16:9, 16:10 und 4:3, GUI-Skala 1 bis zur
+  größten je Fenster, mit gemessenen Rahmen des echten OSD-Zeichners; er schlug vor dem Fix mit 17 Überlappungen fehl
+  (darunter `minimal speed/vtx_power`). Bildschirmfoto `configurator_osd_minimal_speed` (Minimal mit Geschwindigkeit).
+- Parts-API 1.6.0, Netzprotokoll 16. Einzelheiten: [`design/vtx-power.md`](design/vtx-power.md), für Spieler
+  [`vtx-power.md`](vtx-power.md).
+Netzprotokoll 16 (Client und Server brauchen beide 0.5.2), Parts-API unverändert 1.5.0. Bewegungs-Goldens und
+Kalibrierung des Flugmodells sind für Drohnen ohne Beschichtung und ohne Turtle-Modus bit-gleich.
+
+### Wasserdichte Drohnen
+
+- **Wasserschutz-Spray** (`propwash:waterproof_spray`): Rezept `·N·` / `NHN` / `NRN` aus fünf Eisennuggets, einer
+  Honigwabe und einem Harzklumpen. Rechtsklick auf eine platzierte Drohne beschichtet sie (nicht, während ein anderer
+  sie fliegt; Schleichen öffnet weiter das Wartungsmenü), alternativ Drohne + Dose im Handwerksraster. Haltbarkeit 100,
+  10 je Drohne, also zehn Drohnen je Dose; im Kreativmodus kostet der Rechtsklick nichts, im Raster immer.
+- Die Beschichtung hängt an der Elektronik: Rahmen, Stack, Motoren, Videomodul und Zubehör. Zerlegen und mit denselben
+  Teilen wieder bauen behält sie (auch mit anderen Props oder Akku), jeder andere Tausch in der Werkbank verlangt eine
+  neue Schicht. Tooltip der Drohne „Wasserdicht beschichtet“, Shift-Hilfe an der Dose.
+- Welt-Regel **Drohnen sind wasserdicht** (`propwash:waterproof_drones`, Standard aus, in *Arcade* an).
+- Im Wasser: scharf schalten, fliegen und entschärfen geht; die Props bremsen je nach Eintauchtiefe (etwa ein
+  Sechzehntel der Drehzahl, hoher Strom, warme Motoren, schneller leerer Akku), Wasserwiderstand bis zum 400-Fachen der
+  Luft, Auftrieb gut die Hälfte des Gewichts – eine Drohne sinkt langsam und schwimmt mit Vollgas etwa 1,4 m/s
+  (5 Zoll); an der Oberfläche drehen die Props wieder frei und heben sie heraus. Kein Bodeneffekt unter Wasser. Lava
+  beendet jeden Flug. Ohne Beschichtung bleibt alles wie bisher (Kurzschluss nach 0,3 s, „IM WASSER“).
+
+### Turtle-Modus
+
+- Schalterfunktion und Taste „Turtle-Modus“ (Ziffernblock 8) im Tab „Modi“. Turtle an, scharf schalten (Gas unten,
+  kein Scharf-Winkel nötig), dann Roll, Nick oder Gier zur Seite drücken, zu der sie kippen soll: Die Props, die bei
+  diesem Ausschlag im Flug langsamer würden, drehen rückwärts (Diagonale: ein Motor, Gier: zwei diagonale). Leistung
+  = Ausschlag mit 35 % Expo oder das Gas, falls höher.
+- Die Drohne kippt über die Kante der anderen Seite (Hüllpunkte am Boden), schwache Drohnen brauchen länger. Damit sie
+  nicht gleich weiterkippt, nimmt Propwash die Leistung zurück, sobald sie schnell dreht, abhebt oder über den Kipppunkt
+  ist, und stoppt die Motoren, wenn sie aufrecht liegt.
+- Nur am Boden („Turtle-Modus geht nur am Boden“, OSD „TURTLE: ERST LANDEN“); im Flug ändert der Schalter nichts.
+  Ausschalten entschärft, danach den Scharfschalter einmal umlegen; mit der Taste geht der Turtle-Modus nach dem
+  Entschärfen von selbst aus. OSD und Funk-HUD zeigen „TURTLE“, die Blackbox das Modusbit für Flip over after crash.
+- „Drohne aufrichten“ (U) bleibt als schnelle Hilfe ohne Physik.
+
+### Nach Absturz abschalten
+
+- Die Welt-Regel `propwash:crash_disarm` heißt „Nach Absturz abschalten“ (vorher „Absturz entschärft“), die
+  Beschreibung nennt den Turtle-Modus. Die Regel steht nur im Tab „Welt-Regeln“ (keine Zeile mehr im Tab
+  „Konfiguration“); die Suche findet sie unter crash, disarm, Absturz, abschalten, entschärfen, stay armed und springt
+  in den Tab „Welt-Regeln“. Flugschule „Absturz, Reichweite, Signal“: neuer Schritt „Turtle-Modus“, der auf die Welt-Regel
+  verweist.
+- Scharf-Winkel: unverändert im Tab „Konfiguration“ (0–180°, 180° = in jeder Lage, auch in der Luft).
+
+Entwurf und Modell: [`docs/design/waterproof-turtle.md`](design/waterproof-turtle.md).
+
+### Add-on-API 1.6 (Bausteine für Mob Defense und die Kino-Drohne)
+- **Halterung vorne** an allen eingebauten Rahmen außer dem Whoop, Werkbank-Slot links neben „Zubehör oben“. Ohne
+  Zubehör vorne ändert sich am Flugmodell nichts (Bauteil-Definitionen neutral ergänzt).
+- **Zubehör mit Inventar**: bis zu 9 Slots je Zubehör eines Add-ons, gespeichert an Drohne und Item, an alle Spieler in
+  Sichtweite synchronisiert; Fenster „Zubehör“ über den neuen Knopf im Kopf der Wartung (nur wenn ein Zubehör ein
+  Inventar hat), Beladung in Gramm je Zeile, Name der Halterung im Tooltip des Zubehör-Symbols. Die Beladung macht das
+  Zubehör im Flugmodell schwerer (5-g-Schritte wie beim Greifer); Zerlegen in der Werkbank gibt den Inhalt zurück.
+- **Zubehör-Aktion 1–4**: Taster-Funktionen im Tab „Modi“ (Seite „Flug“) und Tasten Ziffernblock 9, 0, Enter und + (Ziffernblock 8 ist der Turtle-Modus). Am
+  Server geprüft (Pilot, Reset-Epoche, höchstens 8 auf einmal, dann 20 je Sekunde).
+- **Stöße und Kräfte**: Add-ons geben Rückstoß, Schübe (z. B. Feuerwerk) und dauerhafte Kräfte ins Flugmodell; der Server
+  schickt sie an den Piloten, in den Heimflug oder an die abgestellte Drohne.
+- **Flughilfen**: Add-ons fliegen mit Propwashs Regelkreisen von ALTHOLD/POSHOLD (Positions- und Höhenziele,
+  Geschwindigkeit, Kurs, Knüppel-Glättung) samt GPS- und Barometerfehlern; ihr Name ersetzt im OSD die
+  Flugmodus-Anzeige, „Rückkehr“ startet GPS Rescue. Während GPS Rescue ruhen sie. Eine fehlerhafte Flughilfe schaltet
+  sich für den Flug ab (Hinweis im Spiel).
+- **Gimbal-Kamera und HUD**: stabilisierte FPV-Kamera (auch für Zuschauer, ohne Bildvibration) und eigene HUD-Elemente,
+  die das OSD auf Wunsch ersetzen.
+- **Events und Abfragen**: Treffer an Lebewesen mit Kontaktpunkt und Halterung, Schaden an der Drohne (änderbar,
+  abbrechbar), Drohnen in der Nähe mit Sichtprüfung, Vorhalt für Schützen, Hindernis-Scan in sechs Richtungen.
+- Netzprotokoll 16 (0.5.1: 15). Einzelheiten: `docs/design/addon-api-1.6.md`, `docs/api/changes.md`, Entwürfe
+  `docs/design/addon-mob-defense.md` und `docs/design/addon-cinematic.md`.
+
+### Fisheye-Objektiv im FPV-Bild
+- Tab „Video“: Regler „Fisheye“ von 0 % (flach) bis 100 % in 5-%-Schritten, Standard 80 %, persönliche Einstellung
+  (auch beim Zuschauen und mit der Kreativ-Brille). 80 % ist f-θ (Abstand zur Bildmitte proportional zum Winkel),
+  darunter nähert sich die Abbildung über stereografisch (60 %) dem flachen Bild, darüber staucht sie den Rand stärker
+  als flächentreu; die Bildmitte wächst linear mit dem Regler (analog 125°: 1,00 / 1,40 / 1,76 / 1,93-fach bei
+  0 / 40 / 80 / 100 %). Die Kamera des Videomoduls spannt bei jeder Stärke die volle Bildbreite; über 80° neben der
+  Achse ein runder Bildkreis (alle eingebauten Kameras in 16:9 füllen das Bild bei jeder Stärke). Die erste Fassung
+  hatte den Schalter „Objektiv: Fisheye / Flach“; nach dem Spieltest am 15.10. ist es ein Regler, alte Einstellungen
+  werden übernommen (Flach → 0 %, Fisheye → 80 %).
+- Propwash rendert ein breiteres flaches Bild und entzerrt es im Video-Pass (`post/fpv_lens.fsh`): Action-Cam greift
+  vorher ab, danach Videoeffekte und OSD. OSD-Horizont, Leiter und Marken rechnen mit dem Objektiv; „Props im
+  Kamerabild“ gilt für das eigene Objektiv und die eingestellte Stärke, Warnung und API-Wert bleiben flach 16:9.
+  0 % rendert wie 0.5.1 (ohne Entzerrungs-Pass), die Action-Cam nimmt bei jeder Stärke flach auf.
+- Entwurf: [`design/fisheye-lens.md`](design/fisheye-lens.md).
+
+### Akku: Entladekurve und Spannungseinbruch wie bei echten Packs
+- Ruhespannung von LiPo nach den üblichen Tabellen (3,61 / 3,69 / 3,73 V bei 5 / 10 / 20 %, 4,01 / 4,10 V bei
+  80 / 90 %), LiHV und Li-Ion unter 50 % angehoben, bei 50 % alle unverändert. Widerstandsanstieg bei leerem Akku erst
+  unter 15 % (Exponent 1,5). 6S 1300 bei 15 C: 25,2 V → 23,9 V nach 5 %, 21,8 V bei 50 %, 18,6 V am Schluss.
+- Spannungseinbruch mit zwei Zeitkonstanten: Sofortanteil 60 % des Pack-Widerstands, schneller Anteil 35 %, Rest
+  langsam; am Ende des Packs bricht ein Punch rund 2,7 V tiefer ein als in der Mitte. Welt-Regel „Spannungseinbruch“
+  aus schaltet auch den Anstieg bei leerem Akku ab.
+- OSD-Spannung geglättet wie bei Betaflight (τ ≈ 0,48 s) und blinkend gelb unter der Warn-, rot unter der
+  Abschaltspannung (`osd/VoltageDisplay`). Flugzeiten meist unter +1 %, Long Range bis +4 %; Schweben, Schub,
+  Topspeed und Auto-PIDs bitgleich. Entscheidungen 49 und 50 in
+  [`design/flight-model-spec.md`](design/flight-model-spec.md), Quellen in
+  [`design/realism/power-video.md`](design/realism/power-video.md) §2.4b.
+
+### Action-Cam (Flashback): Keyframe-Budget
+- Flashbacks Zeitleiste zeichnet nur eine begrenzte Zahl Keyframes je Szene (ImGui-Grenze); zu große Szenen ließen das
+  Spiel beim Öffnen der Aufnahme abstürzen. Propwash rechnet das Budget wie Flashback (höchstens 1.238 Kamera-Keyframes
+  je Flug) und Flashbacks Kamerakurve exakt nach (`video/record/path/FlashbackSpline`).
+- „Flashback-Obergrenze“ (Standard an) vergröbert lange Flüge beim Speichern, bis sie passen; ohne Obergrenze warnen
+  Toast und OSD („FLASHBACK VOLL“). Neues OSD-Element „Flashback-Zeitleiste“ (`FB 43%`).
+- Regler „Vereinfachung“ (Aus bis 20 cm / 10°) statt „Jeder Tick / Ausgedünnt“ mit Pfad-Vorschau, großer Ansicht und
+  „Aufnahmen prüfen“ (dünnt zu große Szenen mit Sicherung `.bak` aus). Alte Einstellung: „Jeder Tick“ → „Aus“,
+  „Ausgedünnt“ → 1 cm. Entwurf: [`design/flashback-keyframe-budget.md`](design/flashback-keyframe-budget.md).
+- Pfad-Vorschau nach dem Spieltest am 15.10.: Der rote Ring „Größte Abweichung“ saß an der größten Abweichung zur
+  gleichen Zeit – auf schnellen Geraden ein reiner Zeitversatz längs der Bahn, in der Draufsicht unsichtbar –, während
+  eine sichtbare Abweichung an einer Kurve ohne Ring blieb. Jetzt sitzt er dort, wo die gezeichneten Linien am weitesten
+  auseinanderliegen (von oben waagerecht, von der Seite Höhe; an jedem Zwischenschritt der Zeichnung gemessen), mit
+  Art und Wert in der Legende; Lupe und Knopf „Größte Abweichung“ zoomen dorthin. Der tatsächliche Pfad ist zwischen
+  den Ticks so gezeichnet, wie Flashback ihn mit jedem Tick abspielt. Das Ausdünnen selbst war nicht die Ursache und
+  bleibt unverändert (räumlicher Abstand unter Toleranz × 1,5).
+
+### Nach dem ersten Spieltest: Nick umkehren, Maus im Gate-Editor
+
+Zwei Rückmeldungen eines erfahrenen FPV-Piloten aus dem Spieltest der 0.5.0:
+
+- **Gate einstellen – wie kommt man an die Maus?** Das Panel war gefunden, die Zeile zur freien Maus (letzte von fünf
+  unter der Tastenhilfe) nicht. Der Hinweis steht jetzt als unterlegtes Feld direkt unter dem Kopf des Panels („Alt links
+  halten: Maus benutzen“, auf dem Mac „Linke ⌥ Wahltaste …“, mit freier Maus „… loslassen: umsehen“). Die ersten drei
+  Male je Spieler ist er hervorgehoben und pulsiert, bis die Taste einmal benutzt wurde (gemerkt in
+  `config/propwash/hints.json`). Beim Start nennt ein Hinweis-Feld links neben dem Panel die Taste sechs Sekunden lang.
+  Die Shift-Tooltips von Gate, Kurs-Element und Kurs-Werkzeug und die Flugschul-Szene „Gates frei drehen“ nennen die
+  Taste ebenfalls. Das Zeichen ⌥ ist eine eigene Glyphe (Font `propwash:keys`). Das Panel passt weiter in 320 × 240;
+  bei 480 × 270 bleibt es in der ausführlichen Darstellung (`docs/design/gate-edit-mode.md` §4a).
+- **Nick-Richtung der Maus:** Der Standard bleibt (Maus vor = Nase runter, wie ein Knüppel). Neu ist ein Schalter
+  **Nick (Pitch) umkehren** für beide Eingaben ohne Gerät – „Maus + Tastatur“ und reiner Tastaturflug: Er kehrt die
+  Maus vor/zurück und die beiden Nick-Tasten um. Er steht im Tab „Empfänger“ direkt unter dem Eingabegerät und im
+  Maus-Schritt des Assistenten, die Suche findet ihn unter „umkehren“, „invertieren“, „Pitch“ und „Nick“. Testfläche,
+  Vorführung, Tastentabelle und Knüppelanzeige zeigen die Umkehrung. Er ersetzt „Maus-Y umkehren“; die alte Einstellung
+  (`mouse.invertY` in `config/propwash/input.json`) wird beim Laden zu `invertPitch` (`docs/design/mouse-control.md`
+  §4a, Handbuch `docs/mouse-control.md`).
+- Flugphysik, Netzprotokoll und öffentliche API unverändert; beides wirkt nur beim Client.
+- Im Flugtraining nennen die Maus-Tipps der Lektionen Geradeaus, Flip und Power Loop mit eingeschalteter Umkehr die
+  umgekehrte Mausrichtung.
+- Geprüft mit JUnit (`InvertPitchTest`, `InvertPitchSearchTest`, `MouseTipDirectionTest`, `HintMemoryTest`,
+  `KeyNamesTest`, `MouseSticksTest`) und gefilterten Selbsttests: auf Fabric die Gruppen `race:`, `guide:`, `input:`,
+  `ui:` und `content:`, dazu `ui-scale:` für Gate-Editor, Maus-Einrichtung und den Empfänger-Tab mit Maus bei allen
+  GUI-Größen auf Englisch und Deutsch; auf NeoForge die Gruppen `guide:` und `input:` und die Schritte zu „Gate
+  einstellen“.
+
+### Race-Preset: True-X-Rahmen und flacher Race-Prop
+- Rückmeldung eines Rennpiloten: 5″-Racer fliegen heute True-X oder nur leicht gestreckt, flache Props wie der „5129“
+  (5,1″ × 2,9″) sind am beliebtesten. Der eingebaute Race-Rahmen `race_5` ist jetzt als True-X gezeichnet (Motoren
+  ±76,0 / ±76,0 mm statt ±68,8 / ±82,6 mm) – so, wie ihn das Flugmodell ohne eigene Arme schon immer rechnet. Radstand
+  215 mm, 88 g, Kamera und Akku unter dem Rahmen bleiben; kein Flug mit dem Rahmen ändert sich. Props im FPV-Bild
+  6,4 % statt 11,0 %.
+- Neues Bauteil `propwash:p51_29_3b`: 5,1-Zoll-Propeller, 3 Blätter, 2,9″ Steigung, 4,4 g, Polycarbonat. Beiwerte
+  (`ct` 0,122, `cp` 0,065) relativ zum 5,1×4,6×3 aus einem Prüfstand, der beide Props auf demselben Motor misst:
+  gleicher Standschub (+2 % je Drehzahl), 8 % mehr Leistung, 30 % weniger Fortschritt je Umdrehung. Modelle (beide
+  Drehrichtungen, drei Schadensbilder, Scheibe, Lack-Varianten) aus dem Generator, rot. Rezept: getrockneter Seetang
+  wie beim 5,1″-Prop, Goldnugget als Nabe, 4 Stück. Texte Deutsch und Englisch, Shift-Hilfe.
+- Das Race-Preset (Kreativ-Tab, Befehle, Flugschule, Geister) fliegt mit dem neuen Prop: Topspeed 147 statt 168 km/h
+  (frischer Akku 153, Sturzflug 166), Schub/Gewicht 13,1 statt 13,3, Vollgas 130 statt 125 A, gemischt 2:55 statt
+  3:07 min, Punch nach 1 s 41 statt 47 m/s, Roll-PID 33/39/31 statt 34/40/31. Zielband Topspeed des Racers 140–160 km/h
+  (Race-Quads real 130–160 km/h). Drohnen in bestehenden Welten behalten ihren 4,6″-Prop; auf dem Race-Rahmen
+  erreicht er weiter 168 km/h.
+- Für sich genommen lässt diese Änderung alle bisherigen Goldens bitgleich: Flug-Goldens nur mit neuen Zeilen
+  (34 + 27 + 12), der Racer mit dem 4,6″-Prop bleibt als Vergleich darin; Speicher- und Netzformat, Motorklang der
+  alten Teile und alle Presets von Just More Parts unverändert. Sie allein hätte Netzprotokoll und Parts-API nicht
+  geändert (ein eingebautes Teil mehr, als letztes Prop im Register); beide steigen in 0.5.2 aus anderen Gründen (Kopf
+  dieses Abschnitts), und die Akku-Goldens sind wegen des neuen Akku-Modells neu erzeugt.
+  Sharecodes: Just More Parts hängt den Prop als Nummer 43 an seine Prop-Tabelle an; die Tabelle der Website
+  (`sharecode2-tables.js`) braucht denselben Eintrag. Recherche, Prüfstandsdaten, Entscheidungen:
+  [`design/realism/motors-props.md`](design/realism/motors-props.md) §12.
+
+### Beim Zusammenführen entschieden
+- Tasten der Zubehör-Aktionen 1–4: Ziffernblock 9, 0, Enter und + (vorgesehen waren 8, 9, 0, Enter). Ziffernblock 8
+  ist der Turtle-Modus und setzt die Reihe der Flug-Tasten 1–7 fort; alle Tasten sind änderbar.
+- Im Turtle-Modus hält `sim/HullContact` die Drohne am Boden, sonst der neue Bodenkontakt (`sim/GroundSolver`); der
+  Auftrieb beschichteter Drohnen mindert die Last am Boden. Lastfaktoren von Wasser und Ranken werden multipliziert.
+- `LandingFlipTest`: Halbblock und Stufe mit 100 statt 20 Landungen je Fall, Kopf- und Seitenlagen zusammen höchstens
+  10 %. Mit dem neuen Akku-Modell landete der Whoop beim Rutschen über die Stufe in 2 von 20 Fällen auf der Seite; mit
+  300 Landungen liegt der Anteil mit und ohne Akku-Modell bei rund 0,5 % (`design/ground-contact.md` §6.5).
+- Kleine GUI-Größen (Prüfung bei 320 × 240 bis 427 × 240): Der Empfänger-Assistent lässt den Turtle-Modus weg, wenn die
+  Schalterliste sonst über den Rand liefe (mit freigeschaltetem 3D-Modus); die Bezeichnungen der Flughilfe-Prüfung im
+  Tab „Rennen“ werden umbrochen statt gekürzt.
+- Selbsttest: angeschlossene Funken und Gamepads sind ausgeblendet (mit einer echten Funke am Rechner fragte das Spiel
+  nach der GUI-Prüfung nach ihrer Einrichtung und blockierte die folgenden Schritte); nach dem Bildschirmfoto des
+  Greifers geht der Spieler zurück an seinen Platz, statt die Items selbst aufzusammeln.
+
+---
+
+### Nach der Gegenprüfung von 0.5.2 (Fixes vom 15.10.)
+
+- **Übergänge von Zonen zählen als Flughilfe.** Schwerkraft und Wind einer nicht rennfreien Zone wirken nach dem
+  Verlassen oder Löschen noch über ihre Übergangszeit (bis 5 s) nach, ebenso beim Einflug in eine rennfreie Zone.
+  Eine Runde, die kurz nach dem Austritt startete, galt bisher trotzdem als sauber. Jetzt zählt eine Zone, solange ihr
+  Gewicht über 0 liegt; der Server führt dafür je Pilot denselben Übergang (`ZoneField`).
+- **Flughilfen aus Add-ons zählen.** Eine Add-on-Flughilfe, die gerade steuert (Knüppel, Modus, Höhe, Position, Tempo,
+  Gieren), macht die Runde zur Runde mit Flughilfe, mit ihrer Id im Text („die Flughilfe cinema:assist aus einem Add-on
+  hat mitgeflogen“); hält sie Höhe oder Position, steht nicht mehr fälschlich „Höhe halten war an“ da.
+- **VTX-Hitzeschutz folgt Zonen.** Eine Zone, die *Hardware-Grenzen* umschaltet, gilt jetzt auch für den Sender (vorher
+  nur für die Motoren). Der Heimflug am Server rechnet den Strom der eingestellten VTX-Stufe ein.
+- **Zubehör-Fenster.** Zwei offene Fenster oder ein Schuss zwischen zwei Klicks konnten Inhalt verdoppeln oder
+  verbrauchte Munition zurückbringen; das Fenster liest jetzt vor jedem Zugriff neu und schreibt nur, was es geändert
+  hat. Shulkerkisten und beladene Drohnen passen nicht mehr hinein; ein Loslassen einer Zubehör-Aktion zählt nur nach
+  einem angenommenen Drücken.
+- **Anzeige.** Bestenlisten-Zeilen tragen bis zu 16 Gründe (Arcade-Welt plus Zone plus Kreativ-Drohne vollständig im
+  Tooltip), lange Meldungen der Rennanzeige im Sichtflug und Zonen-Hinweise im FPV brechen um statt abzuschneiden, die
+  Platzierungszeile eines Heats nennt eine Flughilfe.
+- **Homepoint per `/data merge`:** Liegt der alte Punkt in einer anderen Dimension als die Drohne, setzt ein Merge mit
+  neuen Koordinaten den Punkt in die Dimension der Drohne, statt am alten Dimensionseintrag zu scheitern.
+- **Kleinigkeiten:** Zonen werden beim Laden auf 128 je Dimension begrenzt; Doku zu Kino-Add-on (Action-Cam nur oben,
+  keine stabilisierten Aufnahmen mit API 1.6), README (Welt-Regel `waterproof_drones`, neue Tasten, `/propwash zone`,
+  Fisheye, VTX-Leistung, Wasserschutz) und API-Notizen; das Bild „Wasserdicht“ ohne Selbsttest-Kennung.
+
+### Nach dem Spieltest vom 15.10.: Einstellungen
+
+- **Nach Absturz abschalten nur in den Welt-Regeln.** Die zusätzliche Zeile im Tab „Konfiguration“ ist entfallen; die
+  Suche („crash disarm“, „disarm on crash“, „absturz“) springt in den Tab „Welt-Regeln“, Flugschule und Modi-Beschreibung
+  verweisen nur auf die Welt-Regel.
+- **OSD-Standardplätze ohne Überlappung.** Siehe VTX-Leistung: eigene freie Plätze für Elemente, die eine Vorlage nicht
+  zeigt, Umzug in gespeicherten Layouts (OSD-Konfiguration Version 4), Selbsttest `osd: Vorlagen ohne Überlappung`, auch auf
+  Deutsch und in 5:4 (das Videosystem parkt in Minimal auf 28/12 und in Race auf 28/7, „SPEICHERN 100 %“ der Aufnahme ist
+  auf Deutsch breiter als „SAVING“).
+- **VTX-Leistung: Auto ist Standard** für jede Drohne und jedes Videosystem, analog regelt der Flugcontroller nach der
+  Funkverbindung (siehe VTX-Leistung, [`design/vtx-power.md`](design/vtx-power.md)). Tooltip der Videomodule: „25–1600
+  mW, Auto (Nennleistung 400 mW)“.
+- **Piepser bleibt an.** Der Piepser zum Wiederfinden ist jetzt ein Zustand der Drohne auf dem Server
+  (`LocatorBeeper`, synchronisiert und gespeichert): Der Pilot schaltet ihn wie bisher mit dem Schalter *Piepser* oder
+  der Taste `.`; der Flugzustand (`DroneStateC2S`) trägt ihn zum Server. Verlässt der Pilot die Drohne (Brille ab,
+  Funke weg, zu weit, gestorben), piept sie weiter, bis der Pilot ihn ausschaltet (Taste `.` oder Schalter auf aus, auch
+  zu Fuß, `BeeperOffC2S`), die Drohne aufgehoben oder der Akku ausgebaut wird oder leer ist. Solange sie unbeaufsichtigt
+  piept, laufen Flugcontroller, Empfänger, Videosender und Summer und ziehen den Akku leer (5″-Racer mit 6S 1100 mAh knapp
+  6 h, Freestyle mit Digital HD 3 h, Whoop mit 1S 300 mAh rund 25 min). Alle Spieler in der Nähe hören ihn (Hörweite 64 Blöcke), nicht nur der
+  Pilot. Selbsttest `audio: Piepser piept nach dem Verlassen weiter, …`.
+- Netzprotokoll bleibt 16 (0.5.2 ist noch nicht veröffentlicht; Flugzustand, Drohnen-Daten und ein neues Paket ändern
+  sich innerhalb von 16). Bewegungs-Goldens und Kalibrierung bit-gleich.
+
+### Nach dem Spieltest vom 15.10.: Knüppel-Mode 1–4
+
+Piloten fliegen Mode 1, 2, 3 oder 4; bisher kannte Propwash nur Mode 2 (Gas und Gier links).
+
+- Einstellung „Knüppel-Mode“ (`InputConfig.stickMode`, Standard Mode 2 = bisheriges Verhalten) im Tab „Empfänger“ und
+  als erste Seite des Empfänger-Assistenten, bevor ein Knüppel bewegt werden muss. Persönlich, nur im Client gespeichert
+  (`config/propwash/input.json`), nicht synchronisiert; Netzprotokoll bleibt 16.
+- Was sich ändert, ist nur Anzeige und Erklärung: Ansagen und Funken-Animation des Assistenten, Stick-Overlay im OSD,
+  Flugschule (Hinweis-Anker wechseln die Funkenseite, Texte mit `.mode1|3|4`-Varianten), Maus-Vorschau, Funke in der
+  Hand. Funken senden in jedem Mode AETR, Kanalerkennung und Vorbelegung bleiben gleich.
+- Gamepads: die Standardbelegung folgt dem Mode (`ProfileDefaults.gamepad(name, mode)`); ein Wechsel legt nur
+  unveränderte Standardbelegungen um (Kalibrierung bleibt), eigene Belegungen bleiben und der Assistent bietet das
+  Umlegen an. „Standard“ im Tab „Empfänger“ lässt den Mode stehen.
+- Flugmodell, Goldens und Kalibrierung unberührt (kein Code in `sim`).
+
+### Nach dem Spieltest vom 15.10.: Zusammenführen
+
+- Zusammengeführt: Einstellungen (oben), Absturzlagen im Bodenkontakt (siehe Landungen,
+  [`design/ground-contact.md`](design/ground-contact.md)), Videostrecke mit Hauswand-Dämpfung, digitalen Stufen und
+  Abschattung der Steuerstrecke (siehe Videostrecke), Fisheye-Regler und Ring der Flashback-Pfad-Vorschau.
+- VTX-Leistung *Auto*: Auto analog über den Flugcontroller (Einstellungen) und die Abschattung im Sichtflug über
+  `video.client.ControlLinkScan` (Videostrecke) wirken zusammen. `LinkScenariosTest` prüft Digital gegen
+  `VtxAuto.DIGITAL_TARGET_DB` (10 dB, vorher `TARGET_MARGIN_DB`); `design/vtx-power.md`, `vtx-power.md` und
+  `design/vtx-obstruction.md` beschreiben beides (dort stand noch „Analog bleibt auf der eingestellten Stufe“).
+- Kalibrierung mit Just More Parts 1.1.1: `calibration.txt`, `fall.txt`, `throttle_drop.txt` und `battery_sag.txt`
+  byte-gleich mit 0.5.2 vor dem Spieltest; in `motion.txt` alle 1 254 Spezifikationen gleich, neu sind nur die Hashes
+  der Flüge mit Bodenstoß (`acro` 1 092, `angle` 868, `drop` 1 254) – genau die angekündigte Änderung des Bodenkontakts;
+  der zusammengeführte Stand und der Absturz-Strang allein liefern byte-gleiche Dateien.
+- Netzprotokoll 16, Parts-API 1.6.0, Just More Parts 1.1.1 unverändert.
+
+### Letzte Ergänzungen vor dem Release: Zusammenführen
+
+- Zusammengeführt: offene Kleinigkeiten der Gegenprüfung (VTX-Auto-Text, Fisheye „(default)“, Ring der
+  Flashback-Pfad-Vorschau zum Zeitpunkt der größten Lücke, robustere Absturz- und Landungstests), Reset zum Homepoint
+  (siehe oben, [`design/home-point.md`](design/home-point.md) §7) und Knüppel-Mode 1–4 (siehe oben).
+- Reset und Knüppel-Mode berühren dieselben Stellen (`ProfileDefaults`, `RemoteDemo`, `ModesTab`, Sprachdateien) und
+  fügen sich ohne Konflikt zusammen: Die Gamepad-Standardbelegung legt `RESET` in jedem Mode auf „Back“, die
+  Vorführung im Tab „Modi“ zeigt Reset als Taster. Einziger Konflikt war die Kompatibilitätszeile im CHANGELOG; beide
+  Aussagen stehen jetzt darin.
+- Kalibrierung mit Just More Parts 1.1.1: alle fünf Dateien (`calibration.txt`, `motion.txt`, `fall.txt`,
+  `throttle_drop.txt`, `battery_sag.txt`) byte-gleich mit 0.5.2 vor diesen Ergänzungen.
+- Netzprotokoll 16 (mit den Reset-Paketen, 0.5.2 ist noch unveröffentlicht), Parts-API 1.6.0, Just More Parts 1.1.1
+  unverändert.
+
 ## 0.5.1
 
 Fehlerbehebung zu 0.5.0 mit drei Punkten. Netzprotokoll (15), Parts-API (1.5.0), Speicherformate und Flugphysik sind

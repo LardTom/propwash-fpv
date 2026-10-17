@@ -1,6 +1,7 @@
 package de.lardtom.propwash.video;
 
 import de.lardtom.propwash.build.VideoSystem;
+import de.lardtom.propwash.video.vtx.VtxPowerSettings;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +16,7 @@ public final class VtxSettings {
     }
 
     public static boolean isKey(String key) {
-        return CHANNEL.equals(key) || MANUAL.equals(key);
+        return CHANNEL.equals(key) || MANUAL.equals(key) || VtxPowerSettings.isKey(key);
     }
 
     public static float sanitize(String key, float value) {
@@ -68,6 +69,7 @@ public final class VtxSettings {
     }
 
     public static void copyClean(Map<String, Float> from, Map<String, Float> to) {
+        VtxPowerSettings.copyClean(from, to);
         for (String key : KEYS) {
             Float value = from.get(key);
             if (value == null || !Float.isFinite(value)) {

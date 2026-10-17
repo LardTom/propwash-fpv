@@ -42,7 +42,7 @@ Documentation – player guide, world rules for server owners, add-on API and pa
 - **Betaflight-style flight controller:** Betaflight and Actual rates, PID with feed-forward, I-term relax,
   anti-gravity, TPA, airmode, Acro/Angle/Horizon, 3D mode with reversible motors, arming checks, failsafe, flip-upright
   after a crash and GPS Rescue (return to home with obstacle avoidance). The tune is stored on the drone, like on a real flight controller.
-- **Drones from parts:** five frames from a 65 mm whoop to a 7″ long range, flight controllers, six motors, five props,
+- **Drones from parts:** five frames from a 65 mm whoop to a 7″ long range, flight controllers, six motors, six props,
   batteries and video units, assembled at the **Drone Workbench** with a live 3D preview and build analysis. Frames
   take more than one option where real ones do: a 3″ cinewhoop with light 1404 or punchy 2004 motors, a whoop with
   quad- or tri-blades, a race or long-range frame with a 30×30 stack or a light 20×20 AIO, a 7″ with 2807 or 2207
@@ -73,10 +73,14 @@ Documentation – player guide, world rules for server owners, add-on API and pa
   assignment, EdgeTX/OpenTX defaults and a keyboard fallback. The sticks on the in-game **FPV Remote** move
   with your real ones.
 - **FPV and line of sight:** wear matching goggles to fly through the drone's camera, or take them off and fly line of
-  sight with your own eyes while your view follows the drone.
+  sight with your own eyes while your view follows the drone. The FPV picture looks through a fisheye lens like a real
+  FPV camera; a slider in the *Video* tab sets how strong (0 % is flat).
 - **Analog and digital video:** analog goggles whose picture breaks up in stages (torn lines, color loss, snow,
-  static), digital goggles with blur, block artifacts, freezes and a hard cut to "NO SIGNAL", latency per video system and a signal model with range and
-  obstacles. The creative goggles receive everything and have free settings.
+  static), digital goggles that get softer, blockier and laggier, stutter and freeze on the last frame before "NO SIGNAL",
+  latency per video system and a signal model with range and obstacles (one block of stone, brick, planks or concrete
+  dampens like one house wall). The creative goggles receive everything and have free settings. VTX power from 25 mW up to the module's
+  maximum (*Video channel* tab, `F10` or a switch, *Auto* by default on every drone): more range and penetration, more battery
+  drain and heat.
 - **OSD:** a Betaflight-like on-screen display with 43 elements, presets and a drag-and-drop editor.
 - **Batteries and charging:** every pack keeps its own charge, only fits the frames it suits and only recharges in the
   **Battery Charger**.
@@ -89,6 +93,9 @@ Documentation – player guide, world rules for server owners, add-on API and pa
   loot chest.
 - **Bandos:** abandoned buildings to fly freestyle in generate in fitting biomes – barns, factories, water towers,
   piers, oil rigs and more, each one different, full of gaps and holes, now and then with a chest of used parts.
+  Journeyman cartographers sell bando maps to the nearest unexplored one.
+- **Waterproof drones and turtle mode:** spray a drone with the Waterproof Coating and it arms and flies in water; when
+  it lands upside down, turtle mode (`Numpad 8` or a switch) flips it back over with its own props.
 - **Video channels and spectating:** every transmitter sends on a real analog or digital channel; press `F7` to watch
   other pilots' feeds through your goggles.
 - **Freestyle tricks:** 59 tricks in nine families – from flips, rolls and power loops to Matty variants, power flips,
@@ -165,14 +172,17 @@ keyboard, for example, the arm key shows as `Y` and the stop key as `Z`.
 | Flight mode Acro / Angle / Horizon | `Numpad 1` / `Numpad 2` / `Numpad 3` | Angle mode (AUX2), Horizon mode | left shoulder (angle on/off) |
 | 3D mode on/off (after unlocking it in the *Modes* tab) | `Numpad 6` | 3D mode (unassigned) | |
 | Flip drone upright (disarmed and at rest) | `U` | Flip upright | left face button |
+| Turtle mode: flip a crashed drone back over with its own props (upside down, then arm) | `Numpad 8` | Turtle mode | |
 | Stop FPV flight (also ends line of sight) | `Y` | – | – |
-| Toggle locator beeper | `.` (Period) | Beeper (AUX3) | top face button |
+| Toggle locator beeper (keeps beeping after you leave the drone until you switch it off) | `.` (Period) | Beeper (AUX3) | top face button |
 | GPS Rescue (return to home on/off) | `J` | Rescue / return home (AUX4) | right face button |
 | Set home point | `,` (Comma) | Set home point | Start |
-| Restart race | `Backspace` | Restart race | Back |
+| Reset: drone back to its home point – level, disarmed, a running race is canceled (world rule *Allow reset*) | `Backspace` | Reset | Back |
 | Rotate gate (sneak: change mount; gate or course tool in hand, not while flying; step in the *Race* tab) | `R` (shared with *Cycle flight mode*) | | |
 | Action cam: start/stop recording (FPV, action cam mounted) | `F9` | Record (switch: on = recording; button: each press toggles) | |
 | LED strip on/off while flying (LED strip mounted) | `F8` | LEDs off (active = strip and headlight off; unassigned = LEDs on) | |
+| Step VTX power (25 mW up to the module's maximum) | `F10` | VTX power | |
+| Accessory action 1–4 (add-on accessories) | `Numpad 9` / `Numpad 0` / `Numpad Enter` / `Numpad +` | Accessory action 1–4 | |
 | Cargo drop: open the gripper (gripper mounted) | `Enter` | Drop cargo (button) | |
 | Custom command 1–8: run your own Minecraft command (while flying) | unbound | Custom command 1–8 (*Modes* tab, page *Commands*) | |
 | Spectate: next video channel (goggles on, not flying) | `F7` | | |
@@ -190,8 +200,10 @@ Keyboard flight starts in Angle mode.
 and roll like aiming in a shooter, `W`/`S` or the mouse wheel give throttle, `A`/`D` yaw and the middle mouse button
 centers the sticks. *Automatic* holds the stick where you push it in Angle and Horizon and turns mouse speed into
 stick deflection in Acro; *Speed*, *Hold*, mouse X on yaw, sensitivity, DPI, smoothing, deadzone, expo, return speed
-and wheel throttle are in the *Receiver* tab, with live virtual sticks to try them out. See
-[`docs/mouse-control.md`](docs/mouse-control.md) (German).
+and wheel throttle are in the *Receiver* tab, with live virtual sticks to try them out. By default pushing the mouse
+forward tips the nose down like a stick; *Invert pitch*, right below the input device, reverses that for the mouse and
+the pitch keys – also when you fly with the keyboard alone. See [`docs/mouse-control.md`](docs/mouse-control.md)
+(German).
 
 ## Radio, gamepad and keyboard setup
 
@@ -202,9 +214,17 @@ and wheel throttle are in the *Receiver* tab, with live virtual sticks to try th
   or over another menu) whether to set it up now: *Set up*, *Later* (one reminder per session) or *Never for this
   device*. Once the wizard is finished, the device reconnects silently with its profile and is picked automatically
   (most recently used first).
-- **Gamepads** are detected automatically with a Mode 2 layout (throttle and yaw on the left stick). The default
-  throttle mode is *Upper half* (centered stick = throttle off); *Incremental* holds the throttle like cruise control.
-- **Receiver wizard:** open the configurator (`K`), go to **Receiver** and click *Receiver wizard …*. It walks you
+- **Stick mode (Mode 1–4):** *Receiver* tab, row *Stick mode*, with a small picture of both sticks. Mode 2 (throttle
+  and yaw left, pitch and roll right) is the default; Mode 1 puts pitch and yaw left, throttle and roll right; Mode 3
+  pitch and roll left, throttle and yaw right; Mode 4 throttle and roll left, pitch and yaw right. It is a personal
+  setting of your game, applies at once and changes what Propwash shows and says: wizard prompts and the animated
+  radio, the OSD stick overlay, the Flight school, the radio in your hand. A radio keeps its channels (set the mode on
+  the radio itself); a gamepad's sticks follow the mode unless you mapped them yourself.
+- **Gamepads** are detected automatically with the sticks of your stick mode (Mode 2: throttle and yaw on the left
+  stick). The default throttle mode is *Upper half* (centered stick = throttle off); *Incremental* holds the throttle
+  like cruise control.
+- **Receiver wizard:** open the configurator (`K`), go to **Receiver** and click *Receiver wizard …*. It starts with
+  the stick mode (Mode 2 is pre-selected; click a picture or press 1–4), then walks you
   through device, channels (move each stick when asked; push the throttle fully up, then fully down and hold it – where
   it rested before does not matter, and if the direction doesn't match where it started the wizard asks), a check page
   that shows every channel live with *Inv.* to flip it, calibration (center, then end stops) and switches (click
@@ -212,7 +232,7 @@ and wheel throttle are in the *Receiver* tab, with live virtual sticks to try th
 - **Max arm angle:** *Configuration* tab, section *Arming* – like Betaflight's small_angle, 25° by default, 180° arms
   in any attitude (also in the air or upside down). Part of the drone's tune.
 - **Modes tab:** assign every function (Arm, Angle mode, Horizon mode, Rescue / return home, Flip upright, Set
-  home point, Beeper, Restart race) to any AUX channel range (900–2100 µs) or button, inverted, held or as a toggle.
+  home point, Beeper, Reset) to any AUX channel range (900–2100 µs) or button, inverted, held or as a toggle.
   *Flip switch* fills in source and range for you. **3D mode** is unlocked there once (row *3D mode*, *Unlock*); then
   the throttle center is zero thrust and below it the motors spin backwards. For 3D, calibrate the throttle center in
   the receiver wizard (throttle stick in the middle when you press *Capture center*).
@@ -245,9 +265,15 @@ view means a different video unit. The camera angle (uptilt) belongs to the dron
 
 - **Analog FPV Goggles** receive analog video, **Digital FPV Goggles** receive digital video. Analog breaks up in stages
   with the link: a softer picture, then torn lines and sparkles, then stripes lose their color, then snow with sync
-  jumps and finally full static. Digital stays digital: blur, resolution steps, blocks, stutter and freezes, then a
-  hard cut to "NO SIGNAL". The OSD always stays readable on top.
-- Solid blocks, leaves and water between you and the drone weaken the signal.
+  jumps and finally full static. Digital stays digital and breaks up like DJI or Walksnail: lower bitrate (softer,
+  blockier picture), more latency, stutter, then the last frame freezes and only a real loss shows "NO SIGNAL"; the
+  picture comes back once the link is stable again. Low-latency digital systems (up to 18 ms) behave like HDZero: the
+  picture stays sharp and keeps its latency, it breaks up into blocks instead. The OSD always stays readable on top.
+- Blocks, leaves and water between you and the drone weaken the signal: one block of stone, brick, planks, concrete or
+  terracotta about like one house wall (5–9 dB), glass, leaves and wool much less, metal and deep water block it.
+  Thick terrain adds up, so hills and caves still cut the link, while the picture fades in and out around corners.
+  The radio link sees the same obstacles: its RSSI drops behind walls, and far behind a hill or deep underground the
+  drone goes to failsafe.
 - **Creative FPV Goggles** (creative only) receive every system; latency, range (up to unlimited), noise and obstacle
   damping are free in the **Video** tab.
 - The **Video** tab shows the field of view of the camera you fly (read-only for analog and digital goggles; the
@@ -412,8 +438,9 @@ start *Adjust gate*. No window opens: you keep walking and looking around while 
 (compass direction), pitch (tilt) and roll (turn within the opening – 45° makes a diamond) and the width and height of
 the opening from 1 to 16 blocks in half steps. The mouse wheel changes the selected row (5° steps, hold `Ctrl` for 1°),
 sneak + mouse wheel picks the row, and the gate already shows itself in the new pose (red if it doesn't fit). `Enter`
-or right-click applies, `Esc` cancels. Hold `Alt` to free the mouse and drag the sliders or use *Reset* and *Leave
-course* in the panel; `F1` hides the panel for a clear view. The gate stays on its floor, wall or ceiling,
+or right-click applies, `Esc` cancels. Hold `Alt` (`⌥ Option` on a Mac) to use the mouse: drag the sliders or use
+*Reset* and *Leave course* in the panel. The panel names the key in its first line, highlighted the first few times,
+and a short notice repeats it whenever you start adjusting; `F1` hides the panel for a clear view. The gate stays on its floor, wall or ceiling,
 course gates keep their number, and drones bounce off angled gates at the real angle. In the *Race* tab *Rotate gate*
 can turn standing and hanging gates in 45°, 15° or 5° steps instead of 90°.
 
@@ -456,7 +483,8 @@ corner like the three-way connector of a MultiGP gate, right-click a pole and it
 1–16 blocks, LEDs in 16 colors (sneak + `R`, sneak + right-click for *Gate pole settings*, or a dye). Poles are obstacles and markers, not course
 elements: they don't count in laps, and the course tool leaves them out.
 
-- **Standing starts:** press *Restart race* near the start gate (or arm there with *Start when arming*) to line up.
+- **Standing starts:** press *Reset* to put the drone back on its home point at the start, then arm near the start gate
+  (or always arm there with *Start when arming*) to line up.
   Other pilots at the start can join; the start lights count down 3-2-1-GO for everyone at the same moment, at the
   latest 10 seconds after the first pilot lined up. Flying through the start gate before GO adds 3 seconds to lap 1.
   With several pilots the finishing order is announced in chat.
@@ -598,8 +626,8 @@ a world. Changed physics rules mean flights do not count for leaderboards.
 At the top of the tab, three presets set every rule with one click (host and whoever may use `/gamerule`; also
 `/propwash rules preset <realistic|training|arcade>`): *Realistic* is all defaults, *Training* turns off crash damage,
 prop strikes, battery drain, voltage sag and hardware limits but keeps the handling (mild wind included), *Arcade* adds
-any-part-fits, no wind, turbulence or prop wash, a 300 % crash tolerance without disarming, infinite range and drones
-that fly through mobs. Single rules stay adjustable afterwards; the tab shows which preset the world matches.
+any-part-fits, no wind, turbulence or prop wash, a 300 % crash tolerance without disarming, infinite range, waterproof
+drones and drones that fly through mobs. Single rules stay adjustable afterwards; the tab shows which preset the world matches.
 
 | Rule | Default | Values |
 |---|---|---|
@@ -627,6 +655,14 @@ that fly through mobs. Single rules stay adjustable afterwards; the tab shows wh
 | `propwash:save_assisted_laps` | false | laps flown with flight aids are saved in their own *Assisted* leaderboard |
 | `propwash:drone_trails` | false | flying drones draw a thin, fading trail in their color; every player can hide it in the *Display* tab |
 | `propwash:invulnerable_pilots` | false | whoever is flying a drone takes no damage (for events); off = the pilot's body stays a normal player |
+| `propwash:waterproof_drones` | false | every drone flies in water as if it had the waterproof coating (on in *Arcade*) |
+| `propwash:allow_reset` | true | pilots may put their drone back on its home point with *Reset*; false refuses it with a message |
+
+**Zones** give part of a world its own physics rules (gravity, wind, battery, crash settings and the other physics
+rules above): a practice field with infinite battery, a zero-gravity passage in a race. Create them in the *World rules*
+tab (zone editor) or with `/propwash zone`, same permission as the world rules. A zone is either *race-legal* (laps in it
+count normally) or counts as assisted; gravity and wind fade in and out over the zone's transition time (0–5 s), and
+that fade still counts as the zone. Up to 128 zones per dimension.
 
 ## Servers and commands
 
@@ -653,6 +689,11 @@ reported by NeoForge's own screen (*Channel of mod "Propwash FPV" …* with both
 - `/propwash rules` (server and world rules), `/propwash rules preset <name>`, `/propwash range [player]`, `/propwash pilots`
   and `/propwash reload` (operators).
 - `/propwash race courses | leaderboard | laps | reset | delete | archive` for courses and leaderboards.
+- `/propwash zone list | info <name>` for everyone; `create <name> box <from> <to>` or `cylinder <center> <radius>
+  <height>`, `set`/`reset <name> <rule>`, `priority`, `racelegal`, `transition`, `rename`, `move` and `delete` for whoever
+  may change the world rules.
+- Drones keep their GPS Rescue home point in their entity data: `/data get entity <drone> HomePoint`, and admins move it
+  with `/data modify … HomePoint set value {x:…,y:…,z:…}`.
 
 ## Add-ons (Parts API)
 
@@ -678,7 +719,7 @@ builds, paint jobs, tunes and OSD layouts.
 Developers: the add-on guide, the API reference and the JSON parts format are at
 [propwashfpv.com/docs/api](https://propwashfpv.com/docs/api/). In this repository the step-by-step guide (German) is
 [`docs/api/addon-guide.md`](docs/api/addon-guide.md), the full contract
-[`docs/design/parts-api.md`](docs/design/parts-api.md). The API has its own semantic version, independent of the mod version: Propwash 0.5.0 and 0.5.1 ship Parts API 1.5.0.
+[`docs/design/parts-api.md`](docs/design/parts-api.md). The API has its own semantic version, independent of the mod version: Propwash 0.5.0 and 0.5.1 ship Parts API 1.5.0, Propwash 0.5.2 ships Parts API 1.6.0.
 `./gradlew publishToMavenLocal` publishes `de.lardtom:propwash-common-26.3`, `propwash-fabric-26.3` and
 `propwash-neoforge-26.3` (with sources and Javadoc) to your local Maven repository for add-on development.
 

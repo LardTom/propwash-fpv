@@ -11,7 +11,8 @@ public enum ArmBlocker {
     REBOOTING,
     IN_FLUID,
     HARDWARE_FAULT,
-    THROTTLE_NOT_CENTERED;
+    THROTTLE_NOT_CENTERED,
+    TURTLE_AIRBORNE;
 
     public int bit() {
         return 1 << this.ordinal();

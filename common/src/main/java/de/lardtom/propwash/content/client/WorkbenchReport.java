@@ -20,6 +20,7 @@ import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageFormat;
 import de.lardtom.propwash.video.client.FpvImage;
+import de.lardtom.propwash.video.client.FpvLens;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
@@ -49,6 +50,8 @@ public final class WorkbenchReport {
     private final List<Line> issues = new ArrayList<>();
     private final Map<PartCategory, Integer> highlights = new EnumMap<>(PartCategory.class);
     private double boxedProps = Double.NaN;
+    private double fisheyeProps = Double.NaN;
+    private int fisheyePropsStrength = -1;
 
     private WorkbenchReport(BuildSlots.Check check, PartWear wear, boolean droneItemAvailable, PartCompatibility rule) {
         this.check = check;
@@ -66,6 +69,16 @@ public final class WorkbenchReport {
             this.boxedProps = CameraOcclusion.percent(rig, rig.tiltDeg(), rig.horizontalFovDeg(), ImageFormat.FOUR_THREE_ASPECT, CameraOcclusion.ROWS);
         }
         return this.boxedProps;
+    }
+
+    private double fisheyePropsInView(DroneBuild build, boolean boxed, int strength) {
+        if (Double.isNaN(this.fisheyeProps) || this.fisheyePropsStrength != strength) {
+            FpvRig rig = FpvRig.of(build);
+            this.fisheyeProps = CameraOcclusion.fisheyePercent(rig, rig.tiltDeg(), rig.horizontalFovDeg(), boxed ? ImageFormat.FOUR_THREE_ASPECT : FpvRig.ASPECT,
+                    CameraOcclusion.FISHEYE_ROWS, strength / 100.0);
+            this.fisheyePropsStrength = strength;
+        }
+        return this.fisheyeProps;
     }
 
     public static WorkbenchReport of(BuildSlots.Check check) {
@@ -271,7 +284,9 @@ public final class WorkbenchReport {
         }
         if (Double.isFinite(a.propsInViewPercent()) && this.build != null) {
             boolean boxed = FpvImage.formatFor(this.build.video().system).boxed();
-            double props = boxed ? this.boxedPropsInView(this.build) : a.propsInViewPercent();
+            int strength = FpvLens.INSTANCE.strengthPercent();
+            double props = strength > 0 ? this.fisheyePropsInView(this.build, boxed, strength)
+                    : boxed ? this.boxedPropsInView(this.build) : a.propsInViewPercent();
             lines.add(detail(boxed ? "props_in_view_4_3" : "props_in_view", unit("percent", Numbers.of(props, 1)),
                     unit("fov", Numbers.of(FovMath.cameraHorizontalDegrees(this.build.video()), 0)),
                     unit("fov", Numbers.of(CameraMount.defaultUptilt(this.build.frame()), 0))));

@@ -5,7 +5,8 @@ public final class DigitalBreakup {
     public static final double SMOOTH_ABOVE = 0.7;
     public static final double FREEZE_BELOW = 0.3;
     public static final double LOSS_ENTER = 0.06;
-    public static final double LOSS_EXIT = 0.12;
+    public static final double LOSS_EXIT = 0.2;
+    public static final double FIXED_RATE_BLOCK_PX = 8.0;
     public static final double RESOLUTION_HYSTERESIS = 0.04;
     private static final double[] RESOLUTION_STEPS = {1.0, 0.66, 0.5, 0.33};
     private static final double[] RESOLUTION_BELOW = {0.75, 0.55, 0.35};
@@ -48,7 +49,19 @@ public final class DigitalBreakup {
     }
 
     public static double frameArrival(double link) {
-        return lerp(0.3, 1.0, LinkBudget.smoothstep(0.15, SMOOTH_ABOVE, clamp(link)));
+        return frameArrival(link, 0.3);
+    }
+
+    public static double frameArrival(double link, double floor) {
+        return lerp(floor, 1.0, LinkBudget.smoothstep(0.15, SMOOTH_ABOVE, clamp(link)));
+    }
+
+    public static double breakup(double link) {
+        return LinkBudget.smoothstep(CLEAN_ABOVE, 0.2, clamp(link));
+    }
+
+    public static double latencyRise(double link) {
+        return LinkBudget.smoothstep(CLEAN_ABOVE, LOSS_ENTER, clamp(link));
     }
 
     public static double burstStart(double link) {

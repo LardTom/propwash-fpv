@@ -19,6 +19,25 @@ class KeyNamesTest {
     }
 
     @Test
+    void macOptionKeysShowTheSymbolPrintedOnTheKey() throws Exception {
+        assertEquals("propwash.input.keyname.left.option", KeyNames.withSymbol("key.keyboard.left.option"));
+        assertEquals("propwash.input.keyname.right.option", KeyNames.withSymbol("key.keyboard.right.option"));
+        assertNull(KeyNames.withSymbol("key.keyboard.left.alt"));
+        assertNull(KeyNames.withSymbol("key.keyboard.left.command"));
+        assertNull(KeyNames.withSymbol("key.mouse.option"));
+        assertNull(KeyNames.withSymbol(null));
+        for (String lang : List.of("en_us", "de_de")) {
+            Path dir = Files.isDirectory(Path.of("common/src/lang/input")) ? Path.of("common/src/lang/input") : Path.of("src/lang/input");
+            String json = Files.readString(dir.resolve(lang + ".json"));
+            for (String key : List.of("left.option", "right.option")) {
+                int at = json.indexOf("\"propwash.input.keyname." + key + "\"");
+                assertTrue(at >= 0, lang + " " + key);
+                assertTrue(json.substring(at, json.indexOf('\n', at)).contains("\u2325"), lang + " " + key + " ohne Wahltasten-Zeichen");
+            }
+        }
+    }
+
+    @Test
     void readableKeysStayAsTheyAre() {
         assertNull(KeyNames.spelledOut("R", "key.keyboard.r"));
         assertNull(KeyNames.spelledOut("7", "key.keyboard.7"));

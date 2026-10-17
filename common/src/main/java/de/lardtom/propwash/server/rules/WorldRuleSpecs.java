@@ -40,6 +40,8 @@ public final class WorldRuleSpecs {
     public static final RuleSpec SAVE_ASSISTED_LAPS = add(RuleSpec.bool("save_assisted_laps", false, Group.GAMEPLAY));
     public static final RuleSpec DRONE_TRAILS = add(RuleSpec.bool("drone_trails", false, Group.GAMEPLAY));
     public static final RuleSpec INVULNERABLE_PILOTS = add(RuleSpec.bool("invulnerable_pilots", false, Group.GAMEPLAY));
+    public static final RuleSpec WATERPROOF_DRONES = add(RuleSpec.bool("waterproof_drones", false, Group.GAMEPLAY));
+    public static final RuleSpec ALLOW_RESET = add(RuleSpec.bool("allow_reset", true, Group.GAMEPLAY));
 
     private WorldRuleSpecs() {
     }

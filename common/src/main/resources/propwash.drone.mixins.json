@@ -4,6 +4,7 @@
   "package": "de.lardtom.propwash.mixin.drone",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "EntityDataAccessorMixin",
     "ItemEntityAccessor",
     "ServerPlayerMixin"
   ],

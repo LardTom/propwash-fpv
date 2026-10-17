@@ -70,7 +70,7 @@ public final class HeadlightOverlay {
         if (!light.usesOverlay() || !available()) {
             return;
         }
-        double radius = HeadlightMath.overlayRadius(VideoState.INSTANCE.fpvFov(), height * 0.5);
+        double radius = HeadlightMath.overlayRadius(VideoState.INSTANCE.displayFov(), height * 0.5);
         int size = (int) Math.round(Math.max(8.0, radius * 2.0 / 0.82));
         int x = Math.round(width * 0.5F - size * 0.5F);
         int y = Math.round(height * 0.5F - size * 0.5F);

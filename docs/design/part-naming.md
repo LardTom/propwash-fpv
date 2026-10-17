@@ -30,7 +30,7 @@ braucht keine eigenen Regeln.
   Zellchemie beim Akku; Zellbereich und Strom beim Stack; Variante und Form beim Rahmen; Modellname bei Video und Zubehör.
   Es gibt höchstens **eine** Klammer pro Name; Hinweise wie „Beispiel“ kommen als letzter Zusatz hinein.
 - Was ein Name **nicht** trägt: Marken, Gewicht, C-Rate, Stecker, Preise. Diese Werte stehen in der Shift-Hilfe.
-- Ein Standardwert wird nicht genannt: LiPo beim Akku, True-X beim Rahmen (beim Race-Rahmen Stretched-X, siehe §3.5).
+- Ein Standardwert wird nicht genannt: LiPo beim Akku, True-X beim Rahmen (siehe §3.5).
 
 ### 1.1 Schreibweise Englisch (`en_us`)
 - Kern in **Title Case**: `Battery`, `Motor`, `Propeller`, `Frame`, `AIO Board`, `FC/ESC Stack`, `Video System`,
@@ -113,7 +113,9 @@ braucht keine eigenen Regeln.
 - Größe: Whoops in Millimetern (`65 mm`, `65-mm-…`), alle anderen nach Propgröße in Zoll (`2.5″`, `2,5-Zoll-…`).
 - Klasse aus `role`: `Whoop`, `Toothpick`, `Cinewhoop`, `Freestyle`, `Race`, `Long Range`, `X-Class`.
 - Zusätze: zuerst eine Variante (`Lite`, `Slim`, `Bash`), dann die Form, wenn sie nicht die übliche der Klasse ist.
-  Üblich ist True-X; bei `Race` Stretched-X (der eingebaute `5″ Race Frame` ist gestreckt). Formnamen wie im Tooltip:
+  Üblich ist True-X – seit 0.5.0 auch beim eingebauten `5″ Race Frame`, der vorher gestreckt gezeichnet war. Der
+  Race-Rahmen von Just More Parts heißt weiter `5″ Race Frame (Slim)` (Name aus 1.0.0, eine Klammer) und nennt seine
+  Stretched-X-Form in der Kurzbeschreibung und im Tooltip. Formnamen wie im Tooltip:
   en `stretched X`, `squashed X`, `deadcat`, `H-frame`; de `Stretched-X`, `Squashed-X`, `Deadcat`, `H-Frame`.
 - Ducts nennt der Name nicht: Whoops und Cinewhoops haben sie immer.
 

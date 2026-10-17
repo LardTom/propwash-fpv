@@ -12,6 +12,7 @@ import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.ui.client.theme.ThemeText;
 import de.lardtom.propwash.ui.client.widget.InfoField;
 import de.lardtom.propwash.video.CameraShake;
+import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageFormat;
 import net.minecraft.client.Minecraft;
@@ -105,6 +106,9 @@ public final class VideoConfigTab extends ConfigTab {
                     this.host.rebuild();
                     this.host.changed();
                 }));
+        this.place(this.intSlider(this.draft.lensStrength, 0, FisheyeLens.MAX_PERCENT, FisheyeLens.PERCENT_STEP, VideoConfigTab::lensLabel,
+                value -> this.draft.lensStrength = value))
+                .setTooltip(Tooltip.create(Component.translatable("propwash.video.config.lens.tooltip", FisheyeLens.DEFAULT_PERCENT)));
         this.place(this.intSlider(Math.round(this.draft.effectStrength * 100.0F), 0, 100, 5,
                 value -> Component.translatable("propwash.video.config.strength", Component.translatable("propwash.video.unit.percent", value)),
                 value -> this.draft.effectStrength = value / 100.0F))
@@ -152,11 +156,14 @@ public final class VideoConfigTab extends ConfigTab {
                     .withTooltip(value -> Tooltip.create(Component.translatable("propwash.video.config.latency_source.tooltip")))
                     .create(0, 0, this.columnWidth, ROW_HEIGHT, Component.translatable("propwash.video.config.latency_source"), (button, value) -> {
                         this.draft.creativeLatencyFromModule = value;
+                        if (!value) {
+                            this.draft.creativeLatencyMs = VideoConfig.ownLatencyStart(this.draft.creativeLatencyMs, moduleLatency(this.camera));
+                        }
                         this.host.rebuild();
                         this.host.changed();
                     }));
             StepSlider latency = this.place(this.intSlider(this.draft.creativeLatencyFromModule ? moduleLatency(this.camera) : this.draft.creativeLatencyMs,
-                    0, VideoConfig.MAX_CREATIVE_LATENCY_MS, 5,
+                    0, VideoConfig.MAX_CREATIVE_LATENCY_MS, VideoConfig.CREATIVE_LATENCY_STEP_MS,
                     value -> Component.translatable("propwash.video.config.creative.latency", Component.translatable("propwash.video.unit.ms", value)),
                     value -> this.draft.creativeLatencyMs = value));
             latency.setTooltip(Tooltip.create(Component.translatable("propwash.video.config.creative.latency.tooltip")));
@@ -182,8 +189,10 @@ public final class VideoConfigTab extends ConfigTab {
         this.cameraY = this.y + Metrics.SECTION_HEIGHT + usedRows * ROW_STEP;
         int total = this.columns * this.columnWidth + (this.columns - 1) * COLUMN_GAP;
         this.formatY = this.cameraY + ThemeText.wrappedHeight(this.host.font(), this.cameraLine(), total) + 2;
-        Component format = this.formatLine();
-        int formatHeight = format == null ? 0 : ThemeText.wrappedHeight(this.host.font(), format, total) + 2;
+        Component format = this.formatLine(FisheyeLens.DEFAULT_PERCENT);
+        Component flat = this.formatLine(0);
+        int formatHeight = format == null ? 0 : Math.max(ThemeText.wrappedHeight(this.host.font(), format, total),
+                flat == null ? 0 : ThemeText.wrappedHeight(this.host.font(), flat, total)) + 2;
         this.statusY = this.formatY + formatHeight + 2 * Metrics.GAP - 2;
     }
 
@@ -206,7 +215,19 @@ public final class VideoConfigTab extends ConfigTab {
         return Component.translatable(format.translationKey());
     }
 
+    static Component lensLabel(int percent) {
+        Component value = percent <= 0 ? Component.translatable("propwash.video.config.lens.flat")
+                : percent == FisheyeLens.DEFAULT_PERCENT
+                ? Component.translatable("propwash.video.config.lens.default", Component.translatable("propwash.video.unit.percent", percent))
+                : Component.translatable("propwash.video.unit.percent", percent);
+        return Component.translatable("propwash.video.config.lens", value);
+    }
+
     private @Nullable Component formatLine() {
+        return this.formatLine(this.draft.lensStrength);
+    }
+
+    private @Nullable Component formatLine(int lensStrength) {
         double horizontal;
         if (this.profile == VideoSystem.CREATIVE && !this.draft.creativeFovFromModule) {
             horizontal = this.draft.fovCreative;
@@ -217,6 +238,12 @@ public final class VideoConfigTab extends ConfigTab {
         }
         boolean boxed = this.shownFormat().boxed();
         double aspect = boxed ? ImageFormat.FOUR_THREE_ASPECT : FpvRig.ASPECT;
+        if (lensStrength > 0) {
+            double strength = lensStrength / 100.0;
+            return Component.translatable(boxed ? "propwash.video.config.format_line.fisheye.boxed" : "propwash.video.config.format_line.fisheye.wide",
+                    Math.round(horizontal), Math.round(FisheyeLens.verticalDeg(horizontal, aspect, strength)),
+                    Math.round(FisheyeLens.diagonalDeg(horizontal, aspect, strength)));
+        }
         long vertical = Math.round(FovMath.verticalFromHorizontal(horizontal, aspect));
         return Component.translatable(boxed ? "propwash.video.config.format_line.boxed" : "propwash.video.config.format_line.wide",
                 Math.round(horizontal), vertical);
@@ -358,7 +385,7 @@ public final class VideoConfigTab extends ConfigTab {
     }
 
     private static boolean shaderFailed() {
-        return VideoPass.INSTANCE.failure() != null || HeadlightPass.INSTANCE.failure() != null;
+        return VideoPass.INSTANCE.failure() != null || VideoPass.INSTANCE.lensFailure() != null || HeadlightPass.INSTANCE.failure() != null;
     }
 
     private static @Nullable Component headlightText() {
