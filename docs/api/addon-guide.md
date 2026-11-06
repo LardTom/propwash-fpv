@@ -171,6 +171,33 @@ displayURL = "https://modrinth.com/mod/mein-addon"
 - Hat nur der **Spieler** das Addon, darf er seit 0.5.0 trotzdem beitreten: Das Addon ist bei ihm für die Sitzung
   inaktiv (Abschnitt 17.1). Fehlt es dem Spieler, bleibt es Pflicht.
 
+### 1.3.1 Add-ons players don't need to install
+
+> In English: the contributor does not speak German.
+
+Some add-ons only run on the server (commands, admin tools, trails drawn with vanilla particles) or have an optional
+client part. They should not be listed as "Propwash add-ons on this server" when a player is turned away, and players
+should not be told to install them. Propwash leaves an add-on out of the join overview when it declares that the
+client doesn't need it:
+
+| | `fabric.mod.json` | `neoforge.mods.toml` |
+|---|---|---|
+| server only | `"environment": "server"` (nothing else needed) | – |
+| optional on the client | `"custom": { "propwash:client": "optional" }` | `[modproperties.<modid>]` with `"propwash:client" = "optional"` |
+
+```json
+"environment": "*",
+"custom": { "propwash:client": "optional" }
+```
+
+```toml
+[modproperties.meinaddon]
+"propwash:client" = "optional"
+```
+
+An add-on that registers parts or battery chemistries always stays in the overview, whatever it declares: parts
+have to match on both sides.
+
 ### 1.4 API-Version prüfen
 Die API hat eine eigene Version (`PropwashApi.API_VERSION`, SemVer), unabhängig von der Mod-Version: Propwash 0.5.2 bringt
 **1.6.0** (0.5.0 und 0.5.1 brachten 1.5.0, 0.4.0 brachte 1.4.0). Die Nebenversionen zählen die Ergänzungen: 1.0 Grundumfang, 1.1 Kamera-Aufbau `cameraView`, 1.2 eigene

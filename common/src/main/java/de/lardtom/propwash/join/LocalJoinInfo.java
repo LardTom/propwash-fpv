@@ -76,6 +76,9 @@ public final class LocalJoinInfo {
         }
         Map<String, AddonInfo> addons = new TreeMap<>();
         for (ModMeta meta : Services.PLATFORM.dependentMods(Constants.MOD_ID)) {
+            if (meta.clientOptional() && !owned.containsKey(meta.id())) {
+                continue;
+            }
             addons.put(meta.id(), addon(meta, owned.get(meta.id())));
         }
         for (Map.Entry<String, TreeSet<String>> entry : owned.entrySet()) {
