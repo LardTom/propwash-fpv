@@ -11,7 +11,9 @@ import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
+import net.fabricmc.loader.api.metadata.CustomValue;
 import net.fabricmc.loader.api.metadata.ModDependency;
+import net.fabricmc.loader.api.metadata.ModEnvironment;
 import net.fabricmc.loader.api.metadata.ModMetadata;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -118,7 +120,15 @@ public final class FabricPlatformHelper implements IPlatformHelper {
 
     private static ModMeta meta(ModMetadata metadata) {
         String homepage = metadata.getContact().get("homepage").or(() -> metadata.getContact().get("sources")).orElse("");
-        return new ModMeta(metadata.getId(), metadata.getName(), metadata.getVersion().getFriendlyString(), homepage);
+        return new ModMeta(metadata.getId(), metadata.getName(), metadata.getVersion().getFriendlyString(), homepage, clientOptional(metadata));
+    }
+
+    private static boolean clientOptional(ModMetadata metadata) {
+        if (metadata.getEnvironment() == ModEnvironment.SERVER) {
+            return true;
+        }
+        CustomValue value = metadata.getCustomValue(ModMeta.CLIENT_KEY);
+        return value != null && value.getType() == CustomValue.CvType.STRING && ModMeta.CLIENT_OPTIONAL.equals(value.getAsString());
     }
 
     @Override

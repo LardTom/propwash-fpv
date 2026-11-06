@@ -136,7 +136,8 @@ public final class NeoForgePlatformHelper implements IPlatformHelper {
         Optional<Object> display = info.getConfig().getConfigElement("displayURL");
         String homepage = display.map(String::valueOf).filter(url -> !url.isBlank())
                 .or(() -> info.getModURL().map(Object::toString)).orElse("");
-        return new ModMeta(info.getModId(), info.getDisplayName(), info.getVersion().toString(), homepage);
+        boolean clientOptional = ModMeta.CLIENT_OPTIONAL.equals(String.valueOf(info.getModProperties().get(ModMeta.CLIENT_KEY)));
+        return new ModMeta(info.getModId(), info.getDisplayName(), info.getVersion().toString(), homepage, clientOptional);
     }
 
     @Override

@@ -27,6 +27,17 @@ Versionen nennt.
 
 ---
 
+## Unreleased
+
+> In English: the contributor does not speak German.
+
+- Add-ons the client doesn't need are no longer listed in the join overview: Fabric add-ons with
+  `"environment": "server"`, and add-ons that declare `"propwash:client": "optional"` (Fabric `custom`, NeoForge
+  `modproperties`). Add-ons with parts or chemistries are always listed. Nothing changes on the network, so the
+  network protocol stays at 16. Details: [`addon-guide.md`](addon-guide.md) section 1.3.1.
+
+---
+
 ## 0.5.2 — Parts-API 1.6.0, Netzprotokoll 16
 
 Bausteine für die beiden offiziellen Add-ons nach 0.5.2 („Propwash: Mob Defense“ und eine Kino-Drohne im Stil von DJI),
