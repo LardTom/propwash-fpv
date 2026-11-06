@@ -4,6 +4,7 @@ import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.client.PropwashClient;
 import de.lardtom.propwash.core.client.ClientBus;
+import de.lardtom.propwash.neoforge.fabricsync.FabricRegistryBridge;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
 import de.lardtom.propwash.registry.client.ConfigScreenFactory;
@@ -55,6 +56,7 @@ import java.util.List;
 public final class PropwashNeoForgeClient {
     public PropwashNeoForgeClient(IEventBus modBus, ModContainer container) {
         PropwashClient.init();
+        FabricRegistryBridge.mainThread(task -> Minecraft.getInstance().execute(task));
         ConfigScreenFactory configScreen = ClientRegistrar.freezeConfigScreen();
         if (configScreen != null) {
             container.registerExtensionPoint(IConfigScreenFactory.class, (mod, parent) -> configScreen.create(parent));

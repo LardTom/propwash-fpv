@@ -17,6 +17,9 @@
   "propwash.build.issue.battery_weak": "Akku liefert zu wenig Strom",
   "propwash.network.version_mismatch": "Propwash FPV passt nicht zum Server.\nServer: %s (Netzwerkprotokoll %s)\nDu: %s (Netzwerkprotokoll %s)\nInstalliere dieselbe Propwash-FPV-Version wie der Server.",
   "propwash.network.version_missing": "Dieser Server braucht Propwash FPV %s (Netzwerkprotokoll %s). Installiere genau diese Version.",
+  "propwash.network.fabric_sync.failed": "Could not match this Fabric server's content: %s",
+  "propwash.network.fabric_sync.unknown_entries": "This Fabric server has content your game doesn't have (from: %s). Install the same mods as the server.",
+  "propwash.network.fabric_sync.unknown_registries": "This Fabric server uses content types your game doesn't know: %s",
   "propwash.part_category.accessory": "Zubehör",
   "propwash.build.issue.accessory_mount": "Zubehör passt nicht an den Rahmen"
 }

@@ -4,6 +4,11 @@ What changed in Propwash FPV, for players and server owners. Add-on authors find
 [`docs/api/changes.md`](docs/api/changes.md), technical details per release are in
 [`docs/RELEASE-NOTES.md`](docs/RELEASE-NOTES.md).
 
+## [Unreleased]
+
+### New
+- NeoForge players can join Fabric servers that run the same Propwash version and add-ons, also behind Velocity. If the server has content the player is missing, the message names the mods.
+
 ## [0.5.2] — Fisheye lens, waterproof drones, turtle mode and zones
 
 ### Highlights

@@ -7,6 +7,9 @@ import de.lardtom.propwash.core.event.ServerBus;
 import de.lardtom.propwash.join.JoinCheck;
 import de.lardtom.propwash.join.JoinClientState;
 import de.lardtom.propwash.mixin.join.ServerConfigurationPacketListenerImplAccessor;
+import de.lardtom.propwash.neoforge.fabricsync.FabricRegistryBridge;
+import de.lardtom.propwash.network.fabricsync.FabricRegistrySyncPayload;
+import de.lardtom.propwash.network.fabricsync.FabricSyncCompletePayload;
 import de.lardtom.propwash.network.JoinInfoPayload;
 import de.lardtom.propwash.network.PartsManifestPayload;
 import de.lardtom.propwash.network.PropwashNet;
@@ -77,7 +80,7 @@ public final class PropwashNeoForge {
     }
 
     private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Integer.toString(ProtocolVersionPayload.localProtocol()));
+        PayloadRegistrar registrar = event.registrar(Integer.toString(ProtocolVersionPayload.localProtocol())).optional();
         for (PropwashNet.C2S<?> c2s : PropwashNet.freezeC2S()) {
             registerC2S(registrar, c2s);
         }
@@ -100,6 +103,11 @@ public final class PropwashNeoForge {
                 context.disconnect(reject);
             }
         }, (payload, context) -> context.reply(JoinClientState.onServerParts(payload)));
+        if (FabricRegistryBridge.enabled()) {
+            registrar.configurationToClient(FabricRegistrySyncPayload.TYPE, FabricRegistrySyncPayload.CODEC, FabricRegistryBridge::handle);
+            registrar.configurationToServer(FabricSyncCompletePayload.TYPE, FabricSyncCompletePayload.CODEC, (payload, context) -> {
+            });
+        }
     }
 
     private static void onConfigurationTasks(RegisterConfigurationTasksEvent event) {
@@ -112,6 +120,7 @@ public final class PropwashNeoForge {
             early.add(new PartsCheckTask());
         }
         if (early.isEmpty()) {
+            listener.disconnect(JoinCheck.missingPropwash());
             return;
         }
         if (listener instanceof ServerConfigurationPacketListenerImplAccessor accessor) {
