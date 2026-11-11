@@ -30,7 +30,20 @@ sich Lampen, Türen, Kolben, Notenblöcke oder Zähler an jeden Durchflug hänge
 | Wand (`WALL_DIVE`, `WALL_SIDE`, `WALL_WINDOW`) | Wandblock hinter dem Befestigungspunkt |
 | gestapeltes Gate | Block unter dem untersten Gate des Stapels (alle Gates einer Leiter schalten denselben Block) |
 | Freiform-Gate, senkrechte Öffnung | Randblock unter der untersten Zeile der Öffnung, in deren Mitte (bei gerader Zahl offener Felder das linke der beiden mittleren) |
-| Freiform-Gate, waagerechte Öffnung (Schacht, Grube) | Randblock an der Nordkante (kleinstes z), mittig |
+| Freiform-Gate, waagerechte Öffnung (Schacht, Grube) | Randblock an der Kante hinter der Ausrichtung (`GateGeometry#yawDegrees`, 0° Nordkante = kleinstes z, 90° Ost, 180° Süd, 270° West), mittig; Nachtrag 0.6.0 (Befund PATTY-3) |
+
+Nachtrag 0.6.0 (Befund PATTY-3, Besitzer 29.10.): Liegende Freiform-Gates haben eine Ausrichtung in Vierteldrehungen,
+gespeichert in der Drehung der Entity (`Rotation`, alte Gates 0° = bisher Nordkante). Beim Setzen gilt die Blickrichtung
+des Spielers (Ausgang auf seiner Seite, wie der Balken eines liegenden Gates), im Menü die Zeile „Ausrichtung“
+(`GateEditModel#quarterTurns`). `GateSignalTarget#freeform(region, plane, minA, minB, yaw)` sucht die erste Reihe von der
+Kante hinter der Blickrichtung aus und nimmt dort das mittlere offene Feld (bei gerader Zahl das erste in Richtung der
+Gate-Seite). Senkrechte Freiform-Gates sind unverändert. Verworfen: eine eigene Zeile „Ausgangsseite“ auf der Seite
+Redstone – der Ausgang soll mit dem Gate drehen, nicht getrennt davon.
+
+Nachtrag 0.6.0 (Befunde AUTO30-1 und AUTO30-3): Weil die Ausrichtung nur den Ausgang bestimmt, ändert sie im Kurs das
+Layout nicht (Bestenliste und Rekord-Geister bleiben, `CourseData#yawShapesLayout`). Die Blickrichtung beim Setzen rechnet
+`FreeformFill#facing(lookX, lookZ)` in Vierteldrehungen um (Blick Süd 0° → Nordrand, West 90° → Ostrand, Nord 180° →
+Südrand, Ost 270° → Westrand, senkrecht 0°); `FreeformGateItem#facing` ruft es auf.
 
 Der Befestigungspunkt ist `GatePlacement#mountPoint` (`docs/design/gate-mounting.md` §2) und bleibt beim freien Drehen
 und bei eigener Öffnungsgröße gleich (`docs/design/gate-free-transform.md`). Liegende Gates nehmen nicht ihn: Sie liegen
@@ -55,8 +68,9 @@ Im Einstell-Modus (`docs/design/gate-edit-mode.md`) hat das Panel bei Gates und 
 
 - **Seiten:** Die erste Seite (Drehung, Öffnung) bleibt unverändert; die Redstone-Zeilen stehen auf einer eigenen Seite,
   weil das Panel bei GUI-Skala 4 in 1080p (480 × 270 GUI-Pixel) sonst nicht mehr passt. Schleichen + Mausrad läuft über
-  die Zeilen beider Seiten; rechts in der ersten Abschnittszeile steht „Redstone »“ bzw. „« Gate“ (mit freier Maus ein
-  Knopf). Das Panel ist auf beiden Seiten gleich hoch.
+  die Zeilen aller Seiten; die Seiten stehen als Tabs („Gate“, „Redstone“, ab 0.6.0 „Position“) an der Stelle des
+  ersten Abschnittstitels (mit freier Maus anklickbar, ohne freie Maus Tab bzw. Umschalt + Tab). Das Panel ist auf allen
+  Seiten gleich hoch.
 - **Zurücksetzen** stellt auf dieser Seite das Signal auf den Standard (an, 10 Ticks, jeder Durchflug).
 - **Übernehmen:** Enter oder Rechtsklick schickt geänderte Signal-Werte als eigenes Paket `propwash:race_gate_signal`
   (Client → Server, Entity-Id und gepackte Werte) und danach wie bisher eine geänderte Lage. Ändert sich nur das

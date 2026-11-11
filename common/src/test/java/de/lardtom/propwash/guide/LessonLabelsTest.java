@@ -15,6 +15,7 @@ import de.lardtom.propwash.guide.scene.SceneProjection;
 import de.lardtom.propwash.guide.scene.SceneState;
 import de.lardtom.propwash.race.GateSize;
 import de.lardtom.propwash.sim.AirframeSpec;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -173,14 +174,9 @@ class LessonLabelsTest {
     }
 
     private static JsonObject english() throws IOException {
-        for (Path candidate : List.of(Path.of("common/src/lang/guide/en_us.json"), Path.of("src/lang/guide/en_us.json"))) {
-            if (Files.isRegularFile(candidate)) {
-                try (Reader reader = Files.newBufferedReader(candidate, StandardCharsets.UTF_8)) {
-                    return JsonParser.parseReader(reader).getAsJsonObject();
-                }
-            }
+        try (Reader reader = Files.newBufferedReader(TestPaths.lang("guide").resolve("en_us.json"), StandardCharsets.UTF_8)) {
+            return JsonParser.parseReader(reader).getAsJsonObject();
         }
-        throw new IOException("Sprachquellen der Flugschule nicht gefunden");
     }
 
     static int charWidth(char c) {

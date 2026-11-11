@@ -1,0 +1,23 @@
+{
+  "propwash.drone.autonomy.started": "%s flies on its own (%s)",
+  "propwash.drone.autonomy.not_armable": "%s can't arm: %s",
+  "propwash.drone.autonomy.ended.pilot": "%s: pilot took over",
+  "propwash.drone.autonomy.ended.landed": "%s landed",
+  "propwash.drone.autonomy.ended.battery": "%s: battery low",
+  "propwash.drone.autonomy.ended.owner_offline": "%s: owner offline",
+  "propwash.drone.autonomy.ended.out_of_range": "%s: out of range",
+  "propwash.drone.autonomy.ended.stopped": "%s: stopped by add-on",
+  "propwash.drone.autonomy.ended.timeout": "%s: maximum flight time reached",
+  "propwash.drone.autonomy.ended.error": "%s: add-on flight assist failed",
+  "propwash.drone.autonomy.ended.replaced": "%s: new autonomous flight",
+  "propwash.drone.autonomy.ended.terrain_limit": "%s: world edge reached – drones may not generate new terrain here",
+  "propwash.drone.autonomy.no_budget.player": "%s: no further autonomous flight – at most %s per player at once (world rule “%s”)",
+  "propwash.drone.autonomy.no_budget.server": "%s: no further autonomous flight – at most %s on the server at once (world rule “%s”)",
+  "propwash.drone.autonomy.no_budget.off": "%s: autonomous flights are off in this world (world rule “%s” = 0)",
+  "gamerule.propwash.autonomous_flights_per_player": "Autonomous flights per player at once",
+  "gamerule.propwash.autonomous_flights_per_player.description": "How many drones a player can have flown by add-ons without a pilot at the same time, for example for missions, follow or hold. When the budget is full, no further flight starts and the player gets a message with the value. GPS rescue without pilot has priority and always keeps one more place per player. 0 = none.",
+  "gamerule.propwash.autonomous_flights_per_player.value.0": "None",
+  "gamerule.propwash.autonomous_flights_total": "Autonomous flights in total",
+  "gamerule.propwash.autonomous_flights_total.description": "How many drones on the whole server may be flown by add-ons without a pilot at the same time. GPS rescue without pilot has priority and always keeps two more places. 0 = none.",
+  "gamerule.propwash.autonomous_flights_total.value.0": "None"
+}

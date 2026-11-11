@@ -6,6 +6,7 @@
   "mixins": [],
   "client": [
     "client.CameraMixin",
+    "client.ClientChunkCacheMixin",
     "client.GameRendererMixin",
     "client.KeyboardHandlerMixin",
     "client.MinecraftMixin"

@@ -13,7 +13,8 @@ public record MotorThermal(OptionalDouble heatCapacityJPerK, OptionalDouble cool
         coolingWPerK = positive(coolingWPerK, 100.0, "Kühlung");
         coolingWPerKPerRadS = positive(coolingWPerKPerRadS, 1.0, "drehzahlabhängige Kühlung");
         if (!(derateStartC >= 40.0 && derateStartC < maxTempC && maxTempC <= 300.0)) {
-            throw new IllegalArgumentException("Temperaturgrenzen ungültig: Drosselung ab " + derateStartC + " °C, Maximum " + maxTempC + " °C");
+            throw new IllegalArgumentException("Temperaturgrenzen ungültig: Leistungsverlust ab " + derateStartC + " °C, starker Verschleiß ab " + maxTempC
+                    + " °C");
         }
         if (!(wearPerSecondAtMax >= 0.0 && wearPerSecondAtMax <= 1.0)) {
             throw new IllegalArgumentException("Hitzeverschleiß muss zwischen 0 und 1 pro Sekunde liegen: " + wearPerSecondAtMax);

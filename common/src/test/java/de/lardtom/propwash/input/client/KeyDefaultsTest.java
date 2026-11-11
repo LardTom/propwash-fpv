@@ -77,12 +77,21 @@ class KeyDefaultsTest {
     @Test
     void noDefaultSharesAVanillaKey() {
         for (KeyDefaults.Entry entry : KeyDefaults.all()) {
-            if (entry.key() == KeyDefaults.UNBOUND) {
+            if (entry.key() == KeyDefaults.UNBOUND || sharedWithVanilla(entry)) {
                 continue;
             }
             assertFalse(VANILLA_DEFAULTS.contains(entry.key()), entry.name() + " liegt auf einer Vanilla-Standardtaste");
         }
         assertNotEquals(KeyDefaults.ARM.key(), KeyDefaults.FLIGHT_MODE.key());
+    }
+
+    private static boolean sharedWithVanilla(KeyDefaults.Entry entry) {
+        for (Set<String> group : KeyDefaults.SHARED) {
+            if (group.contains(entry.mappingName()) && group.stream().anyMatch(name -> !name.startsWith("key.propwash."))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test

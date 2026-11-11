@@ -1,5 +1,6 @@
 package de.lardtom.propwash.api.client;
 
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 
 import java.util.Optional;
@@ -18,4 +19,16 @@ public interface ClientInput {
     double throttle();
 
     boolean action(int number);
+
+    default boolean switchActive(Identifier id) {
+        return false;
+    }
+
+    default double axis(Identifier id) {
+        return 0.0;
+    }
+
+    default boolean operating() {
+        return false;
+    }
 }

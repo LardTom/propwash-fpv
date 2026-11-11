@@ -15,14 +15,14 @@ public final class TurtleSelector {
         return this.fromKey;
     }
 
-    public static @Nullable Boolean fromSwitches(int active, int readable) {
+    public static @Nullable Boolean fromSwitches(long active, long readable) {
         if (!SwitchEvaluator.isSet(readable, SwitchFunction.TURTLE)) {
             return null;
         }
         return SwitchEvaluator.isSet(active, SwitchFunction.TURTLE);
     }
 
-    public boolean observe(boolean device, int active, int readable) {
+    public boolean observe(boolean device, long active, long readable) {
         if (!device) {
             return false;
         }

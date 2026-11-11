@@ -36,10 +36,15 @@ public final class OsdData {
     public boolean posHoldDenied;
     public String assistLabel;
     public boolean worldEdge;
+    public boolean insideBlock;
+    public boolean freecam;
+    public boolean freecamEdge;
+    public boolean overloaded;
     public boolean gpsKnown;
     public int gpsSatellites;
     public boolean gpsFix;
     public int armBlockers;
+    public boolean autoArmPending;
     public int crashCount;
     public PartWear wear = PartWear.PRISTINE;
     public int failsafeStage;
@@ -61,6 +66,9 @@ public final class OsdData {
     public double speed = Double.NaN;
     public double altitude = Double.NaN;
     public double verticalSpeed = Double.NaN;
+    public double velocityX = Double.NaN;
+    public double velocityY = Double.NaN;
+    public double velocityZ = Double.NaN;
     public double gLoad = Double.NaN;
     public double rollDeg = Double.NaN;
     public double pitchDeg = Double.NaN;
@@ -86,6 +94,7 @@ public final class OsdData {
     public String craftName = "";
     public boolean racing;
     public int lap;
+    public boolean pointToPoint;
     public long currentLapNanos;
     public long lastLapNanos = -1L;
     public long bestLapNanos = -1L;
@@ -108,7 +117,8 @@ public final class OsdData {
     public double flashbackFill = Double.NaN;
     public boolean flashbackLimit = true;
     public boolean ledsOff;
-    public boolean motorDerating;
+    public boolean motorHot;
+    public boolean escDerating;
     public String vtxChannel = "";
     public int vtxPowerMw;
     public boolean vtxPowerAuto;
@@ -117,6 +127,7 @@ public final class OsdData {
     public int relayHops;
     public final double[] relayHopQuality = new double[MAX_RELAY_HOPS];
     public boolean spectating;
+    public int spectators;
     public boolean tricksOn;
     public int trickPopup = TRICK_NONE;
     public @Nullable TrickType trickType;
@@ -151,6 +162,7 @@ public final class OsdData {
         this.gpsSatellites = t.gpsSatellites;
         this.gpsFix = t.gpsFix;
         this.armBlockers = t.armBlockers;
+        this.autoArmPending = t.autoArmPending;
         this.crashCount = t.crashCount;
         this.failsafeStage = t.failsafeStage;
         this.batteryState = t.batteryState == null ? BatteryState.OK : t.batteryState;
@@ -167,7 +179,8 @@ public final class OsdData {
         this.rollDeg = t.rollDeg;
         this.pitchDeg = t.pitchDeg;
         this.compassDeg = OsdFormat.compassFromSimHeading(t.headingDeg);
-        this.motorDerating = t.motorDerating;
+        this.motorHot = t.motorHot;
+        this.escDerating = t.escDerating;
     }
 
     public void applySim(DroneSim sim) {
@@ -217,6 +230,16 @@ public final class OsdData {
         this.trickBestComboPoints = 0;
     }
 
+    public boolean hasVelocity() {
+        return Double.isFinite(this.velocityX) && Double.isFinite(this.velocityY) && Double.isFinite(this.velocityZ);
+    }
+
+    public void clearVelocity() {
+        this.velocityX = Double.NaN;
+        this.velocityY = Double.NaN;
+        this.velocityZ = Double.NaN;
+    }
+
     public double homeDistance() {
         if (!this.hasHome || !this.hasPosition) {
             return Double.NaN;
@@ -254,10 +277,15 @@ public final class OsdData {
         dst.posHoldDenied = this.posHoldDenied;
         dst.assistLabel = this.assistLabel;
         dst.worldEdge = this.worldEdge;
+        dst.insideBlock = this.insideBlock;
+        dst.freecam = this.freecam;
+        dst.freecamEdge = this.freecamEdge;
+        dst.overloaded = this.overloaded;
         dst.gpsKnown = this.gpsKnown;
         dst.gpsSatellites = this.gpsSatellites;
         dst.gpsFix = this.gpsFix;
         dst.armBlockers = this.armBlockers;
+        dst.autoArmPending = this.autoArmPending;
         dst.crashCount = this.crashCount;
         dst.wear = this.wear;
         dst.failsafeStage = this.failsafeStage;
@@ -279,6 +307,9 @@ public final class OsdData {
         dst.speed = this.speed;
         dst.altitude = this.altitude;
         dst.verticalSpeed = this.verticalSpeed;
+        dst.velocityX = this.velocityX;
+        dst.velocityY = this.velocityY;
+        dst.velocityZ = this.velocityZ;
         dst.gLoad = this.gLoad;
         dst.rollDeg = this.rollDeg;
         dst.pitchDeg = this.pitchDeg;
@@ -304,6 +335,7 @@ public final class OsdData {
         dst.craftName = this.craftName;
         dst.racing = this.racing;
         dst.lap = this.lap;
+        dst.pointToPoint = this.pointToPoint;
         dst.currentLapNanos = this.currentLapNanos;
         dst.lastLapNanos = this.lastLapNanos;
         dst.bestLapNanos = this.bestLapNanos;
@@ -326,7 +358,8 @@ public final class OsdData {
         dst.flashbackFill = this.flashbackFill;
         dst.flashbackLimit = this.flashbackLimit;
         dst.ledsOff = this.ledsOff;
-        dst.motorDerating = this.motorDerating;
+        dst.motorHot = this.motorHot;
+        dst.escDerating = this.escDerating;
         dst.vtxChannel = this.vtxChannel;
         dst.vtxPowerMw = this.vtxPowerMw;
         dst.vtxPowerAuto = this.vtxPowerAuto;
@@ -335,6 +368,7 @@ public final class OsdData {
         dst.relayHops = this.relayHops;
         System.arraycopy(this.relayHopQuality, 0, dst.relayHopQuality, 0, MAX_RELAY_HOPS);
         dst.spectating = this.spectating;
+        dst.spectators = this.spectators;
         dst.tricksOn = this.tricksOn;
         dst.trickPopup = this.trickPopup;
         dst.trickType = this.trickType;
@@ -370,6 +404,9 @@ public final class OsdData {
         d.speed = 21.4;
         d.altitude = 12.0;
         d.verticalSpeed = 1.8;
+        d.velocityX = 9.54;
+        d.velocityY = -1.0;
+        d.velocityZ = -15.26;
         d.gLoad = 1.4;
         d.rollDeg = 12.0;
         d.pitchDeg = -8.0;
@@ -420,6 +457,7 @@ public final class OsdData {
         d.vtxChannel = "R1";
         d.vtxPowerMw = 400;
         d.relayHops = 2;
+        d.spectators = 3;
         d.relayHopQuality[0] = 0.97;
         d.relayHopQuality[1] = 0.91;
         d.relayHopQuality[2] = 0.88;

@@ -31,6 +31,10 @@ public final class Curriculum {
     @FunctionalInterface
     public interface StarSource {
         int stars(String lessonId);
+
+        default boolean allUnlocked() {
+            return false;
+        }
     }
 
     private Curriculum() {
@@ -90,6 +94,9 @@ public final class Curriculum {
     }
 
     public static boolean chapterUnlocked(Chapter chapter, StarSource progress) {
+        if (progress.allUnlocked()) {
+            return true;
+        }
         for (String required : chapter.requires()) {
             Chapter before = chapter(required);
             if (before != null && !chapterComplete(before, progress)) {
@@ -103,6 +110,9 @@ public final class Curriculum {
         Chapter chapter = chapter(lesson.chapter());
         if (chapter == null || !chapterUnlocked(chapter, progress)) {
             return false;
+        }
+        if (progress.allUnlocked()) {
+            return true;
         }
         int index = chapter.lessons().indexOf(lesson);
         return index <= 0 || progress.stars(chapter.lessons().get(index - 1).id()) > 0;

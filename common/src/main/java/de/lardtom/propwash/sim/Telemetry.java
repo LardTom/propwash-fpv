@@ -4,6 +4,7 @@ public final class Telemetry {
     public double time;
     public int substeps;
     public int armBlockers;
+    public boolean autoArmPending;
     public int failsafeStage;
     public int faults;
     public int crashCount;
@@ -30,7 +31,8 @@ public final class Telemetry {
     public final double[] motorTempC = new double[4];
     public final double[] escTempC = new double[4];
     public final double[] motorPowerLimit = {1.0, 1.0, 1.0, 1.0};
-    public boolean motorDerating;
+    public boolean motorHot;
+    public boolean escDerating;
     public boolean escBurned;
     public double totalCurrentA;
     public double packVoltage;
@@ -97,6 +99,7 @@ public final class Telemetry {
         dst.time = this.time;
         dst.substeps = this.substeps;
         dst.armBlockers = this.armBlockers;
+        dst.autoArmPending = this.autoArmPending;
         dst.failsafeStage = this.failsafeStage;
         dst.faults = this.faults;
         dst.crashCount = this.crashCount;
@@ -123,7 +126,8 @@ public final class Telemetry {
         System.arraycopy(this.motorTempC, 0, dst.motorTempC, 0, 4);
         System.arraycopy(this.escTempC, 0, dst.escTempC, 0, 4);
         System.arraycopy(this.motorPowerLimit, 0, dst.motorPowerLimit, 0, 4);
-        dst.motorDerating = this.motorDerating;
+        dst.motorHot = this.motorHot;
+        dst.escDerating = this.escDerating;
         dst.escBurned = this.escBurned;
         dst.totalCurrentA = this.totalCurrentA;
         dst.packVoltage = this.packVoltage;

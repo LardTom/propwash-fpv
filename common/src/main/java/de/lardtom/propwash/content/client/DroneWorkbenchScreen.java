@@ -17,10 +17,12 @@ import de.lardtom.propwash.content.ContentItems;
 import de.lardtom.propwash.content.DroneAssembly;
 import de.lardtom.propwash.content.DronePresets;
 import de.lardtom.propwash.content.DroneWorkbenchMenu;
-import de.lardtom.propwash.content.Recycling;
+import de.lardtom.propwash.content.PartTooltips;
 import de.lardtom.propwash.content.WorkbenchLayout;
+import de.lardtom.propwash.content.WorkbenchTab;
 import de.lardtom.propwash.content.client.paint.PaintScreen;
 import de.lardtom.propwash.core.PartCategory;
+import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.ui.client.theme.ThemeStats;
@@ -41,6 +43,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
@@ -94,6 +97,9 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
     private final List<Component> extensionTitles = new ArrayList<>();
     private final List<Component> extensionTooltips = new ArrayList<>();
     private int headerSpace;
+    private final List<WorkbenchTabButton> tabButtons = new ArrayList<>();
+    private @Nullable FlatButton recycleButton;
+    private @Nullable RecycleView recycleView;
 
     public DroneWorkbenchScreen(DroneWorkbenchMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WorkbenchLayout.WIDTH, WorkbenchLayout.HEIGHT);
@@ -104,6 +110,8 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
     @Override
     protected void init() {
         super.init();
+        this.topPos = WorkbenchLayout.panelTop(this.height);
+        this.recycleView = new RecycleView(this.font, this.menu);
         this.lastFrameMillis = Util.getMillis();
         this.knownSprites.clear();
         this.droneGhost = DroneAssembly.preset(DroneBuild.FREESTYLE);
@@ -113,6 +121,77 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
                 paintWidth, 13, paintLabel, FlatButton.Style.NORMAL, this::openPaint));
         this.updatePaintButton();
         this.initExtensions();
+        this.initTabs();
+        this.updateTabWidgets();
+    }
+
+    private void initTabs() {
+        this.tabButtons.clear();
+        int x = this.leftPos + WorkbenchLayout.TAB_X;
+        int y = this.topPos - (WorkbenchLayout.TAB_HEIGHT - 1);
+        for (WorkbenchTab tab : WorkbenchTab.values()) {
+            Component label = Component.translatable(RecycleView.TAB + tab.key());
+            int width = this.font.width(label) + WorkbenchLayout.TAB_PADDING;
+            this.tabButtons.add(this.addRenderableWidget(new WorkbenchTabButton(x, y, width, WorkbenchLayout.TAB_HEIGHT - 1, label, tab,
+                    this.menu::tab, this::selectTab)));
+            x += width + WorkbenchLayout.TAB_GAP;
+        }
+        this.recycleButton = this.addRenderableWidget(new FlatButton(this.leftPos + WorkbenchLayout.RECYCLE_BUTTON_X0,
+                this.topPos + WorkbenchLayout.RECYCLE_BUTTON_Y, WorkbenchLayout.RECYCLE_BUTTON_X1 - WorkbenchLayout.RECYCLE_BUTTON_X0,
+                Metrics.CONTROL_HEIGHT, Component.translatable(RecycleView.BUTTON), FlatButton.Style.PRIMARY, this::pressRecycle));
+    }
+
+    public int panelLeft() {
+        return this.leftPos;
+    }
+
+    public int panelTop() {
+        return this.topPos;
+    }
+
+    public List<WorkbenchTabButton> tabButtons() {
+        return List.copyOf(this.tabButtons);
+    }
+
+    public @Nullable FlatButton recycleButton() {
+        return this.recycleButton;
+    }
+
+    public @Nullable RecycleView recycleView() {
+        return this.recycleView;
+    }
+
+    public void selectTab(WorkbenchTab tab) {
+        if (this.menu.tab() == tab || this.minecraft.player == null || this.minecraft.gameMode == null) {
+            return;
+        }
+        int button = DroneWorkbenchMenu.tabButton(tab);
+        this.menu.clickMenuButton(this.minecraft.player, button);
+        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, button);
+        this.draggingPreview = false;
+        this.updateTabWidgets();
+    }
+
+    public boolean pressRecycle() {
+        if (this.menu.tab() != WorkbenchTab.RECYCLE || this.menu.recyclePieces() < 1 || this.minecraft.gameMode == null) {
+            return false;
+        }
+        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, DroneWorkbenchMenu.BUTTON_RECYCLE);
+        return true;
+    }
+
+    private void updateTabWidgets() {
+        boolean build = this.menu.tab() == WorkbenchTab.BUILD;
+        if (this.paintButton != null) {
+            this.paintButton.visible = build;
+        }
+        for (FlatButton button : this.extensionButtons) {
+            button.visible = build;
+        }
+        if (this.recycleButton != null) {
+            this.recycleButton.visible = !build;
+            this.recycleButton.active = !build && this.menu.recyclePieces() > 0;
+        }
     }
 
     private void initExtensions() {
@@ -131,7 +210,7 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
         int moreWidth = moreButtonWidth(this.font);
         List<int[]> widths = new ArrayList<>();
         for (WorkbenchHost.Entry entry : entries) {
-            widths.add(this.variantWidths(entry));
+            widths.add(entry.widths(this::extensionWidth));
         }
         HeaderLayout.Result layout = HeaderLayout.fit(this.headerSpace, WorkbenchContext.BUTTON_GAP, moreWidth, WorkbenchHost.MAX_HEADER_BUTTONS,
                 widths);
@@ -160,14 +239,16 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
                     Constants.LOG.error("Werkbank-Knopf eines Addons ist fehlgeschlagen", e);
                 }
             };
+            int variant = layout.variant(i);
+            Identifier icon = entry.iconAt(variant);
             FlatButton button;
-            if (entry.iconOnly()) {
-                button = new FlatButton(x, this.topPos + 2, width, 13, entry.label(), FlatButton.Style.NORMAL, press).icon(entry.icon());
-                this.extensionTitles.add(entry.label());
+            if (icon != null) {
+                Component title = entry.titleAt(variant);
+                button = new FlatButton(x, this.topPos + 2, width, 13, title, FlatButton.Style.NORMAL, press).icon(icon);
+                this.extensionTitles.add(title);
                 this.extensionTooltips.add(Component.empty());
             } else {
-                Component shown = layout.variant(i) == 0 || entry.shortLabel() == null ? entry.label() : entry.shortLabel();
-                button = new FlatButton(x, this.topPos + 2, width, 13, this.fitLabel(shown, width), FlatButton.Style.NORMAL, press);
+                button = new FlatButton(x, this.topPos + 2, width, 13, this.fitLabel(entry.textAt(variant), width), FlatButton.Style.NORMAL, press);
                 this.extensionTitles.add(entry.label());
                 this.extensionTooltips.add(entry.tooltip());
             }
@@ -197,17 +278,6 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
 
     public int titleEnd() {
         return ThemeDraw.brandedTitleX(this.font, this.leftPos + 2) + this.font.width(this.title);
-    }
-
-    private int[] variantWidths(WorkbenchHost.Entry entry) {
-        if (entry.iconOnly()) {
-            return new int[]{WorkbenchContext.ICON_BUTTON_SIZE};
-        }
-        int full = this.extensionWidth(entry.label());
-        if (entry.shortLabel() == null) {
-            return new int[]{full};
-        }
-        return new int[]{full, Math.min(full, this.extensionWidth(entry.shortLabel()))};
     }
 
     private int extensionWidth(Component label) {
@@ -266,6 +336,10 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
             titleRight = Math.min(titleRight, button.getX() - TITLE_GAP);
         }
         ThemeDraw.brandedHeader(graphics, this.font, x + 2, y + 2, x + this.imageWidth - 2, HEADER_HEIGHT, this.title, titleRight);
+        if (this.menu.tab() == WorkbenchTab.RECYCLE && this.recycleView != null) {
+            this.recycleView.background(graphics, x, y);
+            return;
+        }
         this.drawSlotOverlays(graphics, x, y);
         this.drawPreview(graphics, x, y);
         this.drawStatus(graphics, x, y);
@@ -274,6 +348,10 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, MUTED, false);
+        if (this.menu.tab() == WorkbenchTab.RECYCLE && this.recycleView != null) {
+            this.recycleView.labels(graphics);
+            return;
+        }
         int salvageX = WorkbenchLayout.SALVAGE_X + 21;
         int salvageWidth = WorkbenchLayout.PREVIEW_X1 - 3 - salvageX;
         ThemeText.fitted(graphics, this.font, Component.translatable(KEY + "salvage"), salvageX, WorkbenchLayout.SALVAGE_Y, salvageWidth, MUTED);
@@ -309,6 +387,7 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
         ThemeStats.frame(this);
         this.labelCuts.forEach(ThemeStats::cut);
         this.updatePaintButton();
+        this.updateTabWidgets();
         super.extractRenderState(graphics, mouseX, mouseY, a);
         List<Component> hint = this.hintTooltip(mouseX, mouseY);
         ThemeText.tooltipLines(graphics, this.font, hint, mouseX, mouseY);
@@ -317,7 +396,7 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && this.menu.getCarried().isEmpty() && this.report.build() != null
-                && this.inPreview(event.x(), event.y())) {
+                && this.menu.tab() == WorkbenchTab.BUILD && this.inPreview(event.x(), event.y())) {
             this.draggingPreview = true;
             this.lastDragMillis = Util.getMillis();
             return true;
@@ -605,6 +684,9 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
     }
 
     private List<Component> hintTooltip(int mouseX, int mouseY) {
+        if (this.menu.tab() == WorkbenchTab.RECYCLE) {
+            return this.recycleTooltip(mouseX, mouseY);
+        }
         List<Component> lines = new ArrayList<>();
         boolean carrying = !this.menu.getCarried().isEmpty();
         Slot slot = this.hoveredSlot;
@@ -613,18 +695,10 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
                 lines.add(slotName(slot.index).copy().withColor(TOOLTIP_TITLE));
                 lines.add(Component.translatable(slotHintKey(slot.index)).withColor(TOOLTIP_BODY));
                 this.accessoryFitHint(slot.index, lines);
+            } else if (slot.index < DroneWorkbenchMenu.PART_SLOTS) {
+                lines.addAll(otherFramesHint(this.menu, slot.index, this.menu.getCarried()));
             } else if (slot.index == DroneWorkbenchMenu.SALVAGE_SLOT) {
-                if (carrying && !DroneAssembly.isDrone(this.menu.getCarried()) && !Recycling.accepts(this.menu.getCarried())) {
-                    return lines;
-                }
-                lines.add(Component.translatable(KEY + "salvage_title").withColor(TOOLTIP_TITLE));
-                lines.add(Component.translatable(KEY + "hint.salvage").withColor(TOOLTIP_BODY));
-                lines.add(Component.translatable(KEY + "hint.recycle").withColor(TOOLTIP_BODY));
-                lines.add(Component.translatable(KEY + "hint.repair_props").withColor(TOOLTIP_BODY));
-                if (!this.menu.partsEmpty()) {
-                    lines.add(Component.translatable(KEY + "hint.salvage_blocked").withColor(TOOLTIP_WARNING));
-                }
-                missingWarning(this.menu.getCarried()).ifPresent(line -> lines.add(line.copy().withColor(TOOLTIP_WARNING)));
+                addHintLines(lines, SalvageHint.lines(this.menu.getCarried(), this.menu.partsEmpty()));
             } else if (slot.index == DroneWorkbenchMenu.RESULT_SLOT && !carrying) {
                 lines.add(Component.translatable(KEY + "result_title").withColor(TOOLTIP_TITLE));
                 lines.add(this.resultReason().copy().withColor(TOOLTIP_BODY));
@@ -665,6 +739,59 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
             lines.add(Component.translatable(KEY + "hint.rotate").withColor(TOOLTIP_BODY));
         }
         return lines;
+    }
+
+    public List<Component> recycleTooltip(int mouseX, int mouseY) {
+        List<Component> lines = new ArrayList<>();
+        ItemStack carried = this.menu.getCarried();
+        Slot slot = this.hoveredSlot;
+        if (slot != null && !slot.hasItem()) {
+            if (slot.index == DroneWorkbenchMenu.RECYCLE_INPUT) {
+                addHintLines(lines, RecycleView.inputLines(carried));
+            } else if (slot.index > DroneWorkbenchMenu.RECYCLE_INPUT && slot.index < DroneWorkbenchMenu.RECYCLE_PREVIEW && carried.isEmpty()) {
+                lines.add(Component.translatable(RecycleView.OUTPUT).withColor(TOOLTIP_TITLE));
+                lines.add(Component.translatable(RecycleView.OUTPUT_HINT).withColor(TOOLTIP_BODY));
+            }
+            return lines;
+        }
+        if (!carried.isEmpty() || slot != null) {
+            return lines;
+        }
+        FlatButton button = this.recycleButton;
+        if (button != null && button.visible && mouseX >= button.getX() && mouseX < button.getX() + button.getWidth() && mouseY >= button.getY()
+                && mouseY < button.getY() + button.getHeight()) {
+            lines.add(Component.translatable(RecycleView.BUTTON).withColor(TOOLTIP_TITLE));
+            lines.add(Component.translatable(RecycleView.BUTTON_HINT).withColor(TOOLTIP_BODY));
+            if (this.recycleView != null && !this.menu.recycleInput().isEmpty()) {
+                RecycleView.Status status = this.recycleView.statusLine();
+                lines.add(status.text().copy().withColor(status.color() & 0xFFFFFF));
+            }
+            return lines;
+        }
+        if (this.recycleView != null) {
+            for (Component line : this.recycleView.tooltip(mouseX - this.leftPos, mouseY - this.topPos)) {
+                lines.add(line.copy().withColor(lines.isEmpty() ? TOOLTIP_TITLE : TOOLTIP_BODY));
+            }
+        }
+        return lines;
+    }
+
+    private static void addHintLines(List<Component> lines, List<SalvageHint.Line> hint) {
+        for (SalvageHint.Line line : hint) {
+            lines.add(line.text().copy().withColor(switch (line.kind()) {
+                case TITLE -> TOOLTIP_TITLE;
+                case BODY -> TOOLTIP_BODY;
+                case WARNING -> TOOLTIP_WARNING;
+            }));
+        }
+    }
+
+    @Override
+    protected void slotClicked(@Nullable Slot slot, int slotId, int button, ContainerInput input) {
+        if (this.recycleView != null && slot != null && input == ContainerInput.QUICK_MOVE) {
+            this.recycleView.droneNotice(this.menu.keepsDrone(slot.getItem()));
+        }
+        super.slotClicked(slot, slotId, button, input);
     }
 
     public static Optional<Component> missingWarning(ItemStack drone) {
@@ -725,6 +852,16 @@ public class DroneWorkbenchScreen extends AbstractContainerScreen<DroneWorkbench
         } else {
             lines.add(Component.translatable(KEY + "slot_hint.accessory_optional").withColor(TOOLTIP_BODY));
         }
+    }
+
+    public static List<Component> otherFramesHint(DroneWorkbenchMenu menu, int slot, ItemStack carried) {
+        Optional<AccessoryMount> mount = BuildSlots.mountOf(slot);
+        if (mount.isEmpty() || !(DroneAssembly.part(carried).orElse(null) instanceof AccessoryType accessory) || !accessory.fits(mount.get())
+                || menu.fitsFrame(accessory)) {
+            return List.of();
+        }
+        return List.of(slotName(slot).copy().withColor(TOOLTIP_TITLE),
+                Component.translatable(KEY + "slot_hint.accessory_other_frames", PartTooltips.fittingFrames(accessory)).withColor(TOOLTIP_WARNING));
     }
 
     public static Component slotName(int slot) {

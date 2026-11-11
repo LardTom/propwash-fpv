@@ -1,0 +1,8 @@
+{
+  "propwash.accessory.menu.overloaded": "Beladung %s g · überladen",
+  "propwash.accessory.menu.overloaded.hint": "Überladen: Ein Zubehör zählt samt Beladung höchstens %s g, das Flugmodell trägt %s g dieser Beladung.",
+  "propwash.build.issue.accessory_frame": "Zubehör passt nur an andere Rahmen",
+  "propwash.content.workbench.slot_hint.accessory_other_frames": "Passt nicht an diesen Rahmen, nur an: %s",
+  "propwash.drone.tooltip.overloaded": "Überladen: ein Zubehör wiegt samt Beladung über %s kg",
+  "propwash.osd.warning.overloaded": "ÜBERLADEN"
+}

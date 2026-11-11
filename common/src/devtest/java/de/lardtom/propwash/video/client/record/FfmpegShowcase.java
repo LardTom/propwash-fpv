@@ -9,9 +9,13 @@ import de.lardtom.propwash.dev.client.Screenshots;
 import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.DronePiloting;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.ui.client.ConfiguratorScreen;
+import de.lardtom.propwash.ui.client.theme.Metrics;
+import de.lardtom.propwash.ui.client.widget.TextField;
 import de.lardtom.propwash.video.record.external.FfmpegLocator;
 import de.lardtom.propwash.video.record.external.HardwareEncoders;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,6 +29,7 @@ public final class FfmpegShowcase {
     public static final String PREFIX = "bildschirmfotos: Action-Cam ffmpeg – ";
     private static final String FUTURE = "future";
     private static final int TAB_SLOT = 1;
+    private static final int SCROLL_PIXELS = 18;
 
     private FfmpegShowcase() {
     }
@@ -43,6 +48,38 @@ public final class FfmpegShowcase {
             throw new IllegalStateException("kein Spieler");
         }
         return player;
+    }
+
+    static void reveal(ActionCamTab tab) {
+        TextField path = tab.pathField();
+        if (path == null || !(Minecraft.getInstance().gui.screen() instanceof ConfiguratorScreen screen)) {
+            return;
+        }
+        ScreenRectangle view = screen.contentView();
+        double x = view.left() + view.width() / 2.0;
+        double y = view.top() + 4.0;
+        for (int i = 0; i < 80 && tab.contentBelow() && path.getY() - Metrics.SECTION_HEIGHT - SCROLL_PIXELS >= view.top(); i++) {
+            if (!tab.mouseScrolled(x, y, 0.0, -1.0)) {
+                return;
+            }
+        }
+    }
+
+    static @Nullable String hidden(ActionCamTab tab) {
+        if (!(Minecraft.getInstance().gui.screen() instanceof ConfiguratorScreen screen)) {
+            return "Konfigurator nicht offen";
+        }
+        TextField path = tab.pathField();
+        if (path == null) {
+            return "Feld ffmpeg-Pfad fehlt";
+        }
+        ScreenRectangle view = screen.contentView();
+        int title = path.getY() - Metrics.SECTION_HEIGHT;
+        int bottom = path.getY() + Metrics.ROW_HEIGHT + 2 + tab.ffmpegLines().size() * Metrics.LINE_HEIGHT;
+        if (!path.visible || title < view.top() || bottom > view.bottom()) {
+            return "Überschrift bei " + title + ", Statuszeilen bis " + bottom + ", sichtbar " + view.top() + " bis " + view.bottom();
+        }
+        return null;
     }
 
     private static final class TabScene implements Screenshots.Scene {
@@ -98,6 +135,13 @@ public final class FfmpegShowcase {
                         FfmpegLocator.CustomPath.NONE, List.of()));
             } else if (tab.ffmpegStatus().state() == HardwareEncoders.State.CHECKING) {
                 return ctx.tick() > 900 ? StepResult.fail("Prüfung von ffmpeg endet nicht") : StepResult.pending();
+            }
+            if (hidden(tab) != null) {
+                reveal(tab);
+            }
+            String hidden = hidden(tab);
+            if (hidden != null) {
+                return StepResult.fail("Abschnitt „Schneller aufnehmen mit ffmpeg“ nicht ganz im Bild: " + hidden);
             }
             ctx.log("Abschnitt ffmpeg: " + FfmpegSelfTests.texts(tab));
             return StepResult.pass();

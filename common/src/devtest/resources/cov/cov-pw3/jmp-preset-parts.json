@@ -1,0 +1,27 @@
+{
+  "source": "test/resources/sharecode/pw3-vectors.json, Umrechnung der PW2-Presets nur mit Teilen",
+  "presets": {
+    "justmoreparts:bash5_6s": "PW3-0Fg95II367JGnYSvwiF",
+    "justmoreparts:cinewhoop25_4s": "PW3-07WI3xBSVQHUjm",
+    "justmoreparts:cinewhoop35_6s": "PW3-07YpLekytynjwi",
+    "justmoreparts:deadcat5_6s": "PW3-0FjDrv768T1ZqHcaCAZ",
+    "justmoreparts:hframe5_6s": "PW3-0FlnG40IsQApZxwbvZo",
+    "justmoreparts:lr4_6s_lion": "PW3-07feRKwFmTnNEr",
+    "justmoreparts:lr6_6s": "PW3-07anbVT5dLQ36e",
+    "justmoreparts:lr7_8s": "PW3-0VDzMTIMAm4jZ9F",
+    "justmoreparts:lr7_deadcat_lion": "PW3-0VK4Xqu8EgBhiDM",
+    "justmoreparts:lr8_6s_lion": "PW3-0VcjcTcs8lqEASW",
+    "justmoreparts:race5_4s": "PW3-07avqWIzzP9xCj",
+    "justmoreparts:race5_6s": "PW3-0FmFQuIpV7p3B4i6a6R",
+    "justmoreparts:squashed5_6s": "PW3-0FpjyeCPuec0E1Otjo9",
+    "justmoreparts:toothpick2_2s": "PW3-07feREO2Mmq0z2",
+    "justmoreparts:toothpick35_6s": "PW3-0VUE89mkr04DY7l",
+    "justmoreparts:toothpick3_4s": "PW3-0FqKCbLX6cSqikbptOX",
+    "justmoreparts:whoop75_1s": "PW3-07Z6WCyBan8Shj",
+    "justmoreparts:whoop85_2s": "PW3-07XzppVOsqzzxp",
+    "justmoreparts:xclass10_6s": "PW3-0VaJJaRHhdY0X7Y",
+    "justmoreparts:xclass12_8s": "PW3-0VFacdYuPgtD1ke",
+    "justmoreparts:xclass13_8s": "PW3-0VLlTgmPWOOwr1i",
+    "justmoreparts:xclass13h_8s": "PW3-0V9mSFzJZrnwPtK"
+  }
+}

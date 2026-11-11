@@ -1,5 +1,7 @@
 package de.lardtom.propwash.video.record.path;
 
+import org.joml.Quaterniond;
+
 import java.util.Arrays;
 
 public final class CameraPathBuffer {
@@ -90,5 +92,9 @@ public final class CameraPathBuffer {
 
     double tick(int index) {
         return this.ticks[index];
+    }
+
+    Quaterniond rotation(int index, Quaterniond dest) {
+        return dest.set(this.rotations[index * 4], this.rotations[index * 4 + 1], this.rotations[index * 4 + 2], this.rotations[index * 4 + 3]);
     }
 }

@@ -164,6 +164,7 @@ public final class RemoteDemo {
             case RESCUE, LEDS_OFF, MODE_3D, TURTLE -> new Target(Motion.SWITCH, 3);
             case FLIP_OVER, SET_HOME, RESET, CARGO_DROP, VTX_POWER, ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4 -> new Target(Motion.BUTTON, MOMENTARY_BUTTON);
             case COMMAND_1, COMMAND_2, COMMAND_3, COMMAND_4, COMMAND_5, COMMAND_6, COMMAND_7, COMMAND_8 -> new Target(Motion.SWITCH, 2);
+            default -> new Target(Motion.SWITCH, 2);
         };
     }
 

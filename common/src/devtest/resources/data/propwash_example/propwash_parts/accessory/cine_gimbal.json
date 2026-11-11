@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "mass_g": 55.0,
+  "slot": "front",
+  "size_mm": [40.0, 30.0, 36.0],
+  "flight_battery_w": 0.0,
+  "frontal_area_m2": 0.0012,
+  "creative": false,
+  "frames": ["propwash:cinewhoop_3", "propwash:long_range_7"]
+}

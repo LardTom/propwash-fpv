@@ -90,11 +90,15 @@ Servokabel), lackierbar (Servo = Zubehör, Platte = TPU). Rezept: Kupferspule ü
 zwei Haken als Backen. Keine Truhen-Beute (die Beute-Balance bleibt).
 
 ### 2.3 Aufnehmen (`DroneCargo`, Server)
-- nur scharf, gesteuert und mit Greifer, alle 4 Ticks;
+- nur scharf, gesteuert und mit Greifer, alle 4 Ticks; ohne Pilot (Heimflug, Add-on-Flug) nur nach einem Griff über die
+  Add-on-API (`AccessoryRegistry#grabCargo`, seit 0.6.0, Befund FB1-10): Der Greifer bleibt dann 5 s offen
+  (`GripperSpec.GRAB_TICKS`), greift sofort und danach alle 4 Ticks, und schließt nach der ersten Aufnahme, beim
+  Loslassen oder Entschärfen. Ohne diesen Griff nimmt eine Drohne ohne Pilot nichts auf;
 - Reichweite: Kasten ±0,6 Blöcke waagerecht, 0,9 Blöcke unter und 0,25 über dem Fuß der Drohne – man muss tief
   schweben; Items hinter Blöcken (kein freier Strahl) bleiben liegen, ebenso Items mit Aufheb-Verzögerung und Items,
   die Vanilla nur einem bestimmten Spieler gibt (Feld „Owner“ des Items, z. B. Überlauf von Fortschritts-Belohnungen):
-  die greift die Drohne nur, wenn dieser Spieler sie steuert (`GripperSpec.mayTake`, wie `ItemEntity#playerTouch`);
+  die greift die Drohne nur, wenn dieser Spieler sie steuert oder den Griff über die API ausgelöst hat
+  (`GripperSpec.mayTake`, wie `ItemEntity#playerTouch`);
 - nächstes Item zuerst; `CargoPlan.takeable` nimmt so viele, wie Gewicht und Stapel erlauben (Teilstapel möglich);
 - **Tragkraft** `GripperSpec.capacityGrams` = min(400 g, ½ × (Maximalschub − Abfluggewicht),
   Maximalschub ÷ (1,3 × Schwerkraft) − Abfluggewicht) aus `BuildAnalysis`, mit der Welt-Regel `propwash:gravity_scale`
@@ -103,11 +107,13 @@ zwei Haken als Backen. Keine Truhen-Beute (die Beute-Balance bleibt).
   nichts mehr, die anderen weiter 400 g; bei 0 % begrenzt nur noch die Schubreserve (½ × Überschuss).
   Voll beladen bleibt Schub/Gewicht bei der eingestellten Schwerkraft immer mindestens 1,3 (Reserve für den
   Spannungseinbruch des Akkus). Höchstens 4 Stapel;
-- **Gewicht je Item** (`ItemWeights`): Propwash-Teile, Akkus und Drohnen ihre echte Masse; sonst nicht stapelbar
-  150 g, bis 16 stapelbar 40 g, Blöcke 50 g, alles andere 10 g; Behälter (Shulker-Kisten und alles mit Inhalt
+- **Gewicht je Item** (`ItemWeights`): Propwash-Teile, Akkus und Drohnen ihre echte Masse; Dreizacke 1500 g (seit
+  0.6.0 wie beim Rückstoß aus dem Werfer, `docs/accessory-gaps.md` §1, Befund RC3P-1; für den Greifer zu schwer); sonst
+  nicht stapelbar 150 g, bis 16 stapelbar 40 g, Blöcke 50 g, alles andere 10 g; Behälter (Shulker-Kisten und alles mit Inhalt
   `minecraft:container`, Bündel) wiegen zusätzlich ihren Inhalt, verschachtelt bis 4 Ebenen. Eine volle Shulker-Kiste
   ist damit viel zu schwer für jede Drohne;
-- Meldung an den Piloten (Aktionsleiste): „Greifer: +n × Item · 380 / 400 g“, bei voller Last alle 3 s „Greifer voll“.
+- Meldung an den Piloten (Aktionsleiste): „Greifer: +n × Item · 380 / 400 g“, bei voller Last alle 3 s „Greifer voll“;
+  ohne Pilot an den Spieler, der zuletzt über die API gegriffen oder losgelassen hat.
 
 ### 2.4 Last im Flugmodell (keine neue Physik)
 Die Last geht als Masse des Zubehörs ins vorhandene Datenmodell: `CargoMass.withPayload(build, g)` ersetzt den Greifer
@@ -117,6 +123,8 @@ Masse, Schwerpunkt und Trägheit (Quader am Anbaupunkt). Damit das im Flug wirkt
 `DroneSim#setAirframe` nur die Kennwerte (wie der Konstruktor, ohne Zustand, Filter oder Regler zurückzusetzen) und
 aktualisiert die Schwebegas-Schätzung. Formeln und Schrittweite bleiben unverändert; ohne Greifer oder ohne Last ist das
 Flugmodell exakt das von 0.4.0 (JUnit `GripperTest`, `AirframeSwapTest`; Bewegungs-Goldens und Kalibrierung bitgleich).
+Fliegt der Server die Drohne (Heimflug, Add-on-Flug), übernimmt `ServerFlight` eine geänderte Fracht ebenso über
+`DroneSim#setAirframe` (seit 0.6.0, Befund FB1-10).
 
 Synchronisiert werden nur Gesamtgewicht und das schwerste Item (`QuadcopterEntity` `DATA_CARGO_GRAMS`,
 `DATA_CARGO_ITEM`); der Client des Piloten baut daraus den beladenen Build, alle sehen das Item im Greifer hängen
@@ -129,6 +137,7 @@ Synchronisiert werden nur Gesamtgewicht und das schwerste Item (`QuadcopterEntit
 | harter Absturz (`CrashDamage.crash`, Aufpralltempo ≥ Bruchgrenze des Rahmens) | `CargoReleaseC2S(CRASH)` |
 | Landen bzw. Entschärfen: 10 Ticks nicht scharf (auch Ende der Steuerung) | Server |
 | Drohne verschwindet (aufheben, zerstören, entfernen) oder der Greifer fehlt im Build | Server, ohne Schwung |
+| Add-on am Server, etwa ein Flugplaner: `AccessoryRegistry#releaseCargo(drone, actor)` (seit 0.6.0) | Server, wie die Taste (`COMMAND`) |
 
 Die Items fallen mit dem Schwung der Drohne (höchstens 1,5 Blöcke/Tick) knapp unter ihr heraus, mit normaler
 Aufheb-Verzögerung. Danach greift er erst wieder zu, wenn die Drohne mindestens 1,5 Blöcke vom Abwurfpunkt entfernt ist

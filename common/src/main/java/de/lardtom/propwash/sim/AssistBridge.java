@@ -14,6 +14,7 @@ final class AssistBridge implements FlightState, AssistOutput, ForceSink {
 
     private final DroneSim sim;
     final double[] obstacles = new double[SensorDirection.values().length];
+    final double[] operatorAxes = new double[4];
 
     boolean sticks;
     double roll;
@@ -356,6 +357,21 @@ final class AssistBridge implements FlightState, AssistOutput, ForceSink {
     }
 
     @Override
+    public double compassHeadingDeg() {
+        return compass((this.sim.body.headingRad() + this.compassErrorRad()) * SimMath.DEG);
+    }
+
+    @Override
+    public double compassErrorDeg() {
+        return wrap180(-this.compassErrorRad() * SimMath.DEG);
+    }
+
+    private double compassErrorRad() {
+        NavHold nav = this.sim.nav;
+        return nav.headingErrorRad != 0.0 ? nav.headingErrorRad : nav.headingOffsetRad;
+    }
+
+    @Override
     public double pitchDeg() {
         return StrictMath.asin(SimMath.clamp(this.sim.body.r12, -1.0, 1.0)) * SimMath.DEG;
     }
@@ -489,5 +505,25 @@ final class AssistBridge implements FlightState, AssistOutput, ForceSink {
     @Override
     public double obstacleDistance(SensorDirection direction) {
         return direction == null ? Double.NaN : this.obstacles[direction.ordinal()];
+    }
+
+    @Override
+    public boolean addonSwitch(String id) {
+        return this.sim.addonSwitch(id);
+    }
+
+    @Override
+    public double addonAxis(String id) {
+        return this.sim.addonAxis(id);
+    }
+
+    @Override
+    public double operatorAxis(int index) {
+        return index >= 0 && index < this.operatorAxes.length ? this.operatorAxes[index] : 0.0;
+    }
+
+    @Override
+    public double angleLimitDeg() {
+        return this.sim.fc.pid().angleLimitDeg;
     }
 }

@@ -18,20 +18,24 @@ import java.util.TreeMap;
 public final class ZoneData extends SavedData {
     private static final Codec<ZoneData> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.INT.optionalFieldOf("next_id", 1).forGetter(data -> data.nextId),
-            Zone.CODEC.listOf().optionalFieldOf("zones", List.of()).forGetter(ZoneData::all)
+            Zone.CODEC.listOf().optionalFieldOf("zones", List.of()).forGetter(ZoneData::all),
+            ZoneRelease.CODEC.optionalFieldOf("release", ZoneRelease.DEFAULT).forGetter(ZoneData::release)
     ).apply(i, ZoneData::new));
 
     public static final SavedDataType<ZoneData> TYPE = new SavedDataType<>(Constants.id("zones"), ZoneData::new, CODEC, null);
 
     private final Map<Integer, Zone> zones = new TreeMap<>();
     private final Map<String, List<Zone>> byDimension = new HashMap<>();
+    private final Map<String, List<Zone>> effectiveByDimension = new HashMap<>();
+    private ZoneRelease release = ZoneRelease.DEFAULT;
     private int nextId = 1;
     private int version;
 
     public ZoneData() {
     }
 
-    private ZoneData(int nextId, List<Zone> list) {
+    private ZoneData(int nextId, List<Zone> list, ZoneRelease release) {
+        this.release = release;
         List<Zone> sorted = new ArrayList<>(list);
         sorted.sort((a, b) -> Integer.compare(a.id(), b.id()));
         Map<String, Integer> perDimension = new HashMap<>();
@@ -67,6 +71,29 @@ public final class ZoneData extends SavedData {
         List<Zone> frozen = List.copyOf(out);
         this.byDimension.put(dimension, frozen);
         return frozen;
+    }
+
+    public List<Zone> effectiveIn(String dimension) {
+        List<Zone> cached = this.effectiveByDimension.get(dimension);
+        if (cached != null) {
+            return cached;
+        }
+        List<Zone> effective = this.release.effective(this.in(dimension));
+        this.effectiveByDimension.put(dimension, effective);
+        return effective;
+    }
+
+    public ZoneRelease release() {
+        return this.release;
+    }
+
+    public boolean setRelease(ZoneRelease value) {
+        if (value.equals(this.release)) {
+            return false;
+        }
+        this.release = value;
+        this.changed();
+        return true;
     }
 
     public @Nullable Zone get(int id) {
@@ -107,6 +134,7 @@ public final class ZoneData extends SavedData {
 
     private void changed() {
         this.byDimension.clear();
+        this.effectiveByDimension.clear();
         this.version++;
         this.setDirty();
     }

@@ -46,6 +46,8 @@ public final class DroneItemSelfTests {
         SelfTest.clientStep("drone-render: Geist zeichnet den Bauplan durchscheinend", 1, ctx -> ghostStep());
         SelfTest.clientStep("drone-render: Drohnen und Rahmen hängen im Item-Rahmen an der Wand", 1, DroneItemSelfTests::wallStep);
         ItemFrameShowcase.register();
+        DroneItemViewSelfTests.register();
+        DroneItemBlurSelfTests.register();
     }
 
     static ItemStack stack(DroneBuild build) {

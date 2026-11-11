@@ -139,35 +139,18 @@ class RelayPathsTest {
     }
 
     @Test
-    void reachFadesOverTheLastSixteenBlocks() {
-        assertEquals(1.0, RelayRules.reachFactor(0.0), EPS);
-        assertEquals(1.0, RelayRules.reachFactor(RelayRules.FULL_RANGE_BLOCKS), EPS);
-        assertEquals(0.5, RelayRules.reachFactor(120.0), EPS);
-        assertEquals(0.0, RelayRules.reachFactor(RelayRules.RANGE_BLOCKS), EPS);
-        assertEquals(0.0, RelayRules.reachFactor(Double.NaN), EPS);
-        assertEquals(0.0, RelayRules.reachPenaltyDb(50.0), EPS);
-        assertEquals(20.0 * Math.log10(2.0), RelayRules.reachPenaltyDb(120.0), 1.0E-9);
-        assertTrue(Double.isInfinite(RelayRules.reachPenaltyDb(130.0)));
-        assertFalse(RelayRules.inReach(RelayRules.RANGE_BLOCKS));
-    }
-
-    @Test
-    void longestChainStaysInsideTheRemoteRangeSoServerChecksStayValid() {
-        assertTrue(RelayRules.span(RelayRules.MAX_RELAYS) <= RadioLink.FULL_RANGE,
-                "Kette " + RelayRules.span(RelayRules.MAX_RELAYS) + " länger als die volle Funkreichweite");
-        assertTrue(RelayRules.span(RelayRules.MAX_RELAYS) <= RadioLink.START_RANGE);
-        for (double d = 0.0; d <= RadioLink.FULL_RANGE; d += 1.0) {
-            assertEquals(1.0F, RadioLink.quality(d, Double.POSITIVE_INFINITY, false), "direkter Funk bei " + d);
-        }
-    }
-
-    @Test
-    void controlLinkThroughRepeatersNeverBeatsTheDirectLinkWithoutOwnRange() {
+    void controlLinkThroughRepeatersNeverBeatsAFullDirectLink() {
         double hop = RelayLinks.controlHopQuality(100.0, false, 0.0);
         assertEquals(1.0, hop, EPS);
         assertEquals(1.0F, RelayLinks.controlQuality(1.0F, hop, 300.0, Double.POSITIVE_INFINITY), 1.0E-6F);
-        assertTrue(Double.isNaN(RelayLinks.controlHopQuality(RelayRules.RANGE_BLOCKS + 1.0, false, 0.0)));
-        assertEquals(0.5, RelayLinks.controlHopQuality(120.0, false, 0.0), EPS);
+        double reach = RelayLinks.controlHopReach(false, 0.0);
+        assertEquals(RadioLink.FULL_RANGE + RadioLink.FADE_RANGE, reach, EPS);
+        assertTrue(Double.isNaN(RelayLinks.controlHopQuality(reach + 1.0, false, 0.0)));
+        assertEquals(RadioLink.quality(300.0, Double.POSITIVE_INFINITY, false, 0.0, 15.0), RelayLinks.controlHopQuality(300.0, false, 0.0, 15.0), 1.0E-6);
+        assertTrue(RelayLinks.controlHopQuality(300.0, false, 0.0, 15.0) < 0.95, "Wand dämpft auch die Funk-Teilstrecke");
+        assertEquals(1.0, RelayLinks.controlHopQuality(100.0, true, 0.0, 45.0), EPS);
+        assertTrue(Double.isInfinite(RelayLinks.controlHopReach(true, 0.0)));
+        assertEquals(60.0, RelayLinks.controlHopReach(true, 40.0), EPS);
     }
 
     @Test
@@ -183,12 +166,16 @@ class RelayPathsTest {
     }
 
     @Test
-    void videoHopUsesTheTransmitterRangeTheBlocksAndTheRepeaterReach() {
+    void videoHopUsesTheTransmitterRangeAndTheBlocks() {
         double range = VideoType.ANALOG_RACE.rangeBlocks;
         assertEquals(LinkBudget.marginDb(20.0, range) - 5.0, RelayLinks.videoHopMarginDb(20.0, range, 5.0), EPS);
-        assertEquals(LinkBudget.marginDb(120.0, range) - 20.0 * Math.log10(2.0), RelayLinks.videoHopMarginDb(120.0, range, 0.0), 1.0E-9);
-        assertTrue(Double.isNaN(RelayLinks.videoHopMarginDb(200.0, range, 0.0)));
+        assertEquals(LinkBudget.marginDb(120.0, range), RelayLinks.videoHopMarginDb(120.0, range, 0.0), EPS);
+        assertEquals(LinkBudget.marginDb(200.0, range), RelayLinks.videoHopMarginDb(200.0, range, -2.0), EPS);
         assertTrue(Double.isNaN(RelayLinks.videoHopMarginDb(20.0, range, Double.NaN)));
+        assertTrue(Double.isNaN(RelayLinks.videoHopMarginDb(Double.NaN, range, 0.0)));
+        assertEquals(LinkBudget.maxReachBlocks(VideoSystem.ANALOG, range), RelayLinks.videoHopReach(VideoSystem.ANALOG, range), EPS);
+        assertEquals(LinkBudget.lostDb(VideoSystem.DIGITAL), RelayLinks.videoHopMarginDb(RelayLinks.videoHopReach(VideoSystem.DIGITAL, range), range, 0.0),
+                1.0E-9);
         assertEquals(RelayPaths.Combine.NOISE, RelayLinks.videoCombine(VideoSystem.ANALOG));
         assertEquals(RelayPaths.Combine.WEAKEST, RelayLinks.videoCombine(VideoSystem.DIGITAL));
     }
@@ -223,12 +210,55 @@ class RelayPathsTest {
                 10.0, 0.0, 5.0,
                 900.0, 0.0, 0.0};
         int[] out = new int[8];
-        int n = candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 4, 16, out);
+        int n = candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 4, 128.0, 16, out);
         assertEquals(2, n);
         assertEquals(0, out[0]);
         assertEquals(2, out[1]);
-        assertEquals(0, candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 0, 16, out));
-        assertEquals(1, candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 4, 1, out));
+        assertEquals(0, candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 0, 128.0, 16, out));
+        assertEquals(1, candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 4, 128.0, 1, out));
+        assertEquals(3, candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 4, 200.0, 16, out));
+        assertEquals(1, out[2]);
+        assertEquals(4, candidates.select(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, positions, 4, 4, Double.POSITIVE_INFINITY, 16, out));
+    }
+
+    @Test
+    void candidatesFollowTheHopReachOfTheLink() {
+        RelayCandidates candidates = new RelayCandidates();
+        double[] positions = {
+                300.0, 1.0, 0.0,
+                600.0, 1.0, 40.0,
+                450.0, 1.0, 1400.0};
+        int[] out = new int[8];
+        double reach = RelayLinks.videoHopReach(VideoSystem.DIGITAL, VideoType.DIGITAL_LITE.rangeBlocks);
+        int n = candidates.select(0.0, 1.6, 0.0, 900.0, 30.0, 0.0, positions, 3, 1, reach, RelayRules.MAX_CANDIDATES, out);
+        assertEquals(2, n, "Repeater auf der Strecke zu einer Drohne 900 Blöcke weg");
+        assertEquals(0, out[0]);
+        assertEquals(1, out[1]);
+        assertEquals(0, candidates.select(0.0, 1.6, 0.0, 900.0, 30.0, 0.0, positions, 3, 1, 128.0, RelayRules.MAX_CANDIDATES, out));
+    }
+
+    @Test
+    void serverChainCheckFollowsTheHopsAndTheRule() {
+        double hop = RadioLink.RELEASE_RANGE;
+        double[] nodes = {
+                1000.0, 1.0, 0.0,
+                2000.0, 1.0, 0.0,
+                3000.0, 1.0, 0.0};
+        assertTrue(RelayReach.chain(0.0, 1.6, 0.0, 1200.0, 30.0, 0.0, nodes, 0, 4, hop));
+        assertFalse(RelayReach.chain(0.0, 1.6, 0.0, 1800.0, 30.0, 0.0, nodes, 0, 4, hop));
+        assertTrue(RelayReach.chain(0.0, 1.6, 0.0, 1800.0, 30.0, 0.0, nodes, 1, 4, hop));
+        assertTrue(RelayReach.chain(0.0, 1.6, 0.0, 3900.0, 30.0, 0.0, nodes, 3, 4, hop));
+        assertFalse(RelayReach.chain(0.0, 1.6, 0.0, 3900.0, 30.0, 0.0, nodes, 3, 2, hop), "Welt-Regel 2 schneidet die dritte Station ab");
+        assertFalse(RelayReach.chain(0.0, 1.6, 0.0, 3900.0, 30.0, 0.0, nodes, 3, 0, hop), "Repeater aus");
+        double[] gap = {
+                1000.0, 1.0, 0.0,
+                2600.0, 1.0, 0.0};
+        assertFalse(RelayReach.chain(0.0, 1.6, 0.0, 3000.0, 30.0, 0.0, gap, 2, 4, hop), "Lücke über der Freigabe-Reichweite");
+        double[] reversed = {
+                3000.0, 1.0, 0.0,
+                2000.0, 1.0, 0.0,
+                1000.0, 1.0, 0.0};
+        assertTrue(RelayReach.chain(0.0, 1.6, 0.0, 3900.0, 30.0, 0.0, reversed, 3, 4, hop), "Reihenfolge der Kandidaten egal");
     }
 
     private static RelayPaths chain(int relays, double margin) {

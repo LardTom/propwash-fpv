@@ -13,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public final class GateCollisions {
     private GateCollisions() {
@@ -27,20 +28,32 @@ public final class GateCollisions {
     }
 
     public static List<GateEntity> nearby(Level level, AABB area, @Nullable GateEntity ignore) {
+        return nearbySkipping(level, area, gate -> gate == ignore);
+    }
+
+    public static List<GateEntity> nearbySkipping(Level level, AABB area, Predicate<GateEntity> skip) {
         List<GateEntity> gates = level.getEntitiesOfClass(GateEntity.class, area.inflate(ExtraCollider.reach()));
-        gates.removeIf(gate -> gate.isRemoved() || gate == ignore);
+        gates.removeIf(gate -> gate.isRemoved() || skip.test(gate));
         return gates;
     }
 
     public static void collect(Level level, AABB area, List<AABB> out, @Nullable GateEntity ignore) {
-        for (GateEntity gate : nearby(level, area, ignore)) {
+        collectSkipping(level, area, out, gate -> gate == ignore);
+    }
+
+    public static void collectSkipping(Level level, AABB area, List<AABB> out, Predicate<GateEntity> skip) {
+        for (GateEntity gate : nearbySkipping(level, area, skip)) {
             gate.collectColliders(area, out);
         }
     }
 
     public static void collectOriented(Level level, AABB area, List<OrientedBox> out, @Nullable GateEntity ignore) {
+        collectOrientedSkipping(level, area, out, gate -> gate == ignore);
+    }
+
+    public static void collectOrientedSkipping(Level level, AABB area, List<OrientedBox> out, Predicate<GateEntity> skip) {
         List<AABB> aligned = new ArrayList<>();
-        for (GateEntity gate : nearby(level, area, ignore)) {
+        for (GateEntity gate : nearbySkipping(level, area, skip)) {
             aligned.clear();
             gate.collectOrientedColliders(area, aligned, out);
             for (AABB box : aligned) {

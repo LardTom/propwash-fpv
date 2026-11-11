@@ -12,6 +12,8 @@ import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.drone.bind.BindAccess;
 import de.lardtom.propwash.drone.bind.ReceiverBinds;
 import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.stats.advancement.FpvAdvancements;
+import de.lardtom.propwash.stats.advancement.Milestone;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -337,6 +339,14 @@ public class DroneServiceMenu extends AbstractContainerMenu {
         public boolean mayPickup(Player player) {
             QuadcopterEntity drone = DroneServiceMenu.this.drone();
             return drone != null && !drone.batteryLocked();
+        }
+
+        @Override
+        public void setByPlayer(ItemStack itemStack, ItemStack previous) {
+            super.setByPlayer(itemStack, previous);
+            if (!itemStack.isEmpty() && DroneServiceMenu.this.player instanceof ServerPlayer serverPlayer) {
+                FpvAdvancements.milestone(serverPlayer, Milestone.BATTERY_SWAPPED);
+            }
         }
     }
 

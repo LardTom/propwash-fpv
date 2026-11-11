@@ -2,6 +2,7 @@ package de.lardtom.propwash.api.accessory;
 
 import de.lardtom.propwash.api.part.AccessorySlot;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 
@@ -24,4 +25,20 @@ public interface AccessoryRegistry {
     List<ItemStack> contents(ItemStack droneItem, AccessorySlot slot);
 
     double itemGrams(ItemStack stack);
+
+    default boolean triggerAction(Entity drone, int number, boolean pressed, ServerPlayer actor) {
+        return false;
+    }
+
+    default List<ItemStack> cargo(Entity drone) {
+        return List.of();
+    }
+
+    default boolean grabCargo(Entity drone, ServerPlayer actor) {
+        return false;
+    }
+
+    default int releaseCargo(Entity drone, ServerPlayer actor) {
+        return 0;
+    }
 }

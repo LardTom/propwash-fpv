@@ -35,14 +35,27 @@ public final class PaintItems {
         if (paint == null || paint.isDefault()) {
             stack.remove(PaintComponents.DRONE_PAINT.get());
             if (drone) {
-                stack.remove(DataComponents.CUSTOM_MODEL_DATA);
+                storeTints(stack, List.of());
             }
             return;
         }
         stack.set(PaintComponents.DRONE_PAINT.get(), paint);
         if (drone) {
-            stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(), iconTints(paint)));
+            storeTints(stack, iconTints(paint));
         }
+    }
+
+    private static void storeTints(ItemStack stack, List<Integer> colors) {
+        CustomModelData old = stack.get(DataComponents.CUSTOM_MODEL_DATA);
+        if (old == null || old.floats().isEmpty() && old.flags().isEmpty() && old.strings().isEmpty()) {
+            if (colors.isEmpty()) {
+                stack.remove(DataComponents.CUSTOM_MODEL_DATA);
+            } else {
+                stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(), colors));
+            }
+            return;
+        }
+        stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(old.floats(), old.flags(), old.strings(), colors));
     }
 
     public static List<Integer> iconTints(DronePaint paint) {

@@ -1,5 +1,7 @@
 package de.lardtom.propwash.drone;
 
+import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.api.event.PropwashEvents;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.content.ContentIds;
@@ -9,6 +11,7 @@ import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.core.event.ServerBus;
 import de.lardtom.propwash.drone.bind.BindAccess;
 import de.lardtom.propwash.drone.bind.ReceiverBinds;
+import de.lardtom.propwash.drone.collision.ServerCollision;
 import de.lardtom.propwash.drone.net.DroneResetS2C;
 import de.lardtom.propwash.drone.net.BeeperOffC2S;
 import de.lardtom.propwash.drone.net.DroneStateC2S;
@@ -19,6 +22,7 @@ import de.lardtom.propwash.drone.net.CraftNameC2S;
 import de.lardtom.propwash.drone.net.TuneC2S;
 import de.lardtom.propwash.network.PropwashNet;
 import de.lardtom.propwash.network.ServerPayloadContext;
+import de.lardtom.propwash.relay.RelayServer;
 import de.lardtom.propwash.rescue.ReturnPlan;
 import de.lardtom.propwash.server.ServerRules;
 import de.lardtom.propwash.server.WorldRules;
@@ -336,6 +340,20 @@ public final class DronePiloting {
         }
     }
 
+    static void sendTurn(QuadcopterEntity drone, boolean keepPosition) {
+        Optional<UUID> pilot = drone.pilot();
+        if (pilot.isEmpty() || !(drone.level() instanceof ServerLevel level)) {
+            return;
+        }
+        ServerPlayer player = level.getServer().getPlayerList().getPlayer(pilot.get());
+        if (player == null) {
+            return;
+        }
+        Quaternionf q = new Quaternionf(drone.orientation());
+        PropwashNet.sendToPlayer(player, new DroneResetS2C(drone.getId(), drone.resetEpoch(), drone.getX(), drone.getY(), drone.getZ(),
+                q.x, q.y, q.z, q.w, false, true, keepPosition));
+    }
+
     private static void onPilotChanged(QuadcopterEntity drone, Optional<UUID> previous, Optional<UUID> current) {
         previous.ifPresent(uuid -> {
             if (BY_PILOT.remove(uuid, drone)) {
@@ -351,6 +369,13 @@ public final class DronePiloting {
                 BY_PILOT.put(uuid, drone);
             }
         });
+        if (PropwashEvents.PILOT_CHANGED.hasListeners()) {
+            try {
+                PropwashEvents.PILOT_CHANGED.fire(listener -> listener.onPilotChanged(drone, previous, current));
+            } catch (RuntimeException e) {
+                Constants.LOG.warn("Event pilot_changed: Listener fehlgeschlagen", e);
+            }
+        }
     }
 
     private static void onServerTick(MinecraftServer server) {
@@ -384,8 +409,8 @@ public final class DronePiloting {
                 release(drone);
                 continue;
             }
-            double maxDistance = RadioLink.releaseRange(ServerRules.maxPilotDistance(player), freeRange(player, drone));
-            if (!(player.position().distanceTo(drone.position()) <= maxDistance)) {
+            double limit = ServerRules.maxPilotDistance(player);
+            if (!RelayServer.inRange(player, drone.position(), RadioLink.releaseRange(limit, freeRange(player, drone)), limit)) {
                 release(drone);
                 player.sendOverlayMessage(Component.translatable("propwash.drone.pilot.lost_range").withStyle(ChatFormatting.RED));
                 continue;
@@ -493,12 +518,15 @@ public final class DronePiloting {
         AABB box = drone.getBoundingBox();
         AABB target = box.move(delta);
         double shrink = Math.min(0.02, Math.min(target.getXsize(), target.getYsize()) * 0.25);
-        if (!level.noBlockCollision(drone, target.deflate(shrink)) || !PathCheck.clear(level, drone, box, delta)) {
-            reject(drone, now);
+        boolean ghost = ServerCollision.passBlocks(level, drone, player, target);
+        boolean targetFree = level.noBlockCollision(drone, target.deflate(shrink));
+        if (!ghost && (!targetFree || !PathCheck.clear(level, drone, box, delta))) {
+            ServerCollision.denied(player, drone, now);
+            reject(drone, now, targetFree);
             return;
         }
-        double maxDistance = RadioLink.releaseRange(ServerRules.maxPilotDistance(player), freeRange(player, drone));
-        if (!(player.position().distanceTo(new Vec3(state.x(), state.y(), state.z())) <= maxDistance)) {
+        double limit = ServerRules.maxPilotDistance(player);
+        if (!RelayServer.inRange(player, new Vec3(state.x(), state.y(), state.z()), RadioLink.releaseRange(limit, freeRange(player, drone)), limit)) {
             release(drone);
             player.sendOverlayMessage(Component.translatable("propwash.drone.pilot.lost_range").withStyle(ChatFormatting.RED));
             return;
@@ -514,12 +542,17 @@ public final class DronePiloting {
     }
 
     private static void reject(QuadcopterEntity drone, long now) {
+        reject(drone, now, false);
+    }
+
+    private static void reject(QuadcopterEntity drone, long now, boolean escaped) {
         long last = drone.lastRejectTick();
         if (last != Long.MIN_VALUE && now - last < REJECT_COOLDOWN_TICKS) {
             return;
         }
         drone.markRejected(now);
-        drone.resetTo(drone.position(), drone.orientation());
+        Vec3 out = escaped ? Depenetration.resolve(drone.level(), drone, drone.getBoundingBox()) : null;
+        drone.resetTo(out == null ? drone.position() : drone.position().add(out), drone.orientation());
     }
 
     private static void onTune(TuneC2S payload, ServerPayloadContext context) {

@@ -2,6 +2,8 @@ package de.lardtom.propwash.ui.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import de.lardtom.propwash.core.client.ClientBus;
+import de.lardtom.propwash.freecam.client.FreecamSession;
+import de.lardtom.propwash.freecam.client.FreecamTab;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
 import de.lardtom.propwash.ui.client.tab.LedTab;
@@ -39,7 +41,7 @@ public final class UiClient {
     private static void onTick(Minecraft minecraft) {
         while (configuratorKey.consumeClick()) {
             if (minecraft.gui.screen() == null && minecraft.player != null) {
-                ConfigTabs.open(null, null);
+                ConfigTabs.open(null, FreecamSession.active() ? FreecamTab.ID : null);
             }
         }
         TemplateApplier.tick(minecraft);

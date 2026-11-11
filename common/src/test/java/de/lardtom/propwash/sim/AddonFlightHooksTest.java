@@ -1,14 +1,18 @@
 package de.lardtom.propwash.sim;
 
+import de.lardtom.propwash.api.drone.CollisionFlags;
 import de.lardtom.propwash.api.flight.AssistOutput;
 import de.lardtom.propwash.api.flight.FlightAssist;
 import de.lardtom.propwash.api.flight.FlightState;
 import de.lardtom.propwash.api.flight.SensorDirection;
 import de.lardtom.propwash.api.flight.StabilizationMode;
 import de.lardtom.propwash.build.DroneBuild;
+import de.lardtom.propwash.drone.collision.CollisionEnvironment;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -47,13 +51,18 @@ class AddonFlightHooksTest {
         FlatWorld hooked = hover(7L);
         hooked.sim.setAssist(null);
         hooked.sim.setForceProviders(List.of());
+        hooked.sim.setAddonInput(id -> true, id -> 1.0);
         for (int i = 0; i < 144 * 3; i++) {
             plain.input.roll = 0.3 * Math.sin(i * 0.05);
             hooked.input.roll = plain.input.roll;
             plain.input.actions = 0;
             hooked.input.actions = 5;
+            CollisionEnvironment.apply(CollisionFlags.SOLID, hooked.env);
+            CollisionEnvironment.beforeStep(CollisionFlags.SOLID, hooked.env);
             plain.frame(DT);
             hooked.frame(DT);
+            assertFalse(hooked.report.ghost);
+            assertFalse(hooked.sim.ghost());
         }
         double[] a = state(plain.sim);
         double[] b = state(hooked.sim);
@@ -267,5 +276,50 @@ class AddonFlightHooksTest {
         assertEquals(2.5, forward.get());
         assertTrue(w.sim.consumeReturnHomeRequest());
         assertFalse(w.sim.consumeReturnHomeRequest());
+    }
+
+    @Test
+    void addonSwitchesAndAxesReachAssistAndForces() {
+        FlatWorld w = hover(13L);
+        AtomicReference<String> assist = new AtomicReference<>();
+        AtomicReference<String> forces = new AtomicReference<>();
+        w.sim.setAssist((state, out) -> assist.set(addonInput(state)));
+        w.sim.setForceProviders(List.of((state, sink) -> forces.set(addonInput(state))));
+        w.run(0.05, 144.0);
+        assertEquals("false 0.0 false 0.0", assist.get());
+        assertEquals("false 0.0 false 0.0", forces.get());
+        assertFalse(w.sim.addonSwitch("gimbalmod:ghost"));
+        assertEquals(0.0, w.sim.addonAxis("gimbalmod:tilt"));
+
+        Set<String> on = new HashSet<>(Set.of("gimbalmod:ghost"));
+        double[] tilt = {0.5};
+        w.sim.setAddonInput(on::contains, id -> "gimbalmod:tilt".equals(id) ? tilt[0] : 0.0);
+        w.run(0.05, 144.0);
+        assertEquals("true 0.5 false 0.0", assist.get());
+        assertEquals("true 0.5 false 0.0", forces.get());
+
+        on.clear();
+        tilt[0] = 3.0;
+        w.run(0.05, 144.0);
+        assertEquals("false 1.0 false 0.0", assist.get());
+        assertEquals("false 1.0 false 0.0", forces.get());
+
+        tilt[0] = Double.NaN;
+        w.run(0.05, 144.0);
+        assertEquals("false 0.0 false 0.0", assist.get());
+        assertFalse(w.sim.addonSwitch(null));
+        assertEquals(0.0, w.sim.addonAxis(null));
+
+        w.sim.setAddonInput(null, null);
+        on.add("gimbalmod:ghost");
+        tilt[0] = 0.5;
+        w.run(0.05, 144.0);
+        assertEquals("false 0.0 false 0.0", assist.get());
+        assertTrue(w.sim.telemetry().armed);
+    }
+
+    private static String addonInput(FlightState state) {
+        return state.addonSwitch("gimbalmod:ghost") + " " + state.addonAxis("gimbalmod:tilt") + " " + state.addonSwitch("gimbalmod:other") + " "
+                + state.addonAxis("gimbalmod:other");
     }
 }

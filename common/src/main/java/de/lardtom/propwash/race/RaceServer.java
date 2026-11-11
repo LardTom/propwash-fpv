@@ -6,14 +6,22 @@ import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.network.PropwashNet;
 import de.lardtom.propwash.network.ServerPayloadContext;
+import de.lardtom.propwash.race.export.RaceDataEvents;
+import de.lardtom.propwash.server.AddonWorldRules;
+import de.lardtom.propwash.server.PersonalRulesServer;
 import de.lardtom.propwash.server.ServerRules;
 import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.server.rules.RuleValues;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
+import de.lardtom.propwash.stats.PilotStats;
+import de.lardtom.propwash.stats.advancement.FpvAdvancements;
+import de.lardtom.propwash.stats.advancement.Milestone;
 import de.lardtom.propwash.zone.ZoneField;
 import de.lardtom.propwash.zone.ZoneLimits;
 import de.lardtom.propwash.zone.ZoneServer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -51,6 +59,7 @@ public final class RaceServer {
     private static final int LOBBY_REFRESH_TICKS = 20;
     private static final int MAX_REPORTS_PER_SECOND = 8;
     private static final int MAX_REQUESTS_PER_SECOND = 4;
+    private static final int MAX_PAGES_PER_SECOND = 10;
     private static final Quaternionfc LEVEL = new Quaternionf();
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
     private static final Map<Integer, RaceLobby> LOBBIES = new HashMap<>();
@@ -71,35 +80,46 @@ public final class RaceServer {
         int lap;
         long startedAt;
         long lastEndSequence = LapVerifier.NO_SEQUENCE;
+        long nextEvent;
         long lastEventNanos;
         long lapSum;
+        int counted;
+        int skipped;
         long windowStart;
         int windowReports;
         long requestWindowStart;
         int requestWindow;
+        long pageWindowStart;
+        int pageWindow;
         final AssistTimeline assist = new AssistTimeline();
+        final RuleTimeline rules = new RuleTimeline();
         final ZoneField zones = new ZoneField();
         int zoneDrone = Integer.MIN_VALUE;
         long zoneNanos;
-        AssistReasons raceAssist = AssistReasons.NONE;
+        AssistReasons raceFixed = AssistReasons.NONE;
+        @Nullable RaceRuleSet raceRules;
+        boolean raceCreativeFc;
         boolean hasLastMove;
         Vec3 lastMove = Vec3.ZERO;
         long lastMoveNanos;
 
-        AssistReasons physics(QuadcopterEntity drone, long now) {
+        RaceRuleSet observe(QuadcopterEntity drone, @Nullable UUID pilot, long now) {
             MinecraftServer server = drone.level().getServer();
             if (server == null) {
-                return AssistCheck.physics(ZoneServer.resolve(drone.level(), drone.getX(), drone.getY(), drone.getZ()), drone.physicsModified());
+                return RaceRules.observe(RaceRules.values(server), ZoneServer.resolve(drone.level(), pilot, drone.getX(), drone.getY(), drone.getZ()),
+                        null);
             }
             boolean fresh = drone.getId() != this.zoneDrone || now < this.zoneNanos || now - this.zoneNanos > ZONE_SETTLE_NANOS;
             if (fresh) {
                 this.zones.reset();
             }
-            this.zones.update(ZoneServer.zones(drone.level()), ZoneServer.dimension(drone.level()), WorldRules.physics(server), drone.getX(),
+            RuleValues world = WorldRules.values(server);
+            this.zones.update(ZoneServer.zones(drone.level()), ZoneServer.dimension(drone.level()), PersonalRulesServer.base(server, pilot), drone.getX(),
                     drone.getY(), drone.getZ(), fresh ? 0.0 : (now - this.zoneNanos) / 1.0e9);
             this.zoneDrone = drone.getId();
             this.zoneNanos = now;
-            return AssistCheck.physics(this.zones.resolution(), this.zones.blendDetails(), drone.physicsModified());
+            Map<Identifier, String> addon = AddonWorldRules.registered().isEmpty() ? Map.of() : AddonWorldRules.values(server);
+            return RaceRules.observe(RaceRules.values(world, addon), this.zones.resolution(), this.zones);
         }
 
         boolean allow(long now) {
@@ -118,12 +138,24 @@ public final class RaceServer {
             return ++this.requestWindow <= MAX_REQUESTS_PER_SECOND;
         }
 
+        boolean allowPage(long now) {
+            if (now - this.pageWindowStart > LapTracker.SECOND || now < this.pageWindowStart) {
+                this.pageWindowStart = now;
+                this.pageWindow = 0;
+            }
+            return ++this.pageWindow <= MAX_PAGES_PER_SECOND;
+        }
+
         void begin(int courseId, long now) {
             this.courseId = courseId;
             this.lap = 0;
             this.lapSum = 0L;
+            this.counted = 0;
+            this.skipped = 0;
             this.lastEventNanos = now;
-            this.raceAssist = AssistReasons.NONE;
+            this.raceFixed = AssistReasons.NONE;
+            this.raceRules = null;
+            this.raceCreativeFc = false;
             this.startedAt = now;
             this.lastEndSequence = LapVerifier.NO_SEQUENCE;
             this.pending.clear();
@@ -157,11 +189,15 @@ public final class RaceServer {
         SESSIONS.clear();
         LOBBIES.clear();
         HEATS.clear();
+        GhostServer.clear();
+        GhostUploads.clear();
         ticks = 0;
     }
 
     static void onLeave(ServerPlayer player) {
         SESSIONS.remove(player.getUUID());
+        GhostServer.leave(player);
+        GhostUploads.leave(player);
         leaveLobbies(player.level().getServer(), player.getUUID());
         for (RaceLobby.Heat heat : HEATS.values()) {
             heat.drop(player.getUUID());
@@ -184,6 +220,8 @@ public final class RaceServer {
             }
         }
         ticks++;
+        GhostServer.tick(server);
+        GhostUploads.tick(server);
         tickLobbies(server, now, ticks % LOBBY_REFRESH_TICKS == 0);
         HEATS.values().removeIf(heat -> heat.done(now));
         if (ticks % SAVE_INTERVAL_TICKS == 0) {
@@ -199,9 +237,17 @@ public final class RaceServer {
     }
 
     public static AssistReasons serverReasons(QuadcopterEntity drone) {
-        AssistReasons physics = AssistCheck.physics(ZoneServer.resolve(drone.level(), drone.getX(), drone.getY(), drone.getZ()),
-                drone.physicsModified());
-        return physics.plus(AssistCheck.drone(drone.build().isCreative(), issues(drone.build())));
+        RaceStandard standard = RaceStandards.server(drone.level().getServer());
+        AssistReasons physics = serverRules(drone).personalReasons(standard);
+        if (physics.none() && drone.physicsModified()) {
+            physics = AssistReasons.of(List.of(AssistDetail.clientPhysics()));
+        }
+        return physics.plus(AssistCheck.drone(drone.build().isCreative(), issues(drone.build()), drone.scale()));
+    }
+
+    public static RaceRuleSet serverRules(QuadcopterEntity drone) {
+        return RaceRules.observe(RaceRules.values(drone.level().getServer()), ZoneServer.resolve(drone.level(), drone.pilot().orElse(null), drone.getX(),
+                drone.getY(), drone.getZ()), null);
     }
 
     public static List<String> issues(DroneBuild build) {
@@ -218,9 +264,14 @@ public final class RaceServer {
 
     public static void onDroneMoved(QuadcopterEntity drone, ServerPlayer pilot, Vec3 from, Vec3 to, long now) {
         Session session = SESSIONS.computeIfAbsent(pilot.getUUID(), uuid -> new Session());
-        AssistReasons build = AssistCheck.drone(drone.build().isCreative(), issues(drone.build()));
-        session.assist.observe(now, session.physics(drone, now).plus(build));
-        onDroneMoved(pilot, from, to, drone.orientation(), now);
+        AssistReasons build = AssistCheck.drone(drone.build().isCreative(), issues(drone.build()), drone.scale());
+        RaceRuleSet rules = session.observe(drone, pilot.getUUID(), now);
+        RaceStandard serverNow = RaceStandards.server(drone.level().getServer());
+        session.rules.observe(now, rules, serverNow);
+        AssistReasons claim = drone.physicsModified() && rules.matches(serverNow)
+                ? AssistReasons.of(List.of(AssistDetail.clientPhysics())) : AssistReasons.NONE;
+        session.assist.observe(now, build.plus(claim));
+        moved(pilot, session, from, to, drone.orientation(), drone.getBbHeight() * 0.5, now);
     }
 
     public static void onHomeReset(QuadcopterEntity drone, ServerPlayer pilot) {
@@ -250,15 +301,16 @@ public final class RaceServer {
     }
 
     public static void onDroneMoved(ServerPlayer pilot, Vec3 from, Vec3 to, Quaternionfc orientation, long now) {
-        Session session = SESSIONS.computeIfAbsent(pilot.getUUID(), uuid -> new Session());
+        moved(pilot, SESSIONS.computeIfAbsent(pilot.getUUID(), uuid -> new Session()), from, to, orientation, 0.0, now);
+    }
+
+    private static void moved(ServerPlayer pilot, Session session, Vec3 from, Vec3 to, Quaternionfc orientation, double lift, long now) {
         boolean continuous = session.hasLastMove && session.lastMove.distanceToSqr(from) < CONTINUITY_EPSILON && now > session.lastMoveNanos;
         long fromNanos = continuous ? session.lastMoveNanos : now;
         session.hasLastMove = true;
         session.lastMove = to;
         session.lastMoveNanos = now;
-        if (session.courseId != GateEntity.NO_COURSE) {
-            session.ghost.sample(now, to.x, to.y, to.z, orientation);
-        }
+        session.ghost.sample(now, to.x, to.y, to.z, orientation);
         if (from.distanceToSqr(to) > LapTracker.MAX_SEGMENT * LapTracker.MAX_SEGMENT || from.distanceToSqr(to) == 0.0) {
             return;
         }
@@ -266,7 +318,7 @@ public final class RaceServer {
         if (registry == null) {
             return;
         }
-        AABB area = new AABB(from, to).inflate(GATE_SEARCH_MARGIN + Math.max(CourseElement.REACH, FreeformReach.reach()));
+        AABB area = new AABB(from, to).inflate(GATE_SEARCH_MARGIN + Math.max(Math.max(CourseElement.REACH, ScoreArea.MAX_EXTENT + 1.0), FreeformReach.reach()));
         List<GateEntity> gates = pilot.level().getEntities(RaceModule.GATE.get(), area,
                 gate -> (gate.inCourse() || gate.signals()) && !gate.isRemoved());
         if (gates.isEmpty()) {
@@ -279,37 +331,29 @@ public final class RaceServer {
         for (GateEntity gate : gates) {
             int course = gate.inCourse() ? registry.courseOf(gate.getUUID()) : GateEntity.NO_COURSE;
             boolean member = course != GateEntity.NO_COURSE && course == gate.courseId();
-            if (gate.signals() && gate.geometry().stageCrossing(0, from.x, from.y, from.z, to.x, to.y, to.z) >= 0.0) {
+            if (gate.signals() && gate.geometry().stageCrossing(0, from.x, from.y + lift, from.z, to.x, to.y + lift, to.z) >= 0.0) {
                 GateSignals.passed(gate, member, member && session.courseId == course);
             }
             if (!member) {
                 continue;
             }
-            GateGeometry geometry = gate.geometry();
-            if (geometry.gate()) {
-                double t = geometry.crossing(from.x, from.y, from.z, to.x, to.y, to.z, true);
-                if (t >= 0.0) {
-                    hits.add(new double[]{t, course, checkpoint(registry, course, gate.gateIndex(), 0)});
-                }
-                continue;
-            }
-            List<Passage> stages = geometry.stages();
-            for (int stage = 0; stage < stages.size(); stage++) {
-                double t = stages.get(stage).crossing(from.x, from.y, from.z, to.x, to.y, to.z, true);
-                if (t >= 0.0) {
-                    hits.add(new double[]{t, course, checkpoint(registry, course, gate.gateIndex(), stage)});
-                }
-            }
+            CourseCrossings.collect(gate.geometry(), gate.passes(), course, (element, stage) -> checkpoint(registry, course, element, stage), from.x, from.y + lift,
+                    from.z, to.x, to.y + lift, to.z, () -> session.nextEvent++, hits);
         }
-        hits.removeIf(hit -> hit[2] < 0.0);
-        hits.sort((a, b) -> Double.compare(a[0], b[0]));
+        hits.removeIf(hit -> hit[CourseCrossings.CHECKPOINT] < 0.0);
+        CourseCrossings.sort(hits, id -> loopCheckpoints(registry, id));
         for (double[] hit : hits) {
-            long time = fromNanos + Math.round((now - fromNanos) * hit[0]);
-            session.verifier.record((int) hit[1], (int) hit[2], time);
+            long time = fromNanos + Math.round((now - fromNanos) * hit[CourseCrossings.TIME]);
+            session.verifier.record((int) hit[CourseCrossings.COURSE], (int) hit[CourseCrossings.CHECKPOINT], time, (long) hit[CourseCrossings.EVENT]);
         }
         if (!session.pending.isEmpty()) {
             drainPending(session, pilot, now);
         }
+    }
+
+    private static int loopCheckpoints(CourseRegistry registry, int courseId) {
+        CourseRegistry.Course course = registry.course(courseId);
+        return course == null || course.pointToPoint() ? CourseCrossings.OPEN : course.checkpoints();
     }
 
     private static int checkpoint(CourseRegistry registry, int courseId, int element, int stage) {
@@ -327,7 +371,7 @@ public final class RaceServer {
         if (plain) {
             return stage == 0 ? element : CourseCheckpoints.NONE;
         }
-        return CourseCheckpoints.index(course.kinds(), element, stage);
+        return CourseCheckpoints.index(course.scoringKinds(), element, stage);
     }
 
     static void onReport(RacePayloads.RaceReportC2S report, ServerPayloadContext context) {
@@ -356,22 +400,19 @@ public final class RaceServer {
         }
         CourseRegistry.Course course = registry.course(report.courseId());
         if (course == null || course.gates.isEmpty()) {
-            session.reset();
-            return Verdict.NO_COURSE;
+            return refuse(session, player, report, Verdict.NO_COURSE);
         }
         if (!CourseRegistry.sameDimension(course, player.level())) {
-            session.reset();
-            return Verdict.WRONG_DIMENSION;
+            return refuse(session, player, report, Verdict.WRONG_DIMENSION);
         }
         QuadcopterEntity drone = pilotedDrone(player);
         if (drone == null) {
-            session.reset();
-            return Verdict.NOT_PILOTING;
+            return refuse(session, player, report, Verdict.NOT_PILOTING);
         }
-        CourseRegistry.GateRecord start = course.gates.getFirst();
+        CourseRegistry.GateRecord start = report.kind() == RacePayloads.ReportKind.LAP && course.pointToPoint() ? course.gates.getLast()
+                : course.gates.getFirst();
         if (drone.distanceToSqr(start.x, start.y, start.z) > MAX_REPORT_DISTANCE * MAX_REPORT_DISTANCE && report.kind() != RacePayloads.ReportKind.FINISH) {
-            session.reset();
-            return Verdict.TOO_FAR;
+            return refuse(session, player, report, Verdict.TOO_FAR);
         }
         if (report.kind() == RacePayloads.ReportKind.START) {
             drainPending(session, player, now);
@@ -380,8 +421,7 @@ public final class RaceServer {
             return Verdict.ACCEPTED;
         }
         if (session.courseId != course.id) {
-            session.reset();
-            return Verdict.OUT_OF_SEQUENCE;
+            return refuse(session, player, report, Verdict.OUT_OF_SEQUENCE);
         }
         session.pending.addLast(new Pending(report, now + PENDING_TIMEOUT_NANOS));
         Verdict verdict = drainPending(session, player, now);
@@ -395,13 +435,13 @@ public final class RaceServer {
 
     private static Verdict drainPending(Session session, ServerPlayer player, long now) {
         Verdict verdict = Verdict.ACCEPTED;
+        boolean skipped = false;
         CourseRegistry registry = CourseRegistry.get();
         while (!session.pending.isEmpty()) {
             Pending head = session.pending.peekFirst();
             CourseRegistry.Course course = registry == null ? null : registry.course(head.report().courseId());
             if (course == null || course.gates.isEmpty() || course.id != session.courseId) {
-                session.reset();
-                return Verdict.NO_COURSE;
+                return refuse(session, player, head.report(), Verdict.NO_COURSE);
             }
             verdict = switch (head.report().kind()) {
                 case LAP -> lap(registry, course, session, head.report(), player, now);
@@ -412,17 +452,55 @@ public final class RaceServer {
                 if (now - head.deadline() < 0L) {
                     return Verdict.PENDING;
                 }
-                session.reset();
-                Constants.LOG.debug("Runde von {} auf Kurs {} vom Server nicht bestätigt", player.getGameProfile().name(), course.id);
-                return Verdict.UNVERIFIED;
+                skipLap(course, session, head, player);
+                session.pending.pollFirst();
+                skipped = true;
+                continue;
             }
             session.pending.pollFirst();
             if (verdict != Verdict.ACCEPTED) {
-                session.reset();
-                return verdict;
+                return refuse(session, player, head.report(), verdict);
+            }
+            tell(session, player, head.report(), RacePayloads.LapResult.COUNTED, RacePayloads.LapVerdictS2C.NO_ELEMENT);
+        }
+        return skipped ? Verdict.UNVERIFIED : verdict;
+    }
+
+    private static void skipLap(CourseRegistry.Course course, Session session, Pending head, ServerPlayer player) {
+        RacePayloads.RaceReportC2S report = head.report();
+        boolean pointToPoint = course.pointToPoint();
+        long notBefore = session.lap == 0 ? session.startedAt - START_SLACK_NANOS - COUNTDOWN_SLACK_NANOS : Long.MIN_VALUE;
+        int missing = session.verifier.firstMissing(course.id, course.checkpoints(), session.lastEndSequence, notBefore, pointToPoint);
+        int element = CourseCheckpoints.element(course.scoringKinds(), missing);
+        long reported = head.deadline() - PENDING_TIMEOUT_NANOS;
+        session.lap = report.lap();
+        session.lapSum += report.lapNanos();
+        session.skipped++;
+        session.lastEventNanos = reported;
+        session.lastEndSequence = session.verifier.restart(course.id, pointToPoint ? PointToPoint.finish(course.checkpoints()) : 0);
+        session.ghost.trim(reported - LapTracker.SECOND);
+        Constants.LOG.debug("Runde {} von {} auf Kurs {} vom Server nicht bestätigt, erster fehlender Prüfpunkt {}", report.lap(), player.getGameProfile().name(),
+                course.id, missing);
+        tell(session, player, report, element == CourseCheckpoints.NONE ? RacePayloads.LapResult.REJECTED : RacePayloads.LapResult.MISSED, element);
+    }
+
+    private static Verdict refuse(Session session, ServerPlayer player, RacePayloads.RaceReportC2S report, Verdict verdict) {
+        session.reset();
+        tell(session, player, report, RacePayloads.LapResult.REJECTED, RacePayloads.LapVerdictS2C.NO_ELEMENT);
+        return verdict;
+    }
+
+    private static void tell(Session session, ServerPlayer player, RacePayloads.RaceReportC2S report, RacePayloads.LapResult result, int element) {
+        if (!player.connection.isAcceptingMessages()) {
+            return;
+        }
+        switch (report.kind()) {
+            case LAP -> PropwashNet.sendToPlayer(player, new RacePayloads.LapVerdictS2C(report.courseId(), report.lap(), result, element, session.counted));
+            case FINISH -> PropwashNet.sendToPlayer(player, new RacePayloads.LapVerdictS2C(report.courseId(), report.lap(), RacePayloads.LapResult.RACE,
+                    RacePayloads.LapVerdictS2C.NO_ELEMENT, session.counted));
+            default -> {
             }
         }
-        return verdict;
     }
 
     public static boolean penaltyValid(RacePayloads.RaceReportC2S report) {
@@ -445,13 +523,8 @@ public final class RaceServer {
         if (flown < minimumLapNanos(course, player) || lapNanos > MAX_LAP_NANOS || flown > elapsed + tolerance) {
             return Verdict.IMPLAUSIBLE_TIME;
         }
-        long notBefore = session.lap == 0 ? session.startedAt - START_SLACK_NANOS - COUNTDOWN_SLACK_NANOS : Long.MIN_VALUE;
-        int checkpoints = course.checkpoints();
-        LapVerifier.VerifiedLap verified = session.verifier.find(course.id, checkpoints, session.lastEndSequence, notBefore);
-        while (verified != null && session.lap == 0 && report.penaltyNanos() <= 0L
-                && verified.startNanos() < session.startedAt - START_SLACK_NANOS) {
-            verified = session.verifier.find(course.id, checkpoints, verified.endSequence(), notBefore);
-        }
+        LapVerifier.VerifiedLap verified = verifiedLap(session.verifier, course.id, course.checkpoints(), course.pointToPoint(), session.lastEndSequence,
+                session.lap == 0, session.startedAt, flown, report.penaltyNanos());
         if (verified == null) {
             return Verdict.PENDING;
         }
@@ -467,46 +540,105 @@ public final class RaceServer {
         }
         session.lap = report.lap();
         session.lapSum += lapNanos;
+        session.counted++;
         session.lastEventNanos = now;
         session.lastEndSequence = verified.endSequence();
+        PilotStats.lap(player);
+        FpvAdvancements.lap(player, course.ownedBy(player.getUUID()));
         QuadcopterEntity drone = pilotedDrone(player);
-        AssistReasons assist = lapReasons(session, report, serverStart, verified.endNanos(), drone);
-        session.raceAssist = session.raceAssist.plus(assist);
+        MinecraftServer server = player.level().getServer();
+        AssistCheck.LapVerdict lapVerdict = AssistCheck.creativeFc(lapVerdict(session, report, serverStart, verified.endNanos(), drone, server),
+                registry.creativeFcLegal(course));
+        AssistReasons assist = lapVerdict.reasons();
+        session.raceFixed = session.raceFixed.plus(lapVerdict.fixed());
+        session.raceRules = session.raceRules == null ? lapVerdict.rules() : session.raceRules.union(lapVerdict.rules());
+        session.raceCreativeFc |= lapVerdict.creativeFc();
         notifyServerVerdict(player, report, assist);
         String frame = drone == null ? "" : drone.build().frame().key();
+        boolean saved = WorldRules.on(server, WorldRuleSpecs.SAVE_ASSISTED_LAPS);
+        long date = System.currentTimeMillis();
+        RaceStandard lapServer = RaceStandards.server(server);
         if (assist.any()) {
+            Leaderboard.Result result = registry.submitTime(course, player.getUUID(), player.getGameProfile().name(), frame, lapNanos, date,
+                    lapVerdict.fixed(), lapVerdict.rules(), saved, lapServer, lapVerdict.creativeFc());
+            if (result.stored()) {
+                storeGhost(registry, course, session, verified, player, frame, lapNanos, date, assist.mask(), report);
+            }
             session.ghost.trim(verified.endNanos() - LapTracker.SECOND);
-            if (WorldRules.on(player.level().getServer(), WorldRuleSpecs.SAVE_ASSISTED_LAPS)
-                    && registry.submitAssistedLap(course, player, frame, lapNanos, assist)) {
+            boolean best = saved && result.improved();
+            if (best) {
                 player.sendSystemMessage(Component.translatable("propwash.race.server.personal_best_assisted", CourseRegistry.ref(course), RaceFormat.time(lapNanos),
                         registry.board(course).assistedRank(player.getUUID(), frame), className(frame), assistReasons(assist))
                         .withStyle(ChatFormatting.AQUA));
             }
+            RaceDataEvents.lap(registry, course, player.getUUID(), player.getGameProfile().name(), report.lap(), lapNanos, frame, assist, saved, best,
+                    false, false);
             return Verdict.ACCEPTED;
         }
-        Leaderboard.Outcome outcome = registry.submitLap(course, player, frame, lapNanos);
-        if (outcome.record()) {
-            storeGhost(registry, course, session, verified, player, frame, lapNanos);
+        boolean hadBest = registry.board(course).best(player.getUUID(), frame) != null;
+        Leaderboard.Result result = registry.submitTime(course, player.getUUID(), player.getGameProfile().name(), frame, lapNanos, date,
+                lapVerdict.fixed(), lapVerdict.rules(), saved, lapServer, lapVerdict.creativeFc());
+        Leaderboard.Outcome outcome = result.outcome();
+        if (hadBest && outcome.improved()) {
+            FpvAdvancements.milestone(player, Milestone.PERSONAL_BEST);
+        }
+        if (result.stored()) {
+            storeGhost(registry, course, session, verified, player, frame, lapNanos, date, LapAssist.NONE, report);
         }
         session.ghost.trim(verified.endNanos() - LapTracker.SECOND);
         announce(registry, course, outcome, player, frame, lapNanos);
+        RaceDataEvents.lap(registry, course, player.getUUID(), player.getGameProfile().name(), report.lap(), lapNanos, frame, AssistReasons.NONE, true,
+                outcome.improved(), outcome.record(), outcome == Leaderboard.Outcome.COURSE_RECORD);
         return Verdict.ACCEPTED;
     }
 
+    public static LapVerifier.@Nullable VerifiedLap verifiedLap(LapVerifier verifier, int courseId, int checkpoints, boolean pointToPoint,
+                                                                long afterSequence, boolean firstLap, long startedAt, long flownNanos, long penaltyNanos) {
+        long notBefore = firstLap ? startedAt - START_SLACK_NANOS - COUNTDOWN_SLACK_NANOS : Long.MIN_VALUE;
+        LapVerifier.VerifiedLap verified = verifier.find(courseId, checkpoints, afterSequence, notBefore, pointToPoint);
+        while (verified != null && firstLap && penaltyNanos <= 0L && verified.startNanos() < startedAt - START_SLACK_NANOS) {
+            verified = verifier.find(courseId, checkpoints, verified.endSequence(), notBefore, pointToPoint);
+        }
+        if (verified == null) {
+            return null;
+        }
+        long earliest = firstLap && penaltyNanos <= 0L ? startedAt - START_SLACK_NANOS : Long.MIN_VALUE;
+        long floor = penaltyNanos > 0L ? startedAt - START_SLACK_NANOS : Long.MIN_VALUE;
+        return timedStart(verified, flownNanos, earliest, floor);
+    }
+
+    public static LapVerifier.VerifiedLap timedStart(LapVerifier.VerifiedLap verified, long flownNanos, long earliestNanos, long floorNanos) {
+        long best = verified.startNanos();
+        long bestGap = Long.MAX_VALUE;
+        for (long start : verified.starts()) {
+            if (start < earliestNanos) {
+                continue;
+            }
+            long nanos = verified.endNanos() - Math.max(start, floorNanos);
+            if (flownNanos + crossingTolerance(nanos) < nanos) {
+                continue;
+            }
+            long gap = Math.abs(nanos - flownNanos);
+            if (gap <= bestGap) {
+                bestGap = gap;
+                best = start;
+            }
+        }
+        return best == verified.startNanos() ? verified : verified.startingAt(best);
+    }
+
     private static void storeGhost(CourseRegistry registry, CourseRegistry.Course course, Session session, LapVerifier.VerifiedLap verified,
-                                   ServerPlayer player, String frame, long lapNanos) {
+                                   ServerPlayer player, String frame, long lapNanos, long date, int assist, RacePayloads.RaceReportC2S report) {
         int layout = course.toData().layoutHash();
-        GhostTrack track = session.ghost.cut(verified.startNanos(), verified.endNanos(), lapNanos, frame, layout);
-        if (track == null) {
-            return;
-        }
-        QuadcopterEntity drone = pilotedDrone(player);
-        if (drone != null && drone.build().frame().key().equals(frame)) {
-            track = track.withLook(GhostLook.of(drone.build(), drone.paint()));
-        }
-        byte[] data = GhostCodec.encode(track);
-        if (data.length <= GhostCodec.MAX_ENCODED_BYTES) {
-            registry.ghosts().put(course.id, frame, layout, player.getGameProfile().name(), lapNanos, data);
+        GhostTrack cut = session.ghost.cut(verified.startNanos(), verified.endNanos(), lapNanos, frame, layout, GhostServer.FINE_INTERVAL_NANOS,
+                GhostRecorder.LEAD_NANOS);
+        GhostTrack track = cut == null ? null : cut.withRules(RaceStandards.server(player.level().getServer()));
+        String clipped = Leaderboard.clipFrame(frame);
+        if (GhostServer.store(registry, course, track, player, clipped, lapNanos, date, assist)) {
+            GhostRecorder.Raw raw = session.ghost.window(verified.startNanos() - GhostRecorder.LEAD_NANOS, verified.endNanos() + GhostRecorder.LEAD_NANOS);
+            GhostUploadCheck.Reference reference = GhostUploadCheck.Reference.of(raw, verified.startNanos(), verified.endNanos(), track,
+                    course.toData().geometry(), lapNanos, report.penaltyNanos(), player.connection.latency() * 1_000_000L);
+            GhostUploads.expect(player, course, new GhostKey(player.getUUID(), clipped, lapNanos, date), report.lap(), reference);
         }
     }
 
@@ -517,26 +649,43 @@ public final class RaceServer {
     private static Verdict finish(CourseRegistry registry, CourseRegistry.Course course, Session session, RacePayloads.RaceReportC2S report,
                                   ServerPlayer player) {
         boolean consistent = session.courseId == course.id && session.lap > 0 && report.lap() == session.lap
-                && CourseLaps.finishAllowed(course.laps, session.lap)
+                && (course.pointToPoint() ? session.lap == 1 : CourseLaps.finishAllowed(course.laps, session.lap))
                 && Math.abs(report.totalNanos() - session.lapSum) <= 5_000_000L + session.lap * 1_000_000L;
         if (!consistent) {
-            session.reset();
             return Verdict.OUT_OF_SEQUENCE;
         }
-        AssistReasons assist = session.raceAssist;
+        if (session.skipped > 0) {
+            return Verdict.UNVERIFIED;
+        }
+        MinecraftServer server = player.level().getServer();
+        RaceStandard standard = RaceStandards.server(server);
+        RaceRuleSet raceRules = session.raceRules == null ? RaceRuleSet.DEFAULTS : session.raceRules;
+        AssistReasons assist = session.raceFixed;
+        QuadcopterEntity drone = pilotedDrone(player);
+        String frame = drone == null ? "" : drone.build().frame().key();
+        boolean keepAssisted = WorldRules.on(server, WorldRuleSpecs.SAVE_ASSISTED_LAPS);
+        boolean saved = assist.none() || keepAssisted;
+        boolean best = false;
+        Leaderboard.Result result = registry.submitRaceTime(course, player, session.lap, report.totalNanos(), frame, session.raceFixed, raceRules,
+                keepAssisted, standard, session.raceCreativeFc);
         if (assist.none()) {
-            if (registry.submitRace(course, player, session.lap, report.totalNanos())) {
+            best = result.improved();
+            if (best && !course.pointToPoint()) {
                 player.sendSystemMessage(Component.translatable("propwash.race.server.race_best", session.lap, CourseRegistry.ref(course),
                         RaceFormat.time(report.totalNanos())).withStyle(ChatFormatting.GOLD));
             }
-        } else if (WorldRules.on(player.level().getServer(), WorldRuleSpecs.SAVE_ASSISTED_LAPS)
-                && registry.submitAssistedRace(course, player, session.lap, report.totalNanos(), assist)) {
-            player.sendSystemMessage(Component.translatable("propwash.race.server.race_best_assisted", session.lap, CourseRegistry.ref(course),
-                    RaceFormat.time(report.totalNanos()), assistReasons(assist)).withStyle(ChatFormatting.AQUA));
+        } else if (keepAssisted && result.improved()) {
+            best = true;
+            if (!course.pointToPoint()) {
+                player.sendSystemMessage(Component.translatable("propwash.race.server.race_best_assisted", session.lap, CourseRegistry.ref(course),
+                        RaceFormat.time(report.totalNanos()), assistReasons(assist)).withStyle(ChatFormatting.AQUA));
+            }
         }
+        int heatPlace = 0;
         RaceLobby.Heat heat = HEATS.get(course.id);
         if (heat != null) {
             int place = heat.finish(player.getUUID());
+            heatPlace = Math.max(0, place);
             if (place > 0 && heat.multiplayer()) {
                 Component message = (assist.none() ? Component.translatable("propwash.race.server.heat_place", place, player.getDisplayName(),
                         RaceFormat.time(report.totalNanos())) : Component.translatable("propwash.race.server.heat_place_assisted", place,
@@ -550,12 +699,16 @@ public final class RaceServer {
                 }
             }
         }
+        PilotStats.raceFinished(player);
+        RaceDataEvents.race(course, player.getUUID(), player.getGameProfile().name(), session.lap, report.totalNanos(), frame, assist, saved, best,
+                heatPlace);
         session.reset();
         return Verdict.ACCEPTED;
     }
 
     public static long minimumLapNanos(CourseRegistry.Course course, ServerPlayer player) {
-        double length = GateGeometry.pathLength(course.toData().geometry());
+        List<GateGeometry> geometry = course.toData().geometry();
+        double length = course.pointToPoint() ? PointToPoint.pathLength(geometry) : GateGeometry.pathLength(geometry);
         double speed = Math.min(ABSOLUTE_MAX_SPEED, ServerRules.maxDroneSpeed(player));
         if (!(speed > 0.0) || length <= 0.0) {
             return 0L;
@@ -572,8 +725,15 @@ public final class RaceServer {
     }
 
     static AssistReasons lapReasons(Session session, RacePayloads.RaceReportC2S report, long start, long end, @Nullable QuadcopterEntity drone) {
+        return lapVerdict(session, report, start, end, drone, drone == null ? null : drone.level().getServer()).reasons();
+    }
+
+    static AssistCheck.LapVerdict lapVerdict(Session session, RacePayloads.RaceReportC2S report, long start, long end, @Nullable QuadcopterEntity drone,
+                                             @Nullable MinecraftServer server) {
         AssistReasons fallback = drone != null ? serverReasons(drone) : AssistReasons.NONE;
-        return AssistCheck.lapVerdict(session.assist, start, end, fallback, report.reasons());
+        RaceRuleSet fallbackRules = drone != null ? serverRules(drone) : RaceRules.world(RaceRules.values(server));
+        return AssistCheck.serverLapVerdict(session.assist, session.rules, start, end, fallback, fallbackRules, report.reasons(),
+                RaceStandards.server(server));
     }
 
     private static void notifyServerVerdict(ServerPlayer player, RacePayloads.RaceReportC2S report, AssistReasons verdict) {
@@ -647,7 +807,8 @@ public final class RaceServer {
             return PropwashNet.sendToPlayer(player, new RacePayloads.LeaderboardS2C(courseId, 0, 0, open, 0, List.of()));
         }
         boolean assisted = WorldRules.on(player.level().getServer(), WorldRuleSpecs.SAVE_ASSISTED_LAPS);
-        return PropwashNet.sendToPlayer(player, leaderboardPayload(registry.board(course), course, player.getUUID(), open, assisted));
+        return PropwashNet.sendToPlayer(player, leaderboardPayload(registry.board(course), course, player.getUUID(), open, assisted,
+                GhostServer.access(player)));
     }
 
     public static RacePayloads.LeaderboardS2C leaderboardPayload(Leaderboard board, CourseRegistry.Course course, UUID viewer, boolean open) {
@@ -656,50 +817,77 @@ public final class RaceServer {
 
     public static RacePayloads.LeaderboardS2C leaderboardPayload(Leaderboard board, CourseRegistry.Course course, UUID viewer, boolean open,
                                                                  boolean assisted) {
-        List<RacePayloads.BoardRow> rows = new ArrayList<>();
-        for (Leaderboard.Entry entry : board.view(viewer, Leaderboard.TOP)) {
-            if (rows.size() >= RacePayloads.LeaderboardS2C.MAX_ROWS) {
-                break;
-            }
-            Leaderboard.Entry overall = board.best(entry.player(), null);
-            int overallRank = entry.equals(overall) ? board.rank(entry.player(), null) : -1;
-            rows.add(new RacePayloads.BoardRow(entry.name(), entry.frame(), entry.nanos(), entry.dateMillis(), entry.player().equals(viewer),
-                    board.rank(entry.player(), entry.frame()), overallRank));
-        }
-        if (assisted) {
-            for (Leaderboard.Entry entry : board.assistedView(viewer, Leaderboard.TOP)) {
-                if (rows.size() >= RacePayloads.LeaderboardS2C.MAX_ROWS) {
-                    break;
-                }
-                Leaderboard.Entry overall = board.bestAssisted(entry.player(), null);
-                int overallRank = entry.equals(overall) ? board.assistedRank(entry.player(), null) : -1;
-                rows.add(new RacePayloads.BoardRow(entry.name(), entry.frame(), entry.nanos(), entry.dateMillis(), entry.player().equals(viewer),
-                        board.assistedRank(entry.player(), entry.frame()), overallRank, entry.assist(), entry.details()));
-            }
-        }
-        int raceLaps = CourseEdits.lapsFor(course, viewer);
-        long raceBest = raceLaps > CourseLaps.ENDLESS ? board.raceBest(viewer, raceLaps) : LapTracker.NONE;
-        CourseRegistry registry = CourseRegistry.get();
-        int archived = registry == null ? 0 : registry.records().archive(course.id).size();
-        return new RacePayloads.LeaderboardS2C(course.id, course.layout, course.gates.size(), open, board.lapsOf(viewer), rows, raceLaps, raceBest,
-                archived);
+        return leaderboardPayload(board, course, viewer, open, assisted, 0);
     }
 
-    static void onGhostRequest(RacePayloads.GhostRequestC2S request, ServerPayloadContext context) {
-        ServerPlayer player = context.player();
-        Session session = SESSIONS.computeIfAbsent(player.getUUID(), uuid -> new Session());
-        if (!session.allowRequest(System.nanoTime())) {
-            return;
+    public static RacePayloads.LeaderboardS2C leaderboardPayload(Leaderboard board, CourseRegistry.Course course, UUID viewer, boolean open,
+                                                                 boolean assisted, int access) {
+        List<Leaderboard.Ranked> clean = board.ranked(false);
+        List<Leaderboard.Ranked> flagged = assisted ? board.ranked(true) : List.of();
+        List<RacePayloads.BoardRow> rows = boardRows(course, LeaderboardPages.first(clean, flagged, viewer), viewer, RacePayloads.LeaderboardS2C.MAX_ROWS);
+        int raceLaps = course.pointToPoint() ? 1 : CourseEdits.lapsFor(course, viewer);
+        long raceBest = raceLaps > CourseLaps.ENDLESS && !course.pointToPoint() ? board.raceBest(viewer, raceLaps) : LapTracker.NONE;
+        CourseRegistry registry = CourseRegistry.get();
+        int archived = registry == null ? 0 : registry.records().archive(course.id).size();
+        int times = board.size() + (assisted ? board.assistedSize() : 0);
+        return new RacePayloads.LeaderboardS2C(course.id, course.layout, course.gates.size(), open, board.lapsOf(viewer), rows, raceLaps, raceBest,
+                archived, access, times, LeaderboardPages.totals(board.revision(), clean, flagged));
+    }
+
+    public static RacePayloads.LeaderboardPageS2C leaderboardPage(Leaderboard board, CourseRegistry.Course course, UUID viewer,
+                                                                  RacePayloads.LeaderboardPageC2S request, boolean assisted) {
+        int revision = board.revision();
+        if (request.assisted() && !assisted) {
+            return new RacePayloads.LeaderboardPageS2C(course.id, revision, List.of());
+        }
+        List<Leaderboard.Ranked> view = LeaderboardPages.view(board.ranked(request.assisted()), request.view());
+        List<LeaderboardPages.Pick> picks = LeaderboardPages.picks(LeaderboardPages.page(view, request.offset()), request.assisted());
+        return new RacePayloads.LeaderboardPageS2C(course.id, revision, boardRows(course, picks, viewer, LeaderboardPages.PAGE));
+    }
+
+    private static List<RacePayloads.BoardRow> boardRows(CourseRegistry.Course course, List<LeaderboardPages.Pick> picks, UUID viewer, int maxRows) {
+        List<RacePayloads.BoardRow> rows = new ArrayList<>(picks.size());
+        List<Leaderboard.Entry> listed = new ArrayList<>(picks.size());
+        for (LeaderboardPages.Pick pick : picks) {
+            if (rows.size() >= maxRows) {
+                break;
+            }
+            listed.add(pick.ranked().entry());
+            rows.add(LeaderboardPages.row(pick, viewer));
         }
         CourseRegistry registry = CourseRegistry.get();
-        CourseRegistry.Course course = registry == null ? null : registry.course(request.courseId());
-        RecordGhosts.Stored stored = course == null ? null : registry.ghosts().get(course.id, request.frame());
-        if (stored == null || stored.layout() != course.toData().layoutHash()) {
-            PropwashNet.sendToPlayer(player, new RacePayloads.GhostS2C(request.courseId(), request.frame(), 0, "", LapTracker.NONE, new byte[0]));
+        List<RacePayloads.BoardRow> decorated = registry == null ? rows : GhostServer.decorate(registry, course, rows, listed);
+        return LeaderboardPages.fit(decorated, maxRows, LeaderboardPages.MAX_BYTES);
+    }
+
+    static void onLeaderboardPage(RacePayloads.LeaderboardPageC2S request, ServerPayloadContext context) {
+        ServerPlayer player = context.player();
+        Session session = SESSIONS.computeIfAbsent(player.getUUID(), uuid -> new Session());
+        long now = System.nanoTime();
+        if (!session.allowPage(now)) {
             return;
         }
-        byte[] data = stored.revision() == request.knownRevision() ? new byte[0] : stored.data();
-        PropwashNet.sendToPlayer(player, new RacePayloads.GhostS2C(course.id, stored.frame(), stored.revision(), stored.holder(), stored.nanos(), data));
+        RacePayloads.LeaderboardPageS2C page = leaderboardPage(player, request);
+        if (page != null) {
+            PropwashNet.sendToPlayer(player, page);
+        } else if (session.allowRequest(now)) {
+            sendLeaderboard(player, request.courseId(), false);
+        }
+    }
+
+    public static RacePayloads.@Nullable LeaderboardPageS2C leaderboardPage(ServerPlayer player, RacePayloads.LeaderboardPageC2S request) {
+        CourseRegistry registry = CourseRegistry.get();
+        CourseRegistry.Course course = registry == null ? null : registry.course(request.courseId());
+        if (registry == null || course == null) {
+            return null;
+        }
+        Leaderboard board = registry.board(course);
+        if (board.revision() != request.revision()) {
+            return null;
+        }
+        boolean assisted = WorldRules.on(player.level().getServer(), WorldRuleSpecs.SAVE_ASSISTED_LAPS);
+        RacePayloads.LeaderboardPageS2C page = leaderboardPage(board, course, player.getUUID(), request, assisted);
+        return page.rows().isEmpty() ? null : page;
     }
 
     static void onLobby(RacePayloads.LobbyC2S payload, ServerPayloadContext context) {

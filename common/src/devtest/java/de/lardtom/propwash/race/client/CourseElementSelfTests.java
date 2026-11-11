@@ -18,6 +18,7 @@ import de.lardtom.propwash.race.CourseElement;
 import de.lardtom.propwash.race.CourseRegistry;
 import de.lardtom.propwash.race.CourseToolItem;
 import de.lardtom.propwash.race.GateEntity;
+import de.lardtom.propwash.race.GatePoleLinks;
 import de.lardtom.propwash.race.GateGeometry;
 import de.lardtom.propwash.race.GateMounting;
 import de.lardtom.propwash.race.GatePlacement;
@@ -329,10 +330,16 @@ public final class CourseElementSelfTests {
         ItemStack previous = player.getMainHandItem().copy();
         try {
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RaceModule.SLALOM_POLE.get()));
-            if (start.interact(player, InteractionHand.MAIN_HAND, Vec3.ZERO).consumesAction()
-                    || level.getEntitiesOfClass(GateEntity.class, area).size() != count) {
-                return "Stange auf ein Gate gestapelt";
+            if (!start.interact(player, InteractionHand.MAIN_HAND, new Vec3(0.0, start.height(), 0.0)).consumesAction()
+                    || level.getEntitiesOfClass(GateEntity.class, area).size() != count + 1) {
+                return "Slalomstange nicht auf die Balkenmitte des Gates gesetzt";
             }
+            GateEntity seated = GatePoleLinks.riders(start).stream().filter(rider -> rider.kind() == CourseElement.POLE).findFirst().orElse(null);
+            if (seated == null || Math.abs(seated.getY() - (start.getY() + start.height())) > 1.0E-6) {
+                return "Slalomstange sitzt nicht auf dem Gate";
+            }
+            seated.discard();
+            start.refreshStack();
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RaceModule.gateItem(GateSize.SMALL).orElseThrow()));
             pole.interact(player, InteractionHand.MAIN_HAND, Vec3.ZERO);
             if (level.getEntitiesOfClass(GateEntity.class, area).size() != count || pole.stackable() || !pole.stack().equals(List.of(pole))) {
@@ -617,8 +624,8 @@ public final class CourseElementSelfTests {
             if (editor.status() != GateEditor.Status.SAME || editor.model().variant() != CourseElement.EXIT_FRONT) {
                 return StepResult.fail("Einstellen startet mit Änderung oder falschem Ausgang: " + editor.status() + " " + editor.model().variant());
             }
-            if (!editor.model().rows().equals(List.of(GateEditModel.Row.HEADING, GateEditModel.Row.VARIANT, GateEditModel.Row.WIDTH,
-                    GateEditModel.Row.HEIGHT))) {
+            if (!editor.model().rows(0).equals(List.of(GateEditModel.Row.HEADING, GateEditModel.Row.VARIANT, GateEditModel.Row.WIDTH,
+                    GateEditModel.Row.HEIGHT)) || editor.model().pageKind(1) != GateEditModel.Page.POSITION) {
                 return StepResult.fail("Zeilen am Würfel falsch: " + editor.model().rows());
             }
             if (!GateEditDriver.select(minecraft, editor, GateEditModel.Row.VARIANT)) {

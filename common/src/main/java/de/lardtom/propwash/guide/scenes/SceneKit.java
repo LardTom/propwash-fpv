@@ -158,7 +158,7 @@ public final class SceneKit {
         if (dx * dx + dz * dz < 1.0E-8F) {
             return Float.NaN;
         }
-        return (float) Math.toDegrees(Math.atan2(dx, -dz));
+        return (float) Math.toDegrees(Math.atan2(-dx, dz));
     }
 
     public static void follow(SceneBuilder.StepBuilder s, String pilot, ScenePos feet, ScenePos from, List<ScenePos> path, Ease ease, float start,
@@ -191,9 +191,9 @@ public final class SceneKit {
                 yaw = Float.isNaN(lastYaw) ? 0.0F : lastYaw;
             }
             float horizontal = (float) Math.sqrt((b.x() - a.x()) * (b.x() - a.x()) + (b.z() - a.z()) * (b.z() - a.z())) / slice;
-            float pitch = -maxTilt * Math.min(1.0F, horizontal / CRUISE_SPEED);
+            float pitch = maxTilt * Math.min(1.0F, horizontal / CRUISE_SPEED);
             float turnRate = Float.isNaN(lastYaw) ? 0.0F : wrap(yaw - lastYaw) / slice;
-            float roll = Math.clamp(turnRate * BANK_PER_DEGREE_PER_TICK, -MAX_BANK, MAX_BANK);
+            float roll = Math.clamp(-turnRate * BANK_PER_DEGREE_PER_TICK, -MAX_BANK, MAX_BANK);
             if (i == count) {
                 pitch *= 0.3F;
                 roll = 0.0F;

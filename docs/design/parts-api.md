@@ -287,7 +287,7 @@ BatteryDefinition, VideoDefinition, AccessoryDefinition` mit `id()`, `kind()` (`
 | `sortOrder` | `sort` | 1000 (eingebaute: 0…n) | Reihenfolge in `values()`, Kreativ-Tab, Listen |
 | `creativeListed` | `creative` | `true` | im Kreativ-Tab des Addons |
 | `durability` | `durability` | 1.0 (Props: Material-Standard) | Teiler der Verschleiß-Dosis bei Abstürzen (B) |
-| `recycle` | `recycle` | leer = Kategorie-Standard | `{"item": "propwash:copper_coil", "count": 1}` oder `"none"`; Standard: Rahmen → Carbonplatte, Stack/Video → Platine, Motor → Kupferspule, Akku → LiPo-Zelle, Prop/Zubehör → nichts; `whoop_65` → nichts |
+| `recycle` | `recycle` | leer = Kategorie-Standard | `{"item": "propwash:copper_coil", "count": 1}` oder `"none"`; ab 0.6.0 nur für Teile **ohne** Crafting-Rezept: Menge bei 100 % Zustand, die Stufen (100 %, 50 %, 25 %) wendet Propwash an; mit Rezept gelten die Rezept-Zutaten. Standard: Rahmen → Carbonplatte, Stack/Video → Platine, Motor → Kupferspule, Akku → LiPo-Zelle, Prop/Zubehör → nichts; `"none"` = ohne Rezept nicht recycelbar (`whoop_65`, `creative_fc`) |
 | `visual.accentRgb` | `visual.accent` (`"#e8b622"`) | leer | Akzentfarbe: Akku-Hülle (Ladegerät, Item), Motorglocke/Prop der prozeduralen Form |
 | `visual.renderModel` | `visual.render_model` | leer = `ns:drone_render/k/<pfad>` | anderes Drohnen-Modell benutzen (z. B. ein Propwash-Modell) |
 | `rarity` (API 1.4) | `rarity` (`common`, `uncommon`, `rare`, `epic`) | leer = Item-Standard (`common`) | Seltenheit (Farbe des Namens) des Teil-Items, das Propwash für das Addon anlegt (`registerItems`/`registerItem`); die `UnaryOperator<Item.Properties>` eines `registerItem` wird danach angewandt und gewinnt. Java: `PartBasics#withRarity(Rarity)` |
@@ -364,10 +364,10 @@ Eingebaut: `aio_whoop` (3,2 g, whoop_aio, 5 A, 1–2S, AIO), `aio_20` (7 g, s20,
 | `minCells`, `maxCells` | `cells: [min, max]` | Pflicht | Warnungen `MOTOR_OVERVOLTAGE/UNDERVOLTAGE` |
 | `propMount` | `prop_mount` | `propwash:universal` | passt nur zu Props mit gleicher Aufnahme (universal passt zu allem; neu: `PROP_MOUNT`) |
 | `thermal.heatCapacityJPerK` | `thermal.heat_capacity_j_per_k` | 0,5 J/(g·K) × Masse | Wärmekapazität |
-| `thermal.coolingWPerK` | `thermal.cooling_w_per_k` | 0,075 × (Masse/33 g)^⅔ | Kühlung im Stand |
-| `thermal.coolingWPerKPerRadS` | `thermal.cooling_w_per_k_per_rad_s` | 1,5·10⁻⁴ × (Masse/33 g)^⅔ | Fahrtwind-Kühlung je rad/s |
-| `thermal.derateStartC` | `thermal.derate_start_c` | 130 | ab hier regelt der ESC die Leistung zurück |
-| `thermal.maxTempC` | `thermal.max_temp_c` | 150 | Überhitzung (Event `MOTOR_OVERHEAT` wie bisher), Leistung auf Minimum |
+| `thermal.coolingWPerK` | `thermal.cooling_w_per_k` | 0,1 × (Masse/33 g)^⅔ (bis 0.5.2: 0,075 × …) | Kühlung im Stand |
+| `thermal.coolingWPerKPerRadS` | `thermal.cooling_w_per_k_per_rad_s` | 0,0105 × 0,625 × Statordurchmesser (m) × (Masse/33 g)^⅔ (bis 0.5.2: 1,5·10⁻⁴ × …) | Kühlung je rad/s Motordrehzahl |
+| `thermal.derateStartC` | `thermal.derate_start_c` | 130 | ab hier verliert der Motor Leistung (Drehmoment linear bis −10 % bei `maxTempC`) und verschleißt; abgeregelt wird seit 0.6.0 nur im ESC ab 140 °C (bis 0.5.2 sank hier die Leistungsgrenze) |
+| `thermal.maxTempC` | `thermal.max_temp_c` | 150 | ab hier starker Verschleiß (Event `MOTOR_OVERHEAT` wie bisher), Drehmoment −10 % (bis 0.5.2: Leistung auf Minimum) |
 | `thermal.wearPerSecondAtMax` | `thermal.wear_per_s_at_max` | 0,002 | Verschleiß des Motors je Sekunde bei `maxTempC` (0 = aus) |
 
 `MotorThermal` baut ein Addon mit `MotorThermal.limits(derate, max)` (nur Grenzen) oder seit API 1.4 mit
@@ -434,6 +434,10 @@ Felder wie bisher `AccessoryType`: `slot` (`top`/`bottom`, seit 1.6 auch `front`
 `y ∈ [−h, 0]`, `z ∈ [−t, 0]` ab dem Anbaupunkt), `size_mm: [b, h, t]`, `flight_battery_w`, `frontal_area_m2`,
 `leds`, `lens: {x_mm, length_mm}`, `action_cam: {max_height, max_fps, stabilization, horizon_levelling,
 own_battery_wh, record_w, max_record_w, fov_deg, image_quality, low_light_noise, sensor_in}` (nur `top`).
+Ab API 1.7 (in Arbeit, Propwash 0.6.0) `led_path: [[x, y, z], …]` (`AccessoryDefinition#ledPathMm`, `List<Vec3Mm>`,
+Builder `ledPath(…)`): 2–256 Punkte in mm im Koordinatensystem des Zubehörs, an denen die LEDs nach Länge verteilt
+leuchten; leer = gerader Streifen wie bisher. Regeln und Darstellung: `parts-api-data.md` §3.8,
+`docs/design/led-strip.md` „LED-Pfad“.
 
 ### 5.9 Kompatibilität (`DroneBuild.problems()`/`warnings()`, Besitzer A)
 Probleme (nicht baubar), in dieser Reihenfolge: `MISSING_PART` (neu, zuerst), `MOTOR_MOUNT`, `PROP_TOO_LARGE`,
@@ -576,10 +580,13 @@ Dekodieren → gleiche Definition).
   und Namensraum hinter `propwash`.
 - Mechanik (A): `apiimpl.ExtensionTabs` sammelt Tabs, Fabric flusht nach Propwashs Items und registriert spätere direkt
   (bis zum Einfrieren), NeoForge flusht im `RegisterEvent` für `CREATIVE_MODE_TAB`. Schlägt die Registrierung fehl
-  oder kommt ein Namensraum erst nach dem Einfrieren, bleiben seine Einträge im Propwash-Tab.
+  oder kommt ein Namensraum erst nach dem Einfrieren, bleiben seine Einträge im Propwash-Tab, sofern er auch sonst
+  keinen eigenen Kreativ-Tab hat.
 - Propwash-Kreativ-Tab (Besitzer A): unverändert bis zum letzten eingebauten Eintrag; danach nur noch Teil-Items und
-  Presets von Namensräumen **ohne** eigenen Tab (Rückfall), dann `creativeTab().add(…)`-Einträge (weiterhin bewusst im
-  Propwash-Tab).
+  Presets von Namensräumen **ohne** eigenen Tab (Rückfall), dann `creativeTab().add(…)`-Einträge, deren Item-Namensraum
+  ebenfalls keinen eigenen Tab hat (`propwash` und `minecraft` zählen nie als eigener Tab). „Eigener Tab“ heißt seit
+  0.6.0: ein registrierter `propwash:main-<ns>` oder irgendein Tab `<ns>:…` im Register der Kreativ-Tabs, egal wie
+  angemeldet; so erscheint kein Item eines Addons doppelt.
 
 ### 6.6 Truhen-Beute (API 1.4)
 - `PropwashApi.loot()` → `api.registry.LootInjections`: `inject(ResourceKey<LootTable> ziel, ResourceKey<LootTable>
@@ -651,7 +658,7 @@ Teilen). Fremde Implementierungen von `PartRegistry` werfen `UnsupportedOperatio
 | Kreativ-Tab | Abschnitt 6.5 | A |
 | Flugschule | Halten-Taste für Items jedes Namensraums; `anyPart()`-Szenen und die Bauteil-Szenen (Akku, Video, Stack, Prop nach Teil-Art) gelten automatisch für fremde Teil-Items; eigene Szenen über `PropwashClientApi.registerFlightSchoolScene`, weitere Zuordnungen über `linkFlightSchoolItems`/`linkFlightSchoolParts` (Abschnitt 12.3) | D |
 | Truhen-Beute | unverändert; Addon injiziert eigene Tabellen | — |
-| Recycling | `basics.recycle` bzw. Kategorie-Standard | A |
+| Recycling | Tab „Recyceln“ der Werkbank: Zutaten des Crafting-Rezepts, ohne Rezept `basics.recycle` bzw. Kategorie-Standard; Stufen nach Zustand (`docs/design/survival.md`) | A |
 | Ladegerät | jede Kapazität (Ladezeit), Hüllenfarbe aus `accentRgb`; Pack-Signatur ohne Ordinal-Grenze | A |
 | Akkutausch, `BatteryFit` | Regel aus `frame.batteryFit`, alle Akkus in `values()` | A |
 | Tricks „Automatisch“ | `role.tricksByDefault()` (eingebaute Rollen ergeben exakt die alte Liste) | B |
@@ -696,11 +703,14 @@ Seiten-/Draufsichtfläche aus `aero` (sonst Konstanten × Stirnfläche); `DuctSp
 `DUCT_CLEARANCE`, `K_TL_DUCT`, `WASH_LOSS_DUCT`, `WASH_NOISE_DUCT`, `RESTITUTION_DUCT`, `FRICTION_DUCT` je Rahmen.
 
 ### 9.4 Hitze
-Modell `sim.Thermal` mit Parametern je Motor aus `MotorThermal` (Standardwerte = heutige Konstanten). Oberhalb
-`derateStartC` begrenzt der ESC die Motorleistung linear bis auf 20 % bei `maxTempC` (Hysterese 10 K wie bisher);
+Modell `sim.Thermal` mit Parametern je Motor aus `MotorThermal` (Standardwerte = heutige Konstanten). Bis 0.5.2 sank
+oberhalb von `derateStartC` die Leistungsgrenze des Motors linear bis auf 20 % bei `maxTempC` (Hysterese 10 K). Seit
+0.6.0 (`docs/design/realism/motor-heat.md` §8) regelt nur der ESC nach seiner eigenen Temperatur ab (ab 140 °C linear
+bis 25 % bei 155 °C, Ereignis `ESC_DERATE`); oberhalb von `derateStartC` verliert der Motor Drehmoment (linear bis
+−10 % bei `maxTempC`, Ereignis `MOTOR_HOT` statt `MOTOR_DERATE`).
 Verschleiß `wearPerSecondAtMax × ((T − derateStartC)/(maxTempC − derateStartC))²` je Sekunde oberhalb der Schwelle.
-Neue Events `MOTOR_DERATE` (Beginn/Ende) und `MOTOR_THERMAL_WEAR` (Menge, Motor) → `drone.DroneWear` schreibt den
-Verschleiß wie Crash-Verschleiß in `PartWear` (B). Telemetrie `motorTempC` gibt es bereits (OSD kann sie zeigen).
+Neue Events `MOTOR_DERATE` (Beginn/Ende, seit 0.6.0 `MOTOR_HOT` und `ESC_DERATE`) und `MOTOR_THERMAL_WEAR` (Menge,
+Motor) → `drone.DroneWear` schreibt den Verschleiß wie Crash-Verschleiß in `PartWear` (B). Telemetrie `motorTempC` gibt es bereits (OSD kann sie zeigen).
 
 ### 9.5 Akku, ESC, Props
 - Akku: Kurve (`ocvShape`), Grenzen und Dichte aus `CellChemistry` (ersetzt `CellCurve`-Tabellen und `DENSITY_*`

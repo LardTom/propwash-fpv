@@ -11,6 +11,7 @@ import de.lardtom.propwash.api.part.PartKind;
 import de.lardtom.propwash.api.part.PropDefinition;
 import de.lardtom.propwash.api.part.StackDefinition;
 import de.lardtom.propwash.api.part.VideoDefinition;
+import de.lardtom.propwash.apiimpl.NamespaceRules;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
@@ -132,10 +133,7 @@ public final class PartIndex {
     }
 
     public static void validateId(Identifier id, String what) {
-        if (DEFAULT_NAMESPACE.equals(id.getNamespace())) {
-            throw new IllegalArgumentException(what + " " + id + ": Der Namensraum " + DEFAULT_NAMESPACE
-                    + " gehört den eingebauten Teilen, Addons melden ihre Teile unter der eigenen Mod-Id an");
-        }
+        NamespaceRules.requireForeign(id.toString(), "Zellchemie".equals(what) ? "cell chemistry" : "part");
         if (!PATH.matcher(id.getPath()).matches()) {
             throw new IllegalArgumentException(what + " " + id + ": Der Pfad darf nur a–z, 0–9, _, . und - enthalten (keine Unterordner mit /)");
         }
@@ -244,7 +242,12 @@ public final class PartIndex {
         ensureBuiltins();
         AccessorySlot resolvedSlot = kind == PartKind.ACCESSORY ? slot == null ? AccessorySlot.BOTTOM : slot : null;
         String cacheKey = kind.key() + "|" + (resolvedSlot == null ? "" : resolvedSlot.key()) + "|" + id;
-        return MISSING.computeIfAbsent(cacheKey, ignored -> create(Definitions.withId(substitute(kind, resolvedSlot).definition(), id), true));
+        return MISSING.computeIfAbsent(cacheKey, ignored -> create(placeholder(kind, id, resolvedSlot), true));
+    }
+
+    private static PartDefinition placeholder(PartKind kind, Identifier id, @Nullable AccessorySlot slot) {
+        PartDefinition definition = Definitions.withId(substitute(kind, slot).definition(), id);
+        return slot != null && definition instanceof AccessoryDefinition accessory ? Definitions.withSlot(accessory, slot) : definition;
     }
 
     public static Optional<PartInfo> resolveOrMissing(PartKind kind, String key, @Nullable AccessorySlot slot) {

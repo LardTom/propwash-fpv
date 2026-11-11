@@ -22,8 +22,13 @@ public final class LapTracker {
     private final List<Event> events = new ArrayList<>();
     private final List<double[]> crossings = new ArrayList<>();
     private List<GateGeometry> gates = List.of();
+    private List<CourseElement> kinds = List.of();
+    private GateOpenings openings = GateOpenings.NONE;
     private int[] stages = new int[0];
+    private int[] twins = new int[0];
+    private boolean hasTwins;
     private int courseId = NO_COURSE;
+    private boolean pointToPoint;
     private Phase phase = Phase.IDLE;
     private int lapTarget = 3;
     private long timeoutNanos = DEFAULT_TIMEOUT_NANOS;
@@ -98,7 +103,23 @@ public final class LapTracker {
     }
 
     public int lapTarget() {
-        return this.lapTarget;
+        return this.pointToPoint() ? 1 : this.lapTarget;
+    }
+
+    public boolean pointToPoint() {
+        return this.pointToPoint && this.gates.size() >= PointToPoint.MIN_PASSES;
+    }
+
+    public int finishIndex() {
+        return this.pointToPoint() ? PointToPoint.finish(this.gates.size()) : 0;
+    }
+
+    public void setOpenings(GateOpenings openings) {
+        this.openings = openings == null ? GateOpenings.NONE : openings;
+    }
+
+    public GateOpenings openings() {
+        return this.openings;
     }
 
     public void setTimeoutNanos(long timeoutNanos) {
@@ -106,7 +127,12 @@ public final class LapTracker {
     }
 
     public void setCourse(int courseId, List<GateGeometry> gates, long nowNanos) {
-        boolean changed = courseId != this.courseId || !sameLayout(gates, this.gates);
+        this.setCourse(courseId, gates, false, nowNanos);
+    }
+
+    public void setCourse(int courseId, List<GateGeometry> gates, boolean pointToPoint, long nowNanos) {
+        boolean modeChanged = pointToPoint != this.pointToPoint;
+        boolean changed = courseId != this.courseId || !sameLayout(gates, this.gates) || modeChanged;
         if (!changed) {
             return;
         }
@@ -121,14 +147,76 @@ public final class LapTracker {
             this.totalNanos = NONE;
             this.lapTimes.clear();
             this.phase = Phase.IDLE;
-        } else if (gates.size() != this.gates.size()) {
+        } else if (gates.size() != this.gates.size() || modeChanged) {
             this.sessionBest = NONE;
             this.sessionBestSplits = new long[0];
         }
         this.courseId = courseId;
+        this.pointToPoint = pointToPoint;
         this.gates = List.copyOf(gates);
+        this.kinds = CourseCheckpoints.kinds(this.gates);
         this.stages = new int[this.gates.size()];
+        this.twins = twins(this.gates);
+        this.hasTwins = false;
+        for (int i = 0; i < this.twins.length; i++) {
+            this.hasTwins |= this.twins[i] != i;
+        }
         this.referenceSplits = new long[0];
+    }
+
+    static int[] twins(List<GateGeometry> gates) {
+        int[] twins = new int[gates.size()];
+        List<GateGeometry> plain = new ArrayList<>(gates.size());
+        for (GateGeometry gate : gates) {
+            plain.add(gate.withReverse(false));
+        }
+        for (int i = 0; i < twins.length; i++) {
+            twins[i] = i;
+            for (int j = 0; j < i; j++) {
+                if (twins[j] == j && plain.get(j).equals(plain.get(i))) {
+                    twins[i] = j;
+                    break;
+                }
+            }
+        }
+        return twins;
+    }
+
+    private void dropTwins() {
+        for (int a = 0; a < this.crossings.size(); a++) {
+            double[] back = this.crossings.get(a);
+            if (back[2] != BACKWARD) {
+                continue;
+            }
+            int group = this.twins[(int) back[1]];
+            for (int b = this.crossings.size() - 1; b >= 0; b--) {
+                double[] other = this.crossings.get(b);
+                if (b != a && other[2] == FORWARD && other[0] == back[0] && this.twins[(int) other[1]] == group) {
+                    this.crossings.remove(b);
+                    if (b < a) {
+                        a--;
+                    }
+                }
+            }
+        }
+        int preferred = this.phase == Phase.RACING ? this.nextGate : 0;
+        for (int a = 0; a < this.crossings.size(); a++) {
+            double[] kept = this.crossings.get(a);
+            int group = this.twins[(int) kept[1]];
+            int b = a + 1;
+            while (b < this.crossings.size()) {
+                double[] other = this.crossings.get(b);
+                if (other[0] == kept[0] && other[2] == kept[2] && other[3] == kept[3] && this.twins[(int) other[1]] == group) {
+                    if ((int) other[1] == preferred && (int) kept[1] != preferred) {
+                        kept = other;
+                        this.crossings.set(a, other);
+                    }
+                    this.crossings.remove(b);
+                } else {
+                    b++;
+                }
+            }
+        }
     }
 
     private static boolean sameLayout(List<GateGeometry> a, List<GateGeometry> b) {
@@ -246,19 +334,31 @@ public final class LapTracker {
                 continue;
             }
             double t = gate.crossing(this.lastX, this.lastY, this.lastZ, x, y, z, true);
+            if (t < 0.0) {
+                t = this.lowCrossing(gate, i, x, y, z, true);
+            }
             if (t >= 0.0) {
-                this.crossings.add(new double[]{t, i, FORWARD, 0.0});
+                this.crossings.add(this.crossing(t, i, FORWARD, 0));
             } else if (this.phase == Phase.RACING && i == this.nextGate) {
                 double back = gate.crossing(this.lastX, this.lastY, this.lastZ, x, y, z, false);
+                if (back < 0.0) {
+                    back = this.lowCrossing(gate, i, x, y, z, false);
+                }
                 if (back >= 0.0) {
-                    this.crossings.add(new double[]{back, i, BACKWARD, 0.0});
+                    this.crossings.add(this.crossing(back, i, BACKWARD, 0));
                 }
             }
         }
         if (this.crossings.isEmpty()) {
             return;
         }
-        this.crossings.sort((a, b) -> a[0] != b[0] ? Double.compare(a[0], b[0]) : a[1] != b[1] ? Double.compare(a[1], b[1]) : Double.compare(a[2], b[2]));
+        this.crossings.sort((a, b) -> a[0] != b[0] ? Double.compare(a[0], b[0]) : a[4] != b[4] ? Double.compare(a[4], b[4])
+                : a[1] != b[1] ? Double.compare(a[1], b[1]) : Double.compare(a[2], b[2]));
+        int loop = this.pointToPoint() ? CourseCrossings.OPEN : CourseCheckpoints.count(this.kinds);
+        CourseCrossings.loopTies(this.crossings, crossing -> crossing[0], crossing -> 0, crossing -> (int) crossing[4], course -> loop);
+        if (this.hasTwins) {
+            this.dropTwins();
+        }
         long span = nowNanos - this.lastNanos;
         for (double[] crossing : this.crossings) {
             long time = this.lastNanos + Math.round(span * crossing[0]);
@@ -274,40 +374,55 @@ public final class LapTracker {
         }
     }
 
+    private double[] crossing(double t, int element, double type, int stage) {
+        return new double[]{t, element, type, stage, CourseCheckpoints.index(this.kinds, element, stage)};
+    }
+
+    private double lowCrossing(GateGeometry gate, int index, double x, double y, double z, boolean forward) {
+        if (this.openings == GateOpenings.NONE) {
+            return GateGeometry.NO_CROSSING;
+        }
+        double t = gate.crossing(this.lastX, this.lastY, this.lastZ, x, y, z, forward, true);
+        return t >= 0.0 && this.openings.legs(index) ? t : GateGeometry.NO_CROSSING;
+    }
+
     private int activeElement() {
         return this.phase == Phase.RACING ? this.nextGate : 0;
     }
 
     private void elementCrossings(GateGeometry gate, int index, int active, double x, double y, double z) {
         boolean racing = this.phase == Phase.RACING;
-        if (index != active && !(racing && gate.kind().strictMiss())) {
+        if (index != active && !(racing && gate.scoringKind().strictMiss())) {
             return;
         }
         List<Passage> passages = gate.stages();
+        if (passages.isEmpty()) {
+            return;
+        }
         int stage = Math.min(this.stages[index], passages.size() - 1);
         for (int s = stage; s < passages.size(); s++) {
             double t = passages.get(s).crossing(this.lastX, this.lastY, this.lastZ, x, y, z, true);
             if (t >= 0.0) {
-                this.crossings.add(new double[]{t, index, STAGE, s});
+                this.crossings.add(this.crossing(t, index, STAGE, s));
             }
         }
         if (stage > 0) {
             double back = passages.get(stage - 1).crossing(this.lastX, this.lastY, this.lastZ, x, y, z, false);
             if (back >= 0.0) {
-                this.crossings.add(new double[]{back, index, UNDO, stage - 1});
+                this.crossings.add(this.crossing(back, index, UNDO, stage - 1));
             }
         }
         if (racing && index == active && gate.freeform()) {
             double back = passages.getFirst().crossing(this.lastX, this.lastY, this.lastZ, x, y, z, false);
             if (back >= 0.0) {
-                this.crossings.add(new double[]{back, index, BACKWARD, 0.0});
+                this.crossings.add(this.crossing(back, index, BACKWARD, 0));
             }
         }
         if (racing && index == active) {
             for (Passage foul : gate.fouls(stage)) {
                 double t = foul.crossing(this.lastX, this.lastY, this.lastZ, x, y, z, true);
                 if (t >= 0.0) {
-                    this.crossings.add(new double[]{t, index, FOUL, 0.0});
+                    this.crossings.add(this.crossing(t, index, FOUL, 0));
                 }
             }
         }
@@ -322,7 +437,7 @@ public final class LapTracker {
                 return;
             }
             this.stages[gate] = stage + 1;
-            if (this.stages[gate] >= this.gates.get(gate).kind().stages()) {
+            if (this.stages[gate] >= this.gates.get(gate).stageCount()) {
                 this.stages[gate] = 0;
                 this.onCrossing(gate, time);
             }
@@ -381,7 +496,7 @@ public final class LapTracker {
             this.emit(EventType.GATE, this.lap, gate, time, time - this.lapStart, 0L, false, null);
             return;
         }
-        if (gate == 0) {
+        if (gate == this.finishIndex()) {
             this.completeLap(time);
             return;
         }
@@ -398,6 +513,7 @@ public final class LapTracker {
     private void completeLap(long time) {
         long lapTime = time - this.lapStart + this.lapPenalty();
         this.splits[0] = lapTime;
+        this.splits[this.finishIndex()] = lapTime;
         long[] referenceSplits = this.reference();
         long referenceLap = referenceSplits.length > 0 ? referenceSplits[0] : NONE;
         this.splitDelta = referenceLap >= 0L ? lapTime - referenceLap : 0L;
@@ -413,7 +529,8 @@ public final class LapTracker {
         this.lastLap = lapTime;
         this.lapTimes.add(lapTime);
         this.emit(EventType.LAP, this.lap, 0, time, lapTime, this.splitDelta, sessionBestLap, null);
-        if (this.lapTarget > 0 && this.lap >= this.lapTarget) {
+        int target = this.lapTarget();
+        if (target > 0 && this.lap >= target) {
             this.phase = Phase.FINISHED;
             this.totalNanos = time - this.raceStart + this.penalty;
             this.finishedAt = time;

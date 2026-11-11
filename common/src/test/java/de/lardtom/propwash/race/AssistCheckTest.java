@@ -59,6 +59,10 @@ class AssistCheckTest {
         for (RuleSpec spec : PhysicsRules.SPECS) {
             int value = changedValue(spec);
             AssistReasons reasons = withRules(RuleValues.DEFAULTS.with(spec, value));
+            if (!spec.raceRelevant()) {
+                assertEquals(AssistReasons.NONE, reasons, spec.name());
+                continue;
+            }
             assertEquals(LapAssist.WORLD_PHYSICS.bit(), reasons.mask(), spec.name());
             assertEquals(List.of(AssistDetail.rule(spec, value)), reasons.details(), spec.name());
             AssistDetail detail = reasons.details().getFirst();
@@ -70,7 +74,7 @@ class AssistCheckTest {
     }
 
     @Test
-    void rulesWithoutPhysicsNeverCount() {
+    void physicsSetupOnlyLooksAtSimulationRules() {
         List<RuleSpec> others = new ArrayList<>(WorldRuleSpecs.all());
         others.removeAll(PhysicsRules.SPECS);
         assertFalse(others.isEmpty());
@@ -102,7 +106,7 @@ class AssistCheckTest {
             AssistReasons reasons = withRules(preset.ruleValues());
             List<String> expected = new ArrayList<>();
             for (RuleSpec spec : preset.differences()) {
-                if (PhysicsRules.SPECS.contains(spec)) {
+                if (PhysicsRules.SPECS.contains(spec) && spec.raceRelevant()) {
                     expected.add(spec.name() + "=" + preset.value(spec));
                 }
             }

@@ -33,8 +33,8 @@ class FpvGuardsTest {
     private static final float MIN_LENS_ABOVE_DUCTS_MM = 3.0F;
     private static final double[] MAX_COVER_PERCENT = {30.0, 18.0, 5.0};
     private static final double MAX_UPPER_PERCENT = 0.05;
-    private static final int RASTER_X = 192;
-    private static final int RASTER_Y = 108;
+    static final int RASTER_X = 192;
+    static final int RASTER_Y = 108;
     private static final String[][] FACES = {
             {"down", "0", "1", "5", "4"}, {"up", "2", "3", "7", "6"}, {"north", "0", "2", "6", "4"},
             {"south", "1", "3", "7", "5"}, {"west", "0", "1", "3", "2"}, {"east", "4", "5", "7", "6"}};
@@ -43,8 +43,14 @@ class FpvGuardsTest {
     }
 
     static List<Face> faces(FrameType frame) throws IOException {
-        JsonObject model = JsonParser.parseString(Files.readString(LayoutFromDefinitionTest.resources()
-                .resolve("assets/propwash/models/part/frame/" + frame.key() + ".json"))).getAsJsonObject();
+        return faces("assets/propwash/models/part/frame/" + frame.key() + ".json");
+    }
+
+    static List<Face> faces(String model) throws IOException {
+        return faces(JsonParser.parseString(Files.readString(LayoutFromDefinitionTest.resources().resolve(model))).getAsJsonObject());
+    }
+
+    private static List<Face> faces(JsonObject model) {
         List<Face> out = new ArrayList<>();
         for (JsonElement entry : model.getAsJsonArray("elements")) {
             JsonObject element = entry.getAsJsonObject();
@@ -91,7 +97,7 @@ class FpvGuardsTest {
                     quad[k * 3 + 1] = c.y;
                     quad[k * 3 + 2] = c.z;
                 }
-                out.add(new Face(element.get("name").getAsString(), quad));
+                out.add(new Face(element.has("name") ? element.get("name").getAsString() : "", quad));
             }
         }
         return out;
@@ -285,6 +291,24 @@ class FpvGuardsTest {
     }
 
     static double[] coverage(List<float[]> quads, FpvPropGeometry geometry, float tanX, float tanY) {
+        boolean[] covered = raster(quads, geometry, tanX, tanY);
+        int total = 0;
+        int upper = 0;
+        for (int y = 0; y < RASTER_Y; y++) {
+            for (int x = 0; x < RASTER_X; x++) {
+                if (covered[y * RASTER_X + x]) {
+                    total++;
+                    if (y >= RASTER_Y / 2) {
+                        upper++;
+                    }
+                }
+            }
+        }
+        double cells = (double) RASTER_X * RASTER_Y;
+        return new double[]{100.0 * total / cells, 100.0 * upper / cells};
+    }
+
+    static boolean[] raster(List<float[]> quads, FpvPropGeometry geometry, float tanX, float tanY) {
         boolean[] covered = new boolean[RASTER_X * RASTER_Y];
         Vector3f camera = new Vector3f();
         for (float[] quad : quads) {
@@ -339,20 +363,7 @@ class FpvGuardsTest {
                 }
             }
         }
-        int total = 0;
-        int upper = 0;
-        for (int y = 0; y < RASTER_Y; y++) {
-            for (int x = 0; x < RASTER_X; x++) {
-                if (covered[y * RASTER_X + x]) {
-                    total++;
-                    if (y >= RASTER_Y / 2) {
-                        upper++;
-                    }
-                }
-            }
-        }
-        double cells = (double) RASTER_X * RASTER_Y;
-        return new double[]{100.0 * total / cells, 100.0 * upper / cells};
+        return covered;
     }
 
     private static boolean inside(float[] u, float[] v, float x, float y) {

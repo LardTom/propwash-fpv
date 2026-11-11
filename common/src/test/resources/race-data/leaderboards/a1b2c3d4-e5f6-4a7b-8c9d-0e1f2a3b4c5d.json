@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "course": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "number": 2,
+  "name": "Frei gedreht",
+  "mode": "laps",
+  "creativeFc": {
+    "course": "world",
+    "worldRule": false,
+    "raceLegal": false
+  },
+  "layout": 1,
+  "raceStandard": {
+    "defaults": true,
+    "values": {},
+    "changedAt": null,
+    "changedBy": ""
+  },
+  "serverRules": {
+    "defaults": true,
+    "values": {},
+    "changedAt": null,
+    "changedBy": ""
+  },
+  "layouts": [
+    {
+      "layout": 1,
+      "current": true,
+      "archivedAt": null,
+      "elements": 2,
+      "laps": {
+        "clean": [],
+        "assisted": []
+      },
+      "classes": {
+        "clean": {},
+        "assisted": {}
+      },
+      "races": {
+        "clean": {},
+        "assisted": {}
+      }
+    }
+  ]
+}

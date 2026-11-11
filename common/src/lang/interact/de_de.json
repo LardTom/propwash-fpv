@@ -17,6 +17,8 @@
   "gamerule.propwash.break_impact_scale": "Wucht beim Durchbruch",
   "gamerule.propwash.break_impact_scale.description": "Wie deutlich eine Drohne spürt, dass sie Glas durchschlägt, in Prozent: Tempoverlust durch mitgerissene Scherben, ein Stoß, der sie aus der Lage kippt (stärker, wenn sie schief oder nur mit einer Seite trifft), und Scherben in den vorderen Props. 100 ist realistisch, 0 lässt nur die Bruchenergie übrig. Wirkt nur mit „Drohnen zerbrechen Blöcke“; ob ein Block bricht und wann die Drohne abstürzt, bleibt gleich.",
   "gamerule.propwash.break_impact_scale.value.0": "Kein Stoß",
+  "gamerule.propwash.drones_trigger_sculk": "Drohnen lösen Sculk aus",
+  "gamerule.propwash.drones_trigger_sculk.description": "An (Standard): Eine fliegende Drohne erzeugt Vibrationen wie ein Spieler im Gleitflug mit Elytren – scharf und mit Motoren über dem Leerlauf, jede halbe Sekunde; ein Absturz zählt als Aufprall auf dem Boden. Sculk-Sensoren und Wärter reagieren darauf, Sculk-Kreischer rechnen sie dem Piloten zu. Wolle dazwischen schirmt wie gewohnt ab. Aus: Drohnen lösen nie Sculk aus, auch nicht beim Glasbruch oder wenn sie ohne Pilot aufsetzen.",
   "propwash.interact.break.denied.protected": "Hier zerbricht deine Drohne nichts – der Bereich ist geschützt",
   "propwash.interact.break.denied.game_mode": "In diesem Spielmodus zerbricht deine Drohne nichts",
   "propwash.interact.break.denied.course": "Der Rahmen eines Freiform-Gates zerbricht nicht",

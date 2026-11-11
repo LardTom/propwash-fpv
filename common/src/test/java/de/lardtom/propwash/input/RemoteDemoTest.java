@@ -163,7 +163,7 @@ class RemoteDemoTest {
             RemoteDemo.Frame f = RemoteDemo.frame(RemoteDemo.Motion.ARM_AND_MODE, times[i]);
             assertEquals(cues[i], f.cue());
             axes[AUX + RemoteDemo.MODE_SWITCH] = f.switch1();
-            int bits = evaluator.evaluate(profile, axes, new boolean[0]);
+            long bits = evaluator.evaluate(profile, axes, new boolean[0]);
             assertEquals(i == 1, SwitchEvaluator.isSet(bits, SwitchFunction.HORIZON), "Horizon bei " + cues[i]);
             assertEquals(i == 2, SwitchEvaluator.isSet(bits, SwitchFunction.ANGLE), "Angle bei " + cues[i]);
         }

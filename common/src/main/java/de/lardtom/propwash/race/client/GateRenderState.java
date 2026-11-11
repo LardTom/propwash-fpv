@@ -22,6 +22,10 @@ public final class GateRenderState extends EntityRenderState {
     public final ItemStackRenderState[] elementPieces = new ItemStackRenderState[CourseElementRenderer.Piece.values().length];
     public CourseElement kind = CourseElement.GATE;
     public int variant;
+    public CourseElement scoringKind = CourseElement.GATE;
+    public int scoreSide;
+    public float scoreWidth;
+    public int markColor = 0xFFFFFFFF;
     public float elementFrame = 0.25F;
     public float bannerHeight;
     public final Quaternionf rotation = new Quaternionf();
@@ -60,6 +64,11 @@ public final class GateRenderState extends EntityRenderState {
     public int number;
     public @Nullable FormattedCharSequence label;
     public int labelWidth;
+    public boolean flownForward = true;
+    public boolean flownReversed;
+    public boolean markTurned;
+    public boolean markPlate = true;
+    public int joints;
     public @Nullable FreeformView freeform;
     public float freeformSign = 1.0F;
     public float freeformFill;

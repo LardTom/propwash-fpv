@@ -189,8 +189,10 @@ public final class GuideSelfTests {
         SelfTest.clientStep("guide: Hinweise ruhig in allen Lektionen (abspielen, drehen, zoomen)", 14000, GuideSelfTests::labelPlayStep);
         SelfTest.clientStep("guide: Übersicht öffnen", 200, GuideSelfTests::indexStep);
         SelfTest.clientStep("guide: Taste halten im Inventar öffnet die Szene", 400, GuideSelfTests::holdStep);
+        FlightSchoolHoldApiSelfTests.register();
         if (Screenshots.enabled()) {
             SelfTest.clientStep("guide: Bildschirmfotos der Flugschule", 5000, GuideSelfTests::screenshotStep);
+            FlightSchoolDirectionShowcase.register();
         }
         SelfTest.afterLeaveStep("guide: Szenen-Player ohne Welt", 400, GuideSelfTests::noWorldStep);
         TrainingSelfTests.register();

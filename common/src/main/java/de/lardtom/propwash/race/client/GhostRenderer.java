@@ -35,34 +35,60 @@ final class GhostRenderer {
     private static final double HALF_HEIGHT = 0.075;
     private static final double[] POSITION = new double[3];
     private static final Quaternionf ROTATION = new Quaternionf();
+    private static int replayDrawn;
+    private static int raceDrawn;
+    private static GhostLibrary.@Nullable Shown lastKind;
 
     private GhostRenderer() {
     }
 
     static boolean pose(@Nullable GhostTrack track, long lapTime, double[] position, Quaternionf rotation) {
-        return track != null && track.pose(lapTime, position, rotation);
+        return track != null && lapTime >= 0L && track.pose(lapTime, position, rotation);
     }
 
     static void submit(SubmitNodeCollector collector, PoseStack poseStack, LevelRenderState levelState) {
+        Vec3 camera = levelState.cameraRenderState.pos;
+        ReplaySession replay = ReplaySession.INSTANCE;
+        if (replay.active()) {
+            if (replay.drawsGhost() && replay.ghostPose(POSITION, ROTATION)) {
+                draw(collector, poseStack, camera, replay.look(), RECORD_MODEL, RECORD_BODY, RECORD_PROP);
+                replayDrawn++;
+            }
+            return;
+        }
         ClientRaceTracker tracker = ClientRaceTracker.INSTANCE;
-        RaceConfig config = RaceConfig.CONFIG.get();
         if (!tracker.tracker().racing() || tracker.ghosts().courseId() != tracker.courseId()) {
             return;
         }
         long lapTime = tracker.tracker().lapElapsedNanos(tracker.now());
-        Vec3 camera = levelState.cameraRenderState.pos;
-        GhostTrack record = tracker.ghosts().record();
-        if (config.recordGhost && pose(record, lapTime, POSITION, ROTATION)) {
-            draw(collector, poseStack, camera, lookFor(record), RECORD_MODEL, RECORD_BODY, RECORD_PROP);
+        GhostLibrary ghosts = tracker.ghosts();
+        GhostLibrary.Shown kind = ghosts.shownKind();
+        GhostTrack shown = ghosts.shown();
+        if (!pose(shown, lapTime, POSITION, ROTATION)) {
+            return;
         }
-        GhostTrack personal = tracker.ghosts().shownPersonal();
-        if (config.ghost && pose(personal, lapTime, POSITION, ROTATION)) {
-            if (tracker.ghosts().showsAssisted()) {
-                draw(collector, poseStack, camera, lookFor(personal), ASSISTED_MODEL, ASSISTED_BODY, ASSISTED_PROP);
-            } else {
-                draw(collector, poseStack, camera, lookFor(personal), PERSONAL_MODEL, PERSONAL_BODY, PERSONAL_PROP);
+        switch (kind) {
+            case BOARD -> draw(collector, poseStack, camera, lookFor(shown), RECORD_MODEL, RECORD_BODY, RECORD_PROP);
+            case ASSISTED -> draw(collector, poseStack, camera, lookFor(shown), ASSISTED_MODEL, ASSISTED_BODY, ASSISTED_PROP);
+            case OWN -> draw(collector, poseStack, camera, lookFor(shown), PERSONAL_MODEL, PERSONAL_BODY, PERSONAL_PROP);
+            case NONE -> {
+                return;
             }
         }
+        lastKind = kind;
+        raceDrawn++;
+    }
+
+    static int replayDrawn() {
+        return replayDrawn;
+    }
+
+    static int raceDrawn() {
+        return raceDrawn;
+    }
+
+    static GhostLibrary.@Nullable Shown lastKind() {
+        return lastKind;
     }
 
     static GhostLook lookFor(GhostTrack track) {

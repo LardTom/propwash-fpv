@@ -14,9 +14,11 @@ import de.lardtom.propwash.ui.client.theme.ThemeText;
 import de.lardtom.propwash.ui.client.widget.ScrollPanel;
 import de.lardtom.propwash.ui.client.widget.TextField;
 import net.minecraft.client.gui.Font;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
@@ -59,6 +61,13 @@ public final class TrickConfigTab extends ConfigTab {
     private int columns = 1;
     private int columnWidth;
     private int innerWidth;
+    private final TrickPreview preview = new TrickPreview();
+    private final List<RowHit> rowHits = new ArrayList<>();
+    private @Nullable ScreenRectangle pointer;
+    private @Nullable TrickType hovered;
+
+    private record RowHit(ScreenRectangle rect, TrickType type) {
+    }
 
     public TrickConfigTab() {
     }
@@ -113,6 +122,69 @@ public final class TrickConfigTab extends ConfigTab {
         return this.sections;
     }
 
+    public TrickPreview preview() {
+        return this.preview;
+    }
+
+    public @Nullable TrickType hovered() {
+        return this.hovered;
+    }
+
+    public void pointAt(@Nullable ScreenRectangle row) {
+        this.pointer = row;
+    }
+
+    public boolean reveal(TrickType type) {
+        ScrollPanel panel = this.scroll;
+        if (panel == null) {
+            return false;
+        }
+        int y = this.listTop;
+        int rowY = -1;
+        for (TrickCatalog.Section section : this.sections) {
+            y += LINE;
+            int index = section.tricks().indexOf(type);
+            int sectionRows = this.rowsOf(section);
+            if (index >= 0) {
+                rowY = y + (index % sectionRows) * LINE;
+            }
+            y += sectionRows * LINE;
+        }
+        if (rowY < 0) {
+            return false;
+        }
+        for (int i = 0; i < 200; i++) {
+            int top = panel.top() + rowY - 1;
+            int bottom = top + LINE;
+            if (top >= this.y && bottom <= panel.clipBottom()) {
+                break;
+            }
+            if (!panel.scroll(top < this.y ? 1.0 : -1.0)) {
+                break;
+            }
+        }
+        this.scrollOffset = panel.offset();
+        return true;
+    }
+
+    public @Nullable ScreenRectangle rowOf(TrickType type) {
+        for (RowHit hit : this.rowHits) {
+            if (hit.type() == type) {
+                return hit.rect();
+            }
+        }
+        return null;
+    }
+
+    public boolean openTutorial(TrickType type) {
+        if (!TrickType.REPERTOIRE.contains(type)) {
+            return false;
+        }
+        this.preview.clear();
+        TrickTutorials.open(type, this.host.screen());
+        return true;
+    }
+
     public void search(String text) {
         if (this.searchBox != null) {
             this.searchBox.setValue(text);
@@ -152,6 +224,7 @@ public final class TrickConfigTab extends ConfigTab {
         TrickConfig config = this.working();
         Font font = this.host.font();
         this.scroll = new ScrollPanel(this.x, this.y, Math.max(40, this.width), Math.max(20, this.height), this.scrollOffset);
+        int top = this.scroll.top();
         int width = Math.max(40, this.scroll.innerWidth());
         this.innerWidth = width;
         this.columns = columnsFor(width);
@@ -163,7 +236,7 @@ public final class TrickConfigTab extends ConfigTab {
         this.modeButton = CycleButton.<TrickMode>builder(mode -> Component.translatable(mode.translationKey()), config.mode)
                 .withValues(List.of(TrickMode.values()))
                 .withTooltip(mode -> Tooltip.create(Component.translatable(mode.translationKey() + ".tooltip")))
-                .create(this.x, this.y + this.buttonTop, Metrics.columnWidth(width, Metrics.columns(width)), Metrics.CONTROL_HEIGHT,
+                .create(this.x, top + this.buttonTop, Metrics.columnWidth(width, Metrics.columns(width)), Metrics.CONTROL_HEIGHT,
                         Component.translatable("propwash.trick.tab.mode"),
                         (button, mode) -> {
                             this.working().mode = mode;
@@ -189,7 +262,7 @@ public final class TrickConfigTab extends ConfigTab {
         int filterTop = this.tableTop + Metrics.SECTION_HEIGHT;
         boolean sideBySide = Metrics.columns(width) >= 2;
         int fieldWidth = sideBySide ? Metrics.columnWidth(width, 2) : width;
-        TextField box = new TextField(font, this.x, this.y + filterTop, fieldWidth, Metrics.CONTROL_HEIGHT,
+        TextField box = new TextField(font, this.x, top + filterTop, fieldWidth, Metrics.CONTROL_HEIGHT,
                 Component.translatable("propwash.trick.tab.search.narration"));
         box.hint(Component.translatable("propwash.trick.tab.search"));
         box.setMaxLength(TrickCatalog.MAX_QUERY);
@@ -210,7 +283,7 @@ public final class TrickConfigTab extends ConfigTab {
         this.familyButton = CycleButton.<Integer>builder(TrickConfigTab::familyName, this.family)
                 .withValues(families)
                 .withTooltip(value -> Tooltip.create(Component.translatable("propwash.trick.tab.family.tooltip")))
-                .create(buttonX, this.y + buttonY, fieldWidth, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.trick.tab.family"),
+                .create(buttonX, top + buttonY, fieldWidth, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.trick.tab.family"),
                         (button, value) -> {
                             this.family = value;
                             this.relayout();
@@ -253,7 +326,10 @@ public final class TrickConfigTab extends ConfigTab {
     }
 
     @Override
-    public void extract(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    public void extract(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float partialTick) {
+        ScreenRectangle pointed = this.pointer;
+        int mouseX = pointed != null ? pointed.left() + Math.min(8, pointed.width() / 2) : realMouseX;
+        int mouseY = pointed != null ? pointed.top() + pointed.height() / 2 : realMouseY;
         Font font = this.host.font();
         int width = this.innerWidth;
         int top = this.top();
@@ -270,6 +346,8 @@ public final class TrickConfigTab extends ConfigTab {
         ThemeText.textRight(graphics, font, count, this.x + width, tableY + 2, Palette.TEXT_FAINT);
         int listY = top + this.listTop;
         TrickType hovered = null;
+        ScreenRectangle hoveredRow = null;
+        this.rowHits.clear();
         if (this.sections.isEmpty()) {
             ThemeText.fitted(graphics, font, Component.translatable("propwash.trick.tab.none", this.query.strip()), this.x, listY, width, Palette.TEXT_MUTED);
         }
@@ -287,9 +365,13 @@ public final class TrickConfigTab extends ConfigTab {
                 TrickType type = tricks.get(i);
                 boolean over = mouseX >= left && mouseX < right && mouseY >= rowY - 1 && mouseY < rowY + LINE - 1
                         && mouseY >= this.y && mouseY < this.clipBottom();
+                if (rowY + LINE - 1 > this.y && rowY - 1 < this.clipBottom()) {
+                    this.rowHits.add(new RowHit(new ScreenRectangle(left, rowY - 1, right - left, LINE), type));
+                }
                 if (over) {
                     graphics.fill(left, rowY - 1, right, rowY + LINE - 1, Palette.HOVER_TINT);
                     hovered = type;
+                    hoveredRow = new ScreenRectangle(left, rowY - 1, right - left, LINE);
                 } else if (row % 2 == 1) {
                     graphics.fill(left, rowY - 1, right, rowY + LINE - 1, Palette.ROW_STRIPE);
                 }
@@ -302,6 +384,7 @@ public final class TrickConfigTab extends ConfigTab {
             }
             listY += sectionRows * LINE;
         }
+        this.hovered = hovered;
         int after = top + this.rulesTop;
         for (FormattedCharSequence line : this.rules) {
             ThemeText.text(graphics, font, line, this.x, after, Palette.TEXT_FAINT);
@@ -320,7 +403,14 @@ public final class TrickConfigTab extends ConfigTab {
             if (!aka.isEmpty()) {
                 tip.addAll(font.split(ThemeText.colored(Component.translatable("propwash.trick.tab.aka", aka), Palette.TEXT_FAINT), TOOLTIP_WIDTH));
             }
+            tip.addAll(font.split(ThemeText.colored(Component.translatable("propwash.trick.tab.tutorial_hint"), Palette.ACCENT), TOOLTIP_WIDTH));
             ThemeText.tooltipSequences(graphics, font, tip, mouseX, mouseY);
+            this.preview.hover(hovered);
+            int clip = Math.min(this.y + this.height, this.clipBottom());
+            this.preview.extract(graphics, font, tip, mouseX, mouseY, hoveredRow, new ScreenRectangle(this.x, this.y, this.width, Math.max(0, clip - this.y)));
+        } else {
+            this.preview.hover(null);
+            this.preview.clear();
         }
     }
 
@@ -360,7 +450,18 @@ public final class TrickConfigTab extends ConfigTab {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        return this.scroll != null && this.scroll.mouseClicked(event.x(), event.y());
+        if (this.scroll != null && this.scroll.mouseClicked(event.x(), event.y())) {
+            return true;
+        }
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT || event.y() < this.y || event.y() >= this.clipBottom()) {
+            return false;
+        }
+        for (RowHit hit : this.rowHits) {
+            if (hit.rect().containsPoint((int) event.x(), (int) event.y())) {
+                return this.openTutorial(hit.type());
+            }
+        }
+        return false;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package de.lardtom.propwash.build;
 
 import de.lardtom.propwash.api.part.AccessoryDefinition;
+import de.lardtom.propwash.api.part.AccessorySlot;
 import de.lardtom.propwash.api.part.BatteryDefinition;
 import de.lardtom.propwash.api.part.FrameDefinition;
 import de.lardtom.propwash.api.part.MotorDefinition;
@@ -25,11 +26,18 @@ final class Definitions {
             case PropDefinition d -> new PropDefinition(id, d.basics(), d.diameterMm(), d.pitchInch(), d.blades(), d.thrustCoefficient(),
                     d.powerCoefficient(), d.material(), d.stiffness(), d.mount(), d.reverseThrust());
             case VideoDefinition d -> new VideoDefinition(id, d.basics(), d.link(), d.latencyMs(), d.rangeBlocks(), d.imageQuality(),
-                    d.cameraWidthMm(), d.cameraFovDeg(), d.vtxPowerMw(), d.powerW(), d.vtxLevelsMw());
+                    d.cameraWidthMm(), d.cameraFovDeg(), d.vtxPowerMw(), d.powerW(), d.vtxLevelsMw(), d.antenna());
             case BatteryDefinition d -> new BatteryDefinition(id, d.basics(), d.cells(), d.capacityMah(), d.cellResistanceOhm(), d.cRating(),
                     d.chemistry(), d.packSize(), d.connector());
             case AccessoryDefinition d -> new AccessoryDefinition(id, d.basics(), d.slot(), d.widthMm(), d.heightMm(), d.depthMm(),
-                    d.flightBatteryWatts(), d.frontalAreaM2(), d.ledCount(), d.actionCam(), d.lensXMm(), d.lensLengthMm());
+                    d.flightBatteryWatts(), d.frontalAreaM2(), d.ledCount(), d.actionCam(), d.lensXMm(), d.lensLengthMm(),
+                    d.ledPathMm(), d.hangsStraight(), d.muzzleMm(), d.frames(), d.recessMm(), d.dropMm());
         };
+    }
+
+    static AccessoryDefinition withSlot(AccessoryDefinition d, AccessorySlot slot) {
+        return d.slot() == slot ? d : new AccessoryDefinition(d.id(), d.basics(), slot, d.widthMm(), d.heightMm(), d.depthMm(),
+                d.flightBatteryWatts(), d.frontalAreaM2(), d.ledCount(), d.actionCam(), d.lensXMm(), d.lensLengthMm(),
+                d.ledPathMm(), d.hangsStraight(), d.muzzleMm(), d.frames(), d.recessMm(), d.dropMm());
     }
 }

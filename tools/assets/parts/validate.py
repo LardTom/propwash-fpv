@@ -11,6 +11,7 @@ import batteries
 import kit
 import layout
 import paintable
+import stacks
 
 ROOT = Path(__file__).resolve().parents[3]
 ASSETS = ROOT / "common/src/main/resources/assets/propwash"
@@ -172,14 +173,14 @@ def check_drone_item(data):
     cases = {case.get("when"): case.get("model", {}) for case in node.get("cases", [])}
     plain = node.get("fallback", {})
     for name, special, mode in (("fixed", cases.get("fixed"), "wall"), ("ground", cases.get("ground"), "ground"),
-                                ("fallback", plain, None)):
+                                ("gui", cases.get("gui"), "icon"), ("fallback", plain, None)):
         if not special or special.get("type") != "minecraft:special":
             fail(f"items/drone.json {name} must be a minecraft:special model")
             continue
         renderer = special.get("model", {})
         if renderer.get("type") != "propwash:drone_build":
             fail(f"items/drone.json {name} must use the special renderer propwash:drone_build")
-        for flag in ("wall", "ground"):
+        for flag in ("wall", "ground", "icon"):
             if bool(renderer.get(flag, False)) != (mode == flag):
                 fail(f"items/drone.json {name}: \"{flag}\" must be {mode == flag}")
     ground = cases.get("ground", {})
@@ -372,6 +373,62 @@ def check_battery_mounts():
                 fail(f"{frame}: battery hangs at {y} mm, the flight model uses plate_mm {plate} mm")
 
 
+def element_names(model):
+    return [el.get("name") for el in (model or {}).get("elements", [])]
+
+
+def check_stack_mounts():
+    for key in layout.STACK_KEYS:
+        base = load(resource(f"propwash:part/stack/{key}", "models", "json"))
+        names = element_names(base)
+        if not any(name in stacks.PLUG_ELEMENTS for name in names):
+            continue
+        mounted = key + stacks.MOUNTED_SUFFIX
+        model = check_model(f"propwash:part/stack/{mounted}", required_display=False)
+        check_item(f"drone_render/stack/{mounted}", [f"propwash:part/stack/{mounted}"])
+        if base and "stack/" + key in (load(ASSETS / "drone_paint.json") or {}).get("models", {}):
+            check_model(f"propwash:part/stack/{mounted}{paintable.SUFFIX}", required_display=False)
+            check_item(f"drone_render/stack/{mounted}{paintable.SUFFIX}", [f"propwash:part/stack/{mounted}{paintable.SUFFIX}"])
+        load(SOURCES / "stack" / f"{mounted}.bbmodel")
+        if (ASSETS / f"items/{mounted}.json").exists():
+            fail(f"items/{mounted}.json must not exist (mounted variants are drone_render only)")
+        got = element_names(model)
+        plugs = [name for name in got if name in stacks.PLUG_ELEMENTS]
+        if plugs:
+            fail(f"stack/{mounted}: still has plug elements {sorted(set(plugs))}")
+        if got.count(stacks.PIGTAIL) != 2:
+            fail(f"stack/{mounted}: {got.count(stacks.PIGTAIL)} elements named {stacks.PIGTAIL}, expected 2")
+        if stacks.POWER_LEAD in got:
+            fail(f"stack/{mounted}: power leads must be named {stacks.PIGTAIL}")
+        kept = [el for el in (base or {}).get("elements", []) if el.get("name") not in stacks.PLUG_ELEMENTS]
+        if len(kept) != len((model or {}).get("elements", [])):
+            fail(f"stack/{mounted}: must be the base model without its plug")
+        for a, b in zip(kept, (model or {}).get("elements", [])):
+            if a["from"] != b["from"] or a["to"] != b["to"]:
+                fail(f"stack/{mounted}: element {b.get('name')} differs from the base model")
+                break
+        if model and base and model.get("textures") != base.get("textures"):
+            fail(f"stack/{mounted}: must use the texture of the base model")
+
+
+def check_antennas():
+    for key in layout.VIDEO_KEYS:
+        for variant in (key, key + paintable.SUFFIX):
+            left = sorted(n for n in element_names(load(resource(f"propwash:part/video/{variant}", "models", "json")))
+                          if n.lower().startswith("antenna") or n.startswith("lollipop"))
+            if left:
+                fail(f"video/{variant}: antenna elements {left} – Propwash draws the antennas at the frame")
+    for path in sorted((ASSETS / "models/part/video").glob("*_antenna*")) + sorted((ASSETS / "items/drone_render/video").glob("*_antenna*")):
+        fail(f"{path.relative_to(ASSETS)}: no antenna models any more, Propwash draws the antennas from the VTX data")
+    for key in layout.FRAMES:
+        if "antenna" in layout.FRAMES[key]:
+            fail(f"drone_layout.{key}: the antenna holder belongs into the frame data (antenna_anchor)")
+        frame = json.loads((ROOT / f"common/src/main/resources/data/propwash/propwash_parts/frame/{key}.json").read_text())
+        anchor = frame.get("antenna_anchor", {})
+        if len(anchor.get("pos", [])) != 3 or not 30.0 <= anchor.get("tilt_deg", 0.0) <= 45.0:
+            fail(f"frame/{key}: antenna_anchor needs pos [x, y, z] and tilt_deg 30–45")
+
+
 def check_sources():
     for category, keys in CATEGORIES.items():
         for key in keys:
@@ -438,6 +495,8 @@ def main():
     check_prop_clearance()
     check_accessory_clearance()
     check_battery_mounts()
+    check_stack_mounts()
+    check_antennas()
     check_sources()
     for path in sorted((ASSETS / "items").glob("*.json")):
         load(path)

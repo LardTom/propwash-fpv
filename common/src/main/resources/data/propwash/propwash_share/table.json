@@ -1,0 +1,56 @@
+{
+  "format": 1,
+  "namespace": "propwash",
+  "short_id": 1,
+  "parts": {
+    "frame": [
+      {"id": "cinewhoop_3", "since": "0.4.0"},
+      {"id": "freestyle_5", "since": "0.4.0"},
+      {"id": "long_range_7", "since": "0.4.0"},
+      {"id": "race_5", "since": "0.4.0"},
+      {"id": "whoop_65", "since": "0.4.0"}
+    ],
+    "stack": [
+      {"id": "aio_20", "since": "0.4.0"},
+      {"id": "aio_whoop", "since": "0.4.0"},
+      {"id": "stack_30", "since": "0.4.0"},
+      {"id": "creative_fc", "since": "0.5.0"}
+    ],
+    "motor": [
+      {"id": "m0802_22000", "since": "0.4.0"},
+      {"id": "m1404_4600", "since": "0.4.0"},
+      {"id": "m2004_3000", "since": "0.4.0"},
+      {"id": "m2207_1750", "since": "0.4.0"},
+      {"id": "m2306_1860", "since": "0.4.0"},
+      {"id": "m2807_1300", "since": "0.4.0"}
+    ],
+    "prop": [
+      {"id": "p31_3b", "since": "0.4.0"},
+      {"id": "p31_4b", "since": "0.4.0"},
+      {"id": "p3_3b", "since": "0.4.0"},
+      {"id": "p51_3b", "since": "0.4.0"},
+      {"id": "p7_2b", "since": "0.4.0"},
+      {"id": "p51_29_3b", "since": "0.5.0"}
+    ],
+    "video": [
+      {"id": "analog_nano", "since": "0.4.0"},
+      {"id": "analog_race", "since": "0.4.0"},
+      {"id": "digital_hd", "since": "0.4.0"},
+      {"id": "digital_lite", "since": "0.4.0"}
+    ],
+    "battery": [
+      {"id": "b1s_300_hv", "since": "0.4.0"},
+      {"id": "b4s_650", "since": "0.4.0"},
+      {"id": "b6s_1100", "since": "0.4.0"},
+      {"id": "b6s_1300", "since": "0.4.0"},
+      {"id": "b6s_4000_lion", "since": "0.4.0"}
+    ],
+    "accessory": [
+      {"id": "action_cam_heavy", "since": "0.4.0"},
+      {"id": "action_cam_light", "since": "0.4.0"},
+      {"id": "led_strip", "since": "0.4.0"},
+      {"id": "action_cam_flashback", "since": "0.5.0"},
+      {"id": "gripper", "since": "0.5.0"}
+    ]
+  }
+}

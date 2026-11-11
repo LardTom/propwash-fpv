@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "A": "minecraft:lightning_rod",
+    "C": "minecraft:copper_ingot",
+    "B": "propwash:circuit_board",
+    "R": "minecraft:redstone"
+  },
+  "pattern": [
+    " A ",
+    "CBC",
+    " R "
+  ],
+  "result": {
+    "id": "propwash:rx_block"
+  }
+}

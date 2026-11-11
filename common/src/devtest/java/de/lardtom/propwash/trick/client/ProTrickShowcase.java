@@ -45,6 +45,8 @@ public final class ProTrickShowcase {
         Screenshots.step("bildschirmfotos: Sbang-Kombo aus Eject, Split-S und Juicy Flick im OSD", "trick_sbang_fpv", 3,
                 new LineScene(ProTrickScript.Stage.SETTLE, TrickType.SBANG, SBANG_START, false));
         SelfTest.clientStep("bildschirmfotos: Tab Freestyle mit Familien und Suche", 600, ProTrickShowcase::searchStep);
+        TrickTutorialShowcase.register();
+        TrickDirectionShowcase.register();
     }
 
     private static StepResult searchStep(SelfTest.StepContext ctx) {

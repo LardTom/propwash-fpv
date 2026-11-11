@@ -37,9 +37,11 @@ class AddonAssistReasonTest {
     }
 
     @Test
-    void addonIdsKeepNamespaceCharactersOnlyForOther() {
+    void addonIdsKeepNamespaceCharactersForOtherAndWorldRules() {
         assertEquals("my-mod:assist/v2.1", AssistDetail.addon("My-Mod:Assist/v2.1 !?").subject());
-        assertEquals("gravityscale", new AssistDetail(LapAssist.WORLD_PHYSICS, "gravity:scale", 0, 0).subject());
+        assertEquals("my-mod:wind_gusts", new AssistDetail(LapAssist.WORLD_PHYSICS, "My-Mod:Wind_Gusts", 0, 0).subject());
+        assertEquals("my-mod:wind_gusts", new AssistDetail(LapAssist.ZONE_PHYSICS, "my-mod:wind_gusts !", 0, 3).subject());
+        assertEquals("proptoo_large", new AssistDetail(LapAssist.PARTS_MISMATCH, "prop:too_large", 0, 0).subject());
     }
 
     @Test

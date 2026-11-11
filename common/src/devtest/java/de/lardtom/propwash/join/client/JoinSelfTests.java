@@ -16,6 +16,8 @@ import de.lardtom.propwash.join.JoinText;
 import de.lardtom.propwash.join.LocalJoinInfo;
 import de.lardtom.propwash.join.PartRef;
 import de.lardtom.propwash.network.JoinInfoPayload;
+import de.lardtom.propwash.platform.ModMeta;
+import de.lardtom.propwash.platform.Services;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.minecraft.client.Minecraft;
@@ -38,6 +40,7 @@ public final class JoinSelfTests {
     private static final AddonInfo JMP = new AddonInfo("justmoreparts", "Propwash: Just More Parts", "1.1.0",
             "https://modrinth.com/mod/propwash-just-more-parts", List.of());
     private static final AddonInfo HUD = new AddonInfo("pilot_hud_plus", "Pilot HUD Plus", "2.1.0", "", List.of());
+    private static final String DEV_MOD = "propwash_devtest";
 
     private JoinSelfTests() {
     }
@@ -45,6 +48,7 @@ public final class JoinSelfTests {
     public static void register() {
         AddonSessionSelfTests.register();
         SelfTest.clientStep(PREFIX + "eigene Add-on-Liste mit Name, Version und Namensraum", 5, JoinSelfTests::localStep);
+        SelfTest.clientStep(PREFIX + "Add-on ohne Client-Bedarf steht nicht in der Übersicht (Metadaten des Loaders)", 5, JoinSelfTests::clientOptionalStep);
         SelfTest.clientStep(PREFIX + "Übersicht nach einer Absage mit Link und Kopieren", 200, JoinSelfTests::screenStep);
         SelfTest.clientStep(PREFIX + "Übersicht scrollt mit Mausrad, Bild auf/ab, Pos1/Ende, Pfeiltasten und an der Scrollleiste", 100,
                 JoinSelfTests::scrollStep);
@@ -80,6 +84,22 @@ public final class JoinSelfTests {
         JoinInfo decoded = JoinInfoPayload.CODEC.decode(buffer).info();
         ctx.log("eigene Add-ons: " + local.addons().size() + ", Fingerabdruck " + local.builtinFingerprint());
         return StepResult.check(decoded.equals(local), "Beitrittsdaten überstehen das Netzwerk nicht: " + decoded);
+    }
+
+    private static StepResult clientOptionalStep(SelfTest.StepContext ctx) {
+        ModMeta helper = Services.PLATFORM.dependentMods(Constants.MOD_ID).stream().filter(meta -> meta.id().equals(DEV_MOD)).findFirst().orElse(null);
+        if (helper == null) {
+            return StepResult.fail("Hilfs-Mod " + DEV_MOD + " steht nicht unter den Mods, die von Propwash abhängen");
+        }
+        if (!helper.clientOptional()) {
+            return StepResult.fail(ModMeta.CLIENT_KEY + " = " + ModMeta.CLIENT_OPTIONAL + " aus den Metadaten von " + DEV_MOD + " nicht gelesen");
+        }
+        if (LocalJoinInfo.get().addon(DEV_MOD).isPresent()) {
+            return StepResult.fail(DEV_MOD + " steht in den Beitrittsdaten");
+        }
+        String message = JoinCheck.missingPropwash().getString();
+        ctx.log("Add-ons in der Übersicht: " + LocalJoinInfo.get().addons().size() + ", Meldung ohne " + helper.name());
+        return StepResult.check(!message.contains(helper.name()), helper.name() + " steht in der Meldung: " + message);
     }
 
     public static JoinReport sampleReport(boolean protocol) {

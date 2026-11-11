@@ -3,6 +3,7 @@ package de.lardtom.propwash.core;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.api.part.PartKind;
 import de.lardtom.propwash.build.Accessories;
 import de.lardtom.propwash.build.AccessoryMount;
@@ -24,9 +25,11 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -56,11 +59,8 @@ public final class DroneBuildCodecs {
     public static final Codec<Accessories> ACCESSORIES = Codec.unboundedMap(ACCESSORY_MOUNT, Codec.STRING).comapFlatMap(
             DroneBuildCodecs::accessories, DroneBuildCodecs::accessoryKeys);
     public static final StreamCodec<ByteBuf, Accessories> ACCESSORIES_STREAM = ByteBufCodecs.<ByteBuf, AccessoryMount, String, Map<AccessoryMount, String>>map(
-            HashMap::new, ACCESSORY_MOUNT_STREAM, ByteBufCodecs.stringUtf8(MAX_KEY_LENGTH), AccessoryMount.values().length).map(map -> {
-                DataResult<Accessories> result = accessories(map);
-                return result.result().orElseThrow(() -> new DecoderException("Ungültiges Zubehör: "
-                        + result.error().map(error -> error.message()).orElse("?")));
-            }, DroneBuildCodecs::accessoryKeys);
+            HashMap::new, ACCESSORY_MOUNT_STREAM, ByteBufCodecs.stringUtf8(MAX_KEY_LENGTH), AccessoryMount.values().length).map(
+                    map -> accessories(map).resultOrPartial(DroneBuildCodecs::dropped).orElse(Accessories.NONE), DroneBuildCodecs::accessoryKeys);
 
     public static final Codec<DroneBuild> CODEC = RecordCodecBuilder.create(i -> i.group(
             FRAME.fieldOf("frame").forGetter(DroneBuild::frame),
@@ -69,7 +69,7 @@ public final class DroneBuildCodecs {
             PROP.fieldOf("prop").forGetter(DroneBuild::prop),
             VIDEO.fieldOf("video").forGetter(DroneBuild::video),
             BATTERY.fieldOf("battery").forGetter(DroneBuild::battery),
-            ACCESSORIES.lenientOptionalFieldOf("accessories", Accessories.NONE).forGetter(DroneBuild::accessories),
+            ACCESSORIES.promotePartial(DroneBuildCodecs::dropped).lenientOptionalFieldOf("accessories", Accessories.NONE).forGetter(DroneBuild::accessories),
             CreativeCodecs.CODEC.lenientOptionalFieldOf("creative", CreativeSpec.EMPTY).forGetter(DroneBuild::creative)
     ).apply(i, DroneBuild::new));
 
@@ -104,19 +104,24 @@ public final class DroneBuildCodecs {
 
     private static DataResult<Accessories> accessories(Map<AccessoryMount, String> keys) {
         EnumMap<AccessoryMount, AccessoryType> map = new EnumMap<>(AccessoryMount.class);
+        List<String> failed = new ArrayList<>();
         for (Map.Entry<AccessoryMount, String> entry : keys.entrySet()) {
-            Optional<AccessoryType> type = PartIndex.resolveOrMissing(PartKind.ACCESSORY, entry.getValue(), entry.getKey().slot())
-                    .filter(AccessoryType.class::isInstance).map(AccessoryType.class::cast);
+            AccessoryMount mount = entry.getKey();
+            Optional<AccessoryType> type = PartIndex.resolveOrMissing(PartKind.ACCESSORY, entry.getValue(), mount.slot())
+                    .filter(AccessoryType.class::isInstance).map(AccessoryType.class::cast).filter(part -> part.fits(mount));
             if (type.isEmpty()) {
-                return DataResult.error(() -> "Unbekanntes Zubehör " + entry.getValue() + " an " + entry.getKey().key());
+                failed.add(entry.getValue() + " an " + mount.key());
+                continue;
             }
-            map.put(entry.getKey(), type.get());
+            map.put(mount, type.get());
         }
-        try {
-            return DataResult.success(new Accessories(map));
-        } catch (IllegalArgumentException e) {
-            return DataResult.error(e::getMessage);
-        }
+        Accessories accessories = new Accessories(map);
+        return failed.isEmpty() ? DataResult.success(accessories)
+                : DataResult.error(() -> "Unbekanntes oder unpassendes Zubehör " + String.join(", ", failed), accessories);
+    }
+
+    private static void dropped(String message) {
+        Constants.LOG.warn("Zubehör verworfen, der Rest bleibt: {}", message);
     }
 
     private static Map<AccessoryMount, String> accessoryKeys(Accessories accessories) {

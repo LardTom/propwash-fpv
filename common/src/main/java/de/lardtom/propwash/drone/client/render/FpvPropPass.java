@@ -38,7 +38,8 @@ public final class FpvPropPass {
     }
 
     public static boolean take(DroneRenderState state) {
-        if (disabled || forceWorld || state.fpvGeometry == null || IrisCompat.renderingShadowPass() || IrisCompat.shaderPackActive(Util.getNanos())) {
+        if (disabled || forceWorld || state.fpvGeometry == null && !state.accessoryDisplay.atLens() || IrisCompat.renderingShadowPass()
+                || IrisCompat.shaderPackActive(Util.getNanos())) {
             return false;
         }
         pending = state;
@@ -72,7 +73,9 @@ public final class FpvPropPass {
             }
             RenderSystem.setProjectionMatrix(projection.getBuffer(new Matrix4f(captured ? LEVEL_PROJECTION : camera.projectionMatrix)),
                     ProjectionType.PERSPECTIVE);
-            FpvProps.submitAtCamera(state, new PoseStack(), storage, camera);
+            PoseStack poseStack = new PoseStack();
+            FpvProps.submitAtCamera(state, poseStack, storage, camera);
+            state.accessoryDisplay.submitAtCamera(state, poseStack, storage, camera);
             try (FeatureRenderDispatcher.PreparedFrame frame = dispatcher.prepareFrame(storage)) {
                 if (!frame.isEmpty()) {
                     try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Propwash FPV props",

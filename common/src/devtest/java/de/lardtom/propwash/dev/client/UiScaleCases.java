@@ -5,12 +5,18 @@ import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.content.ContentTab;
 import de.lardtom.propwash.content.DroneAssembly;
+import de.lardtom.propwash.content.client.RecycleSelfTests;
 import de.lardtom.propwash.content.client.WorkbenchMoreProbe;
 import de.lardtom.propwash.content.client.WorkbenchMoreScreen;
+import de.lardtom.propwash.freecam.client.FreecamSelfTests;
+import de.lardtom.propwash.rx.client.CreativeRxSelfTests;
+import de.lardtom.propwash.rx.client.RxSelfTests;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.client.UiScaleSelfTests.Case;
 import de.lardtom.propwash.dev.client.UiScaleSelfTests.Combo;
+import de.lardtom.propwash.guard.client.GuardSelfTests;
+import de.lardtom.propwash.guard.client.NamespaceReportScreen;
 import de.lardtom.propwash.guide.GuideScenes;
 import de.lardtom.propwash.guide.client.screen.SceneIndexScreen;
 import de.lardtom.propwash.guide.client.screen.SceneScreen;
@@ -22,6 +28,7 @@ import de.lardtom.propwash.guide.training.Lesson;
 import de.lardtom.propwash.guide.scene.Scene;
 import de.lardtom.propwash.input.ProfileDefaults;
 import de.lardtom.propwash.input.client.SimulatedRadio;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import de.lardtom.propwash.input.DeviceProfile;
@@ -53,10 +60,13 @@ import de.lardtom.propwash.race.GateSize;
 import de.lardtom.propwash.race.RaceModule;
 import de.lardtom.propwash.race.client.ClientCourses;
 import de.lardtom.propwash.race.client.CourseEditScreen;
+import de.lardtom.propwash.race.client.CourseMenuScreen;
 import de.lardtom.propwash.race.client.GateEditCursorScreen;
 import de.lardtom.propwash.race.client.GateEditor;
+import de.lardtom.propwash.race.client.GateHintSelfTests;
 import de.lardtom.propwash.race.client.GateStackSelfTests;
 import de.lardtom.propwash.race.client.LeaderboardScreen;
+import de.lardtom.propwash.race.client.PersonalRulesUiScaleCase;
 import de.lardtom.propwash.build.FrameType;
 import de.lardtom.propwash.race.LapAssist;
 import de.lardtom.propwash.race.Leaderboard;
@@ -69,22 +79,30 @@ import de.lardtom.propwash.ui.client.widget.FlatButton;
 import de.lardtom.propwash.ui.client.widget.ScrollArea;
 import de.lardtom.propwash.input.client.screen.ReceiverTab;
 import de.lardtom.propwash.osd.client.OsdConfigTab;
+import de.lardtom.propwash.osd.client.CovFlightPathMarkerUiScaleCase;
 import de.lardtom.propwash.server.WorldRulesS2C;
 import de.lardtom.propwash.server.client.ClientWorldRules;
+import de.lardtom.propwash.server.client.MyRulesTab;
 import de.lardtom.propwash.server.client.WorldRulesTab;
 import de.lardtom.propwash.ui.client.tab.OverviewTab;
+import de.lardtom.propwash.ui.ChromeLayout;
 import de.lardtom.propwash.ui.LayoutAudit;
 import de.lardtom.propwash.ui.LayoutAudit.Finding;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.HoverSweepSelfTests;
 import de.lardtom.propwash.ui.client.LayoutProbe;
+import de.lardtom.propwash.ui.client.LongAddonTabUiScaleCase;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemedToast;
+import de.lardtom.propwash.video.client.CameraAngleMenuSelfTests;
 import de.lardtom.propwash.video.client.record.ActionCamRecorder;
 import de.lardtom.propwash.video.client.record.FfmpegStates;
 import de.lardtom.propwash.video.client.record.RecordingsScreen;
+import de.lardtom.propwash.share.client.ShareUiScaleCases;
+import de.lardtom.propwash.trick.client.TrickTutorialSelfTests;
+import de.lardtom.propwash.zone.client.ZonesTab;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -100,10 +118,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -131,7 +151,7 @@ final class UiScaleCases {
         out.add(new Configurator(true, Configurator.Input.MOUSE, Configurator.RADIO_NAME, List.of(ReceiverTab.ID), "Konfigurator mit Drohne und Maus", false));
         out.add(new Configurator(false, Configurator.Input.KEYBOARD, Configurator.RADIO_NAME, List.of(Configurator.OSD_OPTIONS),
                 "Konfigurator OSD-Optionen", false));
-        out.add(new Configurator(false, Configurator.Input.KEYBOARD, Configurator.RADIO_NAME, List.of(WorldRulesTab.ID),
+        out.add(new Configurator(false, Configurator.Input.KEYBOARD, Configurator.RADIO_NAME, List.of(WorldRulesTab.ID, MyRulesTab.ID),
                 "Konfigurator mit gesperrten Welt-Regeln", true));
         out.addAll(UiScaleLiveCases.all());
         out.add(new ActionCamStates());
@@ -178,6 +198,23 @@ final class UiScaleCases {
         out.add(new EmptyBoard());
         out.add(new Toasts());
         out.add(new TrainingPanel());
+        out.addAll(CameraAngleMenuSelfTests.uiScaleCases());
+        out.add(screen("Namensraum-Bericht", () -> new NamespaceReportScreen(new TitleScreen(), GuardSelfTests.sampleReport())));
+        out.add(screen("RX-Block", RxSelfTests::previewScreen));
+        out.add(screen("RX-Block Bindung lösen", RxSelfTests::confirmScreen));
+        out.add(screen("Kreativ-RX-Block", CreativeRxSelfTests::previewScreen));
+        out.addAll(GateHintSelfTests.uiScaleCases());
+        out.addAll(ShareUiScaleCases.all());
+        out.addAll(FreecamSelfTests.uiScaleCases());
+        out.add(CovFlightPathMarkerUiScaleCase.create());
+        out.add(LongAddonTabUiScaleCase.create());
+        out.add(PersonalRulesUiScaleCase.create());
+        out.add(scene("Werkbank Recyceln", RecycleSelfTests::scene));
+        out.add(scene("Werkbank Recyceln leer", RecycleSelfTests::emptyScene));
+        out.add(scene("Werkbank Recyceln Props", RecycleSelfTests::propScene));
+        out.add(new CourseMenuCase(false, "Kurs-Einstellungen"));
+        out.add(new CourseMenuCase(true, "Kurs-Einstellungen nur ansehen"));
+        out.addAll(TrickTutorialSelfTests.uiScaleCases());
         return out;
     }
 
@@ -758,7 +795,7 @@ final class UiScaleCases {
             }
         }
 
-        private static @Nullable String zones(WorldRulesTab tab) {
+        private static @Nullable String zones(ZonesTab tab) {
             FlatButton button = tab.zones().newButton();
             int bottom = button != null ? button.getY() + button.getHeight() : tab.zonesTop() + Metrics.SECTION_HEIGHT;
             if (tab.zonesTop() >= tab.viewTop() && bottom <= tab.clipBottom()) {
@@ -768,13 +805,43 @@ final class UiScaleCases {
                     + tab.zonesTop() + ", unten " + bottom + ", sichtbar " + tab.viewTop() + "–" + tab.clipBottom();
         }
 
+        private static @Nullable String footer(Minecraft mc, ConfiguratorScreen screen) {
+            ScreenRectangle window = screen.windowArea();
+            ScreenRectangle footer = screen.footerArea();
+            int left = window.right() - Metrics.PADDING;
+            for (GuiEventListener child : screen.children()) {
+                if (child instanceof AbstractWidget widget && widget.getY() >= footer.top() && !screen.ownsTabWidget(widget)
+                        && !screen.sidebarButtons().contains(widget) && widget != screen.freecamStartButton() && widget != screen.freecamRuleButton()) {
+                    left = Math.min(left, widget.getX());
+                }
+            }
+            int room = left - window.left() - 16;
+            if (screen.footerStacked() && room >= ChromeLayout.STATUS_MIN) {
+                return "Knöpfe unter dem Text (Fußzeile " + footer.height() + " hoch), obwohl neben den Knöpfen " + room + " Punkte frei sind";
+            }
+            List<String> lines = screen.statusLines();
+            String text = String.join(" ", lines);
+            int width = mc.font.width(text);
+            if (!screen.footerStacked() && lines.size() > 1 && width <= room) {
+                return "Statustext „" + text + "“ bricht in " + lines.size() + " Zeilen um, obwohl er mit " + width + " Punkten neben die Knöpfe passt ("
+                        + room + " frei, Fußzeile " + footer.height() + " hoch)";
+            }
+            return null;
+        }
+
         @Override
         public List<Finding> audit(Minecraft mc, Screen screen) {
             List<Finding> findings = new ArrayList<>(LayoutProbe.audit(mc, screen));
-            if (screen instanceof ConfiguratorScreen open && open.activeTab() instanceof WorldRulesTab rules && rules.atTop()) {
-                String problem = zones(rules);
+            if (screen instanceof ConfiguratorScreen open && open.activeTab() instanceof ZonesTab zones && zones.atTop()) {
+                String problem = zones(zones);
                 if (problem != null) {
-                    findings.add(new Finding(LayoutAudit.Kind.HIDDEN, "Tab Welt-Regeln, Abschnitt Zonen", problem));
+                    findings.add(new Finding(LayoutAudit.Kind.HIDDEN, "Tab Zonen, Überschrift", problem));
+                }
+            }
+            if (screen instanceof ConfiguratorScreen open && open.activeTab() != null && !OverviewTab.ID.equals(open.activeTab().id())) {
+                String problem = footer(mc, open);
+                if (problem != null) {
+                    findings.add(new Finding(LayoutAudit.Kind.HIDDEN, "Fußzeile des Konfigurators", problem));
                 }
             }
             if (this.sidebarChecked || !(screen instanceof ConfiguratorScreen configurator) || !configurator.sidebarScroll().scrollable()) {
@@ -1015,7 +1082,13 @@ final class UiScaleCases {
         @Override
         public String page(Screen screen, int index) {
             GateEditor editor = GateEditor.current();
-            if (editor == null || index == 0) {
+            if (editor == null) {
+                return "";
+            }
+            if (this.hud) {
+                GateEditor.showStartNotice();
+            }
+            if (index == 0) {
                 return "";
             }
             editor.showPage(index);
@@ -1060,6 +1133,9 @@ final class UiScaleCases {
             if (!(entity instanceof GateEntity gate) || mc.player == null || !GateMounting.holdsTool(mc.player)) {
                 return StepResult.pending();
             }
+            if (this.hud) {
+                GateEditor.muteStartNotice(false);
+            }
             GateEditor.start(gate);
             if (this.hud) {
                 mc.gui.setScreen(carrier());
@@ -1073,6 +1149,9 @@ final class UiScaleCases {
         @Override
         public void close(SelfTest.StepContext ctx) {
             GateEditor.stop();
+            if (this.hud) {
+                GateEditor.muteStartNotice(true);
+            }
             Minecraft.getInstance().gui.setScreen(null);
             int id = this.gateId;
             this.gateId = -1;
@@ -1255,6 +1334,79 @@ final class UiScaleCases {
         }
     }
 
+    private static final class CourseMenuCase implements Case {
+        private static final String[] PILOTS = {"Lotte", "Mika_FPV", "WWWWWWWWWWWWWWWW"};
+        private final CourseSite site = new CourseSite(4, "Riverside Sprint");
+        private final boolean view;
+        private final String label;
+        private volatile @Nullable GameType mode;
+
+        private CourseMenuCase(boolean view, String label) {
+            this.view = view;
+            this.label = label;
+        }
+
+        @Override
+        public String name() {
+            return this.label;
+        }
+
+        @Override
+        public StepResult open(SelfTest.StepContext ctx) {
+            Minecraft mc = Minecraft.getInstance();
+            if (ctx.tick() == 0) {
+                this.site.build(ctx, (player, course) -> {
+                    CourseRegistry registry = CourseRegistry.get();
+                    for (int i = 0; registry != null && i < PILOTS.length; i++) {
+                        registry.submitLap(course, UUID.nameUUIDFromBytes(("propwash-ui-menu-" + i).getBytes(StandardCharsets.UTF_8)),
+                                PILOTS[i], "race_5", (31_000L + 1_700L * i) * 1_000_000L, System.currentTimeMillis());
+                    }
+                    if (this.view) {
+                        this.mode = player.gameMode.getGameModeForPlayer();
+                        player.setGameMode(GameType.ADVENTURE);
+                    }
+                });
+                return StepResult.pending();
+            }
+            String problem = this.site.problem();
+            if (problem != null) {
+                return StepResult.fail(problem);
+            }
+            if (mc.gui.screen() instanceof CourseMenuScreen menu) {
+                boolean settled = ctx.tick() - (int) ctx.state().getOrDefault("opened", 0) >= 5 && ClientLeaderboards.get(menu.courseId()) != null;
+                if (menu.readOnly() != this.view) {
+                    mc.gui.setScreen(new CourseMenuScreen(null, this.site.courseId()));
+                    return StepResult.pending();
+                }
+                return settled ? StepResult.pass() : StepResult.pending();
+            }
+            if (!this.site.ready() || mc.player == null || mc.player.mayBuild() == this.view) {
+                return StepResult.pending();
+            }
+            mc.gui.setScreen(new CourseMenuScreen(null, this.site.courseId()));
+            ctx.state().put("opened", ctx.tick());
+            return StepResult.pending();
+        }
+
+        @Override
+        public List<Finding> audit(Minecraft mc, Screen screen) {
+            List<Finding> findings = new ArrayList<>(LayoutProbe.audit(mc, screen));
+            findings.addAll(LayoutProbe.scrollbars(mc, screen));
+            return findings;
+        }
+
+        @Override
+        public void close(SelfTest.StepContext ctx) {
+            Minecraft.getInstance().gui.setScreen(null);
+            GameType previous = this.mode;
+            if (previous != null) {
+                this.mode = null;
+                ctx.onServer(server -> server.getPlayerList().getPlayers().getFirst().setGameMode(previous));
+            }
+            this.site.remove(ctx);
+        }
+    }
+
     private static final class FullBoard implements Case {
         private static final String[] PILOTS = {"WWWWWWWWWWWWWWWW", "Lotte", "Mika_FPV", "xX_Propwash_Xx", "Jonas", "Ava", "Kenji", "Nora", "Felix", "Ida",
                 "Maximilian_2011", "Tomke", "Pilot_Nummer_13"};
@@ -1326,7 +1478,7 @@ final class UiScaleCases {
                 ctx.state().put("opened", ctx.tick() - 4);
                 return StepResult.pending();
             }
-            return screen.shownRows().size() == ClientLeaderboards.TOP && screen.shownAssistedRows().size() == ASSISTED.length ? StepResult.pass()
+            return screen.shownRows().size() == PILOTS.length + 1 && screen.shownAssistedRows().size() == ASSISTED.length ? StepResult.pass()
                     : StepResult.fail("Bestenliste zeigt " + screen.shownRows().size() + " und " + screen.shownAssistedRows().size() + " Zeilen");
         }
 

@@ -1,0 +1,4 @@
+{
+  "propwash.osd.element.flight_path_marker": "Flugbahn-Marker",
+  "propwash.osd.element.flight_path_marker.description": "Zeigt, wohin sich die Drohne im Kamerabild wirklich bewegt. Unter 1,5 m/s ausgeblendet."
+}

@@ -66,10 +66,13 @@
               "propwash:copper_coil",
               "propwash:course_tool",
               "propwash:creative_fc",
+              "propwash:creative_rx_block",
               "propwash:digital_hd",
               "propwash:digital_lite",
               "propwash:dive_cube",
               "propwash:drone",
+              "propwash:drone_block_barrier",
+              "propwash:drone_pass_barrier",
               "propwash:drone_workbench",
               "propwash:freeform_gate",
               "propwash:freestyle_5",
@@ -100,11 +103,13 @@
               "propwash:race_5",
               "propwash:race_flag",
               "propwash:remote",
+              "propwash:rx_block",
               "propwash:signal_repeater",
               "propwash:slalom_pole",
               "propwash:stack_30",
               "propwash:waterproof_spray",
-              "propwash:whoop_65"
+              "propwash:whoop_65",
+              "propwash:zone_marker"
             ]
           }
         ]

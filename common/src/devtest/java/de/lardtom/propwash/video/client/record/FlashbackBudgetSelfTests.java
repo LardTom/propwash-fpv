@@ -52,6 +52,7 @@ public final class FlashbackBudgetSelfTests {
     private static final String MARK = "fb.mark";
     private static final String SHOT = "fb.shot";
     private static final String LIVE = "fb.live";
+    private static final String SAVED = "fb.saved";
     private static final int SETTLE = 12;
     private static final int GOLDEN_CASES = 400;
     private static final int BIG_TICKS = 3000;
@@ -278,7 +279,7 @@ public final class FlashbackBudgetSelfTests {
         return tab;
     }
 
-    private static @Nullable StepSlider simplifySlider(Minecraft minecraft) {
+    static @Nullable StepSlider simplifySlider(Minecraft minecraft) {
         if (!(minecraft.gui.screen() instanceof ConfiguratorScreen screen)) {
             return null;
         }
@@ -300,6 +301,7 @@ public final class FlashbackBudgetSelfTests {
             }
         }
         Map<String, Object> state = ctx.state();
+        useDefaults(state);
         ActionCamTab tab = openTab(ctx);
         if (tab == null) {
             return ctx.tick() > 200 ? StepResult.fail("Tab Action-Cam öffnet nicht") : StepResult.pending();
@@ -315,11 +317,16 @@ public final class FlashbackBudgetSelfTests {
             if (minecraft.gui.screen() instanceof ConfiguratorScreen screen) {
                 screen.discardAndClose();
             }
+            restoreConfig(state);
             Screenshots.hideMarker(false);
             return StepResult.pass();
         }
         PathPreviewModel model = tab.previewModel();
         if (!state.containsKey(MARK)) {
+            if (phase == 0 && slider.current() != Math.round(Simplification.DEFAULT_SLIDER * 100.0)) {
+                return StepResult.fail("Tab Action-Cam nicht mit der Standard-Vereinfachung geöffnet: Regler " + slider.current() + " statt "
+                        + Math.round(Simplification.DEFAULT_SLIDER * 100.0));
+            }
             Screenshots.hideMarker(true);
             Screenshots.parkMouse(minecraft);
             tab.reveal(widget);
@@ -344,6 +351,9 @@ public final class FlashbackBudgetSelfTests {
             if (checked.status() == StepResult.Status.FAIL) {
                 return checked;
             }
+            if (!(minecraft.gui.screen() instanceof ConfiguratorScreen screen) || !screen.hasUnsavedChanges()) {
+                return StepResult.fail("Fußzeile ohne „Ungespeicherte Änderungen“ bei Regler " + Math.round(values[phase] * 100.0));
+            }
             String name = "action_cam_flashback_simplify_" + Math.round(values[phase] * 100.0) + suffix;
             state.put(SHOT, Screenshots.enabled() ? Screenshots.capture(name) : CompletableFuture.completedFuture(""));
             return StepResult.pending();
@@ -355,6 +365,19 @@ public final class FlashbackBudgetSelfTests {
         state.remove(MARK);
         state.put(PHASE, phase + 1);
         return StepResult.pending();
+    }
+
+    static void useDefaults(Map<String, Object> state) {
+        if (!state.containsKey(SAVED)) {
+            state.put(SAVED, RecordingConfig.get().copy());
+            RecordingConfig.CONFIG.set(new RecordingConfig());
+        }
+    }
+
+    static void restoreConfig(Map<String, Object> state) {
+        if (state.remove(SAVED) instanceof RecordingConfig saved) {
+            RecordingConfig.CONFIG.set(saved);
+        }
     }
 
     private static StepResult checkPreview(SelfTest.StepContext ctx, PathPreviewModel model, PathPreview preview, double slider) {
@@ -390,6 +413,7 @@ public final class FlashbackBudgetSelfTests {
         Map<String, Object> state = ctx.state();
         int phase = (int) state.getOrDefault(PHASE, 0);
         if (phase == 0) {
+            useDefaults(state);
             ActionCamTab tab = openTab(ctx);
             if (tab == null) {
                 return ctx.tick() > 200 ? StepResult.fail("Tab Action-Cam öffnet nicht") : StepResult.pending();
@@ -408,6 +432,10 @@ public final class FlashbackBudgetSelfTests {
         if (!state.containsKey("fb.layout")) {
             state.put("fb.layout", Boolean.TRUE);
             ctx.log("Layout der großen Vorschau: " + screen.layout());
+            if (Math.abs(model.slider() - Simplification.DEFAULT_SLIDER) > 0.005 || !model.limit()) {
+                return StepResult.fail(String.format(Locale.ROOT, "große Pfad-Vorschau nicht mit den Standardwerten: Vereinfachung %.3f statt %.3f, Obergrenze %s",
+                        model.slider(), Simplification.DEFAULT_SLIDER, model.limit()));
+            }
         }
         if (!model.ready() || ctx.tick() - (int) state.get(MARK) < SETTLE) {
             return ctx.tick() - (int) state.get(MARK) > 800 ? StepResult.fail("große Pfad-Vorschau rechnet nicht fertig") : StepResult.pending();
@@ -419,6 +447,7 @@ public final class FlashbackBudgetSelfTests {
             if (minecraft.gui.screen() instanceof ConfiguratorScreen configurator) {
                 configurator.discardAndClose();
             }
+            restoreConfig(state);
             Screenshots.hideMarker(false);
             return StepResult.pass();
         }

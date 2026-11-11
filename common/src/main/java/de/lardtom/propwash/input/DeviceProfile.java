@@ -1,5 +1,8 @@
 package de.lardtom.propwash.input;
 
+import de.lardtom.propwash.input.addon.AddonBindings;
+import de.lardtom.propwash.input.addon.AxisAssignment;
+import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -24,6 +27,7 @@ public final class DeviceProfile {
     public float throttleRate = 0.8F;
     public Map<String, SwitchAssignment> switches = new LinkedHashMap<>();
     public Map<String, SwitchCommand> commands = new LinkedHashMap<>();
+    public Map<String, AxisAssignment> addonAxes = new LinkedHashMap<>();
     public boolean setupDone = false;
 
     public DeviceProfile() {
@@ -85,6 +89,51 @@ public final class DeviceProfile {
         } else {
             this.switches.put(key(function), binding);
         }
+    }
+
+    public SwitchAssignment addonBinding(Identifier id) {
+        SwitchAssignment binding = id == null ? null : this.switches.get(id.toString());
+        return binding != null ? binding : SwitchAssignment.none();
+    }
+
+    public void setAddonBinding(Identifier id, @Nullable SwitchAssignment binding) {
+        if (binding == null || !binding.bound()) {
+            this.switches.remove(id.toString());
+        } else {
+            this.switches.put(id.toString(), binding);
+        }
+    }
+
+    public AxisAssignment addonAxis(Identifier id) {
+        return AddonBindings.axisFor(id == null ? null : this.addonAxes.get(id.toString()));
+    }
+
+    public void setAddonAxis(Identifier id, @Nullable AxisAssignment assignment) {
+        if (assignment == null) {
+            this.addonAxes.remove(id.toString());
+        } else {
+            this.addonAxes.put(id.toString(), assignment);
+        }
+    }
+
+    public void keepAddonsFrom(DeviceProfile other) {
+        for (Map.Entry<String, SwitchAssignment> e : other.switches.entrySet()) {
+            SwitchAssignment binding = e.getValue();
+            if (AddonBindings.addonKey(e.getKey()) && binding != null && binding.bound() && this.stickConflict(binding) == null) {
+                this.switches.put(e.getKey(), binding.copy());
+            }
+        }
+        Map<String, AxisAssignment> axes = new LinkedHashMap<>();
+        if (other.addonAxes != null) {
+            for (Map.Entry<String, AxisAssignment> e : other.addonAxes.entrySet()) {
+                AxisAssignment assignment = e.getValue() == null ? AxisAssignment.keys() : e.getValue().copy();
+                if (assignment.onAxis() && this.stickOnAxis(assignment.index) != null) {
+                    assignment = AxisAssignment.keys();
+                }
+                axes.put(e.getKey(), assignment);
+            }
+        }
+        this.addonAxes = axes;
     }
 
     public SwitchCommand command(SwitchFunction function) {
@@ -245,7 +294,37 @@ public final class DeviceProfile {
             }
             affected.add(function);
         }
+        this.moveAddonsOffSticks(targets);
         return affected;
+    }
+
+    private void moveAddonsOffSticks(Map<Integer, Integer> targets) {
+        for (String key : new ArrayList<>(this.switches.keySet())) {
+            SwitchAssignment binding = this.switches.get(key);
+            Integer to = AddonBindings.addonKey(key) && binding != null && binding.source == SwitchSource.AXIS ? targets.get(binding.index) : null;
+            if (to == null) {
+                continue;
+            }
+            if (to >= 0) {
+                binding.index = to;
+            } else {
+                this.switches.remove(key);
+            }
+        }
+        if (this.addonAxes == null) {
+            return;
+        }
+        for (Map.Entry<String, AxisAssignment> e : this.addonAxes.entrySet()) {
+            AxisAssignment assignment = e.getValue();
+            Integer to = assignment != null && assignment.onAxis() ? targets.get(assignment.index) : null;
+            if (to == null) {
+                continue;
+            }
+            AxisAssignment moved = to >= 0 ? AxisAssignment.axis(to) : AxisAssignment.keys();
+            moved.invert = assignment.invert;
+            moved.deadband = assignment.deadband;
+            e.setValue(moved);
+        }
     }
 
     private static boolean contains(int[] values, int value) {
@@ -294,6 +373,15 @@ public final class DeviceProfile {
         }
         this.switches = copy;
         this.commands = SwitchCommands.copy(other.commands);
+        Map<String, AxisAssignment> axes = new LinkedHashMap<>();
+        if (other.addonAxes != null) {
+            for (Map.Entry<String, AxisAssignment> e : other.addonAxes.entrySet()) {
+                if (e.getValue() != null) {
+                    axes.put(e.getKey(), e.getValue().copy());
+                }
+            }
+        }
+        this.addonAxes = axes;
     }
 
     public void sanitize() {
@@ -332,8 +420,10 @@ public final class DeviceProfile {
                     }
                 }
             }
+            AddonBindings.keepSwitches(this.switches, clean);
         }
         this.switches = clean;
         this.commands = SwitchCommands.sanitize(this.commands);
+        this.addonAxes = AddonBindings.keepAxes(this.addonAxes);
     }
 }

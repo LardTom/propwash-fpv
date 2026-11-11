@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/drone_built",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "sharecode_loaded"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:paper"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.sharecode.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.sharecode.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

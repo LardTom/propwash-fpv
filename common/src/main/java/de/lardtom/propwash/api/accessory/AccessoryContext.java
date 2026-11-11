@@ -34,4 +34,8 @@ public interface AccessoryContext {
     Vec3 velocity();
 
     DronePhysics physics();
+
+    default DispenseResult dispense(int slot, DispenseOptions options) {
+        return DispenseResult.of(DispenseResult.Status.REFUSED);
+    }
 }

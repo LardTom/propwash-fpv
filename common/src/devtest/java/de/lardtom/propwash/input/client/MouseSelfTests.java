@@ -991,7 +991,11 @@ public final class MouseSelfTests {
                     return ctx.tick() > 200 ? StepResult.fail("Assistent ohne Gerät öffnet nicht") : StepResult.pending();
                 }
                 if (!this.step) {
-                    return StepResult.pass();
+                    if (wizard.page() != ReceiverWizardScreen.Page.DEVICE) {
+                        wizard.showPage(ReceiverWizardScreen.Page.DEVICE);
+                    }
+                    return wizard.page() == ReceiverWizardScreen.Page.DEVICE ? StepResult.pass()
+                            : StepResult.fail("Assistent zeigt die Seite " + wizard.page() + " statt der Geräte-Seite");
                 }
                 wizard.openMouseStep();
                 this.phase = 2;

@@ -140,7 +140,7 @@ public final class CourseElementsScene {
                     s.at(0.0F).equip(PILOT, Cue.Slot.HAND, REMOTE);
                     s.at(0.0F).equip(PILOT, Cue.Slot.HEAD, SceneKit.GOGGLES_ANALOG);
                     s.at(0.0F).camera(OVERVIEW, 20.0F, 44.0F, 1.0F, 20.0F);
-                    s.at(0.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), START, 270.0F, Cue.Appear.POP, 8.0F);
+                    s.at(0.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), START, 90.0F, Cue.Appear.POP, 8.0F);
                     s.at(4.0F).arm(DRONE, true);
                     s.at(4.0F).throttle(DRONE, 0.6F, 10.0F);
                     s.at(4.0F).move(DRONE, FLY_START - 4.0F, Ease.IN_OUT, LAUNCH);

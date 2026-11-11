@@ -1,10 +1,12 @@
 package de.lardtom.propwash.race;
 
 import de.lardtom.propwash.server.WorldRuleText;
+import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.rules.RuleSpec;
 import de.lardtom.propwash.zone.ZoneNames;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,6 +18,7 @@ public final class AssistWords {
     public static final String SEPARATOR = "propwash.race.assist.separator";
     public static final String LIST_SEPARATOR = ", ";
     public static final String NOW = ".now";
+    public static final String STANDARD_VALUES = "propwash.race_rules.assist.world_values";
 
     private AssistWords() {
     }
@@ -67,24 +70,25 @@ public final class AssistWords {
                 MutableComponent rules = Component.empty();
                 int count = 0;
                 for (AssistDetail detail : details) {
-                    Optional<RuleSpec> spec = detail.rule();
-                    if (spec.isPresent()) {
+                    Optional<RaceRules.Rule> known = detail.raceRule();
+                    if (known.isPresent()) {
                         if (count++ > 0) {
                             rules.append(LIST_SEPARATOR);
                         }
-                        rules.append(rule(spec.get(), detail.value()));
+                        rules.append(rule(known.get(), detail.value(), detail.reference()));
                     }
                 }
                 if (count > 0) {
-                    yield Component.translatable(key + ".values", rules);
+                    yield Component.translatable(STANDARD_VALUES, rules);
                 }
                 yield has(details, AssistDetail.CLIENT) ? Component.translatable(key + "." + AssistDetail.CLIENT) : Component.translatable(key);
             }
             case ZONE_PHYSICS -> {
                 Map<Integer, MutableComponent> zones = new LinkedHashMap<>();
+                RaceStandard standard = RaceStandards.current();
                 for (AssistDetail detail : details) {
-                    Optional<RuleSpec> spec = detail.rule();
-                    if (spec.isPresent()) {
+                    Optional<RaceRules.Rule> known = detail.raceRule();
+                    if (known.isPresent()) {
                         MutableComponent rules = zones.get(detail.reference());
                         if (rules == null) {
                             rules = Component.empty();
@@ -92,7 +96,8 @@ public final class AssistWords {
                         } else {
                             rules.append(LIST_SEPARATOR);
                         }
-                        rules.append(rule(spec.get(), detail.value()));
+                        RuleSpec spec = known.get().spec();
+                        rules.append(rule(known.get(), detail.value(), spec != null ? WorldRules.current().get(spec) : standard.value(known.get())));
                     }
                 }
                 if (zones.isEmpty()) {
@@ -112,6 +117,20 @@ public final class AssistWords {
                 }
                 yield out;
             }
+            case PERSONAL_RULES -> {
+                MutableComponent rules = Component.empty();
+                int count = 0;
+                for (AssistDetail detail : details) {
+                    Optional<RaceRules.Rule> known = detail.raceRule();
+                    if (known.isPresent()) {
+                        if (count++ > 0) {
+                            rules.append(LIST_SEPARATOR);
+                        }
+                        rules.append(rule(known.get(), detail.value(), detail.reference()));
+                    }
+                }
+                yield count > 0 ? Component.translatable(key + ".values", rules) : Component.translatable(key);
+            }
             case PARTS_MISMATCH -> {
                 MutableComponent issues = Component.empty();
                 int count = 0;
@@ -124,6 +143,14 @@ public final class AssistWords {
                     }
                 }
                 yield count > 0 ? Component.translatable(key + ".issues", issues) : Component.translatable(key);
+            }
+            case SCALE -> {
+                for (AssistDetail detail : details) {
+                    if (AssistDetail.SCALE_PERCENT.equals(detail.subject())) {
+                        yield Component.translatable(key + "." + AssistDetail.SCALE_PERCENT + tense, detail.value());
+                    }
+                }
+                yield Component.translatable(key + tense);
             }
             case GOGGLES_LATENCY -> {
                 for (AssistDetail detail : details) {
@@ -158,6 +185,26 @@ public final class AssistWords {
     public static MutableComponent rule(RuleSpec spec, int value) {
         return Component.translatable("propwash.race.assist.rule_value", Component.translatable(spec.translationKey()),
                 WorldRuleText.value(spec, value), WorldRuleText.value(spec, spec.defaultValue()));
+    }
+
+    public static MutableComponent rule(RaceRules.Rule rule, int value, int standard) {
+        return Component.translatable("propwash.race.assist.rule_value", name(rule), value(rule, value), value(rule, standard));
+    }
+
+    public static MutableComponent name(RaceRules.Rule rule) {
+        if (rule.spec() != null) {
+            return Component.translatable(rule.spec().translationKey());
+        }
+        Identifier id = Identifier.tryParse(rule.id());
+        return id == null ? Component.literal(rule.id()) : WorldRuleText.name(id).copy();
+    }
+
+    public static Component value(RaceRules.Rule rule, int value) {
+        if (rule.spec() != null) {
+            return WorldRuleText.value(rule.spec(), value);
+        }
+        Identifier id = Identifier.tryParse(rule.id());
+        return id == null ? Component.literal(RaceRules.format(rule, value)) : WorldRuleText.value(id, RaceRules.format(rule, value));
     }
 
     private static boolean has(List<AssistDetail> details, String subject) {

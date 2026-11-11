@@ -1,0 +1,8 @@
+{
+  "propwash.input.modes.auto_arm": "Auto-Arm",
+  "propwash.input.modes.auto_arm.search": "Nach Reset automatisch armen",
+  "propwash.input.modes.auto_arm.tooltip": "Nach Reset automatisch armen: Setzt du die Drohne per Reset auf den Homepoint zurück und steht Arm noch auf an (Schalter, gehaltene oder umgeschaltete Taste, Arm-Zustand der Tastatur), wird sie scharf, sobald das Gas unten ist – ohne den Schalter erst aus- und wieder einzuschalten. Das OSD zeigt solange „AUTO-ARM: GAS RUNTER“. Gilt nur nach einem Reset, nicht nach Absturz, Spawn oder GPS Rescue; die übrigen Sperren (Neigung, Akku, Welt-Regeln) gelten weiter, und ein Reset startet keinen Countdown. Aus: Arm erst aus- und wieder einschalten.",
+  "propwash.osd.warning.auto_arm": "AUTO-ARM: GAS RUNTER",
+  "propwash.osd.warning.auto_arm_3d": "AUTO-ARM: GAS MITTE",
+  "propwash.rescue.reset.nearby": "Reset: Homepoint blockiert – Drohne an der nächsten freien Stelle abgesetzt"
+}

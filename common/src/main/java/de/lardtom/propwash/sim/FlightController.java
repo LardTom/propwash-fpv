@@ -4,6 +4,16 @@ final class FlightController {
     static final double ANTI_GRAVITY_HZ = 5.0;
     static final double SAG_FILTER_HZ = 1.0;
     static final double REVERSAL_ITERM_HOLD_S = 0.25;
+    static final double CONTACT_IDLE_THROTTLE = 0.05;
+    static final double CONTACT_GRACE_S = 0.3;
+    static final double KNOCKED_GRACE_S = 0.1;
+    static final double TOUCH_GRACE_S = 0.1;
+    static final double CONTACT_FADE_S = 0.15;
+    static final double CONTACT_RELEASE_S = 0.3;
+    static final double KNOCKED_UP = Math.cos(Math.toRadians(30.0));
+    static final double KNOCKED_DPS = 400.0;
+    static final double LYING_UP = Math.cos(Math.toRadians(60.0));
+    static final double CONTACT_STICK = 0.05;
 
     final RcProcessor rc = new RcProcessor();
     final AttitudeController attitude = new AttitudeController();
@@ -33,6 +43,16 @@ final class FlightController {
     boolean mode3dActive;
     int direction3d = 1;
     double reversalHoldS;
+    boolean contact;
+    boolean contactHeld;
+    boolean knocked;
+    double contactIdleS;
+    double contactFreeS;
+    double lyingS;
+    boolean throttled;
+    double touchIdleS;
+    double restS;
+    double contactAuthority = 1.0;
     private boolean antiGravity3dPrimed;
 
     void configure(AirframeSpec params, FlightControllerConfig config, FilterSettings filters) {
@@ -90,6 +110,16 @@ final class FlightController {
         this.mode3dActive = false;
         this.direction3d = 1;
         this.reversalHoldS = 0.0;
+        this.contact = false;
+        this.contactHeld = false;
+        this.knocked = false;
+        this.contactIdleS = 0.0;
+        this.contactFreeS = 0.0;
+        this.lyingS = 0.0;
+        this.throttled = false;
+        this.touchIdleS = 0.0;
+        this.restS = 0.0;
+        this.contactAuthority = 1.0;
         this.antiGravity3dPrimed = false;
         for (int i = 0; i < AirframeSpec.MOTORS; i++) {
             this.duty[i] = 0.0;
@@ -162,6 +192,13 @@ final class FlightController {
         }
         boolean airmodeActive = armed && pid.airmode && this.airmodeLatched;
         boolean iActive = armed && (pid.airmode ? this.airmodeLatched : thr > 0.05);
+        this.updateContact(body, rollStick, pitchStick, yawStick, armed && thr <= CONTACT_IDLE_THROTTLE, armed, dt);
+        if (this.knocked || this.restS > 0.0) {
+            airmodeActive = false;
+        }
+        if (this.contactIdleS > 0.0 || this.lyingS > CONTACT_GRACE_S) {
+            iActive = false;
+        }
         double ag;
         if (mode3d) {
             if (this.reversalHoldS > 0.0) {
@@ -197,12 +234,18 @@ final class FlightController {
         }
         double tl = pid.thrustLinearPercent / 100.0;
         boolean reversed = mode3d && this.direction3d < 0;
+        double rollOut = this.axes[FcAxes.ROLL].output;
+        double pitchOut = this.axes[FcAxes.PITCH].output;
+        double yawOut = this.axes[FcAxes.YAW].output;
+        if (this.contactAuthority < 1.0) {
+            rollOut *= this.contactAuthority;
+            pitchOut *= this.contactAuthority;
+            yawOut *= this.contactAuthority;
+        }
         if (reversed) {
-            this.mixer.mix(this.params, -this.axes[FcAxes.ROLL].output, -this.axes[FcAxes.PITCH].output, -this.axes[FcAxes.YAW].output,
-                    compensateThrustLinear(thr, tl), airmodeActive, pid.propsOut);
+            this.mixer.mix(this.params, -rollOut, -pitchOut, -yawOut, compensateThrustLinear(thr, tl), airmodeActive, pid.propsOut);
         } else {
-            this.mixer.mix(this.params, this.axes[FcAxes.ROLL].output, this.axes[FcAxes.PITCH].output, this.axes[FcAxes.YAW].output,
-                    compensateThrustLinear(thr, tl), airmodeActive, pid.propsOut);
+            this.mixer.mix(this.params, rollOut, pitchOut, yawOut, compensateThrustLinear(thr, tl), airmodeActive, pid.propsOut);
         }
         this.saturatedPrev = anySumSat || this.mixer.saturated;
         this.throttleOut = this.mixer.throttle;
@@ -217,6 +260,48 @@ final class FlightController {
                 this.duty[i] = armed ? idle + range * o : 0.0;
             }
         }
+    }
+
+    private void updateContact(RigidBody body, double rollStick, double pitchStick, double yawStick, boolean idleThrottle, boolean armed,
+                               double dt) {
+        if (this.contact) {
+            this.contactHeld = true;
+            this.contactFreeS = 0.0;
+        } else if (this.contactHeld && this.contactFreeS < CONTACT_RELEASE_S) {
+            this.contactFreeS += dt;
+        } else {
+            this.contactHeld = false;
+            this.contactFreeS = 0.0;
+        }
+        boolean idle = idleThrottle && Math.abs(rollStick) <= CONTACT_STICK && Math.abs(pitchStick) <= CONTACT_STICK
+                && Math.abs(yawStick) <= CONTACT_STICK;
+        if (!idle) {
+            this.knocked = false;
+        } else if (this.contactHeld && (body.r11 < KNOCKED_UP || this.spinning())) {
+            this.knocked = true;
+        }
+        this.contactIdleS = idle && (this.contactHeld || this.knocked) ? this.contactIdleS + dt : 0.0;
+        this.lyingS = armed && this.contactHeld && body.r11 < LYING_UP ? this.lyingS + dt : 0.0;
+        this.throttled = armed && (this.throttled || !idleThrottle);
+        if (this.throttled && idle && this.contactHeld) {
+            if (this.contact) {
+                this.touchIdleS += dt;
+            }
+            this.restS = this.touchIdleS > TOUCH_GRACE_S ? this.restS + dt : 0.0;
+        } else {
+            this.touchIdleS = 0.0;
+            this.restS = 0.0;
+        }
+        if (this.knocked) {
+            this.contactAuthority = 1.0 - SimMath.clamp01((this.contactIdleS - KNOCKED_GRACE_S) / CONTACT_FADE_S);
+        } else {
+            this.contactAuthority = 1.0 - SimMath.clamp01(this.restS / CONTACT_FADE_S);
+        }
+    }
+
+    private boolean spinning() {
+        return Math.abs(this.gyro[FcAxes.ROLL]) > KNOCKED_DPS || Math.abs(this.gyro[FcAxes.PITCH]) > KNOCKED_DPS
+                || Math.abs(this.gyro[FcAxes.YAW]) > KNOCKED_DPS;
     }
 
     double magnitude3d(double stick, double deadband, boolean armed) {

@@ -1,0 +1,313 @@
+{
+  "schema": 1,
+  "course": "5f0c2a8e-3b1d-4c6e-9a7f-1b2c3d4e5f60",
+  "number": 1,
+  "name": "Stapel-Kurs",
+  "mode": "laps",
+  "creativeFc": {
+    "course": "world",
+    "worldRule": false,
+    "raceLegal": false
+  },
+  "layout": 2,
+  "raceStandard": {
+    "defaults": true,
+    "values": {},
+    "changedAt": null,
+    "changedBy": ""
+  },
+  "serverRules": {
+    "defaults": true,
+    "values": {},
+    "changedAt": null,
+    "changedBy": ""
+  },
+  "layouts": [
+    {
+      "layout": 2,
+      "current": true,
+      "archivedAt": null,
+      "elements": 3,
+      "laps": {
+        "clean": [
+          {
+            "rank": 1,
+            "player": "00000000-0000-4000-8000-0000000000a1",
+            "name": "Anna",
+            "timeMs": 30250,
+            "time": "30.250",
+            "date": 1792300000000,
+            "frame": "race_5",
+            "assist": [],
+            "assistDetails": [],
+            "rules": [],
+            "serverRules": null,
+            "creativeFc": false
+          },
+          {
+            "rank": 2,
+            "player": "00000000-0000-4000-8000-0000000000b2",
+            "name": "Ben <B&B>",
+            "timeMs": 32000,
+            "time": "32.000",
+            "date": 1792300000020,
+            "frame": "race_5",
+            "assist": [],
+            "assistDetails": [],
+            "rules": [],
+            "serverRules": null,
+            "creativeFc": false
+          },
+          {
+            "rank": 3,
+            "player": "00000000-0000-4000-8000-0000000000a1",
+            "name": "Anna",
+            "timeMs": 41000,
+            "time": "41.000",
+            "date": 1792300000010,
+            "frame": "whoop_65",
+            "assist": [],
+            "assistDetails": [],
+            "rules": [],
+            "serverRules": null,
+            "creativeFc": false
+          }
+        ],
+        "assisted": [
+          {
+            "rank": 1,
+            "player": "00000000-0000-4000-8000-0000000000b2",
+            "name": "Ben <B&B>",
+            "timeMs": 28000,
+            "time": "28.000",
+            "date": 1792300000040,
+            "frame": "race_5",
+            "assist": [
+              "hold_mode"
+            ],
+            "assistDetails": [
+              {
+                "reason": "hold_mode",
+                "subject": "altitude",
+                "value": 0,
+                "reference": 0
+              }
+            ],
+            "rules": [],
+            "serverRules": null,
+            "creativeFc": false
+          }
+        ]
+      },
+      "classes": {
+        "clean": {
+          "race_5": [
+            {
+              "rank": 1,
+              "player": "00000000-0000-4000-8000-0000000000a1",
+              "name": "Anna",
+              "timeMs": 30250,
+              "time": "30.250",
+              "date": 1792300000000,
+              "frame": "race_5",
+              "assist": [],
+              "assistDetails": [],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            },
+            {
+              "rank": 2,
+              "player": "00000000-0000-4000-8000-0000000000b2",
+              "name": "Ben <B&B>",
+              "timeMs": 32000,
+              "time": "32.000",
+              "date": 1792300000020,
+              "frame": "race_5",
+              "assist": [],
+              "assistDetails": [],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            }
+          ],
+          "whoop_65": [
+            {
+              "rank": 1,
+              "player": "00000000-0000-4000-8000-0000000000a1",
+              "name": "Anna",
+              "timeMs": 41000,
+              "time": "41.000",
+              "date": 1792300000010,
+              "frame": "whoop_65",
+              "assist": [],
+              "assistDetails": [],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            }
+          ]
+        },
+        "assisted": {
+          "race_5": [
+            {
+              "rank": 1,
+              "player": "00000000-0000-4000-8000-0000000000b2",
+              "name": "Ben <B&B>",
+              "timeMs": 28000,
+              "time": "28.000",
+              "date": 1792300000040,
+              "frame": "race_5",
+              "assist": [
+                "hold_mode"
+              ],
+              "assistDetails": [
+                {
+                  "reason": "hold_mode",
+                  "subject": "altitude",
+                  "value": 0,
+                  "reference": 0
+                }
+              ],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            }
+          ]
+        }
+      },
+      "races": {
+        "clean": {
+          "3": [
+            {
+              "rank": 1,
+              "player": "00000000-0000-4000-8000-0000000000b2",
+              "name": "Ben <B&B>",
+              "laps": 3,
+              "timeMs": 93000,
+              "time": "1:33.000",
+              "date": 1792300000060,
+              "frame": "race_5",
+              "assist": [],
+              "assistDetails": [],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            },
+            {
+              "rank": 2,
+              "player": "00000000-0000-4000-8000-0000000000a1",
+              "name": "Anna",
+              "laps": 3,
+              "timeMs": 95000,
+              "time": "1:35.000",
+              "date": 1792300000050,
+              "frame": "race_5",
+              "assist": [],
+              "assistDetails": [],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            }
+          ]
+        },
+        "assisted": {
+          "2": [
+            {
+              "rank": 1,
+              "player": "00000000-0000-4000-8000-0000000000b2",
+              "name": "Ben <B&B>",
+              "laps": 2,
+              "timeMs": 60000,
+              "time": "1:00.000",
+              "date": 1792300000070,
+              "frame": "race_5",
+              "assist": [
+                "hold_mode"
+              ],
+              "assistDetails": [
+                {
+                  "reason": "hold_mode",
+                  "subject": "position",
+                  "value": 0,
+                  "reference": 0
+                }
+              ],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "layout": 1,
+      "current": false,
+      "archivedAt": 1792299999900,
+      "elements": 2,
+      "laps": {
+        "clean": [
+          {
+            "rank": 1,
+            "player": "00000000-0000-4000-8000-0000000000c3",
+            "name": "Carl",
+            "timeMs": 33000,
+            "time": "33.000",
+            "date": 1792299999500,
+            "frame": "race_5",
+            "assist": [],
+            "assistDetails": [],
+            "rules": [],
+            "serverRules": null,
+            "creativeFc": false
+          }
+        ],
+        "assisted": []
+      },
+      "classes": {
+        "clean": {
+          "race_5": [
+            {
+              "rank": 1,
+              "player": "00000000-0000-4000-8000-0000000000c3",
+              "name": "Carl",
+              "timeMs": 33000,
+              "time": "33.000",
+              "date": 1792299999500,
+              "frame": "race_5",
+              "assist": [],
+              "assistDetails": [],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            }
+          ]
+        },
+        "assisted": {}
+      },
+      "races": {
+        "clean": {
+          "3": [
+            {
+              "rank": 1,
+              "player": "00000000-0000-4000-8000-0000000000c3",
+              "name": "Carl",
+              "laps": 3,
+              "timeMs": 101000,
+              "time": "1:41.000",
+              "date": 1792299999600,
+              "frame": "race_5",
+              "assist": [],
+              "assistDetails": [],
+              "rules": [],
+              "serverRules": null,
+              "creativeFc": false
+            }
+          ]
+        },
+        "assisted": {}
+      }
+    }
+  ]
+}

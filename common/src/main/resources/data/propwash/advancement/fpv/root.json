@@ -1,0 +1,47 @@
+{
+  "criteria": {
+    "has_gear": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "propwash:drone",
+              "propwash:remote",
+              "propwash:drone_workbench",
+              "propwash:goggles_analog",
+              "propwash:goggles_digital",
+              "propwash:goggles_creative"
+            ]
+          }
+        ]
+      }
+    },
+    "built": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "drone_built"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:drone"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.root.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.root.description"
+    },
+    "background": "propwash:gui/advancements/backgrounds/propwash_fpv",
+    "show_toast": false,
+    "announce_to_chat": false
+  },
+  "requirements": [
+    [
+      "has_gear",
+      "built"
+    ]
+  ]
+}

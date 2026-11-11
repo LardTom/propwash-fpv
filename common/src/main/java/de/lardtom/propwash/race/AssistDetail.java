@@ -2,6 +2,7 @@ package de.lardtom.propwash.race;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import de.lardtom.propwash.drone.DroneScale;
 import de.lardtom.propwash.server.rules.RuleSpec;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.sim.HoldMode;
@@ -20,6 +21,8 @@ public record AssistDetail(LapAssist reason, String subject, int value, int refe
     public static final String CLIENT = "client";
     public static final String CREATIVE_FC = "creative_fc";
     public static final String LATENCY = "latency";
+    public static final String SCALE_PERCENT = "percent";
+    public static final int FULL_SIZE_PERCENT = 100;
 
     public static final Codec<AssistDetail> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("reason").forGetter(detail -> detail.reason().key()),
@@ -30,7 +33,7 @@ public record AssistDetail(LapAssist reason, String subject, int value, int refe
 
     public AssistDetail {
         Objects.requireNonNull(reason, "reason");
-        subject = reason == LapAssist.OTHER ? cleanId(subject) : clean(subject);
+        subject = reason == LapAssist.OTHER || reason.ruleBased() ? cleanId(subject) : clean(subject);
     }
 
     public static String cleanId(String subject) {
@@ -67,8 +70,16 @@ public record AssistDetail(LapAssist reason, String subject, int value, int refe
         return new AssistDetail(LapAssist.WORLD_PHYSICS, spec.name(), value, spec.defaultValue());
     }
 
+    public static AssistDetail rule(RuleSpec spec, int value, int standard) {
+        return new AssistDetail(LapAssist.WORLD_PHYSICS, spec.name(), value, standard);
+    }
+
     public static AssistDetail zone(int zoneId, RuleSpec spec, int value) {
         return new AssistDetail(LapAssist.ZONE_PHYSICS, spec.name(), value, zoneId);
+    }
+
+    public static AssistDetail personal(RuleSpec spec, int value, int server) {
+        return new AssistDetail(LapAssist.PERSONAL_RULES, spec.name(), value, server);
     }
 
     public static AssistDetail clientPhysics() {
@@ -95,6 +106,10 @@ public record AssistDetail(LapAssist reason, String subject, int value, int refe
         return new AssistDetail(LapAssist.OTHER, assistId, 0, 0);
     }
 
+    public static AssistDetail scale(float scale) {
+        return new AssistDetail(LapAssist.SCALE, SCALE_PERCENT, DroneScale.percent(scale), FULL_SIZE_PERCENT);
+    }
+
     public static AssistDetail goggles(int ownMs, int transmitterMs) {
         return new AssistDetail(LapAssist.GOGGLES_LATENCY, LATENCY, ownMs, transmitterMs);
     }
@@ -104,8 +119,15 @@ public record AssistDetail(LapAssist reason, String subject, int value, int refe
         return this.reason == LapAssist.ZONE_PHYSICS ? key + "/" + this.reference : key;
     }
 
+    public Optional<RaceRules.Rule> raceRule() {
+        return this.reason.ruleBased() ? RaceRules.find(this.subject) : Optional.empty();
+    }
+
+    public boolean neutral() {
+        return this.raceRule().map(rule -> !rule.relevant()).orElse(false);
+    }
+
     public Optional<RuleSpec> rule() {
-        return this.reason == LapAssist.WORLD_PHYSICS || this.reason == LapAssist.ZONE_PHYSICS ? WorldRuleSpecs.byName(this.subject)
-                : Optional.empty();
+        return this.reason.ruleBased() ? WorldRuleSpecs.byName(this.subject) : Optional.empty();
     }
 }

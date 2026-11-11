@@ -1,6 +1,7 @@
 package de.lardtom.propwash.osd.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import de.lardtom.propwash.api.client.osd.OsdElementSpec;
 import de.lardtom.propwash.osd.OsdColors;
 import de.lardtom.propwash.osd.OsdConfig;
 import de.lardtom.propwash.osd.OsdData;
@@ -9,6 +10,9 @@ import de.lardtom.propwash.osd.OsdFormat;
 import de.lardtom.propwash.osd.OsdGrid;
 import de.lardtom.propwash.osd.OsdPalette;
 import de.lardtom.propwash.osd.OsdPreset;
+import de.lardtom.propwash.osd.addon.AddonOsdKeys;
+import de.lardtom.propwash.osd.addon.client.AddonOsdLayer;
+import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.ui.ScrollMath;
 import de.lardtom.propwash.ui.TextFit;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
@@ -32,9 +36,11 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Util;
 import org.jspecify.annotations.Nullable;
@@ -74,6 +80,10 @@ public final class OsdConfigTab extends ConfigTab {
     private static final int HEX_MIN_BUTTON = 64;
     private static final int CHECK_SIZE = 8;
     private static final int LIST_MARKER_SPACE = 20;
+    private static final int NAME_INSET = 4 + CHECK_SIZE + 5;
+    private static final int MORE_ICON = 8;
+    private static final int PREVIEW_MIN_WIDTH = 60;
+    private static final String MORE_KEY = "propwash.ui.scroll.more";
     private static final int LABEL_MARGIN = 3;
     private static final int SELECT_COLOR = Palette.ACCENT;
     private static final int HOVER_COLOR = Palette.HOVER_OUTLINE;
@@ -82,15 +92,21 @@ public final class OsdConfigTab extends ConfigTab {
     private static final int HEX_INVALID = Palette.ERROR;
     private static final int HINT_COLOR = Palette.TEXT_MUTED;
     private static final List<String> ELEMENT_COLORS = elementColors();
+    public static final String ADDON_GROUP_KEY = "propwash.osd.group.addon";
+    private static final String ADDON_SOURCE_KEY = "propwash.osd.editor.addon_source";
+    private static final String ADDON_FAILED_KEY = "propwash.osd.editor.addon_failed";
     private static Page lastPage = Page.STYLE;
 
-    private final OsdRenderer renderer = new OsdRenderer();
+    private final AddonOsdLayer addons = new AddonOsdLayer();
+    private final OsdRenderer renderer = new OsdRenderer(this.addons);
     private final OsdData sample = OsdData.sample();
     private OsdConfig working;
     private Page page = lastPage;
     private @Nullable OsdPreset pendingPreset;
     private @Nullable OsdElement selected;
     private @Nullable OsdElement dragging;
+    private @Nullable Identifier selectedAddon;
+    private @Nullable Identifier draggingAddon;
     private int dragStartCol;
     private int dragStartRow;
     private float grabDx;
@@ -178,6 +194,14 @@ public final class OsdConfigTab extends ConfigTab {
         return this.selected;
     }
 
+    public @Nullable Identifier selectedAddon() {
+        return this.selectedAddon;
+    }
+
+    public AddonOsdLayer addons() {
+        return this.addons;
+    }
+
     public @Nullable OsdGrid previewGrid() {
         return this.previewGrid;
     }
@@ -234,15 +258,16 @@ public final class OsdConfigTab extends ConfigTab {
     protected void build() {
         this.forgetWidgets();
         Arrays.fill(this.rowShift, 0);
-        int widestName = 0;
+        Font font = this.host.font();
+        int widestBuiltin = 0;
         for (OsdElement element : OsdElement.values()) {
-            widestName = Math.max(widestName, this.host.font().width(Component.translatable(element.translationKey())));
+            widestBuiltin = Math.max(widestBuiltin, font.width(Component.translatable(element.translationKey())));
         }
-        int classicList = Math.clamp(Math.round(this.width * 0.32F), 112, 180);
-        int neededList = 4 + CHECK_SIZE + 5 + widestName + LIST_MARKER_SPACE;
-        this.listW = Math.max(classicList, Math.min(neededList, Math.max(112, Math.round(this.width * 0.45F))));
-        int squeezedList = 4 + CHECK_SIZE + 5 + (int) Math.ceil(widestName * TextFit.MIN_SQUEEZE) + 1 + LIST_MARKER_SPACE;
-        this.listW = Math.max(this.listW, Math.min(squeezedList, this.width - 80 - 2 * GAP));
+        int widestAddon = 0;
+        for (OsdElementSpec spec : this.addons.specs()) {
+            widestAddon = Math.max(widestAddon, font.width(Component.translatable(spec.nameKey())));
+        }
+        this.listW = listWidth(this.width, widestBuiltin, widestAddon, font.width(Component.translatable(MORE_KEY)));
         this.listX = this.x + this.width - this.listW;
         this.listY = this.y;
         int listSpace = Math.max(LIST_ROW * 3 + 4, this.height - ELEMENT_ROWS * ROW_STEP - this.legendHeight());
@@ -250,7 +275,7 @@ public final class OsdConfigTab extends ConfigTab {
             listSpace = Math.max(LIST_ROW * 3 + 4, listSpace - MORE_HEIGHT);
         }
         this.listH = (listSpace - 4) / LIST_ROW * LIST_ROW + 4;
-        int availableW = Math.max(60, this.width - this.listW - GAP * 2);
+        int availableW = Math.max(PREVIEW_MIN_WIDTH, this.width - this.listW - GAP * 2);
         int availableH = Math.max(30, this.height - CONTROL_ROWS * ROW_STEP - GAP);
         float aspect = this.screenAspect();
         this.previewW = Math.min(availableW, Math.round(availableH * aspect));
@@ -324,6 +349,28 @@ public final class OsdConfigTab extends ConfigTab {
             shift += Math.max(0, line) * ROW_STEP;
         }
         this.rowShift[CONTROL_ROWS] = shift;
+    }
+
+    static int listWidth(int width, int widestBuiltin, int widestAddon, int moreHint) {
+        int widestName = Math.max(widestBuiltin, widestAddon);
+        int classicList = Math.clamp(Math.round(width * 0.32F), 112, 180);
+        int neededList = NAME_INSET + widestName + LIST_MARKER_SPACE;
+        int listW = Math.max(classicList, Math.min(neededList, Math.max(112, Math.round(width * 0.45F))));
+        listW = Math.max(listW, Math.min(squeezedList(widestName), width - 80 - 2 * GAP));
+        int builtinList = Math.max(squeezedList(widestBuiltin), 4 + MORE_ICON + (int) Math.ceil(moreHint * TextFit.MIN_SQUEEZE) + 1);
+        return Math.max(listW, Math.min(builtinList, width - PREVIEW_MIN_WIDTH - 2 * GAP));
+    }
+
+    private static int squeezedList(int nameWidth) {
+        return NAME_INSET + (int) Math.ceil(nameWidth * TextFit.MIN_SQUEEZE) + 1 + LIST_MARKER_SPACE;
+    }
+
+    static int nameRoom(int listW) {
+        return listW - NAME_INSET - LIST_MARKER_SPACE;
+    }
+
+    static int moreRoom(int listW) {
+        return listW - 4 - MORE_ICON;
     }
 
     static int neededWidth(Font font, AbstractWidget widget) {
@@ -712,35 +759,42 @@ public final class OsdConfigTab extends ConfigTab {
         return 16.0F / 9.0F;
     }
 
+    private OsdConfig.@Nullable Slot selectedSlot() {
+        if (this.selected != null) {
+            return this.working.slot(this.selected);
+        }
+        OsdElementSpec spec = this.addons.spec(this.selectedAddon);
+        return spec == null ? null : AddonOsdKeys.slot(this.working, spec);
+    }
+
     private String selectedColor() {
-        OsdElement element = this.selected;
-        return element == null ? "" : this.working.slot(element).color;
+        OsdConfig.Slot slot = this.selectedSlot();
+        return slot == null ? "" : slot.color;
     }
 
     private int selectedScaleIndex() {
-        OsdElement element = this.selected;
-        if (element == null) {
+        OsdConfig.Slot slot = this.selectedSlot();
+        if (slot == null) {
             return 0;
         }
-        OsdConfig.Slot slot = this.working.slot(element);
         return slot.hasScale() ? OsdConfig.scaleStep(slot.scale) + 1 : 0;
     }
 
     private void setElementColor(String hex) {
-        OsdElement element = this.selected;
-        if (element == null || this.syncing) {
+        OsdConfig.Slot slot = this.selectedSlot();
+        if (slot == null || this.syncing) {
             return;
         }
-        this.working.slot(element).color = hex.isEmpty() ? "" : OsdColors.normalize(hex, "");
+        slot.color = hex.isEmpty() ? "" : OsdColors.normalize(hex, "");
         this.changed();
     }
 
     private void setElementScale(int index) {
-        OsdElement element = this.selected;
-        if (element == null || this.syncing) {
+        OsdConfig.Slot slot = this.selectedSlot();
+        if (slot == null || this.syncing) {
             return;
         }
-        this.working.slot(element).scale = index <= 0 ? 0.0F : OsdConfig.scaleAt(index - 1);
+        slot.scale = index <= 0 ? 0.0F : OsdConfig.scaleAt(index - 1);
         this.changed();
     }
 
@@ -820,6 +874,7 @@ public final class OsdConfigTab extends ConfigTab {
     private void applyPreset(OsdPreset preset) {
         this.working.applyPreset(preset);
         this.dragging = null;
+        this.draggingAddon = null;
         this.edited();
     }
 
@@ -833,11 +888,20 @@ public final class OsdConfigTab extends ConfigTab {
 
     private void updateResetButtons() {
         if (this.resetButton != null) {
-            this.resetButton.active = this.working.customized() || this.working.hasElementOverrides();
+            this.resetButton.active = this.working.customized() || this.working.hasElementOverrides() || this.addonsCustomized();
         }
         if (this.styleResetButton != null) {
             this.styleResetButton.active = !this.styleIsDefault();
         }
+    }
+
+    private boolean addonsCustomized() {
+        for (OsdElementSpec spec : this.addons.specs()) {
+            if (AddonOsdKeys.customized(this.working, spec)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean styleIsDefault() {
@@ -927,7 +991,7 @@ public final class OsdConfigTab extends ConfigTab {
         boolean wasSyncing = this.syncing;
         this.syncing = true;
         try {
-            boolean has = this.selected != null;
+            boolean has = this.selectedSlot() != null;
             if (this.elementColorButton != null) {
                 this.elementColorButton.active = has;
                 this.elementColorButton.visible = has;
@@ -944,9 +1008,36 @@ public final class OsdConfigTab extends ConfigTab {
     }
 
     private void select(@Nullable OsdElement element) {
-        if (element != this.selected) {
+        if (element != this.selected || this.selectedAddon != null) {
             this.selected = element;
+            this.selectedAddon = null;
             this.refreshElementControls();
+        }
+    }
+
+    public void selectAddon(Identifier id) {
+        if (this.selected != null || !id.equals(this.selectedAddon)) {
+            this.selected = null;
+            this.selectedAddon = id;
+            this.revealAddon(id);
+            this.refreshElementControls();
+        }
+    }
+
+    private void revealAddon(Identifier id) {
+        List<OsdElementSpec> specs = this.addons.specs();
+        for (int i = 0; i < specs.size(); i++) {
+            if (specs.get(i).id().equals(id)) {
+                int above = (OsdElement.values().length + i) * LIST_ROW;
+                int bottom = above + 2 * LIST_ROW + 4;
+                if (above < this.listScroll) {
+                    this.listScroll = above;
+                } else if (bottom > this.listScroll + this.listH) {
+                    this.listScroll = bottom - this.listH;
+                }
+                this.clampScroll();
+                return;
+            }
         }
     }
 
@@ -962,8 +1053,12 @@ public final class OsdConfigTab extends ConfigTab {
 
     public void resetLayout() {
         this.working.resetLayout();
+        for (OsdElementSpec spec : this.addons.specs()) {
+            AddonOsdKeys.reset(this.working, spec);
+        }
         this.pendingPreset = null;
         this.dragging = null;
+        this.draggingAddon = null;
         this.edited();
     }
 
@@ -972,7 +1067,9 @@ public final class OsdConfigTab extends ConfigTab {
         this.working = OsdConfig.defaults();
         this.pendingPreset = null;
         this.dragging = null;
+        this.draggingAddon = null;
         this.selected = null;
+        this.selectedAddon = null;
         this.edited();
     }
 
@@ -986,6 +1083,13 @@ public final class OsdConfigTab extends ConfigTab {
         if (this.dragging != null) {
             this.working.move(this.dragging, this.dragStartCol, this.dragStartRow);
             this.dragging = null;
+            this.refreshWidgets();
+            return true;
+        }
+        OsdElementSpec draggedAddon = this.addons.spec(this.draggingAddon);
+        if (draggedAddon != null) {
+            AddonOsdKeys.move(this.working, draggedAddon, this.dragStartCol, this.dragStartRow);
+            this.draggingAddon = null;
             this.refreshWidgets();
             return true;
         }
@@ -1017,20 +1121,29 @@ public final class OsdConfigTab extends ConfigTab {
         this.extractScene(graphics, font);
         graphics.outline(this.previewX - 1, this.previewY - 1, this.previewW + 2, this.previewH + 2, Palette.BORDER);
         OsdElement hovered;
+        Identifier hoveredAddon;
         graphics.enableScissor(this.imageX, this.imageY, this.imageX + this.imageW, this.imageY + this.imageH);
         try {
-            if (this.dragging != null) {
+            if (this.isDragging()) {
                 this.extractGridLines(graphics, grid);
             }
             this.renderer.setEditorFocus(this.selected);
             this.renderer.setPixelScale(this.host.minecraft().getWindow().getGuiScale());
             this.renderer.render(graphics, font, this.sample, this.working, grid, grid.textScale(this.working.scale), null, true);
-            hovered = this.dragging == null && grid.contains(mouseX, mouseY) ? this.renderer.movableAt(mouseX, mouseY) : null;
+            boolean pointing = !this.isDragging() && grid.contains(mouseX, mouseY);
+            hoveredAddon = pointing ? this.addons.at(mouseX, mouseY) : null;
+            hovered = pointing && hoveredAddon == null ? this.renderer.movableAt(mouseX, mouseY) : null;
             if (hovered != null && hovered != this.selected) {
                 this.outlineBounds(graphics, hovered, HOVER_COLOR);
             }
+            if (hoveredAddon != null && !hoveredAddon.equals(this.selectedAddon)) {
+                this.outlineBounds(graphics, this.addons.bounds(hoveredAddon), HOVER_COLOR);
+            }
             if (this.selected != null && this.renderer.wasDrawn(this.selected)) {
                 this.outlineBounds(graphics, this.selected, SELECT_COLOR);
+            }
+            if (this.selectedAddon != null) {
+                this.outlineBounds(graphics, this.addons.bounds(this.selectedAddon), SELECT_COLOR);
             }
             this.extractPendingBanner(graphics, font);
         } finally {
@@ -1045,7 +1158,7 @@ public final class OsdConfigTab extends ConfigTab {
         int legendX = this.listX + 1 + font.width(LEGEND_ICON) + 3;
         ThemeText.wrapped(graphics, font, Component.translatable("propwash.osd.editor.fixed_legend"), legendX, legendY,
                 this.listX + this.listW - legendX, HINT_COLOR);
-        if (this.selected == null) {
+        if (this.selected == null && this.selectedAddon == null) {
             int hintTop = this.listBottom() + this.legendHeight() + ROW_GAP + 2;
             this.reportBottom(hintTop + ThemeText.wrapped(graphics, font, Component.translatable("propwash.osd.editor.element_hint"), this.listX,
                     hintTop, this.listW, HINT_COLOR));
@@ -1055,23 +1168,47 @@ public final class OsdConfigTab extends ConfigTab {
             this.reportBottom(hintTop + ThemeText.wrapped(graphics, font, Component.translatable("propwash.osd.editor.hint"), this.controlsX,
                     hintTop, this.controlsW, HINT_COLOR));
         }
-        if (hovered != null) {
+        OsdElementSpec hoveredSpec = this.addons.spec(hoveredAddon);
+        if (hoveredSpec != null) {
+            List<Component> lines = new ArrayList<>(this.addonTooltip(hoveredSpec));
+            lines.add(ThemeText.muted(Component.translatable("propwash.osd.editor.hint")));
+            ThemeText.tooltipLines(graphics, font, lines, mouseX, mouseY);
+        } else if (hovered != null) {
             ThemeText.tooltipLines(graphics, font, List.of(Component.translatable(hovered.translationKey()),
                     ThemeText.muted(Component.translatable("propwash.osd.editor.hint"))), mouseX, mouseY);
         } else if (this.inList(mouseX, mouseY)) {
             OsdElement listed = this.listElementAt(mouseY);
+            OsdElementSpec listedAddon = listed == null ? this.listAddonAt(mouseY) : null;
             if (listed != null) {
                 ThemeText.tooltipLines(graphics, font, this.listTooltip(listed), mouseX, mouseY);
+            } else if (listedAddon != null) {
+                ThemeText.tooltipLines(graphics, font, this.addonTooltip(listedAddon), mouseX, mouseY);
             }
         }
     }
 
-    private List<Component> listTooltip(OsdElement element) {
-        Component name = Component.translatable(element.translationKey());
-        if (element.movable()) {
-            return List.of(name);
+    private List<Component> addonTooltip(OsdElementSpec spec) {
+        String namespace = spec.id().getNamespace();
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.translatable(spec.nameKey()));
+        lines.add(ThemeText.muted(Component.translatable(ADDON_SOURCE_KEY, Services.PLATFORM.getModName(namespace).orElse(namespace))));
+        if (AddonOsdLayer.failed(spec.id())) {
+            lines.add(ThemeText.muted(Component.translatable(ADDON_FAILED_KEY)));
         }
-        return List.of(name, ThemeText.muted(Component.translatable("propwash.osd.editor.fixed")));
+        return lines;
+    }
+
+    private List<Component> listTooltip(OsdElement element) {
+        List<Component> lines = new ArrayList<>(3);
+        lines.add(Component.translatable(element.translationKey()));
+        String description = element.translationKey() + ".description";
+        if (Language.getInstance().has(description)) {
+            lines.add(Component.translatable(description));
+        }
+        if (!element.movable()) {
+            lines.add(ThemeText.muted(Component.translatable("propwash.osd.editor.fixed")));
+        }
+        return lines;
     }
 
     private void extractScene(GuiGraphicsExtractor graphics, Font font) {
@@ -1100,13 +1237,17 @@ public final class OsdConfigTab extends ConfigTab {
     }
 
     private void animateSample() {
-        double t = Util.getMillis() / 1000.0;
-        this.sample.blinkSeconds = t;
-        this.sample.compassDeg = OsdFormat.wrap360(32.0 + t * 6.0);
-        this.sample.rollDeg = 14.0 * Math.sin(t * 0.8);
-        this.sample.pitchDeg = -6.0 + 4.0 * Math.sin(t * 0.5);
-        this.sample.stickRoll = (float) Math.sin(t * 0.8) * 0.4F;
-        this.sample.stickPitch = (float) Math.sin(t * 0.5) * 0.3F;
+        animateSample(this.sample, Util.getMillis() / 1000.0);
+    }
+
+    static void animateSample(OsdData sample, double t) {
+        sample.blinkSeconds = t;
+        sample.compassDeg = OsdFormat.wrap360(32.0 + t * 6.0);
+        sample.rollDeg = 14.0 * Math.sin(t * 0.8);
+        sample.pitchDeg = -6.0 + 4.0 * Math.sin(t * 0.5);
+        sample.stickRoll = (float) Math.sin(t * 0.8) * 0.4F;
+        sample.stickPitch = (float) Math.sin(t * 0.5) * 0.3F;
+        OsdRenderer.previewVelocity(sample);
     }
 
     private void extractGridLines(GuiGraphicsExtractor graphics, OsdGrid grid) {
@@ -1121,7 +1262,13 @@ public final class OsdConfigTab extends ConfigTab {
     }
 
     private void outlineBounds(GuiGraphicsExtractor graphics, OsdElement element, int outlineColor) {
-        float[] b = this.renderer.bounds(element);
+        this.outlineBounds(graphics, this.renderer.bounds(element), outlineColor);
+    }
+
+    private void outlineBounds(GuiGraphicsExtractor graphics, float @Nullable [] b, int outlineColor) {
+        if (b == null) {
+            return;
+        }
         int x0 = (int) Math.floor(b[0]) - 1;
         int y0 = (int) Math.floor(b[1]) - 1;
         int x1 = (int) Math.ceil(b[2]) + 1;
@@ -1140,28 +1287,10 @@ public final class OsdConfigTab extends ConfigTab {
                 if (rowTop + LIST_ROW < this.listY || rowTop > this.listY + this.listH) {
                     continue;
                 }
-                boolean hover = mouseX >= this.listX && mouseX < this.listX + this.listW && mouseY >= rowTop && mouseY < rowTop + LIST_ROW
-                        && mouseY >= this.listY && mouseY < this.listY + this.listH;
-                ThemeDraw.selection(graphics, this.listX + 1, rowTop, this.listX + this.listW - 1, rowTop + LIST_ROW, element == this.selected, hover);
-                OsdConfig.Slot slot = this.working.slot(element);
-                int boxX = this.listX + 4;
-                int boxY = rowTop + (LIST_ROW - CHECK_SIZE) / 2;
-                ThemeDraw.checkbox(graphics, boxX, boxY, CHECK_SIZE, slot.enabled, new WidgetState(true, hover, false, false));
-                int textColor = slot.enabled ? Palette.TEXT : HINT_COLOR;
-                int nameX = boxX + CHECK_SIZE + 5;
-                ThemeText.fitted(graphics, font, Component.translatable(element.translationKey()), nameX, rowTop + 2,
-                        this.listX + this.listW - LIST_MARKER_SPACE - nameX, textColor);
-                int markerX = this.listX + this.listW - 12;
-                if (slot.hasColor()) {
-                    int rgb = OsdColors.rgbOr(slot.color, 0xFFFFFF);
-                    graphics.fill(markerX - 7, rowTop + 3, markerX - 2, rowTop + 8, 0xFF000000 | rgb);
-                } else if (slot.hasScale()) {
-                    graphics.fill(markerX - 6, rowTop + 5, markerX - 3, rowTop + 7, SELECT_COLOR);
-                }
-                if (!element.movable()) {
-                    graphics.text(font, "⌖", markerX, rowTop + 2, HINT_COLOR, false);
-                }
+                this.extractRow(graphics, font, rowTop, this.listHover(mouseX, mouseY, rowTop), element == this.selected, this.working.slot(element),
+                        Component.translatable(element.translationKey()), element.movable(), false);
             }
+            this.extractAddonRows(graphics, font, mouseX, mouseY);
         } finally {
             graphics.disableScissor();
         }
@@ -1172,12 +1301,65 @@ public final class OsdConfigTab extends ConfigTab {
         }
     }
 
+    private boolean listHover(int mouseX, int mouseY, int rowTop) {
+        return mouseX >= this.listX && mouseX < this.listX + this.listW && mouseY >= rowTop && mouseY < rowTop + LIST_ROW
+                && mouseY >= this.listY && mouseY < this.listY + this.listH;
+    }
+
+    private void extractRow(GuiGraphicsExtractor graphics, Font font, int rowTop, boolean hover, boolean selected, OsdConfig.Slot slot, Component name,
+                            boolean movable, boolean muted) {
+        ThemeDraw.selection(graphics, this.listX + 1, rowTop, this.listX + this.listW - 1, rowTop + LIST_ROW, selected, hover);
+        int boxX = this.listX + 4;
+        int boxY = rowTop + (LIST_ROW - CHECK_SIZE) / 2;
+        ThemeDraw.checkbox(graphics, boxX, boxY, CHECK_SIZE, slot.enabled, new WidgetState(true, hover, false, false));
+        int textColor = slot.enabled && !muted ? Palette.TEXT : HINT_COLOR;
+        ThemeText.fitted(graphics, font, name, this.listX + NAME_INSET, rowTop + 2, nameRoom(this.listW), textColor);
+        int markerX = this.listX + this.listW - 12;
+        if (slot.hasColor()) {
+            int rgb = OsdColors.rgbOr(slot.color, 0xFFFFFF);
+            graphics.fill(markerX - 7, rowTop + 3, markerX - 2, rowTop + 8, 0xFF000000 | rgb);
+        } else if (slot.hasScale()) {
+            graphics.fill(markerX - 6, rowTop + 5, markerX - 3, rowTop + 7, SELECT_COLOR);
+        }
+        if (!movable) {
+            graphics.text(font, "⌖", markerX, rowTop + 2, HINT_COLOR, false);
+        }
+    }
+
+    private void extractAddonRows(GuiGraphicsExtractor graphics, Font font, int mouseX, int mouseY) {
+        List<OsdElementSpec> specs = this.addons.specs();
+        if (specs.isEmpty()) {
+            return;
+        }
+        int headerTop = this.listY + 2 + OsdElement.values().length * LIST_ROW - this.listScroll;
+        if (headerTop + LIST_ROW >= this.listY && headerTop <= this.listY + this.listH) {
+            int textX = this.listX + 4;
+            int textW = this.listX + this.listW - 4 - LIST_MARKER_SPACE / 2 - textX;
+            ThemeText.fitted(graphics, font, Component.translatable(ADDON_GROUP_KEY), textX, headerTop + 2, textW, SELECT_COLOR);
+            ThemeDraw.separator(graphics, textX, this.listX + this.listW - 4, headerTop + LIST_ROW - 1);
+        }
+        for (int i = 0; i < specs.size(); i++) {
+            OsdElementSpec spec = specs.get(i);
+            int rowTop = headerTop + (i + 1) * LIST_ROW;
+            if (rowTop + LIST_ROW < this.listY || rowTop > this.listY + this.listH) {
+                continue;
+            }
+            this.extractRow(graphics, font, rowTop, this.listHover(mouseX, mouseY, rowTop), spec.id().equals(this.selectedAddon),
+                    AddonOsdKeys.slot(this.working, spec), Component.translatable(spec.nameKey()), true, AddonOsdLayer.failed(spec.id()));
+        }
+    }
+
+    private int addonRows() {
+        int count = this.addons.specs().size();
+        return count == 0 ? 0 : count + 1;
+    }
+
     private int maxScroll() {
         return Math.max(0, this.listContentHeight() - this.listH);
     }
 
     private int listContentHeight() {
-        return OsdElement.values().length * LIST_ROW + 4;
+        return (OsdElement.values().length + this.addonRows()) * LIST_ROW + 4;
     }
 
     private int legendHeight() {
@@ -1199,10 +1381,20 @@ public final class OsdConfigTab extends ConfigTab {
         return mx >= this.listX && mx < this.listX + this.listW && my >= this.listY && my < this.listY + this.listH;
     }
 
+    private int listRowAt(double my) {
+        return (int) Math.floor((my - this.listY - 2 + this.listScroll) / LIST_ROW);
+    }
+
     private @Nullable OsdElement listElementAt(double my) {
-        int index = (int) Math.floor((my - this.listY - 2 + this.listScroll) / LIST_ROW);
+        int index = this.listRowAt(my);
         OsdElement[] all = OsdElement.values();
         return index >= 0 && index < all.length ? all[index] : null;
+    }
+
+    private @Nullable OsdElementSpec listAddonAt(double my) {
+        int index = this.listRowAt(my) - OsdElement.values().length - 1;
+        List<OsdElementSpec> specs = this.addons.specs();
+        return index >= 0 && index < specs.size() ? specs.get(index) : null;
     }
 
     @Override
@@ -1214,6 +1406,12 @@ public final class OsdConfigTab extends ConfigTab {
         double my = event.y();
         if (this.previewGrid.contains(mx, my)) {
             this.clearFocus();
+            Identifier addonHit = this.addons.at(mx, my);
+            if (addonHit != null) {
+                this.selectAddon(addonHit);
+                this.beginAddonDrag(addonHit, mx, my);
+                return true;
+            }
             OsdElement hit = this.renderer.movableAt(mx, my);
             this.select(hit);
             if (hit != null) {
@@ -1230,12 +1428,18 @@ public final class OsdConfigTab extends ConfigTab {
         if (this.inList(mx, my)) {
             this.clearFocus();
             OsdElement element = this.listElementAt(my);
+            OsdElementSpec addon = element == null ? this.listAddonAt(my) : null;
+            boolean onCheckbox = mx < this.listX + 4 + CHECK_SIZE + 3;
             if (element != null) {
-                boolean onCheckbox = mx < this.listX + 4 + CHECK_SIZE + 3;
                 if (onCheckbox || doubleClick) {
                     this.toggle(element);
                 }
                 this.select(element);
+            } else if (addon != null) {
+                if (onCheckbox || doubleClick) {
+                    this.toggleAddon(addon.id());
+                }
+                this.selectAddon(addon.id());
             }
             return true;
         }
@@ -1249,44 +1453,77 @@ public final class OsdConfigTab extends ConfigTab {
         }
         OsdConfig.Slot slot = this.working.slot(element);
         this.dragging = element;
+        this.draggingAddon = null;
         this.dragStartCol = slot.col;
         this.dragStartRow = slot.row;
         this.grabDx = (float) (mx - grid.anchorX(slot.col, element.align()));
         this.grabDy = (float) (my - grid.cellTop(slot.row));
     }
 
+    public void beginAddonDrag(Identifier id, double mx, double my) {
+        OsdGrid grid = this.previewGrid;
+        OsdElementSpec spec = this.addons.spec(id);
+        if (grid == null || spec == null) {
+            return;
+        }
+        OsdConfig.Slot slot = AddonOsdKeys.slot(this.working, spec);
+        this.dragging = null;
+        this.draggingAddon = id;
+        this.dragStartCol = slot.col;
+        this.dragStartRow = slot.row;
+        this.grabDx = (float) (mx - grid.anchorX(slot.col, AddonOsdKeys.align(spec.align())));
+        this.grabDy = (float) (my - grid.cellTop(slot.row));
+    }
+
     public void dragTo(double mx, double my) {
         OsdGrid grid = this.previewGrid;
         OsdElement element = this.dragging;
-        if (grid == null || element == null) {
+        OsdElementSpec spec = element == null ? this.addons.spec(this.draggingAddon) : null;
+        if (grid == null || element == null && spec == null) {
             return;
         }
         double anchorX = mx - this.grabDx;
         double anchorY = my - this.grabDy;
         int col = (int) Math.round((anchorX - grid.left()) / grid.cellWidth());
-        if (element.align() == OsdElement.Align.RIGHT) {
+        OsdElement.Align align = element != null ? element.align() : AddonOsdKeys.align(spec.align());
+        if (align == OsdElement.Align.RIGHT) {
             col -= 1;
         }
         int row = (int) Math.round((anchorY - grid.top()) / grid.cellHeight());
-        OsdConfig.Slot slot = this.working.slot(element);
+        OsdConfig.Slot slot = element != null ? this.working.slot(element) : AddonOsdKeys.slot(this.working, spec);
         int newCol = OsdGrid.clampCol(col);
         int newRow = OsdGrid.clampRow(row);
         if (slot.col != newCol || slot.row != newRow) {
-            this.working.move(element, newCol, newRow);
+            if (element != null) {
+                this.working.move(element, newCol, newRow);
+            } else {
+                AddonOsdKeys.move(this.working, spec, newCol, newRow);
+            }
             this.edited();
         }
     }
 
     public void endDrag() {
         this.dragging = null;
+        this.draggingAddon = null;
     }
 
     public boolean isDragging() {
-        return this.dragging != null;
+        return this.dragging != null || this.draggingAddon != null;
     }
 
     public void toggle(OsdElement element) {
         OsdConfig.Slot slot = this.working.slot(element);
+        slot.enabled = !slot.enabled;
+        this.edited();
+    }
+
+    public void toggleAddon(Identifier id) {
+        OsdElementSpec spec = this.addons.spec(id);
+        if (spec == null) {
+            return;
+        }
+        OsdConfig.Slot slot = AddonOsdKeys.slot(this.working, spec);
         slot.enabled = !slot.enabled;
         this.edited();
     }
@@ -1302,7 +1539,7 @@ public final class OsdConfigTab extends ConfigTab {
             this.dragListBar(event.y());
             return true;
         }
-        if (this.dragging == null) {
+        if (!this.isDragging()) {
             return false;
         }
         this.dragTo(event.x(), event.y());
@@ -1315,7 +1552,7 @@ public final class OsdConfigTab extends ConfigTab {
             this.draggingListBar = false;
             return true;
         }
-        if (this.dragging == null) {
+        if (!this.isDragging()) {
             return false;
         }
         this.endDrag();
@@ -1336,18 +1573,28 @@ public final class OsdConfigTab extends ConfigTab {
     @Override
     public boolean keyPressed(KeyEvent event) {
         OsdElement element = this.selected;
-        if (element == null || this.editingText()) {
+        OsdElementSpec spec = element == null ? this.addons.spec(this.selectedAddon) : null;
+        if (element == null && spec == null || this.editingText()) {
             return false;
         }
         if (event.key() == InputConstants.KEY_SPACE) {
-            this.toggle(element);
+            if (element != null) {
+                this.toggle(element);
+            } else {
+                this.toggleAddon(spec.id());
+            }
             return true;
         }
         int dc = event.isLeft() ? -1 : event.isRight() ? 1 : 0;
         int dr = event.isUp() ? -1 : event.isDown() ? 1 : 0;
-        if ((dc != 0 || dr != 0) && element.movable()) {
-            OsdConfig.Slot slot = this.working.slot(element);
-            this.working.move(element, slot.col + dc, slot.row + dr);
+        if ((dc != 0 || dr != 0) && (element == null || element.movable())) {
+            if (element != null) {
+                OsdConfig.Slot slot = this.working.slot(element);
+                this.working.move(element, slot.col + dc, slot.row + dr);
+            } else {
+                OsdConfig.Slot slot = AddonOsdKeys.slot(this.working, spec);
+                AddonOsdKeys.move(this.working, spec, slot.col + dc, slot.row + dr);
+            }
             this.edited();
             return true;
         }

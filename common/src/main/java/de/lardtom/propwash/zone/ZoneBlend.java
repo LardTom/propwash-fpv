@@ -2,8 +2,10 @@ package de.lardtom.propwash.zone;
 
 import de.lardtom.propwash.race.AssistDetail;
 import de.lardtom.propwash.server.rules.PhysicsRules;
+import de.lardtom.propwash.server.rules.RuleBase;
 import de.lardtom.propwash.server.rules.RuleSpec;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -56,7 +58,7 @@ public final class ZoneBlend {
                 }
                 entry = new Entry(zone, false);
                 this.live.put(zone.id(), entry);
-            } else if (!snap && entry.weight > 0.0 && zone.transitionTenths() > 0 && !entry.zone.overrides().equals(zone.overrides())) {
+            } else if (!snap && entry.weight > 0.0 && zone.transitionTenths() > 0 && !entry.zone.sameRules(zone)) {
                 Entry old = new Entry(entry.zone, true);
                 old.weight = entry.weight;
                 this.fading.add(old);
@@ -100,10 +102,18 @@ public final class ZoneBlend {
     }
 
     public double value(RuleSpec spec, PhysicsRules world) {
-        double value = world.value(spec);
+        return this.value(spec, RuleBase.of(world));
+    }
+
+    public double value(RuleSpec spec, RuleBase base) {
+        int server = base.serverValue(spec);
+        if (!base.zones(spec)) {
+            return server;
+        }
+        double value = base.baseValue(spec);
         for (Entry entry : this.ordered) {
-            if (entry.weight > 0.0 && entry.zone.overrides(spec)) {
-                double target = entry.zone.value(spec, world.value(spec));
+            if (entry.weight > 0.0 && entry.zone.sets(spec)) {
+                double target = entry.zone.value(spec, server);
                 value = entry.weight >= 1.0 ? target : value + (target - value) * entry.weight;
             }
         }
@@ -115,18 +125,9 @@ public final class ZoneBlend {
         List<Zone> shares = new ArrayList<>();
         for (RuleSpec spec : BLENDED) {
             shares.clear();
-            boolean worldShare = true;
-            for (Entry entry : this.ordered) {
-                if (entry.weight > 0.0 && entry.zone.overrides(spec)) {
-                    if (entry.weight >= 1.0) {
-                        shares.clear();
-                        worldShare = false;
-                    }
-                    shares.add(entry.zone);
-                }
-            }
+            int found = this.collect(spec, shares);
             int worldValue = world.value(spec);
-            if (worldShare && worldValue != spec.defaultValue()) {
+            if (found != 0 && worldValue != spec.defaultValue()) {
                 out.add(AssistDetail.rule(spec, worldValue));
             }
             for (Zone zone : shares) {
@@ -137,6 +138,79 @@ public final class ZoneBlend {
             }
         }
         return out;
+    }
+
+    public List<AssistDetail> details(RuleBase base) {
+        List<AssistDetail> out = new ArrayList<>();
+        List<Zone> shares = new ArrayList<>();
+        for (RuleSpec spec : BLENDED) {
+            int server = base.serverValue(spec);
+            int own = base.baseValue(spec);
+            if (!base.zones(spec)) {
+                continue;
+            }
+            shares.clear();
+            int found = this.collect(spec, shares);
+            if ((found & BASE) != 0 && own != server) {
+                out.add(AssistDetail.personal(spec, own, server));
+            }
+            for (Zone zone : shares) {
+                int value = zone.value(spec, server);
+                if (!zone.raceLegal() && value != server) {
+                    out.add(AssistDetail.zone(zone.id(), spec, value));
+                }
+            }
+        }
+        return out;
+    }
+
+    public interface Shares {
+        void accept(int value, @Nullable Zone zone);
+    }
+
+    private static final int BASE = 1;
+    private static final int SERVER = 2;
+
+    private int collect(RuleSpec spec, List<Zone> shares) {
+        int found = BASE;
+        for (Entry entry : this.ordered) {
+            if (entry.weight > 0.0 && entry.zone.sets(spec)) {
+                if (entry.weight >= 1.0) {
+                    shares.clear();
+                    found = 0;
+                }
+                if (entry.zone.forcesWorld(spec)) {
+                    found |= SERVER;
+                } else {
+                    shares.add(entry.zone);
+                }
+            }
+        }
+        return found;
+    }
+
+    public void shares(RuleSpec spec, PhysicsRules world, Shares sink) {
+        this.shares(spec, RuleBase.of(world), sink);
+    }
+
+    public void shares(RuleSpec spec, RuleBase base, Shares sink) {
+        int server = base.serverValue(spec);
+        if (!base.zones(spec)) {
+            sink.accept(server, null);
+            return;
+        }
+        List<Zone> shares = new ArrayList<>();
+        int found = this.collect(spec, shares);
+        int own = base.baseValue(spec);
+        if ((found & BASE) != 0) {
+            sink.accept(own, null);
+        }
+        if ((found & SERVER) != 0 && ((found & BASE) == 0 || own != server)) {
+            sink.accept(server, null);
+        }
+        for (Zone zone : shares) {
+            sink.accept(zone.value(spec, server), zone);
+        }
     }
 
     public double weight(int zoneId) {

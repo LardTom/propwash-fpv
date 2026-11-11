@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/build_limit",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:flight",
+      "conditions": {
+        "dive": {
+          "min": 100
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:anvil"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.dive.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.dive.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

@@ -1,5 +1,6 @@
 package de.lardtom.propwash.drone.client;
 
+import de.lardtom.propwash.freecam.client.FreecamSession;
 import de.lardtom.propwash.video.client.SpectateSession;
 import net.minecraft.client.Minecraft;
 
@@ -12,7 +13,7 @@ public final class PilotView {
     }
 
     public static boolean active() {
-        return PilotSession.INSTANCE.isActive() || FpvView.spectating();
+        return PilotSession.INSTANCE.isActive() || FpvView.spectating() || FreecamSession.active();
     }
 
     public static boolean useLatched() {

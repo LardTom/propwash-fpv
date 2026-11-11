@@ -8,6 +8,7 @@ import de.lardtom.propwash.video.CameraShake;
 import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageFormat;
+import de.lardtom.propwash.video.VideoCheck;
 import org.jspecify.annotations.Nullable;
 
 public final class VideoConfig {
@@ -134,8 +135,9 @@ public final class VideoConfig {
     }
 
     public enum EffectRenderer {
-        AUTO("auto"),
-        OVERLAY("overlay");
+        AUTO("automatic"),
+        FULL("full"),
+        OVERLAY("simple");
 
         private final String key;
 
@@ -145,6 +147,19 @@ public final class VideoConfig {
 
         public String translationKey() {
             return "propwash.video.config.renderer." + this.key;
+        }
+
+        public String tooltipKey() {
+            return this.translationKey() + ".tooltip";
+        }
+
+        public VideoCheck.Level level(VideoCheck.Outcome outcome) {
+            return switch (this) {
+                case AUTO -> outcome == VideoCheck.Outcome.ALL_BROKEN ? VideoCheck.Level.NONE
+                        : outcome == VideoCheck.Outcome.FULL_BROKEN ? VideoCheck.Level.SIMPLE : VideoCheck.Level.FULL;
+                case FULL -> VideoCheck.Level.FULL;
+                case OVERLAY -> outcome == VideoCheck.Outcome.ALL_BROKEN ? VideoCheck.Level.NONE : VideoCheck.Level.SIMPLE;
+            };
         }
     }
 }

@@ -46,3 +46,4 @@ damage|schaden|crash|absturz|verschleiß|wear
 wind|böen|gusts|turbulence|turbulenz
 trail|trails|drone trails|drohnen trails|spur|spuren|schweif|leuchtspur|kondensstreifen|streak|tracer|smoke trail
 mouse|maus|mausflug|maussteuerung|mouse control|mouse flight|aim|zielen|dpi|mausrad|mouse wheel|scroll wheel|cursor|mauszeiger
+grafik|graphics|grafikkarte|graphics card|gpu|intel|treiber|driver|kompatibilität|compatibility|schwarzes bild|black screen

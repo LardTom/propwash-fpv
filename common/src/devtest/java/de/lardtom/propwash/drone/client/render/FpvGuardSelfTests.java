@@ -420,13 +420,16 @@ public final class FpvGuardSelfTests {
     }
 
     public static double analyticPercent(FpvGuardMesh mesh, Vector3fc lens, float tiltDegrees, double horizontalFovDeg, int width, int height) {
+        return analyticPercent(mesh.pointsMm(), lens, tiltDegrees, horizontalFovDeg, width, height);
+    }
+
+    public static double analyticPercent(float[] points, Vector3fc lens, float tiltDegrees, double horizontalFovDeg, int width, int height) {
         double tanH = Math.tan(Math.toRadians(Math.clamp(horizontalFovDeg, 1.0, 179.0)) / 2.0);
         double tanV = tanH / ((double) width / height);
         double tilt = Math.toRadians(-tiltDegrees);
         double cos = Math.cos(tilt);
         double sin = Math.sin(tilt);
         boolean[] covered = new boolean[width * height];
-        float[] points = mesh.pointsMm();
         double[][] quad = new double[4][];
         List<double[]> polygon = new ArrayList<>(8);
         for (int q = 0; q + FpvGuardZone.QUAD_FLOATS <= points.length; q += FpvGuardZone.QUAD_FLOATS) {

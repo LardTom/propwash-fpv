@@ -1,6 +1,8 @@
 package de.lardtom.propwash.drone.client;
 
 import de.lardtom.propwash.accessory.client.AddonFlightClient;
+import de.lardtom.propwash.api.drone.CollisionFlags;
+import de.lardtom.propwash.api.flight.FlightAssist;
 import de.lardtom.propwash.api.part.AirframeGeometry;
 import de.lardtom.propwash.audio.client.AudioHooks;
 import de.lardtom.propwash.audio.client.Beep;
@@ -12,13 +14,19 @@ import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.core.client.ClientBus;
 import de.lardtom.propwash.core.event.Event;
 import de.lardtom.propwash.drone.CameraMount;
+import de.lardtom.propwash.drone.Depenetration;
+import de.lardtom.propwash.drone.DroneFluids;
+import de.lardtom.propwash.drone.DroneGround;
 import de.lardtom.propwash.drone.PilotBodyRules;
 import de.lardtom.propwash.drone.PilotMode;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.SurfaceMaterials;
 import de.lardtom.propwash.drone.WaterSurface;
 import de.lardtom.propwash.drone.WindModel;
+import de.lardtom.propwash.drone.collision.client.ClientCollision;
 import de.lardtom.propwash.drone.RadioLink;
 import de.lardtom.propwash.drone.TuneMapping;
+import de.lardtom.propwash.drone.VanillaRotation;
 import de.lardtom.propwash.drone.net.DroneResetS2C;
 import de.lardtom.propwash.drone.net.DroneStateC2S;
 import de.lardtom.propwash.drone.net.HardwareWearC2S;
@@ -30,6 +38,7 @@ import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.input.KeyRepeatFilter;
 import de.lardtom.propwash.input.Mode3dSelector;
 import de.lardtom.propwash.input.TurtleSelector;
+import de.lardtom.propwash.input.addon.AddonModeNames;
 import de.lardtom.propwash.input.RadioSource;
 import de.lardtom.propwash.input.RadioState;
 import de.lardtom.propwash.interact.client.PilotInteraction;
@@ -39,10 +48,13 @@ import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.input.client.TransmitterInput;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.race.AssistDetail;
+import de.lardtom.propwash.race.RaceRules;
 import de.lardtom.propwash.relay.client.RelayClient;
 import de.lardtom.propwash.relay.client.RelayControl;
+import de.lardtom.propwash.rescue.PilotTakeover;
 import de.lardtom.propwash.rescue.client.RescueState;
 import de.lardtom.propwash.server.client.ClientServerRules;
+import de.lardtom.propwash.server.client.ClientPersonalRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.PhysicsRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
@@ -72,26 +84,22 @@ import de.lardtom.propwash.video.client.VideoSettings;
 import de.lardtom.propwash.video.client.VideoState;
 import de.lardtom.propwash.zone.ZoneField;
 import de.lardtom.propwash.zone.ZoneResolution;
-import de.lardtom.propwash.zone.client.ClientZones;
+import de.lardtom.propwash.zone.client.ZonePhysics;
 import de.lardtom.propwash.video.client.VtxRuntime;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -126,6 +134,7 @@ public final class PilotSession {
     private static final long LOW_BATTERY_INTERVAL = 3_000_000_000L;
     private static final long CRITICAL_BATTERY_INTERVAL = 1_000_000_000L;
     private static final int SUPPRESS_TICKS = 60;
+    private static final int TAKEOVER_FRAMES = 3;
     private static final float PI = (float) Math.PI;
     private static final int MAX_PENDING_IMPACTS = 16;
 
@@ -137,6 +146,7 @@ public final class PilotSession {
     private @Nullable AirframeSpec params;
     private final PilotInput input = new PilotInput();
     private final SimEnvironment environment = new SimEnvironment();
+    private final DroneGround groundProbe = new DroneGround();
     private final StepResult result = new StepResult();
     private final MoveReport report = new MoveReport();
     private final SimSnapshot snapshot = new SimSnapshot();
@@ -155,7 +165,12 @@ public final class PilotSession {
     private float linkStrength;
     private double rssiDbm = Double.NaN;
     private boolean armLatch;
+    private boolean keyArmed;
     private boolean heldArmSwitch;
+    private boolean takeoverLatch;
+    private boolean takeoverThrottle;
+    private float takeoverValue;
+    private int takeoverFrames;
     private final FlightModeSelector modes = new FlightModeSelector();
     private final KeyRepeatFilter armKey = new KeyRepeatFilter();
     private final KeyRepeatFilter cycleKey = new KeyRepeatFilter();
@@ -191,7 +206,8 @@ public final class PilotSession {
     private final float[] pendingHeatWear = new float[PartWear.POSITIONS];
     private boolean pendingEscBurn;
     private long lastHardwareSendNanos;
-    private boolean derateNotified;
+    private boolean motorHotNotified;
+    private boolean escDerateNotified;
     private int appliedRulesVersion = -1;
     private int crashCount;
     private int suppressedDroneId = -1;
@@ -310,7 +326,7 @@ public final class PilotSession {
     }
 
     public PhysicsRules appliedPhysics() {
-        return this.sim() != null ? this.appliedPhysics : ClientWorldRules.INSTANCE.physics();
+        return this.sim() != null ? this.appliedPhysics : ClientPersonalRules.INSTANCE.physics();
     }
 
     public boolean physicsModified() {
@@ -318,7 +334,7 @@ public final class PilotSession {
     }
 
     public ZoneResolution zoneResolution() {
-        return this.sim() != null ? this.zoneField.resolution() : ZoneResolution.world(ClientWorldRules.INSTANCE.physics());
+        return this.sim() != null ? this.zoneField.resolution() : ZoneResolution.world(ClientPersonalRules.INSTANCE.base());
     }
 
     public ZoneField zoneField() {
@@ -344,7 +360,7 @@ public final class PilotSession {
                 && this.modes.keyOverridesSwitch(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
     }
 
-    public StabMode previewFlightMode(String guid, int active, int readable) {
+    public StabMode previewFlightMode(String guid, long active, long readable) {
         if (!this.previewsRadio(guid)) {
             return this.flightMode();
         }
@@ -352,11 +368,11 @@ public final class PilotSession {
         return rescue.active() && rescue.forceSelfLevel() ? StabMode.ANGLE : this.modes.preview(true, active, readable);
     }
 
-    public boolean keyOverridesModeSwitch(String guid, int active, int readable) {
+    public boolean keyOverridesModeSwitch(String guid, long active, long readable) {
         return this.previewsRadio(guid) && this.modes.keyOverridesSwitch(true, active, readable);
     }
 
-    public boolean previewMode3d(String guid, int active, int readable, boolean unlocked) {
+    public boolean previewMode3d(String guid, long active, long readable, boolean unlocked) {
         if (!this.previewsRadio(guid)) {
             return this.mode3dActive();
         }
@@ -364,7 +380,7 @@ public final class PilotSession {
                 && Mode3dSelector.block(unlocked, mode3dAllowed(), RescueState.INSTANCE.active()) == Mode3dSelector.Block.NONE;
     }
 
-    public boolean keyOverridesMode3dSwitch(String guid, int active, int readable) {
+    public boolean keyOverridesMode3dSwitch(String guid, long active, long readable) {
         return this.previewsRadio(guid) && this.mode3d.keyOverridesSwitch(true, active, readable);
     }
 
@@ -381,6 +397,16 @@ public final class PilotSession {
     public int armBlockers() {
         DroneSim s = this.sim();
         return s != null ? s.telemetry().armBlockers : 0;
+    }
+
+    public boolean autoArmPending() {
+        DroneSim s = this.sim();
+        return s != null && s.autoArmPending();
+    }
+
+    public boolean autoArmed() {
+        DroneSim s = this.sim();
+        return s != null && s.autoArmed();
     }
 
     public boolean ledsOff() {
@@ -417,6 +443,10 @@ public final class PilotSession {
     public double lensRightOffset() {
         AirframeSpec p = this.params;
         return p == null ? 0.0 : p.lensRight;
+    }
+
+    public double comOffset() {
+        return -this.paramsOrDefault().hitboxFootOffset;
     }
 
     public void setTestInput(@Nullable StickPositions sticks, boolean arm, @Nullable StabMode mode) {
@@ -566,6 +596,7 @@ public final class PilotSession {
         this.applyLedSwitch();
         this.fillInput();
         AddonFlightClient.INSTANCE.beforeFrame(mc, d, s, this.input, this.appliedBuild);
+        this.holdTakeoverThrottle(s);
         this.announceMode3d(mc);
         this.fillEnvironment(d);
         s.setVideoPowerDelta(VtxRuntime.INSTANCE.frame(mc, d, s, frameNanos * 1.0E-9));
@@ -576,6 +607,7 @@ public final class PilotSession {
             remaining -= part;
             EdgeGuard.INSTANCE.apply(mc, s, now);
             PilotInteraction.INSTANCE.beforeStep(d, s, this.environment, part);
+            ClientCollision.INSTANCE.beforeStep(d, this.environment);
             s.step(part, this.input, this.environment, this.result);
             this.moveEntity(d, s);
             this.collectImpacts(d, s);
@@ -584,6 +616,12 @@ public final class PilotSession {
             if (this.drone != d) {
                 return;
             }
+        }
+        if (this.takeoverThrottle && PilotTakeover.resolved(s)) {
+            this.takeoverThrottle = false;
+            this.takeoverValue = PilotTakeover.throttle(s.assistOwnsHold(), this.mode3dActive, s.telemetry().hoverThrottleStick, s.config().deadband3d);
+            this.takeoverFrames = TAKEOVER_FRAMES;
+            TransmitterInput.INSTANCE.presetThrottle(this.takeoverValue);
         }
         this.writeEntity(d, s);
         this.holdWarnings(mc, s);
@@ -603,6 +641,26 @@ public final class PilotSession {
         }
     }
 
+    private void holdTakeoverThrottle(DroneSim s) {
+        if (!this.takeoverThrottle && this.takeoverFrames <= 0) {
+            return;
+        }
+        if (this.testSticks != null || RadioState.INSTANCE.source() != RadioSource.KEYBOARD || RescueState.INSTANCE.active()) {
+            this.takeoverFrames = 0;
+            return;
+        }
+        if (this.takeoverThrottle) {
+            this.input.throttle = PilotTakeover.throttle(false, this.mode3dActive, s.telemetry().hoverThrottleStick, s.config().deadband3d);
+            return;
+        }
+        this.takeoverFrames--;
+        if (Math.abs(this.input.throttle - this.takeoverValue) < 1.0E-4) {
+            this.takeoverFrames = 0;
+        } else {
+            this.input.throttle = this.takeoverValue;
+        }
+    }
+
     void onReset(DroneResetS2C payload) {
         QuadcopterEntity d = this.drone;
         DroneSim s = this.sim;
@@ -613,31 +671,41 @@ public final class PilotSession {
         Quaternionf body = new Quaternionf(payload.qx(), payload.qy(), payload.qz(), payload.qw()).normalize();
         Quaternionf simQ = new Quaternionf(body).rotateY(PI);
         double com = -this.paramsOrDefault().hitboxFootOffset;
+        Vec3 at = payload.keepPosition() ? d.position() : new Vec3(payload.x(), payload.y(), payload.z());
         s.copyStateTo(this.snapshot);
-        this.snapshot.px = payload.x();
-        this.snapshot.py = payload.y() + com;
-        this.snapshot.pz = payload.z();
-        this.snapshot.vx = 0.0;
-        this.snapshot.vy = 0.0;
-        this.snapshot.vz = 0.0;
-        this.snapshot.lx = 0.0;
-        this.snapshot.ly = 0.0;
-        this.snapshot.lz = 0.0;
-        this.snapshot.qw = simQ.w;
-        this.snapshot.qx = simQ.x;
-        this.snapshot.qy = simQ.y;
-        this.snapshot.qz = simQ.z;
+        if (!payload.keepPosition()) {
+            this.snapshot.px = payload.x();
+            this.snapshot.py = payload.y() + com;
+            this.snapshot.pz = payload.z();
+        }
+        if (payload.keepMotion()) {
+            VanillaRotation.carryMotion(this.snapshot, new Quaterniond(simQ.x, simQ.y, simQ.z, simQ.w));
+        } else {
+            this.snapshot.vx = 0.0;
+            this.snapshot.vy = 0.0;
+            this.snapshot.vz = 0.0;
+            this.snapshot.lx = 0.0;
+            this.snapshot.ly = 0.0;
+            this.snapshot.lz = 0.0;
+            this.snapshot.qw = simQ.w;
+            this.snapshot.qx = simQ.x;
+            this.snapshot.qy = simQ.y;
+            this.snapshot.qz = simQ.z;
+        }
         s.copyStateFrom(this.snapshot);
         if (payload.home()) {
-            s.forceDisarm(DisarmReason.FORCED);
-            s.requireArmSwitchReset();
+            boolean autoArm = InputConfig.get().autoArmAfterReset;
+            if (autoArm && this.keyArmed) {
+                this.armLatch = true;
+            }
+            s.homeReset(autoArm);
             this.motorsPacked = 0;
             this.resetHoldUntil = Util.getNanos() + RESET_HOLD_NANOS;
         }
         this.bodyOrientation.set(body);
-        this.comPosition.set(payload.x(), payload.y() + com, payload.z());
+        this.comPosition.set(at.x, at.y + com, at.z);
         VideoState.INSTANCE.cut(Util.getNanos());
-        d.snapClientPose(new Vec3(payload.x(), payload.y(), payload.z()), body);
+        d.snapClientPose(at, body);
         d.applyLocalState(body, s.telemetry().armed, (float) s.telemetry().batteryCharge, this.motorsPacked, this.ledsOff);
         this.lastSendNanos = 0L;
         if (payload.home()) {
@@ -736,24 +804,28 @@ public final class PilotSession {
         AirframeSpec p = AirframeSpec.of(build);
         long seed = d.getUUID().getMostSignificantBits() ^ Util.getNanos();
         this.zoneField.reset();
-        this.zoneField.update(ClientZones.INSTANCE.zones(), ClientZones.dimension(d.level()), ClientWorldRules.INSTANCE.physics(), d.getX(), d.getY(),
-                d.getZ(), 0.0);
+        ZonePhysics.update(this.zoneField, d.level(), d.getX(), d.getY(), d.getZ(), 0.0);
         PhysicsRules rules = this.zoneField.rules();
         this.appliedPhysics = rules;
-        this.physicsModified = this.zoneField.assisted();
+        this.physicsModified = RaceRules.modified(this.zoneField, ClientPersonalRules.INSTANCE.standard());
         DroneSim s = new DroneSim(p, TuneMapping.toConfig(d.tune().values(), p), this.zoneField.apply(simTuning(rules)), seed);
         s.setBatteryCharge(d.batteryCharge());
         s.setWear(d.wear());
         double com = -p.hitboxFootOffset;
         Quaternionf body = new Quaternionf(d.orientation()).normalize();
-        Quaternionf simQ = new Quaternionf(body).rotateY(PI);
-        s.reset(d.getX(), d.getY() + com, d.getZ(), 0.0);
-        s.copyStateTo(this.snapshot);
-        this.snapshot.qw = simQ.w;
-        this.snapshot.qx = simQ.x;
-        this.snapshot.qy = simQ.y;
-        this.snapshot.qz = simQ.z;
-        s.copyStateFrom(this.snapshot);
+        boolean takeover = PilotTakeover.seamless(d);
+        if (takeover) {
+            PilotTakeover.place(s, this.snapshot, d, body);
+        } else {
+            Quaternionf simQ = new Quaternionf(body).rotateY(PI);
+            s.reset(d.getX(), d.getY() + com, d.getZ(), 0.0);
+            s.copyStateTo(this.snapshot);
+            this.snapshot.qw = simQ.w;
+            this.snapshot.qx = simQ.x;
+            this.snapshot.qy = simQ.y;
+            this.snapshot.qz = simQ.z;
+            s.copyStateFrom(this.snapshot);
+        }
         this.drone = d;
         this.sim = s;
         this.params = p;
@@ -767,7 +839,11 @@ public final class PilotSession {
         this.appliedRulesVersion = ClientWorldRules.INSTANCE.version();
         this.epoch = d.resetEpoch();
         this.resetHoldUntil = 0L;
-        this.armLatch = false;
+        this.armLatch = takeover;
+        this.keyArmed = takeover;
+        this.takeoverLatch = takeover;
+        this.takeoverThrottle = takeover;
+        this.takeoverFrames = 0;
         RadioState radio = RadioState.INSTANCE;
         if (radio.source() == RadioSource.KEYBOARD) {
             this.modes.startKeyboard(InputConfig.get().keyboard.startInAngle);
@@ -883,7 +959,12 @@ public final class PilotSession {
         this.clearHardwareWear();
         PilotInteraction.INSTANCE.reset();
         EdgeGuard.INSTANCE.reset();
+        ClientCollision.INSTANCE.reset();
         this.armLatch = false;
+        this.keyArmed = false;
+        this.takeoverLatch = false;
+        this.takeoverThrottle = false;
+        this.takeoverFrames = 0;
         this.linkStrength = 0.0F;
         this.motorsPacked = 0;
         this.radioSeen = false;
@@ -948,8 +1029,7 @@ public final class PilotSession {
             s.setWear(wear);
         }
         int rulesVersion = ClientWorldRules.INSTANCE.version();
-        boolean zones = this.zoneField.update(ClientZones.INSTANCE.zones(), ClientZones.dimension(d.level()), ClientWorldRules.INSTANCE.physics(),
-                d.getX(), d.getY(), d.getZ(), this.frameSeconds);
+        boolean zones = ZonePhysics.update(this.zoneField, d.level(), d.getX(), d.getY(), d.getZ(), this.frameSeconds);
         if (this.appliedRulesVersion != rulesVersion || zones) {
             this.appliedRulesVersion = rulesVersion;
             PhysicsRules rules = this.zoneField.rules();
@@ -959,7 +1039,7 @@ public final class PilotSession {
             }
             this.appliedPhysics = rules;
         }
-        this.physicsModified = this.zoneField.assisted();
+        this.physicsModified = RaceRules.modified(this.zoneField, ClientPersonalRules.INSTANCE.standard());
     }
 
     void applyTuneLocally(FlightTune tune) {
@@ -989,7 +1069,7 @@ public final class PilotSession {
         float direct = RadioLink.quality(distance, serverLimit, free, creativeRange, shadow);
         this.rssiDbm = free ? Double.NaN : RadioLink.rssiDbm(distance, shadow);
         this.linkStrength = RelayControl.INSTANCE.quality(mc.level, mc.player.position(), d.position(), direct, serverLimit, free, creativeRange,
-                RelayClient.relayLimit());
+                RelayClient.relayLimit(), VideoState.INSTANCE.relayFor(d));
     }
 
     static float linkStrengthAt(double distance, double serverLimit) {
@@ -1008,6 +1088,9 @@ public final class PilotSession {
         boolean posHold;
         StickPositions test = this.testSticks;
         boolean rescueActive = rescue.active();
+        if (rescueActive && this.sim != null) {
+            this.sim.cancelAutoArm();
+        }
         boolean unlocked = InputConfig.get().mode3dUnlocked;
         boolean allowed = mode3dAllowed();
         boolean threeD;
@@ -1056,6 +1139,11 @@ public final class PilotSession {
                 this.mode3d.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
                 this.turtle.observe(radioUsable(radio), radio.activeSwitches(), radio.readableSwitches());
                 boolean radioArm = radio.isActive(SwitchFunction.ARM);
+                if (this.takeoverLatch && radioArm && !this.heldArmSwitch) {
+                    this.takeoverLatch = false;
+                    this.armLatch = false;
+                    this.keyArmed = false;
+                }
                 armSwitch = radioArm || this.armLatch;
                 this.heldArmSwitch = radioArm;
             }
@@ -1096,14 +1184,25 @@ public final class PilotSession {
         double y = d.getY() + com;
         double z = d.getZ();
         SimEnvironment env = this.environment;
+        AABB box = d.getBoundingBox();
+        this.groundProbe.collect(level, d, x, y, z, 0.5 * box.getXsize(), GROUND_PROBE);
         env.groundDistance = this.groundDistance(level, d, x, y, z);
-        env.solidDistance = env.groundDistance < SOLID_PROBE ? solidDistance(level, d, x, y, z) : Double.POSITIVE_INFINITY;
+        env.solidDistance = env.groundDistance < SOLID_PROBE ? this.solidDistance(level, d, x, y, z) : Double.POSITIVE_INFINITY;
         env.fluid = fluidAt(level, x, y, z);
         env.waterSurface = WaterSurface.relative(level, x, y, z);
         env.airDensity = 1.225 * Math.exp(-Math.max(0.0, y - level.getSeaLevel()) / 8500.0);
         env.ambientTempC = 20.0;
         env.skyView = this.skyView.sample(level, x, y, z, Util.getNanos());
         WindModel.fill(level, x, y, z, env.groundDistance, env);
+        ClientCollision.INSTANCE.environment(d, env);
+        DroneSim s = this.sim;
+        boolean near = env.groundDistance < SOLID_PROBE || s != null && s.telemetry().grounded;
+        if (near && !d.noPhysics && ClientCollision.INSTANCE.flags(d).blocks()) {
+            this.groundProbe.fillSupport(level, d, x, box.minY, z, box.getXsize(), env);
+            this.groundProbe.fillPoints(level, d, this.paramsOrDefault(), d.orientation(), x, box.minY, z, env);
+        } else {
+            env.clearSupport();
+        }
     }
 
     private double groundDistance(Level level, QuadcopterEntity d, double x, double y, double z) {
@@ -1118,16 +1217,18 @@ public final class PilotSession {
         Vec3 from = new Vec3(x, y, z);
         Vec3 to = new Vec3(x, probeEnd, z);
         BlockHitResult hit = level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, d));
+        double gate = this.groundProbe.colliderDistance(x, y, z, y - probeEnd);
         if (hit.getType() == HitResult.Type.MISS) {
-            return probeEnd <= floor ? y - floor : Double.POSITIVE_INFINITY;
+            return Math.min(gate, probeEnd <= floor ? y - floor : Double.POSITIVE_INFINITY);
         }
-        return Math.max(0.0, y - hit.getLocation().y);
+        return Math.min(gate, Math.max(0.0, y - hit.getLocation().y));
     }
 
-    private static double solidDistance(Level level, QuadcopterEntity d, double x, double y, double z) {
+    private double solidDistance(Level level, QuadcopterEntity d, double x, double y, double z) {
         BlockHitResult hit = level.clip(new ClipContext(new Vec3(x, y, z), new Vec3(x, y - SOLID_PROBE, z), ClipContext.Block.COLLIDER,
                 ClipContext.Fluid.NONE, d));
-        return hit.getType() == HitResult.Type.MISS ? Double.POSITIVE_INFINITY : Math.max(0.0, y - hit.getLocation().y);
+        double gate = this.groundProbe.colliderDistance(x, y, z, SOLID_PROBE);
+        return Math.min(gate, hit.getType() == HitResult.Type.MISS ? Double.POSITIVE_INFINITY : Math.max(0.0, y - hit.getLocation().y));
     }
 
     static boolean columnLoaded(Level level, double x, double z) {
@@ -1135,15 +1236,7 @@ public final class PilotSession {
     }
 
     private static Fluid fluidAt(Level level, double x, double y, double z) {
-        BlockPos pos = BlockPos.containing(x, y, z);
-        if (!columnLoaded(level, x, z) || level.isOutsideBuildHeight(pos)) {
-            return Fluid.NONE;
-        }
-        FluidState fluid = level.getFluidState(pos);
-        if (fluid.isEmpty() || y > pos.getY() + fluid.getHeight(level, pos)) {
-            return Fluid.NONE;
-        }
-        return fluid.is(FluidTags.LAVA) ? Fluid.LAVA : Fluid.WATER;
+        return ClientCollision.INSTANCE.fluids(INSTANCE.drone) ? DroneFluids.at(level, x, y, z) : Fluid.NONE;
     }
 
     private int sliceCount(DroneSim s, long frameNanos) {
@@ -1166,13 +1259,22 @@ public final class PilotSession {
             ry = 0.0;
             rz = 0.0;
         }
+        CollisionFlags flags = ClientCollision.INSTANCE.flags(d);
+        if (flags.blocks()) {
+            Depenetration.escape(d, s);
+        }
         double bx = d.getX();
         double by = d.getY();
         double bz = d.getZ();
         boolean moved = rx != 0.0 || ry != 0.0 || rz != 0.0;
         if (moved) {
-            d.move(MoverType.SELF, PilotInteraction.INSTANCE.clip(d, s, new Vec3(rx, ry, rz)));
+            boolean physics = d.noPhysics;
+            d.noPhysics = physics || !flags.blocks() || !flags.entities();
+            Vec3 step = PilotInteraction.INSTANCE.clip(d, s, new Vec3(rx, ry, rz));
+            d.noPhysics = physics || !flags.blocks();
+            d.move(MoverType.SELF, step);
             PilotInteraction.INSTANCE.afterMove(d);
+            d.noPhysics = physics;
         }
         double ax = d.getX() - bx;
         double ay = d.getY() - by;
@@ -1199,31 +1301,24 @@ public final class PilotSession {
         r.hitX = Math.abs(ax - ex) > HIT_EPSILON;
         r.hitY = Math.abs(ay - ey) > HIT_EPSILON;
         r.hitZ = Math.abs(az - ez) > HIT_EPSILON;
+        r.ghost = !flags.blocks();
         Telemetry t = s.telemetry();
-        if (r.hitX || r.hitY || r.hitZ || r.obliqueContact() || t.grounded) {
-            this.fillSurface(d, r);
+        if (!r.ghost && (r.hitX || r.hitY || r.hitZ || r.obliqueContact() || t.grounded || Double.isFinite(this.environment.solidDistance))) {
+            this.fillSurface(d, r, t.grounded);
         }
-        if (t.grounded || t.sleeping) {
+        if (!r.ghost && (t.grounded || t.sleeping)) {
             r.supportGap = d.supportGap(SUPPORT_PROBE);
+        }
+        if (!r.ghost) {
+            SurfaceMaterials.sticky(d.level(), d.getBoundingBox(), r);
         }
         s.afterMove(r);
         d.setOldPosAndRot();
     }
 
-    private void fillSurface(QuadcopterEntity d, MoveReport r) {
-        BlockPos below = d.getBlockPosBelowThatAffectsMyMovement();
-        if (!columnLoaded(d.level(), below.getX(), below.getZ()) || d.level().isOutsideBuildHeight(below)) {
-            return;
-        }
-        BlockState state = d.level().getBlockState(below);
-        float slip = state.getBlock().getFriction();
-        r.surfaceGrip = Math.max(0.05, Math.min(1.5, (1.0 - slip) / 0.4));
-        if (state.is(Blocks.SLIME_BLOCK)) {
-            r.surfaceRestitution = 0.8;
-        } else if (state.is(Blocks.HONEY_BLOCK)) {
-            r.surfaceRestitution = 0.0;
-            r.surfaceGrip = 1.5;
-        }
+    private void fillSurface(QuadcopterEntity d, MoveReport r, boolean grounded) {
+        SurfaceMaterials.fill(d.level(), d.getBoundingBox(), r, grounded);
+        ClientCollision.INSTANCE.afterSurface(d, this.sim, r, grounded);
     }
 
     private void writeEntity(QuadcopterEntity d, DroneSim s) {
@@ -1282,7 +1377,8 @@ public final class PilotSession {
     private void clearHardwareWear() {
         Arrays.fill(this.pendingHeatWear, 0.0F);
         this.pendingEscBurn = false;
-        this.derateNotified = false;
+        this.motorHotNotified = false;
+        this.escDerateNotified = false;
     }
 
     private void sendHardwareWear(QuadcopterEntity d, long now) {
@@ -1317,14 +1413,18 @@ public final class PilotSession {
                 }
                 case DISARMED -> {
                     AudioHooks.beep(Beep.DISARM);
+                    this.takeoverLatch = false;
                     int reason = (int) events.value(i);
-                    if (reason != DisarmReason.SWITCH.ordinal()) {
+                    if (reason == DisarmReason.SWITCH.ordinal()) {
+                        this.keyArmed = false;
+                    } else if (!s.autoArmPending() && !s.autoArmed()) {
                         this.armLatch = false;
                     }
                     this.turtleDisarmed(mc, reason);
                 }
                 case ARM_BLOCKED -> {
                     this.armLatch = false;
+                    this.keyArmed = false;
                     if (!this.isFpv()) {
                         DroneSim current = this.sim;
                         double maxAngle = current == null ? FlightControllerConfig.ARM_ANGLE_DEFAULT : current.config().armMaxTiltDeg;
@@ -1353,12 +1453,20 @@ public final class PilotSession {
                     int position = PartWear.positionOfSimMotor(events.motor(i));
                     this.pendingHeatWear[position] += (float) events.value(i);
                 }
-                case MOTOR_DERATE -> {
-                    if (events.value(i) > 0.5 && !this.derateNotified) {
-                        this.derateNotified = true;
-                        overlay(mc, Component.translatable("propwash.drone.motor_derate"), Palette.WARNING);
-                    } else if (events.value(i) <= 0.5 && !s.telemetry().motorDerating) {
-                        this.derateNotified = false;
+                case MOTOR_HOT -> {
+                    if (events.value(i) > 0.5 && !this.motorHotNotified) {
+                        this.motorHotNotified = true;
+                        overlay(mc, Component.translatable("propwash.drone.motor_hot"), Palette.WARNING);
+                    } else if (events.value(i) <= 0.5 && !s.telemetry().motorHot) {
+                        this.motorHotNotified = false;
+                    }
+                }
+                case ESC_DERATE -> {
+                    if (events.value(i) > 0.5 && !this.escDerateNotified) {
+                        this.escDerateNotified = true;
+                        overlay(mc, Component.translatable("propwash.drone.esc_derate"), Palette.WARNING);
+                    } else if (events.value(i) <= 0.5 && !s.telemetry().escDerating) {
+                        this.escDerateNotified = false;
                     }
                 }
                 default -> {
@@ -1408,13 +1516,16 @@ public final class PilotSession {
         if (s == null) {
             return;
         }
+        this.takeoverLatch = false;
         if (s.telemetry().armed) {
             this.armLatch = false;
+            this.keyArmed = false;
             if (RadioState.INSTANCE.isActive(SwitchFunction.ARM) || this.heldArmSwitch) {
                 s.forceDisarm(DisarmReason.FORCED);
             }
         } else {
             this.armLatch = true;
+            this.keyArmed = true;
         }
     }
 
@@ -1521,14 +1632,24 @@ public final class PilotSession {
         RadioState radio = RadioState.INSTANCE;
         StabMode fromSwitches = radioUsable(radio) && this.testSticks == null
                 ? FlightModeSelector.fromSwitches(radio.activeSwitches(), radio.readableSwitches()) : null;
-        Component text = fromSwitches != null && fromSwitches != mode
-                ? Component.translatable("propwash.drone.mode.changed_switch", modeName(mode), modeName(fromSwitches))
-                : Component.translatable("propwash.drone.mode.changed", modeName(mode));
-        overlay(mc, text, Palette.INFO);
+        overlay(mc, AddonModeNames.changed(this.modeAssist(), mode, fromSwitches), Palette.INFO);
     }
 
     public static Component modeName(StabMode mode) {
-        return Component.translatable("propwash.drone.mode." + mode.name().toLowerCase(Locale.ROOT));
+        return AddonModeNames.name(null, mode);
+    }
+
+    public Component flightModeName(StabMode mode) {
+        return AddonModeNames.name(this.modeAssist(), mode);
+    }
+
+    private @Nullable FlightAssist modeAssist() {
+        DroneSim s = this.sim;
+        if (s == null) {
+            return null;
+        }
+        FlightAssist attached = s.assist();
+        return attached != null ? attached : AddonFlightClient.INSTANCE.assist();
     }
 
     public boolean flipUpright(Minecraft mc) {
@@ -1557,6 +1678,7 @@ public final class PilotSession {
         double com = -this.paramsOrDefault().hitboxFootOffset;
         s.reset(d.getX(), d.getY() + com, d.getZ(), heading);
         this.armLatch = false;
+        this.keyArmed = false;
         overlay(mc, Component.translatable("propwash.drone.flip.done"), Palette.SUCCESS);
         return true;
     }

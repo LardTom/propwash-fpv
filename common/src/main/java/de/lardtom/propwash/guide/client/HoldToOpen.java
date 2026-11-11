@@ -1,8 +1,10 @@
 package de.lardtom.propwash.guide.client;
 
 import de.lardtom.propwash.guide.HoldTracker;
+import de.lardtom.propwash.guide.SimulatedHold;
 import de.lardtom.propwash.guide.client.screen.GuideDraw;
 import de.lardtom.propwash.guide.scene.Scene;
+import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.ui.client.theme.ThemeText;
@@ -24,6 +26,7 @@ import java.util.List;
 
 public final class HoldToOpen {
     private static final HoldTracker TRACKER = new HoldTracker();
+    private static final SimulatedHold SIMULATED = new SimulatedHold();
     private static final int PILL_HEIGHT = 13;
     private static final int SLOT_GAP = 3;
     private static long frames;
@@ -50,20 +53,35 @@ public final class HoldToOpen {
         TRACKER.reset();
     }
 
+    public static boolean simulate(int slot) {
+        if (!SIMULATED.hold(slot, Services.PLATFORM.isDevelopmentEnvironment())) {
+            return false;
+        }
+        TRACKER.reset();
+        return true;
+    }
+
+    public static void stopSimulation() {
+        SIMULATED.release();
+    }
+
     public static void containerFrame(AbstractContainerScreen<?> screen, GuiGraphicsExtractor graphics, @Nullable Slot slot, int leftPos, int topPos,
                                       int imageWidth, int mouseX, int mouseY) {
         frames++;
-        ItemStack stack = testStack != null ? testStack : slot != null && slot.hasItem() ? slot.getItem() : ItemStack.EMPTY;
+        Slot held = SIMULATED.slotOr(screen.getMenu().slots, slot);
+        ItemStack stack = testStack != null ? testStack : held != null && held.hasItem() ? held.getItem() : ItemStack.EMPTY;
         boolean carrying = !screen.getMenu().getCarried().isEmpty();
         List<Scene> scenes = stack.isEmpty() || carrying ? List.of() : GuideOpener.scenesFor(stack);
-        boolean keyDown = testKey != null ? testKey : GuideKeys.held() && !textInputFocused(screen);
-        String target = scenes.isEmpty() ? "" : GuideOpener.itemId(stack) + "@" + (slot != null ? slot.index : -1);
+        boolean keyDown = testKey != null ? testKey : SIMULATED.keyDown(GuideKeys.held()) && !textInputFocused(screen);
+        String target = scenes.isEmpty() ? "" : GuideOpener.itemId(stack) + "@" + (held != null ? held.index : -1);
         HoldTracker.Result result = TRACKER.update(target, !scenes.isEmpty(), keyDown, Util.getMillis());
         tooltipLine = null;
         if (result.hint()) {
             hintFrames++;
-            if (slot != null && testStack == null) {
+            if (held != null && held == slot && testStack == null) {
                 tooltipLine = hintLine(result.progress());
+            } else if (held != null && testStack == null) {
+                drawPill(graphics, leftPos + held.x, topPos + held.y, screen.width, screen.height, result.progress());
             } else {
                 drawPill(graphics, screen.width / 2 - 8, screen.height / 2 - 8, screen.width, screen.height, result.progress());
             }

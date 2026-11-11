@@ -288,6 +288,23 @@ sich mit den Bodenstößen.
   nicht bestätigen: Im Spiel kam die Rücksetzung in allen Durchgängen an (Simulation 0,0° vor dem Kippen), und im
   Rechenmodell kippt derselbe Fall weder mit zufälligen Schäden (400 Läufe), mit einem einzelnen zerstörten Teil noch
   bei 8–1000 Bildern pro Sekunde. Tritt er wieder auf, zeigt die Meldung, in welcher Phase die Lage falsch war.
+  Nachprüfung für 0.6.0 (Strang `landing-stability`, 18.10.): Der Ausreißer stammt aus dem Stand vor dem 15.10. (Stand
+  14b11318, ohne die Rücksetz-Prüfung und ohne unbeschädigten Start). Mit dem heutigen Test lief die Gruppe samt
+  Mauer-Absturz davor 20-mal auf Fabric und 10-mal auf NeoForge ohne Ausreißer, alle Landungen mit 0,0° Endneigung.
+  Zwei Lücken sind geschlossen: Gefiltert auf `drone: Landung` fehlte die Sitzung, jede Landung scheiterte mit „keine
+  aktive Sitzung oder kein Testfeld“; läuft keine Sitzung, setzt „Landungen – Testfeld …“ jetzt eine eigene Drohne
+  (Freestyle, voller Akku) drei Blöcke westlich des Spielers außerhalb des Testfelds, startet den Sichtflug mit gebundener Funke, und „Testfeld
+  abbauen“ beendet die Sitzung und entfernt sie wieder. Im vollen Lauf und mit `drone:` läuft die Sitzung schon,
+  dann ändert sich nichts. Außerdem übernahm das Kippen über der Fläche den Bodenkontakt aus der Rücksetzung
+  (`groundedFrames` im Schnappschuss; `PilotSession.onReset` setzt nur Lage, Ort und Geschwindigkeit): Kam das Kippen
+  im selben Tick wie die Rücksetzung und lief bis zum nächsten Tick kein Bild, galt die Drohne 12 cm über der Fläche
+  als aufgesetzt, und die Sekunde mit Gas null begann im Fallen. Das Kippen löscht den Bodenkontakt jetzt; im
+  Rechenmodell landet die Drohne in beiden Fällen aufrecht (`LandingSelfTestSequenceTest`: die vier Fälle mit
+  behaltenem und gelöschtem Bodenkontakt, 10–144 Bilder pro Sekunde mit ±30 % Schwankung). Die Meldung jeder Landung
+  nennt zusätzlich die Rücksetzungs-Nummer am Ende (eine Server-Korrektur während der Landung zählt sie hoch) und
+  die größte Neigung seit dem Kippen. Abnahme: `'-PpropwashSelftestOnly=drone: Landung'` 30-mal auf Fabric und 15-mal
+  auf NeoForge hintereinander PASS (450 Landungen: Endneigung 0,0°, tiefster Punkt 0,000 m über der Fläche, größte
+  Neigung seit dem Kippen höchstens die gekippten 10,0°, Simulation nach allen 900 Rücksetzungen 0,0°).
 - Stand der Läufe (14.10.): JUnit 2 789 Tests (dazu die 6 Tests mit Add-on-Daten mit Just More Parts 1.1.0), Fabric voll
   619 Schritte, Fabric gefiltert mit Bildschirmfotos 169 Schritte (`drone:`, `rescue:`, `guide:`, `parts-flight:`,
   `interact:` und die Bilder zu Landung, Absturz, Bodenkontakt, Heimflug und Lande-Lektion), NeoForge gefiltert
@@ -479,3 +496,232 @@ Spezifikationen gleich, neu sind die Hashes der Flüge mit Bodenstoß (`acro` 1 
 - Der Whoop überschlägt sich nach einem Fall aus 15–60 cm in einem Viertel der Fälle: sehr leicht, Ducts mit Rückprall
   0,40, schmaler Akku unter dem Rahmen. Unverändert gegenüber 0.5.2.
 - Eine stromlos fallende Drohne behält ihre Lage, die Luft dreht sie nicht (Widerstand greift am Schwerpunkt).
+
+## 8 Seit 0.6.0: Absturz ohne Disarm – Regler und Props am Block
+
+### 8.1 Befund
+
+Bleibt die Drohne nach einem Aufprall scharf (Aufprall unter der Crash-Schwelle oder Welt-Regel `crash_disarm` aus),
+schob sie sich bis 0.6.0-rc.3 mit Gas 0 über den Boden, bis sie in einer Ecke hing. Gemessen in `ArmedCrashRestTest`
+(fünf Presets, Acro und Angle, mit und ohne Airmode, Boden 60–180° und Wand 0–40°, 5 s nach dem Aufprall) waren vorher
+119 von 420 Fällen nicht in Ruhe: Wege bis 66 Blöcke mit bis 19 m/s, Schub bis 4,3 × Gewicht auf dem Rücken, I-Anteil
+bis 0,4. Im Spiel (Fabric, Selbsttest `drone: Absturz ohne Disarm`) fuhr ein 5″ nach einem Aufprall mit 75° Neigung
+22,5 Blöcke mit 25 m/s davon.
+
+Ursachen:
+
+1. **I-Anteil am Block:** Mit eingerastetem Airmode bleibt der I-Anteil bei Gas 0 aktiv. Liegt die Drohne am Block,
+   kann sie die verlangte Drehung nicht ausführen; schon wenige °/s Drehen durch Rutschen reichten, um ihn bis zur
+   Grenze aufzuwickeln. Die Entsättigung des Mixers hob dabei eine Seite bis Vollgas.
+2. **P-Anteil bei blockierter Lage:** In Angle und Horizon verlangt der Regler auf dem Rücken die volle Drehrate;
+   Acro bremst ein Drehen, das der Boden selbst erzeugt. Beides hielt Motoren dauerhaft hoch.
+3. **Props am Block:** Eine Prop, deren Spitze auf dem Block liegt, gab weiter vollen Schub, nur beim ersten Kontakt
+   bremste der Prop-Schlag.
+
+### 8.2 Lösung
+
+Der Regler kennt den Blockkontakt der Simulation (Boden, Wand, schräge Fläche, zwei Frames Gedächtnis) und hält ihn
+0,3 s über kurze Hüpfer. Leerlauf heißt hier: Gas höchstens 5 % und alle Knüppel mittig (höchstens 5 %). Stand nach der
+Nachbesserung aus §8.7:
+
+- **Leerlauf am Block:** Berührt die Drohne im Leerlauf einen Block, steht der I-Anteil sofort auf 0, gleich wie sie
+  liegt und wie schnell sie rutscht. Das betrifft auch die Drohne, die sich in der Luft aufgerichtet hat und aufrecht
+  landet.
+- **Abgeräumt:** Ist die Drohne im Leerlauf am Block mehr als 30° geneigt oder dreht sie sich um eine Achse schneller als
+  400 °/s (Aufprall, Überschlag, Kreiseln beim Rutschen), merkt sich der Regler das, bis wieder Gas oder ein Knüppel
+  kommt, auch in der Luft nach einem Abpraller. So lange hebt Airmode das Gas nicht an (der Mixer arbeitet wie ohne
+  Airmode), der I-Anteil bleibt 0, und nach 0,1 s blendet der Regler seine Korrektur in 0,15 s aus; die Motoren laufen im
+  Leerlauf. Die 0,1 s sind das kurze Zucken.
+- **Am Block im Leerlauf nach dem ersten Gas (seit CRASHARM3-1, §8.8):** Hat der Pilot seit dem Scharfschalten einmal
+  mehr als Leerlauf-Gas gegeben, zählt der Regler im Leerlauf die Zeit mit echtem Blockkontakt (Rahmen oder Props an
+  Boden oder Wand; die Luftphasen im Kontaktgedächtnis zählen nicht). Nach 0,1 s Kontakt hebt Airmode das Gas nicht mehr
+  an, und der Regler blendet seine Korrektur in 0,15 s aus, gleich wie die Drohne liegt, rutscht oder dreht und
+  unabhängig von `prop_strikes`. Das gilt, solange das Kontaktgedächtnis hält (0,3 s nach dem letzten Kontakt); in der
+  Luft danach hat der Regler wieder volle Wirkung, außer die Drohne ist abgeräumt.
+- **Liegend:** Mehr als 60° Neigung am Block, gleich mit welchem Gas: nach 0,3 s wickelt der I-Anteil nicht mehr auf.
+- **Knüppel oder Gas** geben dem Regler sofort die volle Wirkung zurück (Zappeln, um die Drohne zu wenden) und beenden
+  „abgeräumt“. Berührt die Drohne danach im Leerlauf wieder einen Block, gelten die Regeln von vorn.
+- **Props am Block:** Liegt die Prop-Spitze höchstens 3 mm über dem Boden oder an einer Wand, und steht die Fläche mehr
+  als 45° schräg zur Rotorachse (dieselbe Grenze wie beim Prop-Schlag), verliert die Prop 90 % ihres Schubs (Anstieg
+  in 10 ms, Abklingen in 0,1 s). Nicht bei Ducts, nicht im Turtle-Modus, nicht im 3D-Modus mit umgekehrter
+  Drehrichtung. Seit CRASHARM2-1 auch mit Welt-Regel „Prop-Schläge“ aus (§8.6).
+
+Freiflug und Turtle-Modus bleiben unverändert: Vor dem Start steht die Drohne aufrecht, der I-Anteil ist dort ohnehin
+aus, und ohne Blockkontakt im Leerlauf greift keine der Regeln (im Turtle-Modus ist der Regler aus). Aufrechte Landungen
+im Leerlauf verlieren ab dem ersten Kontakt den I-Anteil; wie oft sie umkippen, steht in §8.7.
+
+### 8.3 Kalibrierung und Goldens
+
+- `calibration.txt`, `battery_sag.txt`, `fall.txt`, `throttle_drop.txt`, `thermal.txt` und `touchdown.txt` sind
+  byte-gleich (mit Just-More-Parts-Daten).
+- `builtin_regression.txt`: 31 von 158 Zeilen neu, beide Spalten (x86_64 aus einem Lauf unter Rosetta), alle
+  Abweichungen beginnen am ersten Blockkontakt: 22 `drop:` (Flug mit Roll in die Wand, Props an der Wand), 6 `acro:`
+  und 3 `worn:` (nach den Überschlägen in den Boden gestürzt; Whoop und Cinewhoop liegen dort länger als 0,3 s).
+  `angle:`, `analysis:`, `preset:`, `full:`, `full-thermal:` und `wear:` sind unverändert.
+- `motion.txt` (Just More Parts): `spec` unverändert; `drop` bei 1 079 und `acro` bei 334 von 1 254 Aufbauten aus
+  demselben Grund, `angle` bei zwei 2S-Whoops, die am Ende im Leerlauf landen (Rücksetzen des I-Anteils in Ruhe) bzw.
+  im Wind auf den Rücken fallen.
+- `landing.txt`: 9 von 140 Zeilen, nur Fälle, die umkippen: Whoop Acro „hart“ (1 statt 2 von 20 auf dem Kopf),
+  „Absturz“ bei Whoop Acro (3 statt 4 von 20) und 5″-Racer Angle (nur die größte Neigung, 42,4 statt 42,3°), Whoop an
+  Halbblock-Kante und Stufe (höchstens zwei von 100 Fällen anders). Sanfte, schnelle und Leerlauf-Landungen sind bei
+  allen Presets gleich.
+- `crash.txt`: 23 von 56 Zeilen, Anteile auf dem Kopf um wenige Prozentpunkte; `CrashOutcomeTest` bleibt grün.
+
+### 8.4 Tests
+
+- JUnit `sim.ArmedCrashRestTest`: 420 Abstürze mit Gas 0 kommen zur Ruhe (höchstens 1 Block Weg ab 1 s nach dem
+  Aufprall, Schub höchstens 0,2 × Gewicht und I-Anteil höchstens 0,05 in den letzten 2 s); 40 liegende Fälle mit 30 %
+  Gas wickeln den I-Anteil nicht auf; Props mit Bodenkontakt liefern höchstens 30 % des Schubs in der Luft (vorher
+  41–45 %, nur durch den Prop-Schlag); der Rollknüppel weckt den Regler auf dem Rücken nach 3 s wieder.
+- Selbsttest `drone: Absturz ohne Disarm` (`CovCrashRestSelfTests`, beide Loader): Freestyle in Acro mit 75° und in
+  Angle auf dem Rücken auf Stein, Gas 0 mit Airmode, 5 s nach dem Aufprall höchstens 1 Block Weg, Schub höchstens
+  0,2 × Gewicht, I-Anteil höchstens 50 ‰, weiter scharf; mit `-PpropwashScreenshots=true` je ein Bild
+  `crash_rest_acro_tilted` und `crash_rest_angle_back`.
+- JUnit `sim.ArmedCrashSkidAndBounceTest` und drei Selbsttest-Fälle mit Vergleichslauf für Rutscher und Abpraller:
+  §8.7.
+
+### 8.5 Grenzen
+
+- Ein taumelnder Abpraller läuft auch ohne Schub anders aus als unscharf (Props im Leerlauf, anderer Auftreffpunkt): In
+  `ArmedCrashSkidAndBounceTest` rollen 17 von 1 980 scharfen Drohnen ohne Schub nach 1 s bis 2,3 Blöcke weiter als
+  unscharf, im Mittel sind es 0,03 Blöcke bei Rutschern und 0,01 Blöcke bei Abprallern.
+- Abgeräumt fällt die Drohne nach einem Abpraller ohne Regler, solange Gas und Knüppel in Ruhe bleiben. Gas über 5 % oder
+  ein Knüppel geben ihn sofort zurück.
+- Ein 5″-Racer, der flach auf dem Rücken liegt, hüpft im Testfeld aus Quadern auch unscharf: Sein Kasten reicht dort
+  tiefer als die Prop-Spitzen. Unverändert gegenüber 0.6.0-rc.3.
+
+### 8.6 Welt-Regeln und dedizierter Server (CRASHARM2-1)
+
+Nachprüfung mit den Welt-Regeln, unter denen der Fehler auf einem dedizierten Server gesehen wurde: `crash_disarm`,
+`crash_damage` und `prop_strikes` aus, `battery_scale` 0 (Akku unendlich, kein Spannungsabfall).
+
+- **Regelunabhängig:** Der Schubverlust der Props am Block hing an `prop_strikes`; mit der Regel aus behielt eine Prop,
+  die auf dem Boden aufliegt, 100 % ihres Schubs. Jetzt gilt er unabhängig von `prop_strikes`, `crash_disarm`,
+  `crash_damage` und dem Akku (gemessen 16 % des Schubs in der Luft). Nur der Prop-Schlag selbst, der Drehzahlverlust
+  beim ersten Kontakt, bleibt an `prop_strikes`. Blockkontakt, Umkippen, Ruhe und Liegen im Regler (§8.2) hingen schon
+  an keiner Regel.
+- **Server gegen Einzelspieler:** Die Simulation läuft beim Piloten; der Server prüft nur die gemeldete Lage
+  (`DronePiloting#onState`) und setzt die Drohne bei einer Ablehnung zurück. Bei fünf Abstürzen mit diesen Regeln
+  (75° schräg, auf dem Rücken, hart mit 8 m/s auf den Rücken, gegen die Wand, auf die Seite mit 30 % Gas) setzte der
+  Server die Drohne auf Fabric und NeoForge kein einziges Mal zurück, die Lage am Server folgte der des Piloten, und
+  Weg, Schub und I-Anteil waren auf dem Server dieselben wie im Einzelspieler (höchstens 0,01 Blöcke Weg ab 1 s,
+  0,05–0,06 × Gewicht Schub bei Gas 0, I-Anteil 0). Ein Abgleich, der die Drohne weiterschiebt, war nicht zu finden.
+- **Nicht regelabhängig und offen:** Ein harter Aufprall mit Vorwärtstempo auf den Boden (9 m/s ab, 4 m/s vor) wirft
+  die Drohne mit Gas 0 bei 8 von 120 Fällen 1,0–3,8 Blöcke weit (unscharf höchstens 0,26); mit Standardregeln und nur
+  `crash_disarm` aus sind es ebenso 8. Das sind die Abpraller, nach denen das Kontaktgedächtnis in der Luft endet und
+  Airmode kurz Schub gibt; danach hält kein Schub an (höchstens 0,07 × Gewicht in den letzten 2 s). Der JUnit prüft
+  deshalb bei diesen Fällen nur Schub, I-Anteil und Disarm, nicht den Weg. Behoben mit AUTO52-2 (§8.7): noch 2 von 120
+  Fällen über 1 Block, höchstens 1,38 Blöcke (unscharf 0,80), ohne Schub.
+- **Tests:** JUnit `sim.ArmedCrashRulesOffTest` (400 Abstürze mit Gas 0 und 400 mit 30 % unter diesen Regeln, dazu
+  Props auf der Seite am Boden; ohne Fix rot mit 100 % Schub), Selbsttest `drone: Absturz ohne Disarm mit Welt-Regeln
+  aus` und Beitrittstest `PROPWASH_JOINTEST_COV_CRASHRULES` mit demselben Ablauf (`drone.client.CovCrashRulesRun`).
+
+### 8.7 Nachbesserung: Rutscher und Abpraller (Befunde AUTO52-1 und AUTO52-2)
+
+Die Gegenprüfung von CRASHARM-1 fand zwei Lücken in den Regeln von 0.6.0-dev (Umgekippt, Ruhig am Boden, Liegend):
+
+1. **Fast aufrechte Rutscher (AUTO52-1):** Unter 30° Neigung und schneller als 0,2 m/s griff keine Regel. Der I-Anteil
+   wickelte mit Airmode auf, bei Gas 0 blieb sekundenlang Schub, der die Reibung nahm und die Drohne weiterschob. Dazu
+   lässt ein Aufprall mit Vorwärtstempo die Drohne kreiseln (bis 1 400 °/s um die Hochachse); Gieren geht nur über Schub,
+   also hob der Regler beim Bremsen die Drohne an, und ein 7″ stieg aus einem flachen Rutscher bis 5,9 m hoch.
+2. **Abpraller (AUTO52-2):** Das Kontaktgedächtnis endete 0,3 s nach dem letzten Kontakt, danach hatte der Regler in der
+   Luft wieder volle Wirkung. Schon in den 0,3 s vorher richtete Angle die Drohne mit Airmode und bis 6 × Gewicht Schub
+   auf und warf sie hoch.
+
+Lösung (Stand in §8.2): Im Leerlauf am Block steht der I-Anteil sofort auf 0 statt erst nach 0,3 s in Ruhe; abgeräumt
+ist die Drohne auch bei mehr als 400 °/s, Airmode hebt dann das Gas nicht mehr an, das Ausblenden beginnt nach 0,1 s statt
+0,3 s und gilt bis zu Gas oder Knüppel auch in der Luft. Die Ruhe-Schwelle (10 °/s, 0,2 m/s) entfällt.
+
+Messung in `ArmedCrashSkidAndBounceTest` (jeder scharfe Absturz mit Gas 0 gegen denselben, der beim Aufprall unscharf
+wird; ab 0,5 s nach dem Aufprall höchstens 0,25 s Schub über 0,3 × Gewicht, I-Anteil höchstens 0,05, höchstens 0,5 m höher
+und 3 Blöcke weiter als unscharf, im Mittel höchstens 0,1 Block weiter):
+
+| Fälle | vorher | nachher |
+|---|---|---|
+| 540 fast aufrechte Rutscher (Airmode, 0–25°, 4–12 m/s vor) | 109 rot: bis 4,5 s Schub, I-Anteil bis 0,22, bis 5,9 m höher, im Mittel 0,26 Blöcke weiter | 0 rot: höchstens 0,03 s Schub, I-Anteil 0, höchstens 0,18 m höher, im Mittel 0,03 Blöcke weiter |
+| 1 440 Abpraller (mit und ohne Airmode, 45–180°, 4 und 8 m/s vor) | 255 rot: bis 4,5 s Schub, I-Anteil bis 0,33, bis 6,5 m höher, im Mittel 0,32 Blöcke weiter | 0 rot: kein Schub, I-Anteil 0, höchstens 0,44 m höher, im Mittel 0,01 Blöcke weiter |
+| Cinewhoop Acro 15°, 1 m/s ab, 4 m/s vor | 3,08 Blöcke ab 1 s (unscharf 0,00), 3,9 s Schub | 0,04 Blöcke (unscharf 0,02) |
+| Freestyle Angle 135°, 2,4 m/s ab, 8 m/s vor | 12,33 Blöcke, 6,54 m hoch (unscharf 1,66 Blöcke, 1,03 m) | 0,48 Blöcke, 1,13 m |
+
+Im Spiel (Fabric, Selbsttest `drone: Absturz ohne Disarm`, je Fall erst ein Vergleichslauf, der beim Aufprall unscharf
+wird): vorher Cinewhoop 15° mit 12 m/s 6,19 statt 4,74 Blöcke mit I-Anteil 71 ‰, Freestyle Angle 135° 18,25 statt
+0,70 Blöcke und 8,50 statt 0,43 m hoch (danach Crash-Disarm), Freestyle Acro 90° 11,82 statt 1,29 Blöcke und 1,99 statt
+0,38 m; nachher 4,70 statt 4,54, 0,18 statt 0,38 und 0,30 statt 0,21 Blöcke, ohne Schub und mit I-Anteil 0 (NeoForge
+4,86 statt 4,58, 0,37 statt 0,61 und 0,19 statt 0,67 Blöcke).
+
+In `ArmedCrashRulesOffTest` (Welt-Regeln aus, §8.6) werfen harte Aufpralle mit Vorwärtstempo die Drohne jetzt bei 2 statt 8
+von 120 Fällen über 1 Block weit, höchstens 1,38 statt 3,82 Blöcke (unscharf bis 0,80), ohne Schub.
+
+Kalibrierung und Goldens (mit Just-More-Parts-Daten):
+
+- Byte-gleich: `calibration.txt`, `battery_sag.txt`, `fall.txt`, `throttle_drop.txt`, `thermal.txt`, `touchdown.txt`.
+- `builtin_regression.txt`: 9 von 158 Zeilen neu, beide Spalten (x86_64 unter Rosetta mit Temurin 25.0.5): 6 `acro:`
+  (Whoop und Cinewhoop mit Zubehör) und 3 `worn:`. In allen neun Verläufen liegt die Drohne nach den Überschlägen auf dem
+  Rücken (148–180°), bei 8,0 s geht das Gas auf 0; das erste abweichende Bild ist das erste im Leerlauf am Block
+  (t = 8,01 s). `drop:`, `angle:`, `analysis:`, `preset:`, `full:`, `full-thermal:` und `wear:` sind unverändert.
+- `motion.txt`: `spec` unverändert, `acro` bei 405, `angle` bei 26 und `drop` bei 71 von 1 254 Aufbauten; die Regeln
+  greifen nur im Leerlauf am Block, vorher sind die Verläufe gleich.
+- `landing.txt`: 89 von 140 Zeilen; auf dem Kopf 40 statt 48 von 4 400 Landungen, auf der Seite weiter 0. Mehr
+  Kopflagen: Whoop „hart“ in Acro 2 statt 1 und in Angle 1 statt 0 von 20, „Absturz“ in Acro 4 statt 3 von 20, an der
+  Halbblock-Kante in Angle 6 statt 4 von 100, Cinewhoop Acro dort 1 statt 0. Weniger bei den übrigen Kanten- und
+  Stufenfällen und beim 5″-Racer; sanfte, schnelle und Leerlauf-Landungen auf flachem Boden bleiben ohne Kopflage.
+- `crash.txt`: 29 von 56 Zeilen, auf dem Kopf 2 463 statt 2 564 von 8 640 Abstürzen; am stärksten Freestyle „kopfüber
+  aufgeschlagen“ mit 89,2 statt 100 % auf dem Kopf. `CrashOutcomeTest` bleibt grün.
+- `CrashFreezeTest#wallFaceCrashAtSpeedsAndAnglesFallsToGround`: Ein Freestyle, der mit 9 m/s unter 60° an die Wand
+  streift, trifft sie nur mit 4,1 m/s (harter Aufprall). Den Crash lieferte bisher erst der Boden mit 10,4 m/s, nachdem
+  Airmode die Drohne mit Gas 0 und bis 4,4 × Gewicht hineingedrückt hatte; jetzt fällt sie ohne Schub und landet mit
+  7,97 m/s knapp unter der Crash-Grenze. Die Prüfung verlangt dort Absturz oder harten Aufprall.
+- Beitrittstest `PROPWASH_JOINTEST_COV_LANDING` (zehn sanfte senkrechte Landungen am dedizierten Server) auf beiden
+  Loadern 10 von 10 aufrecht, Server-Rauchtest mit Heimflug auf Wolle, Slime und Druckplatte unverändert.
+
+### 8.8 Nachbesserung: fast aufrecht an der Wand (Befund CRASHARM3-1)
+
+Owner-Punkt aus rc.3: „Crash ohne Disarm boostet komisch, bis die Drohne in eine Ecke fliegt.“ Die Gegenprüfung
+G-CRASHARM2-1 fand auf dem Stand vor §8.7 Racer, die nach einem fast aufrechten Wandaufprall (0,5–6 m/s, 3–18°) mit
+16–25° Neigung am Wandfuß blieben und mit I-Anteil 70–95 ‰ und 0,6–0,7 × Gewicht Schub bis 9 Blöcke an der Wand
+entlangfuhren. Diesen Dauerschub beseitigt schon §8.7 (I-Anteil im Leerlauf am Block sofort 0). Übrig blieb das
+Zucken selbst: Unter 30° Neigung und unter 400 °/s ist die Drohne nicht abgeräumt, der Regler behielt am Block volle
+Wirkung, und Airmode hob das Gas für jede Korrektur an.
+
+- Mit Prop-Schlägen (Welt-Regel an) verlieren die Props an der Wand Drehzahl und Schub, die Drohne beginnt zu gieren und
+  zu rollen, und der Regler stemmt sich mit den freien Props dagegen: bis 4,6 × Gewicht für 0,3 s, die Drohne klettert
+  an der Wand hoch, bis sie über 400 °/s abgeräumt ist (Freestyle Horizon, 6 m/s, 18°).
+- Mit allen vier Crash-Regeln aus blieben am Wandfuß Stöße bis 0,8 × Gewicht über 0,3 s nach dem Aufprall (Racer Acro
+  0,5 m/s 24°: 0,27 × Gewicht für 0,37 s).
+
+Lösung: Regel „Am Block im Leerlauf nach dem ersten Gas“ in §8.2. Das Warten scharf am Boden vor dem ersten Gasgeben
+ist ausgenommen: Dort hebt Airmode ohnehin nichts an (es rastet erst mit Gas ein), und das Abheben bleibt Bit für Bit
+gleich. Kurzes Antippen unter 0,1 s Kontakt, Airmode in der Luft, Flips, Flüge nah an der Wand ohne Kontakt und Gas oder
+Knüppel am Block bleiben unverändert.
+
+Messung in `ArmedCrashWallSweepTest` (alle fünf Presets, Acro, Angle und Horizon, 0,5–6 m/s gegen die Wand aus 0,6 m
+Höhe, 0–24° Neigung, Achse in 45°-Schritten; am Block ab 0,3 s nach jedem Aufprall, solange der letzte Kontakt höchstens
+0,3 s her ist, Schub im Mittel über 0,05 s höchstens 0,2 × Gewicht und I-Anteil höchstens 50 ‰; in den letzten 2 s
+dasselbe; Weg ab 1 s höchstens 1 Block):
+
+| Welt-Regeln | ohne Fix | mit Fix |
+|---|---|---|
+| alle vier aus | 2 von 3 600 rot (Racer Acro, bis 0,26 × Gewicht) | 0 |
+| nur `crash_disarm` aus | 7 von 3 600 rot (Long Range Horizon bis 2,77 × Gewicht) | 0 |
+| `crash_disarm` und `prop_strikes` aus | 3 von 3 600 rot | 0 |
+| `crash_disarm` und `crash_damage` aus | 7 von 3 600 rot | 0 |
+| alle vier aus, Regler vor §8.7 | 580 von 3 600 rot, darunter das Wegfahren (Racer 5,5 Blöcke mit 0,67 × Gewicht und I-Anteil 80 ‰) | – |
+
+Im Spiel prüft der Selbsttest `drone: Absturz ohne Disarm an der Wand` (und derselbe Ablauf im Beitrittstest
+`PROPWASH_JOINTEST_COV_CRASHWALL`) zehn Racer-Wandfälle mit den Welt-Regeln des Besitzers. Auf dem Stand mit §8.7 waren sie
+schon ohne diesen Fix grün (höchstens 0,13 × Gewicht, I-Anteil höchstens 3 ‰); sie halten den Befund als
+Regressionstest fest.
+
+Kalibrierung und Goldens (mit Just-More-Parts-Daten):
+
+- Byte-gleich: `builtin_regression.txt` auf aarch64 und x86_64, `calibration.txt`, `battery_sag.txt`, `fall.txt`,
+  `throttle_drop.txt`, `thermal.txt`, `touchdown.txt`.
+- `motion.txt`: `spec` unverändert, `acro` bei 124, `drop` bei 5 und `angle` bei 1 von 1 254 Aufbauten (alle mit
+  Just-More-Parts-Teilen). Jede Abweichung beginnt in einem Bild, in dem die neue Regel ausblendet: am Ende der Abläufe
+  im Leerlauf am Boden (acro ab 8,0 s, drop ab 7,5 s, angle bei 9,5 s).
+- `landing.txt`: 11 von 140 Zeilen, nur Landungen, die nach der Reaktionszeit im Leerlauf am Block liegen. Kopflagen nur
+  an der Halbblock-Kante mit Fahrt beim Whoop mehr: Acro 7 statt 4, Angle 7 statt 6 von 100; die übrigen Zeilen ändern
+  nur die mittlere größte Neigung (Racer an der Halbblock-Kante in Angle 10,4 statt 6,5°).
+- `crash.txt`: 3 von 56 Zeilen: Whoop an der Halbblock-Kante Seite 0,8 statt 0 % und Kopf 1,7 statt 2,5 %, Long Range
+  dort Kopf 0 statt 0,8 %, Whoop gegen die Wand mit 10 m/s höchste Drehrate 73,4 statt 73,2 rad/s.
+

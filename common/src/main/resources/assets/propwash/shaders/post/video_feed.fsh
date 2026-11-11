@@ -83,7 +83,7 @@ vec2 analogSyncShift(vec2 uv, float line, inout float blank, inout float smear) 
     }
     float span = max(Sync.w - Sync.z, 1.0e-3);
     float rel = (uv.y - Sync.z) / span;
-    float taper = smoothstep(0.0, 0.14, rel) * smoothstep(1.0, 0.86, rel);
+    float taper = smoothstep(0.0, 0.14, rel) * smoothstep(0.0, 1.0 - 0.86, 1.0 - rel);
     float event = floor(Sync.z * 997.0 + Sync.w * 131.0);
     float group = floor(line / 14.0);
     float gap = span > 0.12 ? step(hash3(group, event, 41.0), 0.24) : 0.0;

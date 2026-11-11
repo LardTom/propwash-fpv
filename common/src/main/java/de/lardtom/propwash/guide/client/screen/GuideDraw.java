@@ -19,7 +19,8 @@ public final class GuideDraw {
         NEXT,
         REPLAY,
         CLOSE,
-        RESET_VIEW
+        RESET_VIEW,
+        STICKS
     }
 
     private GuideDraw() {
@@ -134,6 +135,18 @@ public final class GuideDraw {
                 g.fill(cx - 3, cy + 3, cx - 2, cy + 4, color);
                 g.fill(cx + 3, cy + 3, cx + 4, cy + 4, color);
                 g.fill(cx, cy, cx + 1, cy + 1, color);
+            }
+            case STICKS -> {
+                g.fill(cx - 6, cy - 3, cx - 1, cy - 2, color);
+                g.fill(cx - 6, cy + 2, cx - 1, cy + 3, color);
+                g.fill(cx - 6, cy - 2, cx - 5, cy + 2, color);
+                g.fill(cx - 2, cy - 2, cx - 1, cy + 2, color);
+                g.fill(cx + 1, cy - 3, cx + 6, cy - 2, color);
+                g.fill(cx + 1, cy + 2, cx + 6, cy + 3, color);
+                g.fill(cx + 1, cy - 2, cx + 2, cy + 2, color);
+                g.fill(cx + 5, cy - 2, cx + 6, cy + 2, color);
+                g.fill(cx - 4, cy - 1, cx - 3, cy + 1, color);
+                g.fill(cx + 3, cy - 2, cx + 4, cy, color);
             }
         }
     }

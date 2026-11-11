@@ -9,27 +9,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CourseAccessTest {
     @Test
     void ownerAndOperatorEditFromAnywhereInTheDimension() {
-        assertEquals(CourseAccess.ALLOWED, CourseAccess.edit(true, true, false, true, false, false));
-        assertEquals(CourseAccess.ALLOWED, CourseAccess.edit(true, true, false, false, true, false));
-        assertEquals(CourseAccess.ALLOWED, CourseAccess.edit(true, true, true, false, true, false));
+        assertEquals(CourseAccess.ALLOWED, CourseAccess.edit(true, true, false, true, false));
+        assertEquals(CourseAccess.ALLOWED, CourseAccess.edit(true, true, false, false, true));
+        assertEquals(CourseAccess.ALLOWED, CourseAccess.edit(true, true, true, false, true));
     }
 
     @Test
-    void foreignCourseStaysClosedEvenNextToIt() {
-        assertEquals(CourseAccess.NOT_OWNER, CourseAccess.edit(true, true, false, false, false, true));
-        assertEquals(CourseAccess.NOT_OWNER, CourseAccess.edit(true, true, false, false, false, false));
+    void foreignCourseStaysClosed() {
+        assertEquals(CourseAccess.NOT_OWNER, CourseAccess.edit(true, true, false, false, false));
     }
 
     @Test
-    void courseWithoutCreatorNeedsThePlayerNearby() {
-        assertEquals(CourseAccess.ALLOWED, CourseAccess.edit(true, true, true, false, false, true));
-        assertEquals(CourseAccess.TOO_FAR, CourseAccess.edit(true, true, true, false, false, false));
+    void courseWithoutCreatorIsForOperatorsOnly() {
+        assertEquals(CourseAccess.OWNERLESS, CourseAccess.edit(true, true, true, false, false));
+        assertFalse(CourseAccess.OWNERLESS.allowed());
     }
 
     @Test
     void gameModeAndDimensionComeFirstForEveryone() {
-        assertEquals(CourseAccess.NO_BUILD, CourseAccess.edit(false, true, false, true, true, true));
-        assertEquals(CourseAccess.OTHER_DIMENSION, CourseAccess.edit(true, false, false, true, true, true));
+        assertEquals(CourseAccess.NO_BUILD, CourseAccess.edit(false, true, false, true, true));
+        assertEquals(CourseAccess.OTHER_DIMENSION, CourseAccess.edit(true, false, false, true, true));
         assertEquals(CourseAccess.NO_BUILD, CourseAccess.delete(false, true, true, true, false));
         assertEquals(CourseAccess.OTHER_DIMENSION, CourseAccess.delete(true, false, true, true, false));
     }

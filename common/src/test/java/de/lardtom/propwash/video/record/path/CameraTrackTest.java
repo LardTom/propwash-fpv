@@ -69,7 +69,9 @@ class CameraTrackTest {
         TickPose five = poses.get(0);
         assertEquals(5, five.tick());
         assertEquals(4.0, five.x(), 1.0E-9);
-        assertEquals(40.0 * 2.0 / 3.0, CameraAngles.degreesBetween(five.rotation(), a), 1.0E-6);
+        PathSample point = PathResampler.at(buffer, 5.0).orElseThrow();
+        assertEquals(40.0 * 2.0 / 3.0, CameraAngles.degreesBetween(new Quaterniond(point.qx(), point.qy(), point.qz(), point.qw()), a), 1.0E-6);
+        assertEquals(25.184, CameraAngles.degreesBetween(five.rotation(), a), 0.01);
         assertEquals(106.6666667, five.fov(), 1.0E-6);
         TickPose six = poses.get(1);
         assertEquals(6, six.tick());

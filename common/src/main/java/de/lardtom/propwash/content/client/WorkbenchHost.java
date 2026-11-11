@@ -23,12 +23,14 @@ import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 public final class WorkbenchHost implements WorkbenchContext {
     public static final int MAX_HEADER_BUTTONS = 2;
@@ -98,6 +100,12 @@ public final class WorkbenchHost implements WorkbenchContext {
         this.buttons.add(new Entry(text, null, Objects.requireNonNull(sprite, "sprite"), Component.empty(), Objects.requireNonNull(onPress, "onPress")));
     }
 
+    public void addTextOrIconButton(Component label, Component shortLabel, Component tooltip, Identifier sprite, Component iconTitle, Runnable onPress) {
+        this.buttons.add(new Entry(Objects.requireNonNull(label, "label"), Objects.requireNonNull(shortLabel, "shortLabel"), null,
+                Objects.requireNonNullElse(tooltip, Component.empty()), Objects.requireNonNull(onPress, "onPress"), Objects.requireNonNull(sprite, "sprite"),
+                Objects.requireNonNull(iconTitle, "iconTitle")));
+    }
+
     @Override
     public int headerSpace() {
         return this.headerSpace;
@@ -124,9 +132,43 @@ public final class WorkbenchHost implements WorkbenchContext {
         return ClientApiImpl.sendWorkbenchImport(this.menu.containerId, request);
     }
 
-    public record Entry(Component label, @Nullable Component shortLabel, @Nullable Identifier icon, Component tooltip, Runnable onPress) {
+    public record Entry(Component label, @Nullable Component shortLabel, @Nullable Identifier icon, Component tooltip, Runnable onPress,
+            @Nullable Identifier fallbackIcon, Component fallbackTitle) {
+        public Entry(Component label, @Nullable Component shortLabel, @Nullable Identifier icon, Component tooltip, Runnable onPress) {
+            this(label, shortLabel, icon, tooltip, onPress, null, Component.empty());
+        }
+
         public boolean iconOnly() {
             return this.icon != null;
+        }
+
+        public int[] widths(ToIntFunction<Component> textWidth) {
+            if (this.iconOnly()) {
+                return new int[]{WorkbenchContext.ICON_BUTTON_SIZE};
+            }
+            int full = textWidth.applyAsInt(this.label);
+            int[] widths = this.shortLabel == null ? new int[]{full} : new int[]{full, Math.min(full, textWidth.applyAsInt(this.shortLabel))};
+            if (this.fallbackIcon == null) {
+                return widths;
+            }
+            int[] withIcon = Arrays.copyOf(widths, widths.length + 1);
+            withIcon[widths.length] = Math.min(widths[widths.length - 1], WorkbenchContext.ICON_BUTTON_SIZE);
+            return withIcon;
+        }
+
+        public @Nullable Identifier iconAt(int variant) {
+            if (this.iconOnly()) {
+                return this.icon;
+            }
+            return this.fallbackIcon != null && variant == (this.shortLabel == null ? 1 : 2) ? this.fallbackIcon : null;
+        }
+
+        public Component textAt(int variant) {
+            return variant == 0 || this.shortLabel == null ? this.label : this.shortLabel;
+        }
+
+        public Component titleAt(int variant) {
+            return !this.iconOnly() && this.iconAt(variant) != null ? this.fallbackTitle : this.label;
         }
     }
 }

@@ -33,7 +33,7 @@ class ThermalNeutralityTest {
         while (frames < 30 * 60 * 30 && w.sim.telemetry().armed && w.sim.telemetry().chargeFraction > 0.0) {
             w.frame(dt);
             frames++;
-            derate += w.sim.events().count(SimEventType.MOTOR_DERATE);
+            derate += w.sim.events().count(SimEventType.MOTOR_HOT) + w.sim.events().count(SimEventType.ESC_DERATE);
             wear += w.sim.events().count(SimEventType.MOTOR_THERMAL_WEAR);
             for (double t : w.sim.telemetry().motorTempC) {
                 max = Math.max(max, t);
@@ -42,9 +42,17 @@ class ThermalNeutralityTest {
         return new Climb(max, derate, wear, frames * dt);
     }
 
+    static boolean flagged(DroneBuild build) {
+        Set<BuildWarning> warnings = BuildAnalysis.of(build).warnings();
+        return warnings.contains(BuildWarning.ESC_CURRENT_LIMITED) || warnings.contains(BuildWarning.MOTOR_THERMAL);
+    }
+
     @Test
     void builtinDronesNeverReachTheDerateThresholdWhileHovering() {
         for (DroneBuild build : BuiltinRegressionTest.buildableCombinations()) {
+            if (BuildAnalysis.of(build).warnings().contains(BuildWarning.CANNOT_HOVER)) {
+                continue;
+            }
             AirframeSpec p = AirframeSpec.of(build);
             double hover = OperatingPoints.hoverMotorTemp(p, AMBIENT_C);
             assertTrue(hover < p.motorDerateStartC, p.buildKey + " schwebt bei " + hover + " °C");
@@ -56,7 +64,7 @@ class ThermalNeutralityTest {
         Set<DroneBuild> candidates = new LinkedHashSet<>(DroneBuild.PRESETS);
         for (DroneBuild build : BuiltinRegressionTest.buildableCombinations()) {
             AirframeSpec p = AirframeSpec.of(build);
-            if (OperatingPoints.fullThrottleMotorTemp(p, AMBIENT_C) > p.motorDerateStartC - SIM_CHECK_MARGIN_C) {
+            if (OperatingPoints.fullThrottleMotorTemp(p, AMBIENT_C) > p.motorDerateStartC - SIM_CHECK_MARGIN_C && !flagged(build)) {
                 candidates.add(build);
             }
         }

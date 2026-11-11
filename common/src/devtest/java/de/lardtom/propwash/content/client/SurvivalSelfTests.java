@@ -21,6 +21,7 @@ import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.core.PartCategory;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
+import de.lardtom.propwash.zone.ZoneMarker;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.item.MissingItemModel;
@@ -83,7 +84,8 @@ public final class SurvivalSelfTests {
     private static final List<Identifier> OTHER_CRAFTABLE = List.of(ContentIds.DRONE_WORKBENCH, ContentIds.BATTERY_CHARGER,
             ContentIds.GOGGLES_ANALOG, ContentIds.GOGGLES_DIGITAL, ContentIds.REMOTE, ContentIds.GATE_SMALL, ContentIds.GATE_MEDIUM,
             ContentIds.GATE_LARGE, ContentIds.RACE_FLAG, ContentIds.SLALOM_POLE, ContentIds.DIVE_CUBE, ContentIds.FREEFORM_GATE,
-            ContentIds.GATE_POLE, ContentIds.COURSE_TOOL, ContentIds.SIGNAL_REPEATER, Constants.id("waterproof_spray"));
+            ContentIds.GATE_POLE, ContentIds.COURSE_TOOL, ContentIds.SIGNAL_REPEATER, Constants.id("waterproof_spray"), Constants.id("rx_block"),
+            Constants.id(ZoneMarker.ID));
     private static final List<Identifier> NOT_CRAFTABLE = List.of(ContentIds.GOGGLES_CREATIVE, ContentIds.DRONE, StackType.CREATIVE_FC.id());
 
     private SurvivalSelfTests() {

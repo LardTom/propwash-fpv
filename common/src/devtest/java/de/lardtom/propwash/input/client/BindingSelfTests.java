@@ -131,9 +131,9 @@ final class BindingSelfTests {
             boolean[] buttons = new boolean[24];
             axes[5] = ChannelMath.fromRangeMicros(1000);
             axes[6] = ChannelMath.fromRangeMicros(1500);
-            int bits = evaluator.evaluate(profile, axes, buttons);
+            long bits = evaluator.evaluate(profile, axes, buttons);
             if (!SwitchEvaluator.isSet(bits, SwitchFunction.HORIZON) || SwitchEvaluator.isSet(bits, SwitchFunction.ARM)) {
-                return StepResult.fail("Bereichsauswertung falsch (Mitte/unten): " + Integer.toBinaryString(bits));
+                return StepResult.fail("Bereichsauswertung falsch (Mitte/unten): " + Long.toBinaryString(bits));
             }
             axes[5] = ChannelMath.fromRangeMicros(2000);
             axes[6] = ChannelMath.fromRangeMicros(2000);
@@ -141,7 +141,7 @@ final class BindingSelfTests {
             bits = evaluator.evaluate(profile, axes, buttons);
             if (SwitchEvaluator.isSet(bits, SwitchFunction.HORIZON) || !SwitchEvaluator.isSet(bits, SwitchFunction.ARM)
                     || !SwitchEvaluator.isSet(bits, SwitchFunction.RESCUE)) {
-                return StepResult.fail("Bereichs-/Tastenauswertung falsch (oben): " + Integer.toBinaryString(bits));
+                return StepResult.fail("Bereichs-/Tastenauswertung falsch (oben): " + Long.toBinaryString(bits));
             }
             buttons[23] = false;
             bits = evaluator.evaluate(profile, axes, buttons);
@@ -194,9 +194,9 @@ final class BindingSelfTests {
             boolean[] buttons = new boolean[24];
             axes[4] = ChannelMath.fromRangeMicros(1000);
             axes[5] = ChannelMath.fromRangeMicros(1000);
-            int bits = evaluator.evaluate(profile, axes, buttons);
+            long bits = evaluator.evaluate(profile, axes, buttons);
             if (SwitchEvaluator.isSet(bits, SwitchFunction.ARM) || !SwitchEvaluator.isSet(bits, SwitchFunction.ANGLE)) {
-                return StepResult.fail("Ausgangslage falsch: " + Integer.toBinaryString(bits));
+                return StepResult.fail("Ausgangslage falsch: " + Long.toBinaryString(bits));
             }
             int mirroredLow = 3000 - arm.activeHighMicros();
             int mirroredHigh = 3000 - arm.activeLowMicros();
@@ -237,7 +237,7 @@ final class BindingSelfTests {
                 bits = evaluator.evaluate(profile, axes, buttons);
                 for (int j = 0; j < order.length; j++) {
                     if (SwitchEvaluator.isSet(bits, order[j]) != (i == j)) {
-                        return StepResult.fail("3-Stufen-Schalter nicht umgedreht bei " + positions[i] + " µs: " + Integer.toBinaryString(bits));
+                        return StepResult.fail("3-Stufen-Schalter nicht umgedreht bei " + positions[i] + " µs: " + Long.toBinaryString(bits));
                     }
                 }
             }

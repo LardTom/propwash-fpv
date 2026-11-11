@@ -1,5 +1,6 @@
 package de.lardtom.propwash.drone.client.dust;
 
+import de.lardtom.propwash.barrier.DroneBarriers;
 import de.lardtom.propwash.drone.dust.DustModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,7 +37,7 @@ public final class DustSurface {
                 return Ground.NONE;
             }
             BlockState state = level.getBlockState(cursor);
-            if (state.isAir()) {
+            if (state.isAir() || DroneBarriers.is(state)) {
                 continue;
             }
             FluidState fluid = state.getFluidState();

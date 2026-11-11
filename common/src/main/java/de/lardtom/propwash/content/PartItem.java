@@ -58,7 +58,7 @@ public class PartItem extends Item {
         List<Component> status = new ArrayList<>();
         if (PartCondition.worn(stack)) {
             status.add(PartCondition.line(PartCondition.of(stack)));
-            if (PartCondition.broken(stack) && Recycling.recyclable(part)) {
+            if (PartCondition.broken(stack) && !PropRepairs.isProp(stack)) {
                 status.add(Component.translatable("propwash.content.tooltip.recycle").withStyle(ChatFormatting.DARK_GRAY));
             }
             if (PartCondition.broken(stack) && PropRepairs.isProp(stack)) {

@@ -1,5 +1,6 @@
 package de.lardtom.propwash.osd;
 
+import de.lardtom.propwash.osd.addon.AddonOsdKeys;
 import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedHashMap;
@@ -97,10 +98,19 @@ public final class OsdConfig {
                     slot.col = OsdGrid.clampCol(slot.col);
                     slot.row = OsdGrid.clampRow(slot.row);
                 }
-                slot.color = slot.color == null || slot.color.isBlank() ? "" : OsdColors.normalize(slot.color, "");
-                slot.scale = slot.scale > 0.0F ? stepScale(slot.scale, 0.0F) : 0.0F;
+                normalizeOverrides(slot);
             }
             fresh.put(element.key(), slot);
+        }
+        for (Map.Entry<String, Slot> entry : old.entrySet()) {
+            Slot slot = entry.getValue();
+            if (slot != null && AddonOsdKeys.isAddonKey(entry.getKey())) {
+                Slot kept = slot.copy();
+                kept.col = OsdGrid.clampCol(kept.col);
+                kept.row = OsdGrid.clampRow(kept.row);
+                normalizeOverrides(kept);
+                fresh.put(entry.getKey(), kept);
+            }
         }
         config.elements = fresh;
         if (classic) {
@@ -112,6 +122,11 @@ public final class OsdConfig {
         if (parking) {
             migrateParking(config);
         }
+    }
+
+    private static void normalizeOverrides(Slot slot) {
+        slot.color = slot.color == null || slot.color.isBlank() ? "" : OsdColors.normalize(slot.color, "");
+        slot.scale = slot.scale > 0.0F ? stepScale(slot.scale, 0.0F) : 0.0F;
     }
 
     private static void migrateParking(OsdConfig config) {

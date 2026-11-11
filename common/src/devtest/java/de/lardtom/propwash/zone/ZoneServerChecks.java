@@ -9,6 +9,7 @@ import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.AssistWords;
 import de.lardtom.propwash.race.LapAssist;
 import de.lardtom.propwash.race.RaceServer;
+import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.WorldRulesRights;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import net.minecraft.commands.CommandSourceStack;
@@ -47,6 +48,8 @@ public final class ZoneServerChecks {
         ServerPlayer guest = WorldRulesRights.guest(server);
         List<QuadcopterEntity> drones = new ArrayList<>();
         int before = ZoneData.get(server).all().size();
+        boolean playersCreate = WorldRules.on(server, WorldRuleSpecs.PLAYERS_CREATE_ZONES);
+        WorldRules.set(server, WorldRuleSpecs.PLAYERS_CREATE_ZONES, 0);
         try {
             if (server.getPlayerList().isOp(guest.nameAndId())) {
                 return "Gast steht schon in der Operator-Liste";
@@ -129,6 +132,7 @@ public final class ZoneServerChecks {
                     + "Übungsplatz: " + text + ", außerhalb sauber";
             return null;
         } finally {
+            WorldRules.set(server, WorldRuleSpecs.PLAYERS_CREATE_ZONES, playersCreate ? 1 : 0);
             if (server.getPlayerList().isOp(guest.nameAndId())) {
                 server.getPlayerList().deop(guest.nameAndId());
             }

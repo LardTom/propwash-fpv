@@ -1,0 +1,4 @@
+{
+  "gamerule.propwash.drones_boss_interactions": "Bosses fight drones",
+  "gamerule.propwash.drones_boss_interactions.description": "On (default): wardens hear flying drones and get angry like at players; their sonic boom hits the drone hard (crash damage like a hard crash, the drone is thrown), and near a warden its darkness pulses through the FPV image. The ender dragon throws drones away with its wings and its turbulence, rams drones near it, and its breath damages them. The wither’s side heads also shoot skulls at flown drones. Breeze wind charges push flown drones away (player wind charges only with an add-on, as before). Off: bosses and breezes leave drones alone (unless an add-on handles knockback itself)."
+}

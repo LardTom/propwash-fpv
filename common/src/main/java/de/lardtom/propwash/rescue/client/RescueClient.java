@@ -18,6 +18,7 @@ public final class RescueClient {
         ClientBus.DISCONNECT.register(minecraft -> RescueController.INSTANCE.onDisconnect());
         ClientBus.DISCONNECT.register(minecraft -> HomeResetInput.clear());
         ClientNet.handle(HomePointS2C.TYPE, (payload, context) -> RescueController.INSTANCE.onServerHome(context.minecraft(), payload));
+        AutonomyLabels.init();
         ClientBus.SUBMIT_WORLD_GEOMETRY.register(HomeMarker::submit);
         ConfigTabs.register(RescueConfigTab::new);
     }

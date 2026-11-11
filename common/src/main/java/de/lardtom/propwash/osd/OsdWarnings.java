@@ -35,6 +35,15 @@ public final class OsdWarnings {
         if (data.worldEdge) {
             out.add(Warning.WORLD_EDGE);
         }
+        if (data.insideBlock) {
+            out.add(Warning.INSIDE_BLOCK);
+        }
+        if (data.freecamEdge) {
+            out.add(Warning.FREECAM_EDGE);
+        }
+        if (data.overloaded) {
+            out.add(Warning.OVERLOADED);
+        }
         switch (data.batteryState) {
             case EMPTY -> out.add(Warning.PACK_DEPLETED);
             case CRITICAL -> out.add(Warning.BATTERY_CRITICAL);
@@ -43,8 +52,11 @@ public final class OsdWarnings {
             }
         }
         wear(data.wear, out);
-        if (data.motorDerating) {
+        if (data.motorHot) {
             out.add(Warning.MOTOR_HOT);
+        }
+        if (data.escDerating) {
+            out.add(Warning.ESC_HOT);
         }
         if (data.vtxHot) {
             out.add(Warning.VTX_HOT);
@@ -63,7 +75,7 @@ public final class OsdWarnings {
         if (!data.armed && data.hasSim) {
             for (ArmBlocker blocker : ArmBlocker.values()) {
                 if (blocker.isSet(data.armBlockers)) {
-                    Warning warning = Warning.forBlocker(blocker);
+                    Warning warning = Warning.forBlocker(blocker, data.autoArmPending);
                     if (!out.contains(warning)) {
                         out.add(warning);
                     }
@@ -156,6 +168,7 @@ public final class OsdWarnings {
         CAMERA_DAMAGE(Severity.WARNING, false),
         BATTERY_PUFFED(Severity.WARNING, true),
         MOTOR_HOT(Severity.WARNING, true),
+        ESC_HOT(Severity.WARNING, true),
         VTX_HOT(Severity.WARNING, true),
         ARM_SWITCH(Severity.INFO, false),
         ARM_THROTTLE(Severity.INFO, false),
@@ -167,7 +180,12 @@ public final class OsdWarnings {
         ARM_HARDWARE(Severity.INFO, false),
         ARM_THROTTLE_3D(Severity.INFO, false),
         FLASHBACK_FULL(Severity.WARNING, true),
-        ARM_TURTLE(Severity.INFO, false);
+        ARM_TURTLE(Severity.INFO, false),
+        INSIDE_BLOCK(Severity.WARNING, true),
+        FREECAM_EDGE(Severity.WARNING, false),
+        OVERLOADED(Severity.WARNING, true),
+        AUTO_ARM(Severity.INFO, false),
+        AUTO_ARM_3D(Severity.INFO, false);
 
         private final Severity severity;
         private final boolean blinks;
@@ -187,6 +205,16 @@ public final class OsdWarnings {
 
         public String translationKey() {
             return "propwash.osd.warning." + this.name().toLowerCase(Locale.ROOT);
+        }
+
+        static Warning forBlocker(ArmBlocker blocker, boolean autoArm) {
+            if (autoArm && blocker == ArmBlocker.THROTTLE_NOT_LOW) {
+                return AUTO_ARM;
+            }
+            if (autoArm && blocker == ArmBlocker.THROTTLE_NOT_CENTERED) {
+                return AUTO_ARM_3D;
+            }
+            return forBlocker(blocker);
         }
 
         static Warning forBlocker(ArmBlocker blocker) {

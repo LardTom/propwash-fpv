@@ -23,7 +23,7 @@ class MountPosesTest {
         DroneBuild build = DroneBuild.FREESTYLE;
         AirframeSpec p = AirframeSpec.of(build);
         AccessoryAnchor anchor = AccessoryAnchor.of(build.frame(), AccessoryMount.FRONT);
-        assertEquals(-72.0, anchor.z(), 1.0E-9);
+        assertEquals(-64.0, anchor.z(), 1.0E-9);
         Quaternionf facingNorth = new Quaternionf();
         MountPose pose = MountPoses.pose(COM, facingNorth, p, anchor, null);
         assertTrue(pose.anchor().z < COM.z - 0.05, "Halterung vorne liegt nicht vor dem Schwerpunkt: " + pose.anchor());

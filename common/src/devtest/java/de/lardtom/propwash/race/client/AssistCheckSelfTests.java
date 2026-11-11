@@ -4,6 +4,7 @@ import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.content.ContentIds;
 import de.lardtom.propwash.core.CoreComponents;
+import de.lardtom.propwash.dev.PersonalRulesDev;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.client.Screenshots;
@@ -20,7 +21,7 @@ import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.AssistServerChecks;
 import de.lardtom.propwash.race.LapAssist;
 import de.lardtom.propwash.server.WorldRules;
-import de.lardtom.propwash.server.client.ClientWorldRules;
+import de.lardtom.propwash.server.client.ClientPersonalRules;
 import de.lardtom.propwash.server.rules.RuleSpec;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.sim.DroneSim;
@@ -35,6 +36,7 @@ import de.lardtom.propwash.video.client.VideoState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,6 +45,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -52,6 +56,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,16 +69,31 @@ public final class AssistCheckSelfTests {
     private static final int GRAVITY = 130;
     private static final int WIND = 3;
     private static final int WAIT_TICKS = 120;
+    private static final int START_X = 180;
+    private static final int START_Z = -190;
+    private static final int START_TICKS = 600;
+    private static final String PROBE = "probe";
+    private static final String HELD = "held";
+    private static final String LOADED = "loaded";
+    private static final int LOAD_TICKS = 200;
     private static final AtomicReference<@Nullable String> RESULT = new AtomicReference<>();
+    private static final AtomicReference<@Nullable Home> HOME = new AtomicReference<>();
+
+    private record Home(ResourceKey<Level> dimension, Vec3 position, float yaw, float pitch) {
+    }
 
     private AssistCheckSelfTests() {
     }
 
     public static void register() {
+        SelfTest.clientStep("flughilfe-prüfung: Startlage weit weg vom Spawn wie im vollen Lauf, Chunks am Spawn entladen", START_TICKS + 100,
+                AssistCheckSelfTests::startStep);
         SelfTest.clientStep("flughilfe-prüfung: Server wertet vier Piloten je Runde mit genau ihren Gründen", 300, AssistCheckSelfTests::serverStep);
         SelfTest.clientStep("flughilfe-prüfung: Race-Tab nennt jeden Grund vor dem Flug mit Wert und Standard", 600, AssistCheckSelfTests::tabStep);
         SelfTest.clientStep("flughilfe-prüfung: Physik nach dem Zurücksetzen im Flug sofort wieder ohne Flughilfe", 900,
                 AssistCheckSelfTests::flightStep);
+        SelfTest.clientStep("flughilfe-prüfung: Aufräumen – Spieler zurück an seine Lage vor der Gruppe", CovRaceSite.HOME_TICKS + 100,
+                AssistCheckSelfTests::homeStep);
     }
 
     public static Screenshots.Scene tabScene(boolean assisted) {
@@ -96,20 +116,44 @@ public final class AssistCheckSelfTests {
     }
 
     private static StepResult serverStep(SelfTest.StepContext ctx) {
-        if (ctx.tick() == 0) {
-            RESULT.set(null);
-            ctx.state().put(FUTURE, ctx.onServer(server -> RESULT.set(AssistServerChecks.check(server))));
-            return StepResult.pending();
-        }
+        Map<String, Object> state = ctx.state();
         StepResult waiting = waitFuture(ctx);
         if (waiting != null) {
             return waiting;
+        }
+        AtomicBoolean held = (AtomicBoolean) state.computeIfAbsent(HELD, key -> new AtomicBoolean());
+        if (!state.containsKey(SINCE)) {
+            state.put(SINCE, ctx.tick());
+            state.put(FUTURE, ctx.onServer(server -> held.set(AssistServerChecks.holdArea(server))));
+            return StepResult.pending();
+        }
+        int waited = ctx.tick() - (int) state.get(SINCE);
+        if (!state.containsKey(PHASE)) {
+            AtomicBoolean loaded = (AtomicBoolean) state.computeIfAbsent(LOADED, key -> new AtomicBoolean());
+            if (!loaded.get()) {
+                if (waited > LOAD_TICKS) {
+                    ctx.onServer(server -> AssistServerChecks.releaseArea(server, held.get()));
+                    return StepResult.fail("Chunks der Prüfung am Spawn nach " + waited + " Ticks nicht geladen");
+                }
+                state.put(FUTURE, ctx.onServer(server -> loaded.set(AssistServerChecks.areaLoaded(server))));
+                return StepResult.pending();
+            }
+            state.put(PHASE, waited);
+            RESULT.set(null);
+            state.put(FUTURE, ctx.onServer(server -> {
+                try {
+                    RESULT.set(AssistServerChecks.check(server));
+                } finally {
+                    AssistServerChecks.releaseArea(server, held.get());
+                }
+            }));
+            return StepResult.pending();
         }
         String result = RESULT.get();
         if (result != null) {
             return StepResult.fail(result);
         }
-        ctx.log("Piloten je Runde: " + AssistServerChecks.summary());
+        ctx.log("Chunks der Prüfung am Spawn nach " + state.get(PHASE) + " Ticks geladen; Piloten je Runde: " + AssistServerChecks.summary());
         return StepResult.pass();
     }
 
@@ -117,12 +161,107 @@ public final class AssistCheckSelfTests {
         return server.getPlayerList().getPlayers().getFirst();
     }
 
-    static void applyAssisted(MinecraftServer server, boolean assisted) {
-        WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, assisted ? GRAVITY : WorldRuleSpecs.GRAVITY_SCALE.defaultValue());
-        WorldRules.set(server, WorldRuleSpecs.WIND, assisted ? WIND : WorldRuleSpecs.WIND.defaultValue());
-        WorldRules.set(server, WorldRuleSpecs.DRONE_TRAILS, assisted ? 1 : WorldRuleSpecs.DRONE_TRAILS.defaultValue());
-        WorldRules.set(server, WorldRuleSpecs.CRASH_DAMAGE, assisted ? 0 : WorldRuleSpecs.CRASH_DAMAGE.defaultValue());
+    private static StepResult startStep(SelfTest.StepContext ctx) {
+        Map<String, Object> state = ctx.state();
+        StepResult waiting = waitFuture(ctx);
+        if (waiting != null) {
+            return waiting;
+        }
+        if (!state.containsKey(SINCE)) {
+            state.put(SINCE, ctx.tick());
+            state.put(FUTURE, ctx.onServer(AssistCheckSelfTests::moveAway));
+            return StepResult.pending();
+        }
+        @SuppressWarnings("unchecked")
+        AtomicReference<@Nullable String> missing = (AtomicReference<@Nullable String>) state.computeIfAbsent(PROBE,
+                key -> new AtomicReference<@Nullable String>("noch nicht geprüft"));
+        String now = missing.get();
+        int waited = ctx.tick() - (int) state.get(SINCE);
+        if (now == null) {
+            ctx.log("Startlage Spawn " + START_X + "/" + START_Z + " geladen, die Chunks der Prüfung am Spawn nach " + waited + " Ticks entladen");
+            return StepResult.pass();
+        }
+        if (waited > START_TICKS) {
+            return StepResult.fail("Startlage nach " + waited + " Ticks nicht bereit: " + now);
+        }
+        if (ctx.tick() % 5 == 0) {
+            state.put(FUTURE, ctx.onServer(server -> missing.set(startMissing(server))));
+        }
+        return StepResult.pending();
+    }
+
+    private static void moveAway(MinecraftServer server) {
         ServerPlayer player = player(server);
+        HOME.set(new Home(player.level().dimension(), player.position(), player.getYRot(), player.getXRot()));
+        ServerLevel level = server.overworld();
+        BlockPos spawn = level.getRespawnData().pos();
+        int x = spawn.getX() + START_X;
+        int z = spawn.getZ() + START_Z;
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        player.teleportTo(level, x + 0.5, y, z + 0.5, Set.of(), player.getYRot(), player.getXRot(), true);
+        player.resetFallDistance();
+    }
+
+    private static @Nullable String startMissing(MinecraftServer server) {
+        ServerPlayer player = player(server);
+        ServerLevel level = server.overworld();
+        if (player.level() != level || !CovRaceSite.loadedAround(level, player.position(), CovRaceSite.HOME_CHUNKS)) {
+            return "Chunks um die Startlage nicht geladen";
+        }
+        List<ChunkPos> loaded = AssistServerChecks.area(server).stream().filter(pos -> level.areEntitiesLoaded(pos.pack())).toList();
+        return loaded.isEmpty() ? null : "Chunks am Spawn noch geladen: " + loaded;
+    }
+
+    private static StepResult homeStep(SelfTest.StepContext ctx) {
+        Home home = HOME.get();
+        if (home == null) {
+            return StepResult.pass();
+        }
+        Map<String, Object> state = ctx.state();
+        StepResult waiting = waitFuture(ctx);
+        if (waiting != null) {
+            return waiting;
+        }
+        if (!state.containsKey(SINCE)) {
+            state.put(SINCE, ctx.tick());
+            state.put(FUTURE, ctx.onServer(server -> {
+                ServerLevel level = server.getLevel(home.dimension());
+                ServerPlayer player = player(server);
+                player.teleportTo(level == null ? server.overworld() : level, home.position().x, home.position().y, home.position().z, Set.of(),
+                        home.yaw(), home.pitch(), true);
+                player.resetFallDistance();
+            }));
+            return StepResult.pending();
+        }
+        AtomicBoolean loaded = (AtomicBoolean) state.computeIfAbsent(PROBE, key -> new AtomicBoolean());
+        int waited = ctx.tick() - (int) state.get(SINCE);
+        if (loaded.get()) {
+            HOME.set(null);
+            ctx.log("zurück bei " + home.position() + " nach " + waited + " Ticks");
+            return StepResult.pass();
+        }
+        if (waited > CovRaceSite.HOME_TICKS) {
+            HOME.set(null);
+            return StepResult.fail("Lage vor der Gruppe nach dem Rückteleport nicht geladen (Chunks im Umkreis von " + CovRaceSite.HOME_CHUNKS + " um "
+                    + home.position() + ")");
+        }
+        if (ctx.tick() % 5 == 0) {
+            state.put(FUTURE, ctx.onServer(server -> loaded.set(CovRaceSite.loadedAround(player(server).level(), home.position(), CovRaceSite.HOME_CHUNKS))));
+        }
+        return StepResult.pending();
+    }
+
+    static void applyAssisted(MinecraftServer server, boolean assisted) {
+        WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.GRAVITY_SCALE.defaultValue());
+        WorldRules.set(server, WorldRuleSpecs.WIND, WorldRuleSpecs.WIND.defaultValue());
+        WorldRules.set(server, WorldRuleSpecs.DRONE_TRAILS, assisted ? 1 : WorldRuleSpecs.DRONE_TRAILS.defaultValue());
+        WorldRules.set(server, WorldRuleSpecs.CRASH_DISARM, WorldRuleSpecs.CRASH_DISARM.defaultValue());
+        ServerPlayer player = player(server);
+        PersonalRulesDev.clear(server);
+        if (assisted) {
+            PersonalRulesDev.personal(server, player.getUUID(), Map.of(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY, WorldRuleSpecs.WIND, WIND,
+                    WorldRuleSpecs.CRASH_DISARM, 0));
+        }
         ItemStack goggles = ContentIds.item(ContentIds.GOGGLES_CREATIVE).map(ItemStack::new).orElse(ItemStack.EMPTY);
         player.setItemSlot(EquipmentSlot.HEAD, goggles);
         ItemStack drone = new ItemStack(DroneModule.DRONE_ITEM.get());
@@ -131,9 +270,10 @@ public final class AssistCheckSelfTests {
     }
 
     static void restore(MinecraftServer server) {
-        for (RuleSpec spec : List.of(WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.WIND, WorldRuleSpecs.DRONE_TRAILS, WorldRuleSpecs.CRASH_DAMAGE)) {
+        for (RuleSpec spec : List.of(WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.WIND, WorldRuleSpecs.DRONE_TRAILS, WorldRuleSpecs.CRASH_DISARM)) {
             WorldRules.set(server, spec, spec.defaultValue());
         }
+        PersonalRulesDev.clear(server);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             player.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
             player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
@@ -151,15 +291,15 @@ public final class AssistCheckSelfTests {
         Minecraft mc = Minecraft.getInstance();
         int gravity = assisted ? GRAVITY : WorldRuleSpecs.GRAVITY_SCALE.defaultValue();
         int wind = assisted ? WIND : WorldRuleSpecs.WIND.defaultValue();
-        return ClientWorldRules.INSTANCE.get(WorldRuleSpecs.GRAVITY_SCALE) == gravity && ClientWorldRules.INSTANCE.get(WorldRuleSpecs.WIND) == wind
-                && VideoState.INSTANCE.goggles(mc.player) == VideoSystem.CREATIVE && mc.player != null
+        return ClientPersonalRules.INSTANCE.effective(WorldRuleSpecs.GRAVITY_SCALE) == gravity
+                && ClientPersonalRules.INSTANCE.effective(WorldRuleSpecs.WIND) == wind && VideoState.INSTANCE.goggles(mc.player) == VideoSystem.CREATIVE && mc.player != null
                 && ContentIds.is(mc.player.getMainHandItem(), ContentIds.DRONE);
     }
 
     static String readiness(@Nullable RaceConfigTab tab) {
         Minecraft mc = Minecraft.getInstance();
-        return "Tab=" + (tab != null) + " Schwerkraft=" + ClientWorldRules.INSTANCE.get(WorldRuleSpecs.GRAVITY_SCALE) + " Wind="
-                + ClientWorldRules.INSTANCE.get(WorldRuleSpecs.WIND) + " Brille=" + VideoState.INSTANCE.goggles(mc.player) + " Hand="
+        return "Tab=" + (tab != null) + " Schwerkraft=" + ClientPersonalRules.INSTANCE.effective(WorldRuleSpecs.GRAVITY_SCALE) + " Wind="
+                + ClientPersonalRules.INSTANCE.effective(WorldRuleSpecs.WIND) + " Brille=" + VideoState.INSTANCE.goggles(mc.player) + " Hand="
                 + (mc.player == null ? "-" : mc.player.getMainHandItem()) + " Fenster=" + mc.gui.screen();
     }
 
@@ -199,14 +339,15 @@ public final class AssistCheckSelfTests {
             return null;
         }
         AssistReasons reasons = result.reasons();
-        int expectedMask = LapAssist.WORLD_PHYSICS.bit() | LapAssist.GOGGLES_LATENCY.bit();
+        int expectedMask = LapAssist.PERSONAL_RULES.bit() | LapAssist.GOGGLES_LATENCY.bit();
         if (reasons.mask() != expectedMask) {
-            return "Gründe " + LapAssist.list(reasons.mask()) + " statt Welt-Physik und Brille";
+            return "Gründe " + LapAssist.list(reasons.mask()) + " statt persönliche Regeln und Brille";
         }
-        List<AssistDetail> physics = reasons.details(LapAssist.WORLD_PHYSICS);
-        List<AssistDetail> expected = List.of(AssistDetail.rule(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY), AssistDetail.rule(WorldRuleSpecs.WIND, WIND));
+        List<AssistDetail> physics = reasons.details(LapAssist.PERSONAL_RULES);
+        List<AssistDetail> expected = List.of(AssistDetail.personal(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY, WorldRuleSpecs.GRAVITY_SCALE.defaultValue()),
+                AssistDetail.personal(WorldRuleSpecs.WIND, WIND, WorldRuleSpecs.WIND.defaultValue()));
         if (!physics.equals(expected)) {
-            return "Welt-Physik nennt " + physics + " statt " + expected;
+            return "persönliche Regeln nennen " + physics + " statt " + expected;
         }
         int transmitter = DroneBuild.FREESTYLE.video().latencyMs;
         if (!reasons.details(LapAssist.GOGGLES_LATENCY).equals(List.of(AssistDetail.goggles(0, transmitter)))) {
@@ -382,20 +523,21 @@ public final class AssistCheckSelfTests {
                 if (session.physicsModified() || ClientRaceTracker.INSTANCE.reasonsNow().any()) {
                     return endFlight(ctx, flight, StepResult.fail("saubere Sitzung meldet " + ClientRaceTracker.INSTANCE.reasonsNow()));
                 }
-                state.put(FUTURE, ctx.onServer(server -> WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, GRAVITY)));
+                state.put(FUTURE, ctx.onServer(server -> PersonalRulesDev.personal(server, player(server).getUUID(),
+                        Map.of(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY))));
                 next(ctx, 2);
             }
             case 2 -> {
                 hover(session, sim, flight);
                 AssistReasons now = ClientRaceTracker.INSTANCE.reasonsNow();
-                boolean client = session.physicsModified() && now.details(LapAssist.WORLD_PHYSICS)
-                        .equals(List.of(AssistDetail.rule(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY)));
+                boolean client = session.physicsModified() && now.details(LapAssist.PERSONAL_RULES)
+                        .equals(List.of(AssistDetail.personal(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY, WorldRuleSpecs.GRAVITY_SCALE.defaultValue())));
                 if (!client || !flight.serverFlag.get()) {
                     probeServer(ctx, flight);
                     return waited > WAIT_TICKS ? endFlight(ctx, flight, StepResult.fail("Schwerkraft " + GRAVITY + " % nicht erkannt: Client="
                             + client + " Server=" + flight.serverFlag.get() + " Gründe=" + now)) : StepResult.pending();
                 }
-                state.put(FUTURE, ctx.onServer(server -> WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.GRAVITY_SCALE.defaultValue())));
+                state.put(FUTURE, ctx.onServer(server -> PersonalRulesDev.clear(server)));
                 next(ctx, 3);
             }
             case 3 -> {
@@ -411,7 +553,7 @@ public final class AssistCheckSelfTests {
                     return waited > WAIT_TICKS ? endFlight(ctx, flight, StepResult.fail("nach dem Zurücksetzen noch Flughilfe (scharf): Client="
                             + now + " Server-Flag=" + flight.serverFlag.get())) : StepResult.pending();
                 }
-                ctx.log("Schwerkraft 130 % im Flug erkannt, nach dem Zurücksetzen auf 100 % ohne Entschärfen wieder ohne Flughilfe (Client und Server)");
+                ctx.log("persönliche Schwerkraft 130 % im Flug erkannt, nach dem Zurücksetzen der Abweichung ohne Entschärfen wieder ohne Flughilfe (Client und Server)");
                 return endFlight(ctx, flight, StepResult.pass());
             }
             default -> {
@@ -492,6 +634,7 @@ public final class AssistCheckSelfTests {
         int id = flight.droneId;
         ctx.onServer(server -> {
             WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.GRAVITY_SCALE.defaultValue());
+            PersonalRulesDev.clear(server);
             if (id >= 0 && server.overworld().getEntity(id) instanceof QuadcopterEntity drone) {
                 if (drone.pilot().isPresent()) {
                     DronePiloting.release(drone);

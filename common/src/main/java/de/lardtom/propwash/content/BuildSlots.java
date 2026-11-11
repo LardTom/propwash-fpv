@@ -105,6 +105,10 @@ public final class BuildSlots {
         return true;
     }
 
+    public static boolean fitsFrame(@Nullable PartInfo part, @Nullable PartInfo frame, PartCompatibility rule) {
+        return !rule.enforced() || !(part instanceof AccessoryType accessory) || !(frame instanceof FrameType) || accessory.fitsFrame(frame);
+    }
+
     public static List<@Nullable PartInfo> layout(DroneBuild build) {
         List<@Nullable PartInfo> parts = new ArrayList<>(COUNT);
         for (int slot = 0; slot < COUNT; slot++) {
@@ -171,7 +175,7 @@ public final class BuildSlots {
             case ESC_UNDERSIZED -> EnumSet.of(PartCategory.STACK, PartCategory.MOTOR);
             case BATTERY_WEAK -> EnumSet.of(PartCategory.BATTERY, PartCategory.MOTOR);
             case BATTERY_FRAME, BATTERY_UNDERSIZED -> EnumSet.of(PartCategory.FRAME, PartCategory.BATTERY);
-            case ACCESSORY_MOUNT -> EnumSet.of(PartCategory.FRAME, PartCategory.ACCESSORY);
+            case ACCESSORY_MOUNT, ACCESSORY_FRAME -> EnumSet.of(PartCategory.FRAME, PartCategory.ACCESSORY);
             case MISSING_PART -> EnumSet.noneOf(PartCategory.class);
             case PROP_TOO_SMALL -> EnumSet.of(PartCategory.FRAME, PartCategory.PROP);
             case PROP_MOUNT -> EnumSet.of(PartCategory.MOTOR, PartCategory.PROP);

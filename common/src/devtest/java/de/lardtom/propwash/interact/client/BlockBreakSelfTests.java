@@ -13,6 +13,7 @@ import de.lardtom.propwash.interact.DroneBreaks;
 import de.lardtom.propwash.interact.InteractRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.sim.DroneSim;
+import de.lardtom.propwash.sim.SimSnapshot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -20,21 +21,25 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.DecoratedPotBlockEntity;
 import net.minecraft.world.level.block.entity.PotDecorations;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Vector3d;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,6 +63,8 @@ public final class BlockBreakSelfTests {
     private static final String SPEED = "bb_speed";
     private static final String CHECKED = "bb_checked";
     private static final String CLEARS = "bb_clears";
+    private static final String SIDE_STOPS = "bb_side_stops";
+    private static final double SIDE_LIMIT = 1.0;
     private static final AtomicBoolean GUARD = new AtomicBoolean();
     private static final List<Broken> BROKEN = new CopyOnWriteArrayList<>();
     private static final List<BreakRules.Outcome> DENIED = new CopyOnWriteArrayList<>();
@@ -263,6 +270,11 @@ public final class BlockBreakSelfTests {
         if (!passed && sc.speed() < SLOW && box.maxX < front - 0.15) {
             InteractSelfTests.push(sim, sc.speed(), 0.0, 0.0);
         }
+        double side = drone.getZ() - InteractSelfTests.start(arena).z;
+        if (!passed && sc.speed() < SLOW && WallContact.drifting(side, velocity.z, SIDE_LIMIT)) {
+            stopSideways(sim);
+            state.put(SIDE_STOPS, (int) state.getOrDefault(SIDE_STOPS, 0) + 1);
+        }
         if (!passed && box.minX > back + 0.05) {
             state.put(PASSED, InteractSelfTests.since(ctx));
             state.put(SPEED, velocity.length());
@@ -305,14 +317,19 @@ public final class BlockBreakSelfTests {
             ctx.log(String.format(Locale.ROOT, "Bruch %s bei %.1f m/s: Server %.1f J ≥ Schwelle, %.2f m/s verloren, danach %.1f m/s, Abstürze %d",
                     first.state().getBlock().getDescriptionId(), sc.speed(), first.impact().energy(), first.impact().speedLost(), speedAfter, crashes));
         } else {
+            String where = "seitlich " + InteractSelfTests.fmt(side) + " m, Höhe " + InteractSelfTests.fmt(box.minY - arena[1]) + " m";
+            double depth = WallContact.depth(box, blockBoxes(mc.level, drone, box));
+            if (depth > WallContact.STUCK) {
+                return StepResult.fail(sc.what() + ": Drohne steckt im Block (" + InteractSelfTests.fmt(depth) + " m tief, " + where + ")");
+            }
             if (InteractSelfTests.since(ctx) < 60) {
                 if (!BROKEN.isEmpty() || passed) {
                     return StepResult.fail(sc.what() + ": zerbrochen oder durchgeflogen trotz " + (sc.rule() ? "zu wenig Wucht/Recht" : "Regel aus"));
                 }
                 return StepResult.pending();
             }
-            if (box.maxX > front + 0.02) {
-                return StepResult.fail(sc.what() + ": Drohne steckt im Block (x=" + InteractSelfTests.fmt(box.maxX - front) + ")");
+            if (box.maxX > front + WallContact.STUCK) {
+                return StepResult.fail(sc.what() + ": Drohne neben oder unter der Scheibe vorbei (x=" + InteractSelfTests.fmt(box.maxX - front) + ", " + where + ")");
             }
             if (predicted != 0 || requests != 0) {
                 return StepResult.fail(sc.what() + ": Client hat trotzdem einen Bruch vorhergesagt (" + predicted + "/" + requests + ")");
@@ -328,7 +345,9 @@ public final class BlockBreakSelfTests {
                 }
                 ctx.log(sc.what() + ": Freigabe vorab abgelehnt (" + clears + " Anfragen), keine Bruch-Anfrage, Scheibe beim Client nie entfernt");
             }
-            ctx.log(sc.what() + ": Drohne vor dem Block (" + InteractSelfTests.fmt(front - box.maxX) + " m), Abstürze " + crashes);
+            int stops = (int) state.getOrDefault(SIDE_STOPS, 0);
+            ctx.log(sc.what() + ": Drohne vor dem Block (" + InteractSelfTests.fmt(front - box.maxX) + " m), Abstürze " + crashes + ", " + where
+                    + (stops > 0 ? ", Seitendrift " + stops + " Ticks gebremst" : ""));
         }
         if (sc.crash() != null && sc.crash() != crashes > 0) {
             return StepResult.fail(sc.what() + ": Absturz " + (crashes > 0 ? "gezählt" : "fehlt") + " (erwartet " + sc.crash() + ")");
@@ -426,6 +445,21 @@ public final class BlockBreakSelfTests {
                 level.setBlockAndUpdate(new BlockPos(wx, arena[1] + dy, arena[2] + dz), block);
             }
         }
+    }
+
+    private static void stopSideways(DroneSim sim) {
+        SimSnapshot snapshot = new SimSnapshot();
+        sim.copyStateTo(snapshot);
+        snapshot.vz = 0.0;
+        sim.copyStateFrom(snapshot);
+    }
+
+    private static List<AABB> blockBoxes(Level level, Entity drone, AABB box) {
+        List<AABB> boxes = new ArrayList<>();
+        for (VoxelShape shape : level.getBlockCollisions(drone, box)) {
+            boxes.addAll(shape.toAabbs());
+        }
+        return boxes;
     }
 
     private static void clearWall(ServerLevel level, int[] arena) {

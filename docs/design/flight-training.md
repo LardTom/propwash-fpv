@@ -14,9 +14,10 @@ Freischaltung. Vorbild ist das Tutorial von Liftoff: kurze Aufgaben, sofortiges 
 | Fortschritt | **Je Spieler (UUID) in der Client-Datei** `config/propwash/flight_training.json`, gilt in allen Welten und auf allen Servern | Können hängt am Piloten, nicht an der Welt; Belohnungen gibt es keine, also auch keinen Anreiz zum Schummeln | Server-Daten je Welt (Protokoll, Fortschritt pro Server neu) |
 | Belohnungen | Nur Sterne, Bestzeiten und Freischaltung — keine Items | Kein Schummeln über Client-Daten möglich | Items oder Fortschritte (bräuchten Server-Prüfung) |
 | Freischaltung | Lektionen eines Kapitels nacheinander; Kapitel 2 nach Kapitel 1; **Rennen und Freestyle parallel** nach Kapitel 2; Fortgeschritten nach Rennen **und** Freestyle | Wer nur Rennen oder nur Freestyle will, muss das andere nicht zuerst machen | Strikt linear |
+| Alles freischalten (0.6.0) | Knopf **„Alle freischalten“** im Fenster mit Rückfrage (zweiter Klick auf „Wirklich alle freischalten?“ binnen 4 s). Er setzt die Markierung `unlockAll` im Fortschritt des Spielers (`TrainingStore`, `flight_training.json`), die `Curriculum.unlocked` und `chapterUnlocked` überstimmt (`StarSource#allUnlocked`). Sterne bleiben leer, Bestzeiten unverändert; „Reihenfolge wieder einhalten“ nimmt die Markierung ohne Rückfrage zurück | Erfahrene Piloten wollen gleich zu einer bestimmten Lektion; Belohnungen gibt es keine, also auch nichts zu schützen | Option in den Einstellungen oder Befehl (schwer zu finden), Sterne schenken (verfälscht den Fortschritt) |
 | Flughilfen | Höhe/Position halten, Rescue oder veränderte Physik-Welt-Regeln: Lektion zählt, aber **höchstens ein Stern**, keine Bestzeit | Lernen mit Hilfen ist erlaubt, Bestwerte sollen vergleichbar sein | Versuch verweigern |
 | Drohnengröße | Kurs **skaliert nach Radstand**: unter 100 mm (Whoops) 0,6× Größe und 1,25× Zeit, unter 180 mm (Cinewhoops) 0,8× und 1,1×, sonst 1× | Ein 65-mm-Whoop braucht kleinere Ringe und kürzere Wege; Addon-Rahmen werden automatisch eingeordnet | Eigene Kurse je Klasse |
-| Wiederholen | **Landen und abschalten** startet automatisch einen neuen Versuch; nahe am Start (≤ 3 m) am selben Kurs, sonst wird der Kurs neu an der Drohne gesetzt; scharf schalten startet die Uhr | Keine zusätzliche Taste, funktioniert mit Funke und Tastatur | Taste „Lektion neu starten“ (Konflikt mit „Rennen neu starten“) |
+| Wiederholen | **Landen und abschalten** startet automatisch einen neuen Versuch; nahe am Start (≤ 3 m) am selben Kurs, sonst wird der Kurs neu an der Drohne gesetzt; scharf schalten startet die Uhr | Keine zusätzliche Taste, funktioniert mit Funke und Tastatur | Taste „Lektion neu starten“ (Konflikt mit „Rennen neu starten“, seit 0.5.2 „Reset“) |
 | Öffnen | Knopf „Flugtraining“ in der Flugschul-Übersicht und im Konfigurator-Tab „Flugschule“; **Taste M im Flug** (oder mit aktiver Lektion) öffnet direkt das Training | Ohne neue Taste erreichbar, M bleibt „Flugschule“ | Eigene Taste |
 
 ## Ablauf für Spieler
@@ -94,7 +95,9 @@ woanders steht.
   (Ring mit Zeit und Abstand zur Bestzeit, verpasst, Runde, Trick). Ergebnis-Banner in der Mitte. Im FPV im OSD-Stil über den
   Videoeffekten, im Sichtflug als Propwash-Meldungsfläche.
 - **Fenster** (`TrainingScreen`, `ThemedScreen`): Kapitel links (Sterne, gesperrt, fertig), Lektionen in der Mitte (★★☆),
-  rechts Beschreibung, Tipp, Sterne-Grenzen für die aktuelle Drohne, Bestzeit, Versuche, Sperrgrund und „Fliegen“.
+  rechts Beschreibung, Tipp, Sterne-Grenzen für die aktuelle Drohne, Bestzeit, Versuche, Sperrgrund und „Fliegen“. In der
+  Zeile unter dem Titel links von „Szenen“ der Knopf „Alle freischalten“ (mit Rückfrage) bzw. „Reihenfolge wieder
+  einhalten“; passen Zeile und Knöpfe nicht nebeneinander, stehen die Knöpfe in einer zweiten Zeile.
 
 ## Mehrspieler und Überleben
 
@@ -113,10 +116,14 @@ Fenster, Datei) und lässt sich für 1.21.1/26.2 einzeln anpassen.
 
 - JUnit `guide.training`: `CurriculumTest` (Aufbau, Ziele, Texte beider Sprachen mit Längen, Freischaltung, Ringe ohne
   Überlappung), `LessonRunTest` (alle Zielarten kinematisch, Fehlschläge, Zwischenzeiten, Skalierung), `PlacementTest`
-  (freies Feld, Mauer → Drehung, eingeschlossen, Stufe/Loch unter dem Pad, nicht geladen), `TrainingProgressTest`,
+  (freies Feld, Mauer → Drehung, eingeschlossen, Stufe/Loch unter dem Pad, nicht geladen), `TrainingProgressTest` (dazu
+  Markierung `unlockAll`: alle Lektionen frei ohne Sterne, übersteht Speichern, Rücknahme sperrt wieder und behält Sterne),
   `LessonAutopilotTest` (alle zwanzig Lektionen mit dem echten Flugmodell geflogen, Whoop und Cinewhoop auf skalierten Kursen,
   Sterne-Kalibrierung, Nase und Vorwärtsflug passen zum Kurs).
-- Selbsttest `guide.client.TrainingSelfTests`: Texte und Freischaltung, Fenster aus der Übersicht, echte FPV-Drohne an einem
+- Selbsttest `guide.client.TrainingSelfTests`: Texte und Freischaltung, Fenster aus der Übersicht, „Alle freischalten“
+  mit neuer Spielerdatei (erster Klick fragt nur nach, Rückfrage läuft ab, zweiter Klick schaltet frei, keine Sterne,
+  Markierung in der Datei, Kapitel „Fortgeschritten“ wählbar und „Fliegen“ startet 5.1, „Reihenfolge wieder einhalten“
+  sperrt wieder), echte FPV-Drohne an einem
   freien Ort, Kurs an der Drohne, Schweben im Kasten, Ringe mit gespeicherten Zwischenzeiten und neuem Versuch nach dem
   Landen, Abschalten in der Luft, Mauer → „Kein Platz“ und nach dem Abbau Kurs gesetzt, Taste M im Flug, Aufräumen, Zustand
   nach dem Verlassen. Dazu `guide.client.TrainingCourseSelfTests` mit Kursen aus Kapitel 3–5, im echten Gelände gesetzt

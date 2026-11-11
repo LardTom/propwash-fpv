@@ -7,6 +7,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
@@ -15,6 +17,10 @@ public final class GhostCodec {
     public static final int MAGIC = 0x50574731;
     public static final int VERSION = 2;
     public static final int VERSION_WITHOUT_LOOK = 1;
+    public static final int VERSION_WITH_RULES = 3;
+    public static final int VERSION_WITH_LEAD = 4;
+    public static final int MAX_RULES = 64;
+    private static final int MAX_RULE_LENGTH = 128;
     public static final int POSITION_STEPS = 64;
     public static final int ROTATION_STEPS = 2047;
     public static final int MAX_ENCODED_BYTES = 512 * 1024;
@@ -25,12 +31,22 @@ public final class GhostCodec {
     }
 
     public static byte[] encode(GhostTrack track) {
-        return encode(track, VERSION);
+        if (track.leadNanos() > 0L) {
+            byte[] data = encode(track, VERSION_WITH_LEAD);
+            if (data.length <= MAX_ENCODED_BYTES) {
+                return data;
+            }
+            track = track.withoutLead();
+        }
+        return encode(track, track.rules() == null ? VERSION : VERSION_WITH_RULES);
     }
 
     static byte[] encode(GhostTrack track, int version) {
-        if (version != VERSION && version != VERSION_WITHOUT_LOOK) {
+        if (!known(version)) {
             throw new IllegalArgumentException("Unbekannte Version " + version);
+        }
+        if (version < VERSION_WITH_LEAD) {
+            track = track.withoutLead();
         }
         ByteArrayOutputStream bytes = new ByteArrayOutputStream(track.samples() * 6 + 64);
         Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION);
@@ -45,6 +61,24 @@ public final class GhostCodec {
                 byte[] look = track.look() == null ? new byte[0] : track.look().encode();
                 writeVarLong(out, look.length);
                 out.write(look);
+            }
+            if (version >= VERSION_WITH_RULES) {
+                RaceStandard rules = track.rules() == null ? RaceStandard.DEFAULTS : track.rules();
+                int count = Math.min(rules.values().size(), MAX_RULES);
+                writeVarLong(out, count);
+                int written = 0;
+                for (Map.Entry<String, Integer> rule : rules.values().entrySet()) {
+                    if (written++ >= count) {
+                        break;
+                    }
+                    byte[] id = rule.getKey().getBytes(StandardCharsets.UTF_8);
+                    writeVarLong(out, Math.min(id.length, MAX_RULE_LENGTH));
+                    out.write(id, 0, Math.min(id.length, MAX_RULE_LENGTH));
+                    writeVarLong(out, zigzag(rule.getValue()));
+                }
+            }
+            if (version >= VERSION_WITH_LEAD) {
+                writeVarLong(out, track.leadNanos());
             }
             writeVarLong(out, track.lapNanos());
             writeVarLong(out, track.intervalNanos());
@@ -102,7 +136,7 @@ public final class GhostCodec {
                 throw new IOException("Keine Propwash-Geisterspur");
             }
             int version = in.readUnsignedByte();
-            if (version != VERSION && version != VERSION_WITHOUT_LOOK) {
+            if (!known(version)) {
                 throw new IOException("Unbekannte Version " + version);
             }
             int frameLength = in.readUnsignedByte();
@@ -122,6 +156,29 @@ public final class GhostCodec {
                 in.readFully(lookData);
                 look = lookLength == 0L ? null : GhostLook.decode(lookData).orElse(null);
             }
+            RaceStandard rules = null;
+            if (version >= VERSION_WITH_RULES) {
+                long ruleCount = readVarLong(in);
+                if (ruleCount < 0L || ruleCount > MAX_RULES) {
+                    throw new IOException("Zu viele Regeln: " + ruleCount);
+                }
+                Map<String, Integer> values = new LinkedHashMap<>();
+                for (int i = 0; i < ruleCount; i++) {
+                    long idLength = readVarLong(in);
+                    if (idLength < 0L || idLength > MAX_RULE_LENGTH) {
+                        throw new IOException("Regel zu lang: " + idLength);
+                    }
+                    byte[] id = new byte[(int) idLength];
+                    in.readFully(id);
+                    long raw = unzigzag(readVarLong(in));
+                    if (raw < Integer.MIN_VALUE || raw > Integer.MAX_VALUE) {
+                        throw new IOException("Ungültiger Regelwert");
+                    }
+                    values.put(new String(id, StandardCharsets.UTF_8), (int) raw);
+                }
+                rules = new RaceStandard(values);
+            }
+            long lead = version >= VERSION_WITH_LEAD ? readVarLong(in) : 0L;
             long lapNanos = readVarLong(in);
             long interval = readVarLong(in);
             long count = readVarLong(in);
@@ -168,10 +225,14 @@ public final class GhostCodec {
                     }
                 }
             }
-            return new GhostTrack(interval, positions, rotations, lapNanos, new String(frame, StandardCharsets.UTF_8), layout, look);
+            return new GhostTrack(interval, positions, rotations, lapNanos, new String(frame, StandardCharsets.UTF_8), layout, look, rules, lead);
         } catch (IllegalArgumentException e) {
             throw new IOException(e.getMessage(), e);
         }
+    }
+
+    private static boolean known(int version) {
+        return version == VERSION || version == VERSION_WITHOUT_LOOK || version == VERSION_WITH_RULES || version == VERSION_WITH_LEAD;
     }
 
     static long zigzag(long value) {

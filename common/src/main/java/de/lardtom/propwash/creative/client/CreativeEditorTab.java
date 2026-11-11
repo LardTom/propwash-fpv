@@ -1,5 +1,6 @@
 package de.lardtom.propwash.creative.client;
 
+import de.lardtom.propwash.api.build.DroneData;
 import de.lardtom.propwash.api.build.DronePreset;
 import de.lardtom.propwash.api.part.PartKind;
 import de.lardtom.propwash.apiimpl.ApiExtensions;
@@ -19,7 +20,6 @@ import de.lardtom.propwash.creative.CreativeDraft;
 import de.lardtom.propwash.creative.CreativeEdits;
 import de.lardtom.propwash.creative.CreativeLimits;
 import de.lardtom.propwash.creative.CreativeParam;
-import de.lardtom.propwash.creative.CreativeShareCode;
 import de.lardtom.propwash.creative.CreativeSpec;
 import de.lardtom.propwash.creative.net.CreativeEditC2S;
 import de.lardtom.propwash.drone.CameraMount;
@@ -28,6 +28,10 @@ import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.join.JoinText;
 import de.lardtom.propwash.join.SessionItems;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.share.CreativeShare;
+import de.lardtom.propwash.share.Pw3Params;
+import de.lardtom.propwash.share.ShareCommands;
+import de.lardtom.propwash.share.client.ShareSettings;
 import de.lardtom.propwash.sim.BuildAnalysis;
 import de.lardtom.propwash.sim.BuildWarning;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
@@ -49,6 +53,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
@@ -645,11 +650,33 @@ public final class CreativeEditorTab extends UiTab {
     }
 
     public String shareCode() {
-        return CreativeShareCode.encode(this.draft.spec());
+        return CreativeShare.editorCode(this.droneData(), this.draft.spec(), ShareSettings.addonInfo());
+    }
+
+    public DroneData droneData() {
+        DroneContext context = this.context();
+        DroneBuild installed = this.draft.installed();
+        FlightTune tune = new FlightTune(CameraMount.withUptilt(tuneOf(context).values(), installed, this.uptilt));
+        QuadcopterEntity entity = context.entity();
+        Component custom = entity != null ? entity.getCustomName() : context.stack().get(DataComponents.CUSTOM_NAME);
+        String name = CraftNames.of(custom);
+        return new DroneData(Conversions.spec(installed), Conversions.paint(context.paint()), Conversions.tune(tune),
+                name.isEmpty() ? Optional.empty() : Optional.of(name));
     }
 
     private void copyCode() {
-        Minecraft.getInstance().keyboardHandler.setClipboard(this.shareCode());
+        String code;
+        try {
+            code = this.shareCode();
+        } catch (RuntimeException e) {
+            this.flash(Component.translatable("propwash.share.export.not_shareable", ShareCommands.reason(e)), Palette.ERROR);
+            return;
+        }
+        if (!ShareCommands.fits(code)) {
+            this.flash(Component.translatable("propwash.share.export.too_long", code.length(), Pw3Params.MAX_INPUT_CHARS), Palette.ERROR);
+            return;
+        }
+        Minecraft.getInstance().keyboardHandler.setClipboard(code);
         this.flash(Component.translatable(KEY + "code.copied"), Palette.SUCCESS);
     }
 
@@ -661,8 +688,13 @@ public final class CreativeEditorTab extends UiTab {
     }
 
     public boolean paste(String code) {
-        Optional<CreativeSpec> spec = CreativeShareCode.decode(code);
-        if (spec.isEmpty()) {
+        CreativeShare.Pasted pasted = CreativeShare.paste(code);
+        if (pasted.status() == CreativeShare.PasteStatus.NO_VALUES) {
+            this.flash(Component.translatable(KEY + "code.no_values"), Palette.ERROR);
+            return false;
+        }
+        Optional<CreativeSpec> spec = pasted.spec();
+        if (!pasted.ok() || spec.isEmpty()) {
             this.flash(Component.translatable(KEY + "code.invalid"), Palette.ERROR);
             return false;
         }
@@ -672,8 +704,9 @@ public final class CreativeEditorTab extends UiTab {
             return false;
         }
         List<CreativeLimits.Note> notes = this.draft.load(spec.get());
-        this.flash(notes.isEmpty() ? Component.translatable(KEY + "code.pasted") : Component.translatable(KEY + "code.pasted_notes", notes.size()),
-                notes.isEmpty() ? Palette.SUCCESS : Palette.WARNING);
+        Component done = notes.isEmpty() ? Component.translatable(KEY + (pasted.legacy() ? "code.pasted_legacy" : "code.pasted"))
+                : Component.translatable(KEY + "code.pasted_notes", notes.size());
+        this.flash(done, notes.isEmpty() ? Palette.SUCCESS : Palette.WARNING);
         this.changed();
         this.host.rebuild();
         return true;

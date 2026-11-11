@@ -19,9 +19,9 @@ Freiform-Gates. Grundlage bleiben `docs/design/gate-free-transform.md`, `course-
   - Wendeflagge, Slalomstange, Tauchwürfel: Richtung, Seite/Umrunden/Ausgang, Wertung bzw. Breite, Höhe.
   - Freiform-Gate: Flugrichtung; darunter, ob die Blöcke die Öffnung noch so umschließen wie beim Setzen.
   - Gate und Freiform-Gate haben eine zweite Seite „Redstone“ (Abschnitt „Redstone-Signal“: Signal an/aus, Pulslänge,
-    Nur im Rennen, `docs/design/gate-redstone.md` §2). Schleichen + Mausrad läuft über die Zeilen beider Seiten,
-    rechts in der ersten Abschnittszeile steht „Redstone »“ bzw. „« Gate“ (mit freier Maus ein Knopf); das Panel ist
-    auf beiden Seiten gleich hoch. Der Block, der den Strom bekommt, ist rot umrandet und unter den Zeilen mit Namen
+    Nur im Rennen, `docs/design/gate-redstone.md` §2). Schleichen + Mausrad läuft über die Zeilen aller Seiten; die
+    Seiten stehen als Tabs an der Stelle des ersten Abschnittstitels (mit freier Maus anklickbar, ohne freie Maus Tab
+    bzw. Umschalt + Tab, `docs/design/0.6.0/race-system.md` §3.A7); das Panel ist auf allen Seiten gleich hoch. Der Block, der den Strom bekommt, ist rot umrandet und unter den Zeilen mit Namen
     genannt; „Zurücksetzen“ stellt auf dieser Seite das Signal zurück.
   - Die gewählte Zeile hat einen gelben Balken links und einen hervorgehobenen Regler.
 - **Mausrad:** ändert die gewählte Zeile. Winkel in 5°-Schritten auf dem 5°-Raster (33° → 35° → 40°), mit gedrückter

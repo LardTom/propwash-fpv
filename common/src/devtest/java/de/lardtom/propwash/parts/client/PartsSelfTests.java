@@ -34,6 +34,7 @@ import de.lardtom.propwash.content.DroneAssembly;
 import de.lardtom.propwash.content.DroneWorkbenchMenu;
 import de.lardtom.propwash.content.ImportService;
 import de.lardtom.propwash.content.PartCondition;
+import de.lardtom.propwash.content.RecycleRecipes;
 import de.lardtom.propwash.content.Recycling;
 import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.core.DroneBuildCodecs;
@@ -207,12 +208,12 @@ public final class PartsSelfTests {
             if (part instanceof BatteryType battery && Batteries.charge(stack) != Batteries.FULL) {
                 throw new IllegalStateException("Addon-Akku " + battery.id() + " ist nicht voll");
             }
-            if (Recycling.recyclable(part)) {
-                List<ItemStack> yield = Recycling.recycle(PartCondition.with(stack.copy(), 0.0F));
-                Identifier expected = Recycling.yieldOf(part).orElseThrow().itemId();
-                if (yield.isEmpty() || !BuiltInRegistries.ITEM.getKey(yield.getFirst().getItem()).equals(expected)) {
-                    throw new IllegalStateException("Recycling von " + part.id() + " liefert " + yield + " statt " + expected);
-                }
+            Optional<Recycling.Materials> fallback = Recycling.fallback(part).filter(Recycling.Materials::registered);
+            Optional<Recycling.Materials> recipe = RecycleRecipes.find(server.getRecipeManager(), stack.getItem());
+            Recycling.Plan plan = Recycling.plan(PartCondition.with(stack.copy(), 0.0F), item -> recipe);
+            Optional<Recycling.Materials> expected = recipe.or(() -> fallback);
+            if (!plan.materials().equals(expected) || plan.status() != (expected.isPresent() ? Recycling.Status.READY : Recycling.Status.NOT_RECYCLABLE)) {
+                throw new IllegalStateException("Recycling von " + part.id() + " liefert " + plan + " statt " + expected);
             }
             checked++;
         }

@@ -1,10 +1,15 @@
 package de.lardtom.propwash.accessory.client;
 
 import de.lardtom.propwash.api.client.ClientInput;
+import de.lardtom.propwash.api.input.AxisSpec;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.drone.operator.client.OperatorClient;
 import de.lardtom.propwash.input.RadioState;
 import de.lardtom.propwash.input.StickPositions;
+import de.lardtom.propwash.input.addon.AddonInputs;
+import de.lardtom.propwash.input.addon.client.AddonSwitchClient;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 
 import java.util.Optional;
@@ -67,5 +72,21 @@ public final class ClientInputImpl implements ClientInput {
     @Override
     public boolean action(int number) {
         return AccessoryActionInput.INSTANCE.held(number);
+    }
+
+    @Override
+    public boolean switchActive(Identifier id) {
+        return id != null && AddonSwitchClient.switchActive(id);
+    }
+
+    @Override
+    public double axis(Identifier id) {
+        AxisSpec spec = AddonInputs.axisSpec(id);
+        return spec == null ? 0.0 : AddonSwitchClient.axis(id, spec.center());
+    }
+
+    @Override
+    public boolean operating() {
+        return OperatorClient.operating();
     }
 }

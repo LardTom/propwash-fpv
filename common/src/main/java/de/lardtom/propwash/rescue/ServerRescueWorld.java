@@ -1,5 +1,6 @@
 package de.lardtom.propwash.rescue;
 
+import de.lardtom.propwash.barrier.DroneBarriers;
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -109,7 +110,7 @@ final class ServerRescueWorld implements RescueWorld {
         if (state.isAir()) {
             return false;
         }
-        return !state.getCollisionShape(current, this.cursor).isEmpty();
+        return !DroneBarriers.droneShape(state, current, this.cursor).isEmpty();
     }
 
     @Override
@@ -139,6 +140,23 @@ final class ServerRescueWorld implements RescueWorld {
         }
         this.cursor.set(x, y, z);
         return RescueBlocks.classify(current, this.cursor, c.getBlockState(this.cursor));
+    }
+
+    @Override
+    public double groundTop(int x, int y, int z) {
+        ServerLevel current = this.level;
+        if (current == null || y > current.getMaxY()) {
+            return Double.NaN;
+        }
+        if (y < current.getMinY()) {
+            return 1.0;
+        }
+        LevelChunk c = this.chunkAt(x, z);
+        if (c == null) {
+            return Double.NaN;
+        }
+        this.cursor.set(x, y, z);
+        return RescueBlocks.top(current, this.cursor, c.getBlockState(this.cursor));
     }
 
     @Override

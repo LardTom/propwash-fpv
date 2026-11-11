@@ -176,7 +176,23 @@ public final class FeedModel {
             p.chromaNoise = Math.max(p.chromaNoise, p.noise * 0.3F);
         }
         this.cameraDamage(input, strength);
+        this.darkness(input);
         return p;
+    }
+
+    private void darkness(FeedInput input) {
+        float darkness = Float.isFinite(input.darkness) ? clamp01(input.darkness) : 0.0F;
+        if (darkness <= 0.0F) {
+            return;
+        }
+        EffectParams p = this.params;
+        float pulse = 0.5F + 0.5F * (float) Math.cos(this.time * Math.PI * DarknessPulse.PULSE_RATE * 20.0);
+        float depth = darkness * (0.6F + 0.4F * pulse);
+        p.brightness = Math.min(p.brightness, 1.0F - DarknessPulse.FEED_BRIGHTNESS * depth);
+        p.vignette = Math.max(p.vignette, DarknessPulse.FEED_VIGNETTE * darkness);
+        p.noise = Math.max(p.noise, DarknessPulse.FEED_NOISE * depth);
+        p.chromaNoise = Math.max(p.chromaNoise, p.noise * 0.3F);
+        p.desaturation = Math.max(p.desaturation, 0.4F * darkness);
     }
 
     private void cameraDamage(FeedInput input, float strength) {

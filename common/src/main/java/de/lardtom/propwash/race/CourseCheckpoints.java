@@ -38,7 +38,21 @@ public final class CourseCheckpoints {
         return offset + stage;
     }
 
+    public static int element(List<CourseElement> kinds, int checkpoint) {
+        if (checkpoint < 0 || checkpoint >= count(kinds)) {
+            return NONE;
+        }
+        for (int element = 0; element < kinds.size(); element++) {
+            for (int stage = 0; stage < kinds.get(element).stages(); stage++) {
+                if (index(kinds, element, stage) == checkpoint) {
+                    return element;
+                }
+            }
+        }
+        return NONE;
+    }
+
     public static List<CourseElement> kinds(List<GateGeometry> gates) {
-        return gates.stream().map(GateGeometry::kind).toList();
+        return gates.stream().map(GateGeometry::scoringKind).toList();
     }
 }

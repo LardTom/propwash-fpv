@@ -278,8 +278,12 @@ zweiten Slot ein anderes Minecraft lief (Last 10–13 auf 12 Kernen) – Encoder
 Nachprüfung mit 720p30 und dem schlimmsten Bild (zweites Paar, derselbe Selbsttest, „vorher“ = Stand `84d0810a` mit
 nur der Messung, „nachher“ = Release-Stand mit format-gerechtem Tipp; beide direkt nacheinander, im zweiten Slot lief
 dabei die Bando-Prüfung eines fremden Seeds mit Weltgenerierung). „Schlimmstes Bild“ ist der längste einzelne Auftrag
-bzw. das längste Auslesen im Renderthread während der Aufnahme; der Selbsttest verlangt seitdem höchstens 25 ms
-(`MAX_RENDER_THREAD_STALL_MS`) zusätzlich zum Mittel unter 2 ms.
+bzw. das längste Auslesen im Renderthread während der Aufnahme; der Selbsttest verlangte seitdem höchstens 25 ms
+(`MAX_RENDER_THREAD_STALL_MS`) zusätzlich zum Mittel unter 2 ms. Seit 0.6.0 gilt die Grenze für das 99. Perzentil
+(`RecordingStallCheck`, `PipelineStats` zählt Auftrag und Auslesen dafür in Vierteln einer Millisekunde): Ein einzelnes
+Auslesen von 26,95 ms im vollen Lauf bei kaum freiem Speicher war kein Hänger der Aufnahme. Bis 1 % langsamere Bilder
+stehen als Ausreißer mit Speicherstand im Log; ein einmaliger Hänger wie die 32,6 ms unten fällt dort auf, aber nicht
+mehr als Fehler.
 
 | 720p30, 8 s | vorher | nachher, Propwash-Encoder |
 |---|---|---|

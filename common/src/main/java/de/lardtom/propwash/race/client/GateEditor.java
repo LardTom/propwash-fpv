@@ -6,10 +6,13 @@ import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.input.client.KeyDefaults;
 import de.lardtom.propwash.input.client.KeyNames;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.race.CourseData;
 import de.lardtom.propwash.race.CourseElement;
+import de.lardtom.propwash.race.CourseOrder;
 import de.lardtom.propwash.race.CourseToolItem;
 import de.lardtom.propwash.race.FreeformBlocks;
 import de.lardtom.propwash.race.FreeformFill;
+import de.lardtom.propwash.race.FreeformRegion;
 import de.lardtom.propwash.race.GateEntity;
 import de.lardtom.propwash.race.GateGeometry;
 import de.lardtom.propwash.race.GateItem;
@@ -17,7 +20,9 @@ import de.lardtom.propwash.race.GateMounting;
 import de.lardtom.propwash.race.GateSignal;
 import de.lardtom.propwash.race.GateSignalTarget;
 import de.lardtom.propwash.race.GateStacking;
+import de.lardtom.propwash.race.PassZoneOverlap;
 import de.lardtom.propwash.race.RacePayloads;
+import de.lardtom.propwash.race.ScoreArea;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
 import de.lardtom.propwash.ui.HintMemory;
 import de.lardtom.propwash.ui.client.FirstUseHints;
@@ -45,6 +50,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector2i;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class GateEditor {
@@ -82,21 +88,30 @@ public final class GateEditor {
         BLOCKED,
         NOT_ALLOWED,
         STACKED,
-        TOO_FAR
+        TOO_FAR,
+        TOO_WIDE,
+        TOO_HIGH,
+        TURN_LOCKED
     }
 
     private final GateEntity gate;
     private final GateEditModel model;
     private @Nullable GateGeometry pending;
+    private GateMounting.@Nullable ColumnTurn turn;
     private Status status = Status.SAME;
     private int recheck;
     private FreeformFill.@Nullable Integrity integrity;
 
+    private List<PassZoneOverlap.Finding> overlaps = List.of();
+
     private GateEditor(GateEntity gate) {
         this.gate = gate;
         GateGeometry geometry = gate.geometry();
-        this.model = new GateEditModel(gate.kind(), geometry.heading(), geometry.tilt().pitch(), geometry.tilt().roll(), gate.openingWidth(),
-                gate.openingHeight(), gate.variant(), gate.signal());
+        FreeformRegion region = geometry.region();
+        this.model = new GateEditModel(gate.kind(), region != null && region.horizontal(), geometry.heading(), geometry.tilt().pitch(),
+                geometry.tilt().roll(), gate.openingWidth(), gate.openingHeight(), gate.variant(), gate.signal(), gate.score());
+        this.model.setRoleRequired(gate.kind() == CourseElement.GATE_POLE && gate.inCourse());
+        this.model.setNudgeStep(RaceConfig.CONFIG.get().nudgeStep);
     }
 
     static void register() {
@@ -170,17 +185,19 @@ public final class GateEditor {
         return new int[] {x0, y1 - height, x0 + width, y1};
     }
 
-    private static void extractNotice(GuiGraphicsExtractor g, GateEditor editor, GateEditPanel panel) {
-        noticeBox = null;
+    private record Notice(List<FormattedCharSequence> lines, int[] box, float alpha) {
+    }
+
+    private static @Nullable Notice notice(GuiGraphicsExtractor g, GateEditor editor, GateEditPanel panel) {
         long left = noticeUntil - Util.getMillis();
         if (left <= 0L) {
-            return;
+            return null;
         }
         Font font = Minecraft.getInstance().font;
         Component text = startNotice(editor.gate.kind());
         int wrap = panel.left() - 2 * NOTICE_MARGIN - 2 * NOTICE_PAD - NOTICE_STRIPE;
         if (wrap <= 0) {
-            return;
+            return null;
         }
         List<FormattedCharSequence> lines = font.split(text, wrap);
         int widest = 0;
@@ -189,17 +206,21 @@ public final class GateEditor {
         }
         int[] box = noticeBounds(panel.left(), g.guiHeight(), widest, lines.size());
         if (box == null || box[1] < 0) {
-            return;
+            return null;
         }
-        float alpha = Math.min(1.0F, left / (float) NOTICE_FADE_MILLIS);
-        ThemeDraw.notice(g, box[0], box[1], box[2], box[3], Palette.ACCENT, alpha);
-        int color = Palette.withAlpha(Palette.TEXT, Math.max(16, Math.round(alpha * 255.0F)));
+        return new Notice(lines, box, Math.min(1.0F, left / (float) NOTICE_FADE_MILLIS));
+    }
+
+    private static void extractNotice(GuiGraphicsExtractor g, Notice notice) {
+        Font font = Minecraft.getInstance().font;
+        int[] box = notice.box();
+        ThemeDraw.notice(g, box[0], box[1], box[2], box[3], Palette.ACCENT, notice.alpha());
+        int color = Palette.withAlpha(Palette.TEXT, Math.max(16, Math.round(notice.alpha() * 255.0F)));
         int y = box[1] + NOTICE_PAD;
-        for (FormattedCharSequence line : lines) {
+        for (FormattedCharSequence line : notice.lines()) {
             ThemeText.text(g, font, line, box[0] + NOTICE_STRIPE + NOTICE_PAD, y, color);
             y += Metrics.LINE_HEIGHT;
         }
-        noticeBox = box;
     }
 
     public static void start(GateEntity gate) {
@@ -250,6 +271,10 @@ public final class GateEditor {
         return this.pending;
     }
 
+    public GateMounting.@Nullable ColumnTurn turn() {
+        return this.turn;
+    }
+
     public Status status() {
         return this.status;
     }
@@ -270,6 +295,10 @@ public final class GateEditor {
         this.model.showPage(page);
     }
 
+    public void turnPage(int delta) {
+        this.model.turnPage(delta);
+    }
+
     public @Nullable GateSignalTarget signalTarget() {
         if (!this.gate.kind().signals() || !this.model.signal().enabled()) {
             return null;
@@ -281,16 +310,73 @@ public final class GateEditor {
         return GateSignalTarget.of(next);
     }
 
+    public List<PassZoneOverlap.Finding> overlaps() {
+        return this.overlaps;
+    }
+
+    public PassZoneOverlap.@Nullable Finding ownOverlap() {
+        PassZoneOverlap.Finding own = null;
+        for (PassZoneOverlap.Finding finding : this.overlaps) {
+            if (this.gate.hasPass(finding.element()) && (own == null || finding.shortened() < own.shortened())) {
+                own = finding;
+            }
+        }
+        return own;
+    }
+
+    public void shortenOverlap() {
+        PassZoneOverlap.Finding own = this.ownOverlap();
+        if (own == null || !own.shortenable()) {
+            return;
+        }
+        if (this.gate.kind() == CourseElement.GATE_POLE) {
+            this.model.set(GateEditModel.Row.SCORE_REACH, own.shortened());
+        } else {
+            this.model.set(GateEditModel.Row.WIDTH, this.gate.kind().innerWidth(own.shortened()));
+        }
+        this.refresh();
+    }
+
+    private List<PassZoneOverlap.Finding> findOverlaps(GateGeometry next) {
+        CourseData course = this.gate.inCourse() ? ClientCourses.get(this.gate.courseId()) : null;
+        if (course == null) {
+            return List.of();
+        }
+        List<GateGeometry> gates = new ArrayList<>(ClientCourses.geometry(course));
+        List<CourseOrder.Pass> passes = this.gate.passes();
+        for (CourseOrder.Pass pass : passes) {
+            if (pass.index() >= 0 && pass.index() < gates.size()) {
+                gates.set(pass.index(), next.withReverse(pass.reverse()));
+            }
+        }
+        List<PassZoneOverlap.Finding> out = new ArrayList<>();
+        for (CourseOrder.Pass pass : passes) {
+            for (PassZoneOverlap.Finding finding : PassZoneOverlap.around(gates, pass.index(), course.pointToPoint())) {
+                if (!out.contains(finding)) {
+                    out.add(finding);
+                }
+            }
+        }
+        return List.copyOf(out);
+    }
+
     public void refresh() {
         GateGeometry current = this.gate.geometry();
         GateGeometry next = GateMounting.preview(this.gate, this.model.heading(), this.model.pitch(), this.model.roll(), this.model.width(),
-                this.model.height(), this.model.variant());
+                this.model.height(), this.model.variant(), this.model.score(), this.model.dx(), this.model.dy(), this.model.dz());
         this.pending = next;
+        this.overlaps = this.findOverlaps(next);
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
+        boolean scoreOnly = !this.freeform() && next.withScore(current.score()).sameAs(current);
+        this.turn = !scoreOnly && this.gate.inStack() && GateMounting.turnsWithColumn(this.gate) && GateMounting.headingOnly(current, next)
+                ? GateMounting.columnTurn(this.gate, next.heading(), next.score()) : null;
         if (next.sameAs(current)) {
             this.status = Status.SAME;
-        } else if (this.gate.inStack()) {
+        } else if (scoreOnly) {
+            this.status = player == null || !player.mayBuild() ? Status.NOT_ALLOWED
+                    : !player.isWithinEntityInteractionRange(this.gate, GateMounting.EDIT_REACH) ? Status.TOO_FAR : Status.FREE;
+        } else if (this.gate.inStack() && this.turn == null) {
             this.status = Status.STACKED;
         } else if (player == null || !player.mayBuild()) {
             this.status = Status.NOT_ALLOWED;
@@ -298,10 +384,21 @@ public final class GateEditor {
             this.status = Status.TOO_FAR;
         } else if (this.freeform()) {
             this.status = Status.FREE;
+        } else if (this.turn != null) {
+            GateMounting.Result refused = minecraft.level == null ? GateMounting.Result.BLOCKED : GateMounting.turnRefusal(minecraft.level, this.turn);
+            this.status = refused == null ? Status.FREE : switch (refused) {
+                case STACK_TOO_WIDE -> Status.TOO_WIDE;
+                case STACK_TOO_HIGH -> Status.TOO_HIGH;
+                case STACK_TURN_LOCKED -> Status.TURN_LOCKED;
+                default -> Status.BLOCKED;
+            };
         } else {
+            GateStacking.Refusal refusal = minecraft.level == null ? GateStacking.Refusal.NONE
+                    : GateMounting.stackRefusal(minecraft.level, next, this.gate);
             boolean free = minecraft.level != null && GateItem.insideWorld(minecraft.level, next)
                     && GateItem.free(minecraft.level, next, GateStacking.placedBase(next), true, this.gate);
-            this.status = free ? Status.FREE : Status.BLOCKED;
+            this.status = refusal == GateStacking.Refusal.TOO_WIDE ? Status.TOO_WIDE : refusal == GateStacking.Refusal.TOO_HIGH ? Status.TOO_HIGH
+                    : free ? Status.FREE : Status.BLOCKED;
         }
         if (this.freeform() && minecraft.level != null) {
             this.integrity = FreeformBlocks.integrity(minecraft.level, current);
@@ -313,16 +410,64 @@ public final class GateEditor {
         if (notches == 0) {
             return;
         }
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean fine = minecraft.hasControlDown();
         this.model.select(row);
-        this.model.change(row, notches, Minecraft.getInstance().hasControlDown());
+        this.model.change(row, notches, fine, fine && minecraft.hasShiftDown());
+        this.rememberStep(row);
         this.refresh();
+    }
+
+    private void rememberStep(GateEditModel.Row row) {
+        if (row != GateEditModel.Row.NUDGE_STEP) {
+            return;
+        }
+        RaceConfig config = RaceConfig.CONFIG.get();
+        if (config.nudgeStep != this.model.nudgeStep()) {
+            config.nudgeStep = this.model.nudgeStep();
+            RaceConfig.CONFIG.save();
+        }
+    }
+
+    public void nudge(int axis, int steps) {
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean fine = minecraft.hasControlDown();
+        this.nudge(axis, steps, fine, fine && minecraft.hasShiftDown());
+    }
+
+    public void nudge(int axis, int steps, boolean fine, boolean half) {
+        if (steps == 0 || this.freeform()) {
+            return;
+        }
+        GateEditModel.Row row = switch (axis) {
+            case GateEditModel.AXIS_Y -> GateEditModel.Row.MOVE_Y;
+            case GateEditModel.AXIS_Z -> GateEditModel.Row.MOVE_Z;
+            default -> GateEditModel.Row.MOVE_X;
+        };
+        this.model.select(row);
+        this.model.nudge(axis, steps, fine, half);
+        this.refresh();
+    }
+
+    public static int @Nullable [] viewNudge(float yawDegrees, int key) {
+        GateEditModel.Nudge nudge = switch (key) {
+            case InputConstants.KEY_UP -> GateEditModel.Nudge.AWAY;
+            case InputConstants.KEY_DOWN -> GateEditModel.Nudge.TOWARD;
+            case InputConstants.KEY_RIGHT -> GateEditModel.Nudge.RIGHT;
+            case InputConstants.KEY_LEFT -> GateEditModel.Nudge.LEFT;
+            case InputConstants.KEY_PAGEUP -> GateEditModel.Nudge.UP;
+            case InputConstants.KEY_PAGEDOWN -> GateEditModel.Nudge.DOWN;
+            default -> null;
+        };
+        return nudge == null ? null : GateEditModel.viewNudge(yawDegrees, nudge);
     }
 
     public void scroll(int notches) {
         if (notches == 0) {
             return;
         }
-        if (Minecraft.getInstance().options.keyShift.isDown()) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.options.keyShift.isDown() && !minecraft.hasControlDown()) {
             this.model.moveSelection(-notches);
             return;
         }
@@ -332,6 +477,7 @@ public final class GateEditor {
     public void set(GateEditModel.Row row, double value) {
         this.model.select(row);
         this.model.set(row, value);
+        this.rememberStep(row);
         this.refresh();
     }
 
@@ -369,6 +515,16 @@ public final class GateEditor {
         this.model.setSignal(GateSignal.DEFAULT);
     }
 
+    public void resetScore() {
+        this.model.resetScore();
+        this.refresh();
+    }
+
+    public void resetOffset() {
+        this.model.resetOffset();
+        this.refresh();
+    }
+
     public boolean apply() {
         this.refresh();
         if ((this.status == Status.SAME || this.status == Status.FREE) && this.model.signalChanged()) {
@@ -381,10 +537,11 @@ public final class GateEditor {
             }
             case FREE -> {
                 ClientNet.sendToServer(this.freeform()
-                        ? new RacePayloads.GateEditC2S(this.gate.getId(), RacePayloads.GateEditAction.APPLY, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,
-                        this.model.variant())
+                        ? new RacePayloads.GateEditC2S(this.gate.getId(), RacePayloads.GateEditAction.APPLY, this.model.heading(), 0.0F, 0.0F,
+                        0.0F, 0.0F, this.model.variant(), this.model.score().pack(), 0.0F, 0.0F, 0.0F)
                         : new RacePayloads.GateEditC2S(this.gate.getId(), RacePayloads.GateEditAction.APPLY, this.model.heading(),
-                        this.model.pitch(), this.model.roll(), (float) this.model.width(), (float) this.model.height(), this.model.variant()));
+                        this.model.pitch(), this.model.roll(), (float) this.model.width(), (float) this.model.height(), this.model.variant(),
+                        this.model.score().pack(), (float) this.model.dx(), (float) this.model.dy(), (float) this.model.dz()));
                 this.end(null);
                 return true;
             }
@@ -401,7 +558,7 @@ public final class GateEditor {
 
     public void rescan() {
         ClientNet.sendToServer(new RacePayloads.GateEditC2S(this.gate.getId(), RacePayloads.GateEditAction.RESCAN, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F,
-                this.gate.variant()));
+                this.gate.variant(), this.model.score().pack(), 0.0F, 0.0F, 0.0F));
     }
 
     public void unlink() {
@@ -439,6 +596,9 @@ public final class GateEditor {
             case NOT_ALLOWED -> Component.translatable("propwash.race.mount.not_allowed");
             case STACKED -> Component.translatable("propwash.race.edit.status.stacked");
             case TOO_FAR -> Component.translatable("propwash.race.edit.status.too_far");
+            case TOO_WIDE -> GateMounting.stackRefusalText(GateStacking.Refusal.TOO_WIDE);
+            case TOO_HIGH -> GateMounting.stackRefusalText(GateStacking.Refusal.TOO_HIGH);
+            case TURN_LOCKED -> Component.translatable("propwash.race.stack.turn_locked");
         };
     }
 
@@ -537,8 +697,24 @@ public final class GateEditor {
             return true;
         }
         GateEditor editor = current;
-        if (editor == null || action != InputConstants.PRESS || minecraft.gui.screen() != null || minecraft.gui.overlay() != null) {
+        if (editor == null || minecraft.gui.screen() != null || minecraft.gui.overlay() != null) {
             return false;
+        }
+        if (!editor.freeform() && (action == InputConstants.PRESS || action == InputConstants.REPEAT) && minecraft.player != null) {
+            int[] nudge = viewNudge(minecraft.player.getYRot(), key);
+            if (nudge != null) {
+                boolean fine = event.hasControlDown();
+                editor.nudge(nudge[0], nudge[1], fine, fine && event.hasShiftDown());
+                return true;
+            }
+        }
+        if (action != InputConstants.PRESS) {
+            return false;
+        }
+        if (key == InputConstants.KEY_TAB && editor.model().pages() > 1) {
+            swallowed = key;
+            editor.turnPage(event.hasShiftDown() ? -1 : 1);
+            return true;
         }
         if (event.isEscape()) {
             swallowed = key;
@@ -571,7 +747,16 @@ public final class GateEditor {
         }
         if (editor.status == Status.FREE) {
             float age = minecraft.level.getGameTime() + minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-            renderer.submitEdited(editor.gate, pending, poseStack, collector, camera, age);
+            GateMounting.ColumnTurn turn = editor.turn;
+            if (turn != null) {
+                renderer.submitEdited(editor.gate, pending, turn.bases().getFirst(), poseStack, collector, camera, age);
+                for (int i = 1; i < turn.gates().size(); i++) {
+                    GatePreview.submitTinted(renderer, turn.next().get(i), turn.gates().get(i).size(), GatePreview.FREE_TINT, GatePreview.FREE_ARROW,
+                            turn.bases().get(i), minecraft.level, collector, poseStack, camera);
+                }
+            } else {
+                renderer.submitEdited(editor.gate, pending, poseStack, collector, camera, age);
+            }
             if (!pending.freeform()) {
                 GatePreview.submitTinted(renderer, editor.gate.geometry(), editor.gate.size(), OLD_POSE_TINT, 0, minecraft.level, collector,
                         poseStack, camera);
@@ -612,7 +797,13 @@ public final class GateEditor {
             panel = new GateEditPanel(editor, false);
             hudPanel = panel;
         }
-        panel.extractHud(graphics, deltaTracker.getGameTimeDeltaPartialTick(false));
-        extractNotice(graphics, editor, panel);
+        panel.prepare(graphics.guiWidth(), graphics.guiHeight());
+        Notice notice = notice(graphics, editor, panel);
+        noticeBox = null;
+        boolean clear = panel.extractHud(graphics, deltaTracker.getGameTimeDeltaPartialTick(false), notice == null ? null : notice.box());
+        if (notice != null && clear) {
+            extractNotice(graphics, notice);
+            noticeBox = notice.box();
+        }
     }
 }

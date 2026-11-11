@@ -10,12 +10,13 @@ import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.rescue.HomeMode;
 import de.lardtom.propwash.rescue.HomePoint;
 import de.lardtom.propwash.rescue.HomePointCodecs;
+import de.lardtom.propwash.rescue.HomeResetRules;
+import de.lardtom.propwash.rescue.HomeSpace;
 import de.lardtom.propwash.rescue.HomeSync;
 import de.lardtom.propwash.rescue.RescueAutopilot;
 import de.lardtom.propwash.rescue.RescuePhase;
 import de.lardtom.propwash.rescue.RescueSettings;
 import de.lardtom.propwash.rescue.RescueSupervisor;
-import de.lardtom.propwash.rescue.WorldProbe;
 import de.lardtom.propwash.rescue.net.HomePointC2S;
 import de.lardtom.propwash.rescue.net.HomePointS2C;
 import de.lardtom.propwash.rescue.net.RescueStatusC2S;
@@ -177,7 +178,7 @@ public final class RescueController {
         if (cfg.homeMode == HomeMode.PILOT) {
             Vec3 pilot = this.pilotHome(mc, level, pos);
             if (pilot != null) {
-                this.setHome(pilot, level.dimension(), false);
+                this.setHome(freePoint(drone, pilot), level.dimension(), false);
             }
         }
 
@@ -203,7 +204,7 @@ public final class RescueController {
 
         if (this.supervisor.setHomeOnArm() || this.supervisor.setHomeManual()) {
             boolean manual = this.supervisor.setHomeManual();
-            this.setHome(this.groundedPoint(level, pos), level.dimension(), manual);
+            this.setHome(groundedPoint(drone, pos), level.dimension(), manual);
             this.push(drone, manual ? HomePoint.Source.MANUAL : HomePoint.Source.ARM);
             this.message(mc, Component.translatable("propwash.rescue.home_set"));
         } else if (this.supervisor.armedNow() && cfg.homeMode == HomeMode.PILOT) {
@@ -393,10 +394,14 @@ public final class RescueController {
         this.message(mc, Component.translatable("propwash.rescue.home_set"));
     }
 
-    private Vec3 groundedPoint(Level level, Vec3 pos) {
-        this.world.bind(level);
-        double ground = WorldProbe.groundBelow(this.world, pos.x, pos.y, pos.z, 0.2, HOME_GROUND_DEPTH);
-        return Double.isFinite(ground) && ground <= pos.y + 1e-6 ? new Vec3(pos.x, ground, pos.z) : pos;
+    private static Vec3 groundedPoint(QuadcopterEntity drone, Vec3 pos) {
+        double ground = HomeResetRules.ground(pos.x, pos.y, pos.z, new HomeSpace(drone.level(), drone), HOME_GROUND_DEPTH);
+        return Double.isNaN(ground) ? pos : new Vec3(pos.x, ground, pos.z);
+    }
+
+    private static Vec3 freePoint(QuadcopterEntity drone, Vec3 pos) {
+        double lifted = HomeResetRules.lift(pos.x, pos.y, pos.z, new HomeSpace(drone.level(), drone));
+        return Double.isNaN(lifted) || lifted == pos.y ? pos : new Vec3(pos.x, lifted, pos.z);
     }
 
     private @Nullable Vec3 pilotHome(Minecraft mc, Level level, Vec3 dronePos) {

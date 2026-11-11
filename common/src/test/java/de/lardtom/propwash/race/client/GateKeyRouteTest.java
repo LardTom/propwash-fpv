@@ -24,6 +24,10 @@ class GateKeyRouteTest {
         return GateKeyRoute.route(new Context(false, false, hands, lookingAtGate, sneaking, false));
     }
 
+    private static Action atStack(Hands hands, boolean sneaking, boolean sharedKey) {
+        return GateKeyRoute.route(new Context(false, false, hands, true, sneaking, sharedKey, true));
+    }
+
     private static Action piloting(Hands hands, boolean lookingAtGate, boolean sharedKey) {
         return GateKeyRoute.route(new Context(false, true, hands, lookingAtGate, false, sharedKey));
     }
@@ -42,6 +46,43 @@ class GateKeyRouteTest {
             assertEquals(Action.ROTATE_GATE, shared(hands, true, false), hands.toString());
             assertEquals(Action.NEXT_MOUNT_GATE, shared(hands, true, true), hands.toString());
             assertEquals(Action.ROTATE_GATE, separate(hands, true, false), hands.toString());
+        }
+    }
+
+    @Test
+    void aGateInHandTurnsTheStackPreviewOfAStandingGateInView() {
+        for (boolean sharedKey : new boolean[]{true, false}) {
+            for (Hands hands : new Hands[]{GATE, GATE_AND_REMOTE, new Hands(true, true, false)}) {
+                assertEquals(Action.TURN_STACK, atStack(hands, false, sharedKey), hands.toString());
+                assertEquals(Action.NEXT_MOUNT_STACK, atStack(hands, true, sharedKey), hands.toString());
+            }
+        }
+    }
+
+    @Test
+    void withoutAGateInHandTheKeyKeepsTurningThePlacedGate() {
+        for (boolean sharedKey : new boolean[]{true, false}) {
+            assertEquals(Action.ROTATE_GATE, atStack(TOOL, false, sharedKey));
+            assertEquals(Action.NEXT_MOUNT_GATE, atStack(TOOL, true, sharedKey));
+            assertEquals(Action.ROTATE_GATE, atStack(TOOL_AND_REMOTE, false, sharedKey));
+        }
+        assertEquals(Action.NEED_TOOL, GateKeyRoute.route(new Context(false, false, Hands.EMPTY, true, false, false, true)));
+        assertEquals(Action.NONE, atStack(REMOTE, false, true));
+    }
+
+    @Test
+    void aGateInHandAtAGateThatTakesNoStackStillTurnsThatGate() {
+        assertEquals(Action.ROTATE_GATE, GateKeyRoute.route(new Context(false, false, GATE, true, false, true, false)));
+        assertEquals(Action.NEXT_MOUNT_GATE, GateKeyRoute.route(new Context(false, false, GATE, true, true, true, false)));
+        assertEquals(GateKeyRoute.route(new Context(false, false, GATE, true, false, true)),
+                GateKeyRoute.route(new Context(false, false, GATE, true, false, true, false)));
+    }
+
+    @Test
+    void theStackPreviewNeverTakesTheKeyFromAScreenOrAFlight() {
+        for (boolean sharedKey : new boolean[]{true, false}) {
+            assertEquals(Action.NONE, GateKeyRoute.route(new Context(true, false, GATE, true, false, sharedKey, true)));
+            assertEquals(sharedKey ? Action.FLIGHT_MODE : Action.NONE, GateKeyRoute.route(new Context(false, true, GATE, true, false, sharedKey, true)));
         }
     }
 

@@ -3,10 +3,14 @@ package de.lardtom.propwash.accessory.client;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.api.client.camera.GimbalContext;
 import de.lardtom.propwash.api.client.camera.GimbalProvider;
+import de.lardtom.propwash.apiimpl.NamespaceRules;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.operator.client.OperatorClient;
+import de.lardtom.propwash.input.addon.AddonInputState;
 import net.minecraft.world.entity.Entity;
 import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
+import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,7 +34,7 @@ public final class AddonCamera {
     public static synchronized void register(String id, GimbalProvider provider) {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(provider, "provider");
-        if (!ID.matcher(id).matches() || id.startsWith(Constants.MOD_ID + ":")) {
+        if (!ID.matcher(NamespaceRules.requireForeign(id, "gimbal")).matches()) {
             throw new IllegalArgumentException("Gimbal-Id braucht einen eigenen Namensraum: " + id);
         }
         if (PROVIDERS.putIfAbsent(id, provider) != null) {
@@ -43,21 +47,31 @@ public final class AddonCamera {
         return applied;
     }
 
-    public static synchronized boolean apply(QuadcopterEntity drone, Quaternionfc frame, float uptiltDegrees, Quaternionf rotation, boolean spectating) {
-        if (!any) {
-            return false;
+    public static synchronized @Nullable GimbalProvider provider(Entity drone) {
+        if (!any || drone == null) {
+            return null;
         }
-        GimbalProvider provider = null;
         for (GimbalProvider candidate : PROVIDERS.values()) {
             try {
                 if (candidate.appliesTo(drone)) {
-                    provider = candidate;
-                    break;
+                    return candidate;
                 }
             } catch (RuntimeException e) {
                 logOnce(e);
             }
         }
+        return null;
+    }
+
+    public static GimbalContext context(Entity drone, Quaternionfc frame, float uptiltDegrees, double deltaSeconds, boolean spectating) {
+        return new Context(drone, new Quaternionf(frame), uptiltDegrees, deltaSeconds, spectating);
+    }
+
+    public static synchronized boolean apply(QuadcopterEntity drone, Quaternionfc frame, float uptiltDegrees, Quaternionf rotation, boolean spectating) {
+        if (!any) {
+            return false;
+        }
+        GimbalProvider provider = provider(drone);
         if (provider == null) {
             return false;
         }
@@ -96,5 +110,19 @@ public final class AddonCamera {
 
     private record Context(Entity drone, Quaternionfc frame, float uptiltDegrees, double deltaSeconds, boolean spectating)
             implements GimbalContext {
+        @Override
+        public double axis(String id) {
+            return AddonInputState.axis(this.drone, id);
+        }
+
+        @Override
+        public double operatorAxis(int index) {
+            return OperatorClient.axis(this.drone, index);
+        }
+
+        @Override
+        public boolean operatorAction(int number) {
+            return OperatorClient.action(this.drone, number);
+        }
     }
 }

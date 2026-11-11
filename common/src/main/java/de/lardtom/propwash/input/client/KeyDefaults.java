@@ -16,6 +16,7 @@ public final class KeyDefaults {
     public static final int UNBOUND = 0;
     public static final String VANILLA_PICK_ITEM = "key.pickItem";
     public static final String VANILLA_SPECTATOR_HOTBAR = "key.spectatorHotbar";
+    public static final String VANILLA_DEBUG_OPTIONS = "key.debug.debugOptions";
 
     public static final Entry THROTTLE_UP = own("kb_throttle_up", UNBOUND, true);
     public static final Entry THROTTLE_DOWN = own("kb_throttle_down", UNBOUND, true);
@@ -60,19 +61,21 @@ public final class KeyDefaults {
     public static final Entry ACCESSORY_3 = other("accessory_action_3", InputConstants.KEY_NUMPADENTER);
     public static final Entry ACCESSORY_4 = other("accessory_action_4", InputConstants.KEY_ADD);
     public static final List<Entry> ACCESSORY_ACTIONS = List.of(ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4);
+    public static final Entry FREECAM = other("freecam", InputConstants.KEY_F6);
 
     public static final List<Entry> OWN = List.of(THROTTLE_UP, THROTTLE_DOWN, YAW_LEFT, YAW_RIGHT, PITCH_FORWARD, PITCH_BACK, ROLL_LEFT,
             ROLL_RIGHT, MOUSE_CENTER, ARM, FLIGHT_MODE, MODE_ACRO, MODE_ANGLE, MODE_HORIZON, ALT_HOLD, POS_HOLD, MODE_3D, FLIP_UPRIGHT, TURTLE, EXIT,
             BEEPER, LEDS, RECEIVER_WIZARD);
     public static final List<Entry> OTHER_MODULES = List.of(RESCUE, SET_HOME, RESET, CONFIGURATOR, FLIGHT_SCHOOL, SELFTEST,
             ACTION_CAM_RECORD, VIDEO_SPECTATE, GATE_ROTATE, GATE_EDIT_CURSOR, CARGO_DROP, BLACKBOX, DRONE_TRAILS, VTX_POWER, ACCESSORY_1,
-            ACCESSORY_2, ACCESSORY_3, ACCESSORY_4);
+            ACCESSORY_2, ACCESSORY_3, ACCESSORY_4, FREECAM);
     public static final List<Entry> COMMANDS = commands();
     public static final List<String> REMOVED = List.of("kb_arm", "kb_angle");
     public static final Map<String, String> RENAMED = Map.of(mappingName("race_restart"), RESET.mappingName());
     public static final String OPTION_PREFIX = "key_";
     public static final List<Set<String>> SHARED = List.of(Set.of(FLIGHT_MODE.mappingName(), GATE_ROTATE.mappingName()),
-            Set.of(MOUSE_CENTER.mappingName(), VANILLA_PICK_ITEM), Set.of(MOUSE_CENTER.mappingName(), VANILLA_SPECTATOR_HOTBAR));
+            Set.of(MOUSE_CENTER.mappingName(), VANILLA_PICK_ITEM), Set.of(MOUSE_CENTER.mappingName(), VANILLA_SPECTATOR_HOTBAR),
+            Set.of(FREECAM.mappingName(), VANILLA_DEBUG_OPTIONS));
 
     private KeyDefaults() {
     }

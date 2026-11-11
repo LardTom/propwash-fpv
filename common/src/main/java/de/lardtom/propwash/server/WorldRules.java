@@ -361,6 +361,7 @@ public final class WorldRules {
                 changed++;
             }
         }
+        changed += AddonWorldRules.applyPreset(server, preset.id());
         return changed;
     }
 

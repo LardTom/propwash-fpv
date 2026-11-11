@@ -32,14 +32,14 @@ public final class Mode3dSelector {
         return this.lastSwitch;
     }
 
-    public static @Nullable Boolean fromSwitches(int active, int readable) {
+    public static @Nullable Boolean fromSwitches(long active, long readable) {
         if (!SwitchEvaluator.isSet(readable, SwitchFunction.MODE_3D)) {
             return null;
         }
         return SwitchEvaluator.isSet(active, SwitchFunction.MODE_3D);
     }
 
-    public boolean observe(boolean device, int active, int readable) {
+    public boolean observe(boolean device, long active, long readable) {
         if (!device) {
             return false;
         }
@@ -54,7 +54,7 @@ public final class Mode3dSelector {
         return this.source == Source.SWITCH && this.set(false, Source.DEFAULT);
     }
 
-    public boolean preview(boolean device, int active, int readable) {
+    public boolean preview(boolean device, long active, long readable) {
         if (!device) {
             return this.selected;
         }
@@ -73,7 +73,7 @@ public final class Mode3dSelector {
         return this.selected;
     }
 
-    public boolean keyOverridesSwitch(boolean device, int active, int readable) {
+    public boolean keyOverridesSwitch(boolean device, long active, long readable) {
         Boolean fromSwitch = device ? fromSwitches(active, readable) : null;
         return this.source == Source.KEY && fromSwitch != null && fromSwitch.equals(this.lastSwitch) && fromSwitch != this.selected;
     }

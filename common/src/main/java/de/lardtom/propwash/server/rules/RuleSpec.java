@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public record RuleSpec(String name, Kind kind, int defaultValue, int min, int max, Group group, Display display, int step,
-                       boolean zeroSpecial) {
+                       boolean zeroSpecial, boolean raceRelevant) {
     public static final String NAMESPACE = "propwash";
     private static final Pattern NAME = Pattern.compile("[a-z0-9_]+");
 
@@ -54,6 +54,14 @@ public record RuleSpec(String name, Kind kind, int defaultValue, int min, int ma
         if (zeroSpecial && min != 0) {
             throw new IllegalArgumentException(name + ": Sonderwert 0 braucht Minimum 0");
         }
+    }
+
+    public RuleSpec(String name, Kind kind, int defaultValue, int min, int max, Group group, Display display, int step, boolean zeroSpecial) {
+        this(name, kind, defaultValue, min, max, group, display, step, zeroSpecial, true);
+    }
+
+    public RuleSpec neutral() {
+        return new RuleSpec(this.name, this.kind, this.defaultValue, this.min, this.max, this.group, this.display, this.step, this.zeroSpecial, false);
     }
 
     public static RuleSpec bool(String name, boolean defaultValue, Group group) {

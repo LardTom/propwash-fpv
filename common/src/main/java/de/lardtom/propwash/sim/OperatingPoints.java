@@ -323,8 +323,8 @@ final class OperatingPoints {
                 steadyMotor(p, p.hoverOmega, current, soc, true, 0.0, true, pt);
             }
             double seconds = p.capacityMah / HEAT_SEGMENTS * 3.6 / Math.max(pt.batteryCurrent, 1e-3);
-            double power = pt.phaseCurrent * pt.phaseCurrent * p.motorResistance + p.kt * p.idleCurrent * pt.omega;
-            double g = (p.motorCoolingBase + p.motorCoolingPerOmega * pt.omega) * p.motorCoolingScale;
+            double power = Thermal.motorLoss(p, pt.phaseCurrent, pt.omega, p.motorResistance);
+            double g = Thermal.motorCooling(p, pt.omega);
             double inf = ambient + power / g;
             temp = inf + (temp - inf) * StrictMath.exp(-seconds * g / p.motorHeatCapacity);
             if (!Double.isFinite(temp)) {

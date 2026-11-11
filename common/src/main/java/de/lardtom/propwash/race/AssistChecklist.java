@@ -15,8 +15,8 @@ public final class AssistChecklist {
     }
 
     public enum Category {
-        PHYSICS(LapAssist.WORLD_PHYSICS.bit() | LapAssist.ZONE_PHYSICS.bit()),
-        DRONE(LapAssist.CREATIVE_DRONE.bit() | LapAssist.PARTS_MISMATCH.bit()),
+        PHYSICS(LapAssist.RULE_REASONS),
+        DRONE(LapAssist.CREATIVE_DRONE.bit() | LapAssist.PARTS_MISMATCH.bit() | LapAssist.SCALE.bit()),
         GOGGLES(LapAssist.GOGGLES_LATENCY.bit()),
         HOLD(LapAssist.HOLD_MODE.bit()),
         RESCUE(LapAssist.RESCUE.bit() | LapAssist.OTHER.bit());

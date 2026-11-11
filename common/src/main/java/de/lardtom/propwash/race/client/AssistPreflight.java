@@ -11,6 +11,7 @@ import de.lardtom.propwash.race.AssistChecklist;
 import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.AssistWords;
 import de.lardtom.propwash.race.LapAssist;
+import de.lardtom.propwash.server.client.ClientPersonalRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.sim.HoldMode;
@@ -26,9 +27,12 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public final class AssistPreflight {
     private static final String KEY = "propwash.race.preflight.";
+    private static final String RULES_KEY = "propwash.race_rules.preflight.rules";
+    public static final String RACE_LEGAL_KEY = "propwash.rules.my.race_legal";
 
     private AssistPreflight() {
     }
@@ -43,6 +47,10 @@ public final class AssistPreflight {
     }
 
     public static Result check(Minecraft minecraft) {
+        return check(minecraft, ClientRaceTracker.INSTANCE.courseId());
+    }
+
+    public static Result check(Minecraft minecraft, int course) {
         DroneContext context = DroneContext.resolve(minecraft);
         PilotSession session = PilotSession.INSTANCE;
         QuadcopterEntity piloted = context.piloting() ? context.entity() : null;
@@ -58,10 +66,12 @@ public final class AssistPreflight {
         } else {
             reasons = AssistText.preflight(build, goggles, requestedHold());
         }
+        reasons = ClientCreativeFc.apply(reasons, course);
+        boolean creativeLegal = build != null && build.isCreative() && ClientCreativeFc.legal(course);
         boolean saved = ClientWorldRules.INSTANCE.on(WorldRuleSpecs.SAVE_ASSISTED_LAPS);
         List<Row> rows = new ArrayList<>();
         for (AssistChecklist.Item item : AssistChecklist.items(reasons, build != null, goggles != null)) {
-            rows.add(new Row(item.status(), Component.translatable(KEY + item.category().key()), capitalized(detail(item, context, goggles))));
+            rows.add(new Row(item.status(), label(item.category()), capitalized(detail(item, context, goggles, creativeLegal))));
         }
         rows.add(new Row(AssistChecklist.Status.INFO, Component.translatable(KEY + "input"), capitalized(input())));
         rows.add(new Row(AssistChecklist.Status.INFO, Component.translatable(KEY + "saving"),
@@ -77,6 +87,19 @@ public final class AssistPreflight {
             summary = Component.translatable(KEY + (saved ? "summary.assisted_saved" : "summary.assisted"));
         }
         return new Result(reasons, List.copyOf(rows), summary, saved, piloted != null);
+    }
+
+    public static boolean raceLegalOffered() {
+        ClientPersonalRules rules = ClientPersonalRules.INSTANCE;
+        return rules.known() && !rules.deviations().isEmpty();
+    }
+
+    public static boolean applyRaceLegal() {
+        return raceLegalOffered() && ClientPersonalRules.INSTANCE.apply(Map.of());
+    }
+
+    static Component label(AssistChecklist.Category category) {
+        return category == AssistChecklist.Category.PHYSICS ? Component.translatable(RULES_KEY) : Component.translatable(KEY + category.key());
     }
 
     static Component capitalized(Component text) {
@@ -101,7 +124,7 @@ public final class AssistPreflight {
         return radio.isActive(SwitchFunction.ALT_HOLD) ? HoldMode.ALTHOLD : HoldMode.OFF;
     }
 
-    private static Component detail(AssistChecklist.Item item, DroneContext context, @Nullable VideoSystem goggles) {
+    private static Component detail(AssistChecklist.Item item, DroneContext context, @Nullable VideoSystem goggles, boolean creativeLegal) {
         if (item.status() == AssistChecklist.Status.FLAGGED) {
             MutableComponent out = Component.empty();
             List<LapAssist> reasons = item.reasons().list();
@@ -115,8 +138,9 @@ public final class AssistPreflight {
         }
         String key = KEY + item.category().key();
         return switch (item.category()) {
-            case PHYSICS -> Component.translatable(key + ".ok");
-            case DRONE -> context.hasDrone() ? Component.translatable(key + ".ok", context.name()) : Component.translatable(key + ".none");
+            case PHYSICS -> Component.translatable(RULES_KEY + ".ok");
+            case DRONE -> !context.hasDrone() ? Component.translatable(key + ".none") : creativeLegal
+                    ? Component.translatable(ClientCreativeFc.KEY + "preflight", context.name()) : Component.translatable(key + ".ok", context.name());
             case GOGGLES -> goggles == null ? Component.translatable(key + ".none")
                     : goggles == VideoSystem.CREATIVE ? Component.translatable(key + ".creative_ok", creativeLatency())
                     : Component.translatable(key + ".ok", Component.translatable("propwash.video.system." + goggles.name().toLowerCase(Locale.ROOT)));

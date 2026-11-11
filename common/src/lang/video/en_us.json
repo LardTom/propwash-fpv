@@ -290,7 +290,7 @@
   "propwash.video.spectate.click": "Click to spectate (closes the configurator).",
   "propwash.video.spectate.stop": "Stop spectating",
   "propwash.video.spectate.show_osd": "Show the pilot’s OSD",
-  "propwash.video.spectate.show_osd.tip": "While spectating, shows the drone’s flight data (battery, speed, altitude, channel) in your OSD layout.",
+  "propwash.video.spectate.show_osd.tip": "While spectating, shows the pilot’s OSD as the pilot set it up (layout, colors, units, stick mode) with the pilot’s live values: sticks, battery, mode, warnings, lap and time. Your own OSD settings stay unchanged.",
   "propwash.video.spectate.show_banner": "Channel caption",
   "propwash.video.spectate.show_banner.tip": "Shows channel, pilot and drone on a panel at the top of the picture.",
   "propwash.video.spectate.tab_hint": "Key %s: next active channel, after the last one spectating ends. Esc or right-click: back to yourself. You don’t control anything – you only see the picture.",

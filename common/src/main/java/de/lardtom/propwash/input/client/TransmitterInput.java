@@ -5,6 +5,7 @@ import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.audio.client.LocatorBeeper;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.freecam.client.FreecamSession;
 import de.lardtom.propwash.drone.led.LedSettings;
 import de.lardtom.propwash.input.DeviceChooser;
 import de.lardtom.propwash.input.DeviceProfile;
@@ -71,11 +72,11 @@ public final class TransmitterInput {
     private static final long PREVIEW_TIMEOUT_NANOS = 1_000_000_000L;
     private static final long CAPTURE_TIMEOUT_NANOS = 300_000_000L;
     private static final long OPEN_RETRY_NANOS = 5_000_000_000L;
-    private static final int EDGE_FUNCTIONS = SwitchEvaluator.bit(SwitchFunction.ARM) | SwitchEvaluator.bit(SwitchFunction.RESCUE)
+    private static final long EDGE_FUNCTIONS = SwitchEvaluator.bit(SwitchFunction.ARM) | SwitchEvaluator.bit(SwitchFunction.RESCUE)
             | SwitchEvaluator.bit(SwitchFunction.FLIP_OVER) | SwitchEvaluator.bit(SwitchFunction.SET_HOME)
             | SwitchEvaluator.bit(SwitchFunction.RESET) | SwitchEvaluator.bit(SwitchFunction.RECORD)
             | SwitchEvaluator.bit(SwitchFunction.VTX_POWER) | commandBits();
-    private static final int ONE_SHOT_FUNCTIONS = EDGE_FUNCTIONS & ~SwitchEvaluator.bit(SwitchFunction.ARM);
+    private static final long ONE_SHOT_FUNCTIONS = EDGE_FUNCTIONS & ~SwitchEvaluator.bit(SwitchFunction.ARM);
     private static final float ACTIVITY_EPSILON = 0.01F;
     private static final float[] NO_AXES = new float[0];
     private static final boolean[] NO_BUTTONS = new boolean[0];
@@ -93,6 +94,7 @@ public final class TransmitterInput {
     private long physicsFrameNanos;
     private List<DeviceInfo> devices = List.of();
     private Set<Integer> knownIds = new HashSet<>();
+    private final Set<Integer> sessionArrivals = new HashSet<>();
     private final Map<Integer, Long> openFailures = new HashMap<>();
 
     private long joystick;
@@ -113,8 +115,8 @@ public final class TransmitterInput {
     private boolean suppressDevice;
     private long captureUntil;
     private boolean capturing;
-    private int maskedSwitches;
-    private int lastSwitchBits;
+    private long maskedSwitches;
+    private long lastSwitchBits;
     private @Nullable String switchesGuid;
     private Map<String, SwitchAssignment> appliedSwitches = Map.of();
     private @Nullable String sessionGuid;
@@ -137,7 +139,7 @@ public final class TransmitterInput {
     private boolean ledsOffLatch;
     private final KeyRepeatFilter beeperKey = new KeyRepeatFilter();
     private final KeyRepeatFilter ledsKey = new KeyRepeatFilter();
-    private int deviceSwitchBits;
+    private long deviceSwitchBits;
     private @Nullable SimulatedRadio simulated;
     private Map<String, SwitchCommand> commands = Map.of();
 
@@ -157,9 +159,10 @@ public final class TransmitterInput {
         float dt = this.physicsFrameNanos == 0L ? 0.0F : Math.min(0.1F, Math.max(0.0F, (now - this.physicsFrameNanos) / 1.0E9F));
         this.physicsFrameNanos = now;
         InputConfig config = InputConfig.get();
-        boolean session = PilotSession.INSTANCE.isActive();
+        boolean session = PilotSession.INSTANCE.isActive() || FreecamSession.active();
         if (!session) {
             this.sessionGuid = null;
+            this.sessionArrivals.clear();
         }
         this.updateKeySwitches(minecraft);
         if (!this.deviceBroken) {
@@ -195,8 +198,8 @@ public final class TransmitterInput {
         this.forceMouseCapture = force;
     }
 
-    private static int commandBits() {
-        int bits = 0;
+    private static long commandBits() {
+        long bits = 0L;
         for (SwitchFunction function : SwitchFunction.commands()) {
             bits |= SwitchEvaluator.bit(function);
         }
@@ -285,6 +288,12 @@ public final class TransmitterInput {
         return this.sessionGuid != null && this.open == null && PilotSession.INSTANCE.isActive() && !this.suppressDevice;
     }
 
+    public void presetThrottle(float throttle) {
+        float value = Float.isFinite(throttle) ? Math.max(0.0F, Math.min(1.0F, throttle)) : 0.0F;
+        this.keyboard.preset(value);
+        this.mapper.presetThrottle(value);
+    }
+
     public void setThrottle3d(boolean centered) {
         this.throttle3d = centered;
     }
@@ -327,6 +336,7 @@ public final class TransmitterInput {
         this.mouse.reset();
         this.stateGuid = null;
         this.sessionGuid = null;
+        this.sessionArrivals.clear();
         this.capturing = false;
         this.maskedSwitches = 0;
         this.lastSwitchBits = 0;
@@ -355,8 +365,8 @@ public final class TransmitterInput {
         return this.simulated != null;
     }
 
-    public int keySwitchBits() {
-        int bits = 0;
+    public long keySwitchBits() {
+        long bits = 0L;
         if (this.beeperLatch) {
             bits |= SwitchEvaluator.bit(SwitchFunction.BEEPER);
         }
@@ -514,6 +524,7 @@ public final class TransmitterInput {
         this.available = false;
         this.devices = List.of();
         this.knownIds = new HashSet<>();
+        this.sessionArrivals.clear();
         this.openFailures.clear();
         this.nextScanNanos = 0L;
         this.emptyLogged = false;
@@ -590,8 +601,12 @@ public final class TransmitterInput {
             ids.add(device.id());
             if (!this.knownIds.contains(device.id())) {
                 added.add(device);
+                if (session) {
+                    this.sessionArrivals.add(device.id());
+                }
             }
         }
+        this.sessionArrivals.retainAll(ids);
         for (DeviceInfo previous : this.devices) {
             if (!ids.contains(previous.id())) {
                 this.openFailures.remove(previous.id());
@@ -611,7 +626,8 @@ public final class TransmitterInput {
             candidates.add(device.candidate());
         }
         String lock = !previewing && session ? this.sessionGuid : null;
-        int index = DeviceChooser.pick(candidates, wanted, lock, i -> this.openBlocked(list.get(i).id(), now), config::usageRank);
+        int index = DeviceChooser.pick(candidates, wanted, lock, i -> this.openBlocked(list.get(i).id(), now), config::usageRank,
+                i -> this.sessionArrivals.contains(list.get(i).id()));
         DeviceInfo target = index < 0 ? null : list.get(index);
         DeviceInfo current = this.open;
         if (target == null) {
@@ -621,6 +637,8 @@ public final class TransmitterInput {
         } else if (current == null || current.id() != target.id()) {
             this.openDevice(target, now, session);
         }
+        DeviceInfo active = this.open;
+        this.sessionArrivals.removeIf(id -> (active == null || active.id() != id) && !this.openBlocked(id, now));
         for (DeviceInfo device : added) {
             this.logDevice(device);
         }
@@ -778,10 +796,10 @@ public final class TransmitterInput {
         boolean armed = PilotSession.INSTANCE.armed();
         StickPositions sticks = this.mapper.map(profile, axes, dt, this.throttle3d, armed);
         float throttle3d = this.mapper.throttle3d();
-        int bits = this.evaluator.evaluate(profile, axes, buttons);
+        long bits = this.evaluator.evaluate(profile, axes, buttons);
         this.evaluated(device.guid(), profile);
         boolean reconfigured = this.noteSwitches(device.guid(), profile);
-        int evaluated = bits;
+        long evaluated = bits;
         if (this.captureActive(minecraft, now)) {
             this.capturing = true;
             sticks = StickPositions.IDLE;
@@ -842,7 +860,7 @@ public final class TransmitterInput {
         float[] axes = fake.axes();
         boolean[] buttons = fake.buttons();
         StickPositions sticks = this.mapper.map(profile, axes, dt, this.throttle3d, PilotSession.INSTANCE.armed());
-        int bits = this.evaluator.evaluate(profile, axes, buttons);
+        long bits = this.evaluator.evaluate(profile, axes, buttons);
         this.evaluated(fake.guid(), profile);
         this.deviceSwitchBits = bits;
         this.keyboard.reset();
@@ -864,7 +882,7 @@ public final class TransmitterInput {
             RadioState.INSTANCE.publish(RadioFrame.NONE);
             return;
         }
-        boolean session = PilotSession.INSTANCE.isActive();
+        boolean session = PilotSession.INSTANCE.isActive() || FreecamSession.active();
         if (config.mouseSelected()) {
             this.publishMouse(minecraft, config, dt, session);
             return;

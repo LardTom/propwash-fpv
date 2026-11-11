@@ -17,6 +17,8 @@
   "gamerule.propwash.break_impact_scale": "Break-through impact",
   "gamerule.propwash.break_impact_scale.description": "How clearly a drone feels smashing through glass, in percent: speed lost to the shards it drags along, a kick that knocks it off its attitude (stronger when it hits tilted or with one side only) and shards in the front props. 100 is realistic, 0 leaves only the fracture energy. Only applies with \"Drones break blocks\"; whether a block breaks and when the drone crashes stays the same.",
   "gamerule.propwash.break_impact_scale.value.0": "No kick",
+  "gamerule.propwash.drones_trigger_sculk": "Drones trigger sculk",
+  "gamerule.propwash.drones_trigger_sculk.description": "On (default): a flying drone sends vibrations like a player gliding with elytra – armed with the motors above idle, every half second; a crash counts as hitting the ground. Sculk sensors and wardens react, sculk shriekers count it as the pilot’s. Wool in between blocks the signal as usual. Off: drones never trigger sculk, also when they shatter glass or land unpiloted.",
   "propwash.interact.break.denied.protected": "Your drone can't break anything here – this area is protected",
   "propwash.interact.break.denied.game_mode": "Your drone can't break blocks in this game mode",
   "propwash.interact.break.denied.course": "The frame of a freeform gate doesn't break",

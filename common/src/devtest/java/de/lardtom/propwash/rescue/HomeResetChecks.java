@@ -213,7 +213,7 @@ public final class HomeResetChecks {
         Vector3f up = drone.orientation().transform(new Vector3f(0.0F, 1.0F, 0.0F));
         double dx = drone.getX() - target.x;
         double dz = drone.getZ() - target.z;
-        if (dx * dx + dz * dz > 1.0E-6 || drone.getY() < target.y - 1.0E-6 || drone.getY() > target.y + HomeResetRules.CLEARANCE) {
+        if (dx * dx + dz * dz > 1.0E-6 || drone.getY() < target.y - 1.0E-6 || drone.getY() > target.y + HomeResetRules.RISE) {
             return "Drohne bei " + drone.position() + " statt " + target;
         }
         if (up.y < 0.999F) {

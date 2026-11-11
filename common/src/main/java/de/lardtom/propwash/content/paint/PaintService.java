@@ -6,6 +6,8 @@ import de.lardtom.propwash.build.PaintSwatch;
 import de.lardtom.propwash.content.DroneWorkbenchMenu;
 import de.lardtom.propwash.network.PropwashNet;
 import de.lardtom.propwash.network.ServerPayloadContext;
+import de.lardtom.propwash.stats.advancement.FpvAdvancements;
+import de.lardtom.propwash.stats.advancement.Milestone;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
@@ -39,7 +41,9 @@ public final class PaintService {
         if (!(player.containerMenu instanceof DroneWorkbenchMenu menu) || menu.containerId != payload.containerId() || !menu.stillValid(player)) {
             return;
         }
-        menu.applyPaint(player, payload.paint());
+        if (menu.applyPaint(player, payload.paint()) == Result.APPLIED) {
+            FpvAdvancements.milestone(player, Milestone.DRONE_PAINTED);
+        }
     }
 
     public static boolean free(Player player) {

@@ -220,7 +220,7 @@ public final class BandoPiece extends StructurePiece {
             }
         }
         if (!cut.isEmpty()) {
-            settleLeaves(level, cut, area);
+            this.settleLeaves(level, cut, area);
         }
         if (shapes != null) {
             for (BlockPos at : shapes) {
@@ -268,6 +268,10 @@ public final class BandoPiece extends StructurePiece {
     }
 
     public int tidy(WorldGenLevel level, BoundingBox chunk) {
+        return this.clearSite(level, chunk) + this.pruneLeaves(level, chunk);
+    }
+
+    private int clearSite(WorldGenLevel level, BoundingBox chunk) {
         BoundingBox box = this.boundingBox;
         int minX = Math.max(box.minX(), chunk.minX());
         int maxX = Math.min(box.maxX(), chunk.maxX());
@@ -289,7 +293,7 @@ public final class BandoPiece extends StructurePiece {
                 if (x < 0 || z < 0 || x >= p.sizeX() || z >= p.sizeZ() || !site[z * p.sizeX() + x]) {
                     continue;
                 }
-                int pillar = p.fill(x, z) == Mat.EMPTY ? -1 : lowest(p, x, z);
+                int pillar = p.fill(x, z) == Mat.EMPTY ? -1 : BandoSite.bottom(p, x, z);
                 for (int y = Math.max(from, pillar); y < p.sizeY(); y++) {
                     Mat mat = p.mat(x, y, z);
                     int wy = t.worldY(y);
@@ -312,14 +316,100 @@ public final class BandoPiece extends StructurePiece {
         return cleared;
     }
 
-    private static int lowest(BandoPlan p, int x, int z) {
-        for (int y = 0; y < p.sizeY(); y++) {
-            Mat mat = p.mat(x, y, z);
-            if (mat != Mat.EMPTY && mat != Mat.CHEST && mat.holdsUp() && mat != Mat.YARD) {
-                return y;
+    public BoundingBox leafArea() {
+        int[] a = BandoSite.leafArea(this.plan(), this.transform);
+        return new BoundingBox(a[0], a[1], a[2], a[3], a[4], a[5]);
+    }
+
+    public boolean ownBlock(BlockState state, BlockPos pos) {
+        BandoPlan p = this.plan();
+        BandoTransform t = this.transform;
+        int x = t.localX(pos.getX(), pos.getZ());
+        int z = t.localZ(pos.getX(), pos.getZ());
+        int y = pos.getY() - t.originY();
+        if (!p.inside(x, y, z)) {
+            return false;
+        }
+        Mat mat = p.mat(x, y, z);
+        if (mat == Mat.EMPTY || mat == Mat.AIR || mat == Mat.WATER || mat == Mat.CHEST) {
+            return false;
+        }
+        BlockState expected = this.blocks().state(mat, p.meta(x, y, z), BandoPalettes.hash(this.seed, pos.getX(), pos.getY(), pos.getZ()));
+        return expected != null && state.is(expected.getBlock());
+    }
+
+    private boolean replacesLeaves(BlockPos pos) {
+        BandoPlan p = this.plan();
+        BandoTransform t = this.transform;
+        int x = t.localX(pos.getX(), pos.getZ());
+        int z = t.localZ(pos.getX(), pos.getZ());
+        int y = pos.getY() - t.originY();
+        return p.inside(x, y, z) && p.mat(x, y, z).kind() == Mat.Kind.STRUCTURE;
+    }
+
+    private int pruneLeaves(WorldGenLevel level, BoundingBox chunk) {
+        BoundingBox area = this.leafArea();
+        int minX = Math.max(area.minX(), chunk.minX());
+        int maxX = Math.min(area.maxX(), chunk.maxX());
+        int minZ = Math.max(area.minZ(), chunk.minZ());
+        int maxZ = Math.min(area.maxZ(), chunk.maxZ());
+        int minY = Math.max(Math.max(area.minY(), chunk.minY()), level.getMinY());
+        int maxY = Math.min(Math.min(area.maxY(), chunk.maxY()), level.getMaxY());
+        if (minX > maxX || minZ > maxZ || minY > maxY) {
+            return 0;
+        }
+        BoundingBox sweep = new BoundingBox(minX, minY, minZ, maxX, maxY, maxZ);
+        boolean any = false;
+        for (BlockPos at : BlockPos.betweenClosed(minX, minY, minZ, maxX, maxY, maxZ)) {
+            if (leaves(level.getBlockState(at))) {
+                any = true;
+                break;
             }
         }
-        return -1;
+        if (!any) {
+            return 0;
+        }
+        int reach = LeafDistance.DECAY - 1;
+        int readMinY = Math.max(minY - reach, level.getMinY());
+        int readMaxY = Math.min(maxY + reach, level.getMaxY());
+        Set<Long> crown = new HashSet<>();
+        for (BlockPos at : BlockPos.betweenClosed(minX - reach, readMinY, minZ - reach, maxX + reach, readMaxY, maxZ + reach)) {
+            if (level.getBlockState(at).hasProperty(LeavesBlock.DISTANCE) && !this.replacesLeaves(at)) {
+                crown.add(at.asLong());
+            }
+        }
+        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        Set<Long> orphans = LeafDistance.orphans(crown, neighbours(), at -> {
+            probe.set(at);
+            BlockState state = level.getBlockState(probe);
+            return state.is(BlockTags.PREVENTS_NEARBY_LEAF_DECAY) && !this.ownBlock(state, probe);
+        });
+        int pruned = 0;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (long at : orphans) {
+            pos.set(at);
+            if (!sweep.isInside(pos)) {
+                continue;
+            }
+            BlockState state = level.getBlockState(pos);
+            if (!leaves(state)) {
+                continue;
+            }
+            level.setBlock(pos, state.getFluidState().createLegacyBlock(), 2);
+            pruned++;
+            if (pos.getY() + 1 <= maxY) {
+                uproot(level, pos.above());
+            }
+        }
+        return pruned;
+    }
+
+    private static LongUnaryOperator[] neighbours() {
+        LongUnaryOperator[] neighbours = new LongUnaryOperator[Direction.values().length];
+        for (Direction direction : Direction.values()) {
+            neighbours[direction.ordinal()] = at -> BlockPos.offset(at, direction);
+        }
+        return neighbours;
     }
 
     private int foundation(WorldGenLevel level, BandoPlan p, int x, int z, int bottom, BoundingBox area, BandoBlocks resolver,
@@ -342,7 +432,7 @@ public final class BandoPiece extends StructurePiece {
         return depth;
     }
 
-    private static void settleLeaves(WorldGenLevel level, List<BlockPos> cut, BoundingBox area) {
+    private void settleLeaves(WorldGenLevel level, List<BlockPos> cut, BoundingBox area) {
         BoundingBox box = BoundingBox.encapsulatingPositions(cut).orElseThrow().inflatedBy(LeafDistance.DECAY);
         int minY = Math.max(box.minY(), level.getMinY());
         int maxY = Math.min(box.maxY(), level.getMaxY());
@@ -353,27 +443,30 @@ public final class BandoPiece extends StructurePiece {
                 leaves.add(at.asLong());
             }
         }
-        LongUnaryOperator[] neighbours = new LongUnaryOperator[Direction.values().length];
-        for (Direction direction : Direction.values()) {
-            neighbours[direction.ordinal()] = at -> BlockPos.offset(at, direction);
-        }
-        Map<Long, Integer> distance = LeafDistance.settle(leaves, neighbours,
-                at -> LeavesBlock.getOptionalDistanceAt(level.getBlockState(BlockPos.of(at))).orElse(LeafDistance.DECAY));
+        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        Map<Long, Integer> distance = LeafDistance.settle(leaves, neighbours(), at -> {
+            BlockState state = level.getBlockState(probe.set(at));
+            if (state.is(BlockTags.PREVENTS_NEARBY_LEAF_DECAY)) {
+                return this.ownBlock(state, probe) ? LeafDistance.DECAY : 0;
+            }
+            return LeavesBlock.getOptionalDistanceAt(state).orElse(LeafDistance.DECAY);
+        });
         for (Map.Entry<Long, Integer> leaf : distance.entrySet()) {
             BlockPos at = BlockPos.of(leaf.getKey());
-            if (!area.isInside(at)) {
-                continue;
-            }
             BlockState state = level.getBlockState(at);
-            if (state.getValue(LeavesBlock.DISTANCE) != leaf.getValue().intValue()) {
-                level.setBlock(at, state.setValue(LeavesBlock.DISTANCE, leaf.getValue()), 2);
+            int settled = leaf.getValue();
+            if (area.isInside(at)) {
+                if (state.getValue(LeavesBlock.DISTANCE) != settled) {
+                    level.setBlock(at, state.setValue(LeavesBlock.DISTANCE, settled), 2);
+                }
+            } else if (settled >= LeafDistance.DECAY && state.getValue(LeavesBlock.DISTANCE) < LeafDistance.DECAY && leaves(state)) {
+                level.scheduleTick(at, state.getBlock(), 1);
             }
         }
     }
 
     private int underpin(WorldGenLevel level, BandoPlan p, int x, int z, BoundingBox area, BandoBlocks resolver, BlockPos.MutableBlockPos pos) {
-        Mat ground = p.mat(x, p.ground(), z);
-        if (ground != Mat.YARD && ground != Mat.EMPTY || p.fill(x, z) != Mat.EMPTY || pos.getY() < area.minY() || pos.getY() > area.maxY()) {
+        if (!BandoSite.underpinned(p, x, z) || pos.getY() < area.minY() || pos.getY() > area.maxY()) {
             return 0;
         }
         BlockState existing = level.getBlockState(pos);

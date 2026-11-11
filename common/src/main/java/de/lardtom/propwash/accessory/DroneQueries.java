@@ -1,5 +1,6 @@
 package de.lardtom.propwash.accessory;
 
+import de.lardtom.propwash.api.drone.CameraPose;
 import de.lardtom.propwash.api.drone.DroneAccess;
 import de.lardtom.propwash.api.drone.DronePhysics;
 import de.lardtom.propwash.api.drone.DroneView;
@@ -7,12 +8,17 @@ import de.lardtom.propwash.api.drone.ObstacleScan;
 import de.lardtom.propwash.api.flight.Intercept;
 import de.lardtom.propwash.api.flight.SensorDirection;
 import de.lardtom.propwash.api.part.AccessorySlot;
+import de.lardtom.propwash.barrier.DroneBarriers;
 import de.lardtom.propwash.build.AccessoryMount;
 import de.lardtom.propwash.build.AccessoryType;
+import de.lardtom.propwash.drone.CameraPoses;
+import de.lardtom.propwash.drone.LoadedDrones;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.TuneMapping;
 import de.lardtom.propwash.rescue.AutonomousReturns;
 import de.lardtom.propwash.sim.AirframeSpec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -23,7 +29,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.CollisionContext;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 
@@ -64,7 +69,8 @@ public final class DroneQueries implements DroneAccess {
         drone.orientation().transform(up);
         double mass = AirframeSpec.of(drone.build()).massKg + (AccessoryPayload.payloadGrams(drone) + drone.cargoGrams()) / 1000.0;
         return Optional.of(new DroneView(drone, drone.pilot(), flying, drone.isArmed(), autopilot, MountPoses.center(drone),
-                DroneMotion.velocity(drone), new Vec3(forward.x, forward.y, forward.z), new Vec3(up.x, up.y, up.z), mass, accessories));
+                DroneMotion.velocity(drone), new Vec3(forward.x, forward.y, forward.z), new Vec3(up.x, up.y, up.z), mass, accessories,
+                TuneMapping.angleLimitDeg(drone.tune().values())));
     }
 
     @Override
@@ -117,7 +123,7 @@ public final class DroneQueries implements DroneAccess {
         }
         Vec3 end = origin.add(direction.scale(r / length));
         BlockHitResult block = level.clip(new ClipContext(origin, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
-                CollisionContext.empty()));
+                DroneBarriers.sightOf(ignore)));
         double best = block.getType() == HitResult.Type.MISS ? r : block.getLocation().distanceTo(origin);
         if (entities) {
             Vec3 stop = origin.add(direction.scale(best / length));
@@ -144,6 +150,16 @@ public final class DroneQueries implements DroneAccess {
             distances[direction.ordinal()] = this.obstacleDistance(drone.level(), origin, new Vec3(d.x, d.y, d.z), r, false, drone);
         }
         return new ObstacleScan(r, distances);
+    }
+
+    @Override
+    public List<Entity> loaded(ServerLevel level) {
+        return LoadedDrones.of(level);
+    }
+
+    @Override
+    public Optional<CameraPose> cameraPose(Entity drone) {
+        return CameraPoses.of(drone);
     }
 
     @Override

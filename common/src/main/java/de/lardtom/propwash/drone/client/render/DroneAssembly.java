@@ -1,12 +1,15 @@
 package de.lardtom.propwash.drone.client.render;
 
+import de.lardtom.propwash.api.part.VideoAntenna;
 import de.lardtom.propwash.build.AccessoryAnchor;
 import de.lardtom.propwash.build.AccessoryMount;
 import de.lardtom.propwash.build.AccessoryType;
+import de.lardtom.propwash.build.AntennaRules;
 import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.FrameType;
 import de.lardtom.propwash.build.PropType;
+import de.lardtom.propwash.build.VideoType;
 import de.lardtom.propwash.sim.FpvRig;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import org.joml.Vector3f;
@@ -26,6 +29,8 @@ public final class DroneAssembly {
     private final Part battery;
     private final Part video;
     private final Part transmitter;
+    public static final float PACK_GAP_MM = 5.0F;
+    private final Part antenna;
     private final Part[] motors = new Part[DroneLayout.SLOTS];
     private final Part[] props = new Part[DroneLayout.SLOTS];
     private final Part[][] damagedProps = new Part[PropDamage.values().length][DroneLayout.SLOTS];
@@ -37,6 +42,7 @@ public final class DroneAssembly {
     private final Shape motorGlow;
     private final Accessory[] accessories = new Accessory[MOUNTS];
     private final VisualHull hull;
+    private final PowerLead powerLead;
 
     private DroneAssembly(DroneBuild build, DroneRenderResources res) {
         FallbackShapes.invalidateIfStale(res.generation());
@@ -48,7 +54,10 @@ public final class DroneAssembly {
         this.frame = part(res, PartModel.of(frameType), ORIGIN, () -> FallbackShapes.frame(frameType, layout));
         this.stack = part(res, PartModel.of(build.stack()), layout.stack(), () -> FallbackShapes.stack(build.stack()));
         this.battery = batteryPart(res, layout, build.battery());
-        this.video = part(res, PartModel.of(build.video()), layout.video(), () -> FallbackShapes.camera(build.video()));
+        PartModel videoModel = PartModel.of(build.video());
+        ItemStackRenderState videoItem = res.droneItem(videoModel);
+        this.video = videoItem != null ? new Part(videoItem, Shape.EMPTY, Shape.EMPTY, new Vector3f(layout.video()), videoModel)
+                : new Part(null, FallbackShapes.camera(build.video()), Shape.EMPTY, new Vector3f(layout.video()));
         if (this.video.item() != null) {
             this.transmitter = Part.EMPTY;
         } else {
@@ -57,6 +66,7 @@ public final class DroneAssembly {
             Vector3f position = new Vector3f(layout.stack()).add(0.0F, stackTop + 0.5F, 0.0F);
             this.transmitter = new Part(null, FallbackShapes.transmitter(build.video()), Shape.EMPTY, position);
         }
+        this.antenna = antennaPart(layout, frameType, build.video(), behindPackMm(res, layout, frameType, this.battery));
 
         PropType prop = build.prop();
         PartModel blurModel = PartModel.blur(prop);
@@ -74,7 +84,7 @@ public final class DroneAssembly {
                 }
             }
             this.blurs[slot] = blurItem != null ? new Part(blurItem, Shape.EMPTY, Shape.EMPTY, hub, blurModel)
-                    : new Part(null, Shape.EMPTY, FallbackShapes.blur(prop), hub);
+                    : new Part(null, FallbackShapes.propCenter(prop), FallbackShapes.blur(prop), hub);
             this.ledGlow[slot] = FallbackShapes.ledGlow(frameType, layout, slot);
             this.ledHalo[slot] = FallbackShapes.ledHalo(frameType, layout, slot);
         }
@@ -88,6 +98,7 @@ public final class DroneAssembly {
             this.accessories[mount.ordinal()] = type == null ? Accessory.NONE : accessory(res, layout, frameType, mount, type);
         }
         this.hull = VisualHull.compute(this);
+        this.powerLead = PowerLead.of(res, build, this.stack, this.battery);
     }
 
     static DroneAssembly create(DroneBuild build, DroneRenderResources res) {
@@ -97,7 +108,9 @@ public final class DroneAssembly {
     private static Accessory accessory(DroneRenderResources res, DroneLayout layout, FrameType frame, AccessoryMount mount, AccessoryType type) {
         AccessoryAnchor anchor = layout.accessory(mount).orElseGet(() -> AccessoryAnchor.of(frame, mount));
         Vector3f position = new Vector3f((float) anchor.x(), (float) anchor.y(), (float) anchor.z());
-        Part body = part(res, PartModel.of(type), position, () -> FallbackShapes.accessory(type));
+        double[] origin = anchor.modelOrigin(type);
+        Vector3f bodyPosition = new Vector3f((float) origin[0], (float) origin[1], (float) origin[2]);
+        Part body = part(res, PartModel.of(type), bodyPosition, () -> FallbackShapes.accessory(type));
         Part base = PartModel.base(mount).map(model -> part(res, model, position, () -> FallbackShapes.accessoryBase(mount))).orElse(Part.EMPTY);
         return new Accessory(type, anchor, body, base, (float) anchor.tiltFor(type), (float) anchor.stretch(type));
     }
@@ -124,6 +137,31 @@ public final class DroneAssembly {
         PartModel model = PartModel.prop(prop, counterClockwise, damage);
         ItemStackRenderState item = res.item(model);
         return item != null ? new Part(item, Shape.EMPTY, Shape.EMPTY, hub, model) : intact;
+    }
+
+    static Part antennaPart(DroneLayout layout, FrameType frame, VideoType video) {
+        return antennaPart(layout, frame, video, 0.0F);
+    }
+
+    static Part antennaPart(DroneLayout layout, FrameType frame, VideoType video, float behindPackMm) {
+        VideoAntenna antenna = AntennaRules.antenna(video.definition(), frame.definition());
+        Shape shape = AntennaGeometry.shape(antenna, DroneLayout.antennaTilt(frame), frame.wheelbaseMm, behindPackMm,
+                AntennaRules.pairLeanDeg(frame.definition()));
+        return new Part(null, shape, Shape.EMPTY, new Vector3f(layout.antenna(frame)).add(0.0F, 0.0F, behindPackMm));
+    }
+
+    static float behindPackMm(DroneRenderResources res, DroneLayout layout, FrameType frame, Part battery) {
+        if (layout.batteryBelow()) {
+            return 0.0F;
+        }
+        float rear = battery.model() != null ? res.packRear(battery.model()) : Float.NaN;
+        if (!Float.isFinite(rear) && !battery.solid().isEmpty()) {
+            rear = battery.solid().max().z() * DroneVisualScale.MILLIMETRES_PER_MODEL_BLOCK;
+        }
+        if (!Float.isFinite(rear)) {
+            return 0.0F;
+        }
+        return Math.max(0.0F, battery.position().z() + rear + PACK_GAP_MM - layout.antenna(frame).z());
     }
 
     static Part batteryPart(DroneRenderResources res, DroneLayout layout, BatteryType battery) {
@@ -198,6 +236,10 @@ public final class DroneAssembly {
         return this.transmitter;
     }
 
+    public Part antenna() {
+        return this.antenna;
+    }
+
     public Part motor(int slot) {
         return this.motors[slot];
     }
@@ -236,6 +278,10 @@ public final class DroneAssembly {
 
     public VisualHull hull() {
         return this.hull;
+    }
+
+    public PowerLead powerLead() {
+        return this.powerLead;
     }
 
     public Accessory accessory(AccessoryMount mount) {

@@ -1,0 +1,6 @@
+{
+  "propwash.race.assist.scale": "the drone was resized (scale attribute)",
+  "propwash.race.assist.scale.now": "the drone is resized (scale attribute)",
+  "propwash.race.assist.scale.percent": "the drone was resized to %s%% (scale attribute)",
+  "propwash.race.assist.scale.percent.now": "the drone is resized to %s%% (scale attribute)"
+}

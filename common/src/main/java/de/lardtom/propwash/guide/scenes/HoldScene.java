@@ -43,7 +43,7 @@ public final class HoldScene {
                     SceneKit.ground(s.at(0.0F), -4, -4, 4, 3, GRASS, GRASS, 0.8F, 10.0F);
                     s.at(16.0F).spawn(PILOT, new ActorSpec.Pilot(SceneKit.GOGGLES_ANALOG, REMOTE), PILOT_POS,
                             SceneKit.pilotYaw(PILOT_POS, HOVER), Cue.Appear.POP, 10.0F);
-                    s.at(20.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), PAD, 45.0F, Cue.Appear.POP, 10.0F);
+                    s.at(20.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), PAD, 225.0F, Cue.Appear.POP, 10.0F);
                     s.at(30.0F).arm(DRONE, true);
                     s.at(30.0F).throttle(DRONE, 0.45F, 8.0F);
                     s.at(32.0F).move(DRONE, 30.0F, Ease.IN_OUT, HOVER);
@@ -65,11 +65,11 @@ public final class HoldScene {
                     s.at(0.0F).keys("pos_hold", 0.0F, KeyToken.mapping(SceneKit.KEY_POS_HOLD));
                     s.at(4.0F).callout("gps", onDrone, Cue.Side.RIGHT, 56.0F);
                     s.at(60.0F).move(DRONE, 40.0F, Ease.IN_OUT, HIGH.add(0.6F, 0.0F, -0.2F));
-                    s.at(60.0F).turn(DRONE, 45.0F, 0.0F, 14.0F, 12.0F);
+                    s.at(60.0F).turn(DRONE, 225.0F, 0.0F, -14.0F, 12.0F);
                     s.at(62.0F).callout("wind", onDrone, Cue.Side.RIGHT, 60.0F);
-                    s.at(100.0F).turn(DRONE, 45.0F, 0.0F, -8.0F, 12.0F);
+                    s.at(100.0F).turn(DRONE, 225.0F, 0.0F, 8.0F, 12.0F);
                     s.at(100.0F).move(DRONE, 70.0F, Ease.IN_OUT, HIGH.add(0.25F, 0.05F, 0.15F), HIGH.add(-0.1F, 0.0F, 0.2F), HIGH);
-                    s.at(170.0F).turn(DRONE, 45.0F, 0.0F, 0.0F, 10.0F);
+                    s.at(170.0F).turn(DRONE, 225.0F, 0.0F, 0.0F, 10.0F);
                     s.at(124.0F).callout("circle", onDrone, Cue.Side.RIGHT, 0.0F);
                 })
                 .step("no_gps", 210.0F, s -> {
@@ -84,7 +84,7 @@ public final class HoldScene {
                     }
                     s.at(24.0F).highlight(new ScenePos(1.0F, 4.0F, -3.0F), new ScenePos(4.0F, 5.0F, 0.0F), 50.0F);
                     s.at(30.0F).move(DRONE, 60.0F, Ease.IN_OUT, CAVE.add(-1.2F, 0.4F, 1.0F), CAVE);
-                    s.at(30.0F).turn(DRONE, 135.0F, 0.0F, 0.0F, 20.0F);
+                    s.at(30.0F).turn(DRONE, 315.0F, 0.0F, 0.0F, 20.0F);
                     s.at(28.0F).callout("roof", Anchor.at(new ScenePos(2.5F, 5.05F, -2.0F)), Cue.Side.ABOVE, 70.0F);
                     s.at(100.0F).callout("no_gps", onDrone, Cue.Side.LEFT, 0.0F);
                     s.at(104.0F).move(DRONE, 100.0F, Ease.LINEAR, CAVE.add(0.3F, 0.05F, 0.2F), CAVE.add(-0.2F, -0.05F, 0.4F),

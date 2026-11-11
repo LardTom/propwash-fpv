@@ -22,7 +22,7 @@ class SwitchInversionTest {
         return axes;
     }
 
-    private static boolean on(int bits, SwitchFunction function) {
+    private static boolean on(long bits, SwitchFunction function) {
         return SwitchEvaluator.isSet(bits, function);
     }
 
@@ -58,7 +58,7 @@ class SwitchInversionTest {
         SwitchFunction[] normal = {SwitchFunction.ANGLE, SwitchFunction.HORIZON, SwitchFunction.BEEPER};
         int[] positions = {1000, 1500, 2000};
         for (int i = 0; i < positions.length; i++) {
-            int bits = e.evaluate(p, axis(5, positions[i]), NO_BUTTONS);
+            long bits = e.evaluate(p, axis(5, positions[i]), NO_BUTTONS);
             for (int j = 0; j < normal.length; j++) {
                 assertEquals(i == j, on(bits, normal[j]), positions[i] + " µs " + normal[j]);
             }
@@ -67,7 +67,7 @@ class SwitchInversionTest {
         mid.invert = true;
         high.invert = true;
         for (int i = 0; i < positions.length; i++) {
-            int bits = e.evaluate(p, axis(5, positions[i]), NO_BUTTONS);
+            long bits = e.evaluate(p, axis(5, positions[i]), NO_BUTTONS);
             for (int j = 0; j < normal.length; j++) {
                 assertEquals(positions.length - 1 - i == j, on(bits, normal[j]), "invertiert " + positions[i] + " µs " + normal[j]);
             }

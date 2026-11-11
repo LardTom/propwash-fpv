@@ -7,7 +7,6 @@ import de.lardtom.propwash.network.PropwashNet;
 import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.WorldRulesS2C;
 import de.lardtom.propwash.server.client.ClientWorldRules;
-import de.lardtom.propwash.server.client.WorldRulesTab;
 import de.lardtom.propwash.ui.SettingsSearch;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
@@ -16,6 +15,8 @@ import de.lardtom.propwash.ui.client.search.SearchBar;
 import de.lardtom.propwash.ui.client.tab.OverviewTab;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.widget.FlatButton;
+import de.lardtom.propwash.zone.ZoneServer;
+import de.lardtom.propwash.zone.ZonesS2C;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,8 +43,8 @@ public final class ZonePlacementSelfTests {
     }
 
     static void register() {
-        SelfTest.clientStep("zonen: Abschnitt oben im Tab Welt-Regeln – ohne Scrollen sichtbar, bei GUI-Skala 2 und der größten; Suche „zone“ führt hin; nur lesbar ohne Knöpfe",
-                900, ZonePlacementSelfTests::step);
+        SelfTest.clientStep("zonen: Tab Zonen – Überschrift und „Neue Zone hier“ ohne Scrollen sichtbar, bei GUI-Skala 2 und der größten; Suche „zone“ führt hin; "
+                + "ohne Operator-Recht keine fremden Zonen und nur lesbar ohne Knöpfe", 900, ZonePlacementSelfTests::step);
     }
 
     private static int phase(SelfTest.StepContext ctx) {
@@ -59,12 +60,12 @@ public final class ZonePlacementSelfTests {
         return ctx.tick() - (int) ctx.state().getOrDefault(MARK, 0);
     }
 
-    private static @Nullable WorldRulesTab tab() {
+    private static @Nullable ZonesTab tab() {
         if (!(Minecraft.getInstance().gui.screen() instanceof ConfiguratorScreen screen)) {
             return null;
         }
         ConfigTab active = screen.activeTab();
-        return active instanceof WorldRulesTab tab ? tab : null;
+        return active instanceof ZonesTab tab ? tab : null;
     }
 
     private static StepResult end(SelfTest.StepContext ctx, StepResult result) {
@@ -80,20 +81,13 @@ public final class ZonePlacementSelfTests {
         return result;
     }
 
-    private static @Nullable String placement(WorldRulesTab tab, String where) {
+    private static @Nullable String placement(ZonesTab tab, String where) {
         FlatButton button = tab.zones().newButton();
         if (button == null) {
             return where + ": kein Knopf „" + Component.translatable(ZoneSection.KEY + "new").getString() + "“ trotz Rechten";
         }
         if (!tab.atTop()) {
             return where + ": Tab ist beim Öffnen nicht ganz oben";
-        }
-        if (tab.rows().isEmpty()) {
-            return where + ": Tab ohne Regeln";
-        }
-        int firstRule = tab.screenY(tab.rows().getFirst());
-        if (tab.zonesTop() >= firstRule) {
-            return where + ": Abschnitt Zonen (y " + tab.zonesTop() + ") steht nicht über der ersten Regel (y " + firstRule + ")";
         }
         if (tab.zonesTop() < tab.viewTop() || button.getY() < tab.viewTop() || button.getY() + button.getHeight() > tab.clipBottom()) {
             return where + ": Zonen ohne Scrollen nicht sichtbar – Abschnitt y " + tab.zonesTop() + ", Knopf y " + button.getY() + "–"
@@ -109,7 +103,7 @@ public final class ZonePlacementSelfTests {
         for (int i = 0; i < Math.min(TOP_HITS, hits.size()); i++) {
             SettingsSearch.Entry entry = hits.get(i).entry();
             seen.append(" | ").append(entry.tabId()).append(": ").append(entry.label());
-            if (WorldRulesTab.ID.equals(entry.tabId()) && entry.label().equals(label)) {
+            if (ZonesTab.ID.equals(entry.tabId()) && entry.label().equals(label)) {
                 return null;
             }
         }
@@ -120,7 +114,7 @@ public final class ZonePlacementSelfTests {
         List<SettingsSearch.Hit> hits = search.hits();
         for (int i = 0; i < hits.size(); i++) {
             SettingsSearch.Entry entry = hits.get(i).entry();
-            if (WorldRulesTab.ID.equals(entry.tabId()) && entry.label().equals(label)) {
+            if (ZonesTab.ID.equals(entry.tabId()) && entry.label().equals(label)) {
                 return i;
             }
         }
@@ -156,15 +150,15 @@ public final class ZonePlacementSelfTests {
                 state.put(SCALE, mc.options.guiScale().get());
                 mc.options.guiScale().set(NORMAL_SCALE);
                 mc.resizeGui();
-                ConfigTabs.open(null, WorldRulesTab.ID);
+                ConfigTabs.open(null, ZonesTab.ID);
                 next(ctx);
                 return StepResult.pending();
             }
             case 2, 4 -> {
-                WorldRulesTab tab = tab();
+                ZonesTab tab = tab();
                 boolean listed = tab != null && tab.zones().entries().stream().anyMatch(entry -> SEARCH.equals(entry.zone().name()));
                 if (tab == null || !listed || since(ctx) < 3) {
-                    return since(ctx) > 200 ? end(ctx, StepResult.fail("Tab Welt-Regeln zeigt die Testzone nicht")) : StepResult.pending();
+                    return since(ctx) > 200 ? end(ctx, StepResult.fail("Tab Zonen zeigt die Testzone nicht")) : StepResult.pending();
                 }
                 Window window = mc.getWindow();
                 String where = "GUI-Skala " + window.getGuiScale() + " (" + window.getGuiScaledWidth() + "×" + window.getGuiScaledHeight() + ")";
@@ -172,8 +166,8 @@ public final class ZonePlacementSelfTests {
                 if (problem != null) {
                     return end(ctx, StepResult.fail(problem));
                 }
-                ctx.log("Zonen oben sichtbar bei " + where + ": Abschnitt y " + tab.zonesTop() + ", erste Regel y "
-                        + tab.screenY(tab.rows().getFirst()) + ", Ende der Ansicht " + tab.clipBottom());
+                ctx.log("Zonen oben sichtbar bei " + where + ": Überschrift y " + tab.zonesTop() + ", Knopf bis y "
+                        + (tab.zones().newButton().getY() + tab.zones().newButton().getHeight()) + ", Ende der Ansicht " + tab.clipBottom());
                 if (phase(ctx) == 2) {
                     mc.options.guiScale().set(0);
                     mc.resizeGui();
@@ -234,9 +228,9 @@ public final class ZonePlacementSelfTests {
                 if (!(mc.gui.screen() instanceof ConfiguratorScreen screen)) {
                     return StepResult.fail("Konfigurator nach dem Suchtreffer geschlossen");
                 }
-                WorldRulesTab tab = tab();
+                ZonesTab tab = tab();
                 if (tab == null) {
-                    return end(ctx, StepResult.fail("Suchtreffer „" + newLabel + "“ öffnet nicht den Tab Welt-Regeln"));
+                    return end(ctx, StepResult.fail("Suchtreffer „" + newLabel + "“ öffnet nicht den Tab Zonen"));
                 }
                 FlatButton button = tab.zones().newButton();
                 if (button == null || screen.getFocused() != button) {
@@ -248,23 +242,26 @@ public final class ZonePlacementSelfTests {
                 List<WorldRulesS2C.Entry> entries = new ArrayList<>();
                 ClientWorldRules.INSTANCE.raw().forEach((id, value) -> entries.add(new WorldRulesS2C.Entry(id, value)));
                 ClientWorldRules.INSTANCE.accept(new WorldRulesS2C(false, entries));
+                ClientZones.INSTANCE.accept(new ZonesS2C(false, false, ClientZones.INSTANCE.syncedDimension(), ClientZones.INSTANCE.stored(),
+                        ClientZones.INSTANCE.release()));
                 mc.options.guiScale().set(NORMAL_SCALE);
                 mc.resizeGui();
                 next(ctx);
                 return StepResult.pending();
             }
             case 7, 8 -> {
-                WorldRulesTab tab = tab();
+                ZonesTab tab = tab();
                 if (tab == null || !tab.readOnly() || since(ctx) < 3) {
-                    return since(ctx) > 200 ? restore(ctx, "Tab Welt-Regeln wird nicht nur lesbar") : StepResult.pending();
+                    return since(ctx) > 200 ? restore(ctx, "Tab Zonen wird nicht nur lesbar") : StepResult.pending();
                 }
                 Window window = mc.getWindow();
                 String where = "nur lesbar, GUI-Skala " + window.getGuiScale() + " (" + window.getGuiScaledWidth() + "×" + window.getGuiScaledHeight() + ")";
-                String problem = readOnly(tab, where, phase(ctx) == 7);
+                String problem = readOnly(tab, where);
                 if (problem != null) {
                     return restore(ctx, problem);
                 }
-                ctx.log("Zonen oben sichtbar " + where + ": Abschnitt y " + tab.zonesTop() + ", Ende der Ansicht " + tab.clipBottom());
+                ctx.log("Zonen oben sichtbar " + where + ": Überschrift y " + tab.zonesTop() + ", Ende der Ansicht " + tab.clipBottom()
+                        + ", fremde Testzone nicht gelistet");
                 if (phase(ctx) == 7) {
                     mc.options.guiScale().set(0);
                     mc.resizeGui();
@@ -275,8 +272,8 @@ public final class ZonePlacementSelfTests {
                 return StepResult.pending();
             }
             default -> {
-                if (!ClientWorldRules.INSTANCE.editable()) {
-                    return since(ctx) > 200 ? end(ctx, StepResult.fail("Rechte für die Welt-Regeln kommen nicht zurück")) : StepResult.pending();
+                if (!ClientWorldRules.INSTANCE.editable() || !ClientZones.INSTANCE.editable()) {
+                    return since(ctx) > 200 ? end(ctx, StepResult.fail("Operator-Rechte kommen nicht zurück")) : StepResult.pending();
                 }
                 return end(ctx, StepResult.pass());
             }
@@ -287,35 +284,27 @@ public final class ZonePlacementSelfTests {
         ctx.onServer(server -> {
             ServerPlayer player = ZoneSelfTests.player(server);
             PropwashNet.sendToPlayer(player, WorldRules.snapshotFor(player));
+            PropwashNet.sendToPlayer(player, ZoneServer.snapshotFor(player));
         });
         return problem == null ? StepResult.pending() : end(ctx, StepResult.fail(problem));
     }
 
-    private static @Nullable String readOnly(WorldRulesTab tab, String where, boolean wholeEntry) {
+    private static @Nullable String readOnly(ZonesTab tab, String where) {
         if (tab.zones().newButton() != null) {
             return where + ": Knopf „Neue Zone hier“ sichtbar";
         }
-        ZoneSection.Entry first = null;
-        boolean listed = false;
         for (ZoneSection.Entry entry : tab.zones().entries()) {
-            if (entry.edit() != null) {
-                return where + ": Knopf „Bearbeiten“ bei " + entry.zone().name();
+            if (!entry.zone().ownedBy(ClientZones.me())) {
+                return where + ": fremde Zone „" + entry.zone().name() + "“ ohne Operator-Recht gelistet";
             }
-            if (first == null) {
-                first = entry;
+            if (entry.edit() != null || entry.delete() != null) {
+                return where + ": Knopf „Bearbeiten“ oder „Löschen“ bei " + entry.zone().name();
             }
-            listed |= SEARCH.equals(entry.zone().name());
         }
-        if (!listed || first == null) {
-            return where + ": Testzone fehlt in der Liste";
-        }
-        if (tab.rows().isEmpty() || tab.zonesTop() >= tab.screenY(tab.rows().getFirst())) {
-            return where + ": Abschnitt Zonen steht nicht über der ersten Regel";
-        }
-        int bottom = wholeEntry ? tab.screenY(first) + ZoneSection.ENTRY : tab.zonesTop() + Metrics.SECTION_HEIGHT;
+        int bottom = tab.zonesTop() + Metrics.SECTION_HEIGHT;
         if (!tab.atTop() || tab.zonesTop() < tab.viewTop() || bottom > tab.clipBottom()) {
-            return where + ": " + (wholeEntry ? "erste Zone" : "Überschrift Zonen") + " ohne Scrollen nicht sichtbar (Abschnitt y " + tab.zonesTop()
-                    + ", unten " + bottom + ", sichtbar " + tab.viewTop() + "–" + tab.clipBottom() + ")";
+            return where + ": Überschrift Zonen ohne Scrollen nicht sichtbar (y " + tab.zonesTop() + ", unten " + bottom + ", sichtbar " + tab.viewTop()
+                    + "–" + tab.clipBottom() + ")";
         }
         return null;
     }

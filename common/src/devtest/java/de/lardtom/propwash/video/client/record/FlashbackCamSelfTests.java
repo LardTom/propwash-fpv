@@ -161,6 +161,7 @@ public final class FlashbackCamSelfTests {
                     FlashbackCamSelfTests::recordStep);
             SelfTest.clientStep("video: Action-Cam (Flashback) hängt Flüge an eine laufende Flashback-Aufnahme an", 2400,
                     FlashbackCamSelfTests::appendStep);
+            FlashbackPropwashSelfTests.register();
         } else {
             SelfTest.clientStep("video: Action-Cam (Flashback) ohne Flashback zeigt nur einen Hinweis", 200, FlashbackCamSelfTests::absentStep);
         }

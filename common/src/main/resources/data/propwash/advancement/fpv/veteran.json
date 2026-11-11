@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/takeoff",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:flight",
+      "conditions": {
+        "crashes": {
+          "min": 100
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:totem_of_undying"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.veteran.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.veteran.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

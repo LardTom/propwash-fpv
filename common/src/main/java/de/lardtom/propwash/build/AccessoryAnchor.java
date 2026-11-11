@@ -56,8 +56,15 @@ public record AccessoryAnchor(double x, double y, double z, double tiltDegrees, 
         return this.toFrame(this.tiltFor(type), local[0], local[1], local[2]);
     }
 
+    public double[] modelOrigin(AccessoryType type) {
+        if (type.recessMm == 0.0 && type.dropMm == 0.0) {
+            return new double[]{this.x, this.y, this.z};
+        }
+        return this.toFrame(this.tiltFor(type), 0.0, -type.dropMm, type.recessMm);
+    }
+
     public double stretch(AccessoryType type) {
-        if (type.mount == AccessoryMount.BOTTOM && !type.hangsStraight() && this.lengthMm > 0.0 && type.widthMm > 0.0) {
+        if (type.mount == AccessoryMount.BOTTOM && !type.hangsStraight() && !type.hasLedPath() && this.lengthMm > 0.0 && type.widthMm > 0.0) {
             return this.lengthMm / type.widthMm;
         }
         return 1.0;
@@ -79,7 +86,9 @@ public record AccessoryAnchor(double x, double y, double z, double tiltDegrees, 
     }
 
     public double[] ledMm(AccessoryType type, int index) {
-        return this.toFrame(type.ledMm(index, this.lengthMm > 0.0 ? this.lengthMm : type.widthMm));
+        double strip = !type.hangsStraight() && this.lengthMm > 0.0 ? this.lengthMm : type.widthMm;
+        double[] local = type.ledMm(index, strip);
+        return this.toFrame(this.tiltFor(type), local[0], local[1], local[2]);
     }
 
     public double[] ledDirection() {
@@ -87,7 +96,8 @@ public record AccessoryAnchor(double x, double y, double z, double tiltDegrees, 
     }
 
     public double[] lensMm(AccessoryType type) {
-        return this.toFrame(type.lensMm());
+        double[] local = type.lensMm();
+        return this.toFrame(this.tiltFor(type), local[0], local[1], local[2]);
     }
 
     public double[] viewDirection() {

@@ -4,6 +4,7 @@ import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.build.VideoType;
 import de.lardtom.propwash.sim.FpvRig;
 import de.lardtom.propwash.ui.client.DroneContext;
+import de.lardtom.propwash.ui.client.TuneHost;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.config.StepSlider;
 import de.lardtom.propwash.ui.client.theme.Metrics;
@@ -15,6 +16,7 @@ import de.lardtom.propwash.video.CameraShake;
 import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageFormat;
+import de.lardtom.propwash.video.VideoCheck;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -48,6 +50,7 @@ public final class VideoConfigTab extends ConfigTab {
     private int formatY;
     private @Nullable VideoType camera;
     private boolean retryShown;
+    private @Nullable CameraAngleSection cameraSection;
 
     @Override
     public String id() {
@@ -73,7 +76,12 @@ public final class VideoConfigTab extends ConfigTab {
         this.profile = wornGoggles();
         this.camera = contextCamera();
         this.retryShown = shaderFailed();
+        this.cameraSection = this.host instanceof TuneHost tuneHost ? new CameraAngleSection(tuneHost.tune()) : null;
         if (!VideoTabRules.showsSettings(this.profile)) {
+            int total = this.columns * this.columnWidth + (this.columns - 1) * COLUMN_GAP;
+            int hintBottom = this.y + Metrics.SECTION_HEIGHT + Metrics.GAP
+                    + ThemeText.wrappedHeight(this.host.font(), Component.translatable("propwash.video.config.no_goggles"), total);
+            this.buildCamera(hintBottom + 2 * Metrics.GAP, total);
             return;
         }
         if (VideoTabRules.showsCreative(this.profile)) {
@@ -127,7 +135,7 @@ public final class VideoConfigTab extends ConfigTab {
                 }));
         this.place(CycleButton.<VideoConfig.EffectRenderer>builder(value -> Component.translatable(value.translationKey()), this.draft.renderer)
                 .withValues(List.of(VideoConfig.EffectRenderer.values()))
-                .withTooltip(value -> Tooltip.create(Component.translatable("propwash.video.config.renderer.tooltip")))
+                .withTooltip(value -> Tooltip.create(Component.translatable(value.tooltipKey())))
                 .create(0, 0, this.columnWidth, ROW_HEIGHT, Component.translatable("propwash.video.config.renderer"), (button, value) -> {
                     this.draft.renderer = value;
                     this.host.changed();
@@ -140,7 +148,7 @@ public final class VideoConfigTab extends ConfigTab {
                 }));
         if (this.retryShown) {
             this.place(Button.builder(Component.translatable("propwash.video.config.retry"), button -> {
-                        VideoPass.INSTANCE.retry();
+                        VideoPass.INSTANCE.retryAll();
                         HeadlightPass.INSTANCE.retryAll();
                         this.host.rebuild();
                     })
@@ -194,6 +202,19 @@ public final class VideoConfigTab extends ConfigTab {
         int formatHeight = format == null ? 0 : Math.max(ThemeText.wrappedHeight(this.host.font(), format, total),
                 flat == null ? 0 : ThemeText.wrappedHeight(this.host.font(), flat, total)) + 2;
         this.statusY = this.formatY + formatHeight + 2 * Metrics.GAP - 2;
+        int cameraBottom = this.buildCamera(this.statusY, total);
+        if (cameraBottom > this.statusY) {
+            this.statusY = cameraBottom + 2 * Metrics.GAP - 2;
+        }
+    }
+
+    private int buildCamera(int top, int total) {
+        CameraAngleSection section = this.cameraSection;
+        return section == null ? top : section.build(this.host, this.left, top, this.columnWidth, total);
+    }
+
+    public @Nullable CameraAngleSection cameraSection() {
+        return this.cameraSection;
     }
 
     private @Nullable VideoSystem tabSystem() {
@@ -303,6 +324,9 @@ public final class VideoConfigTab extends ConfigTab {
             ThemeDraw.sectionTitle(graphics, font, Component.translatable("propwash.video.config.section"), this.left, this.y, total);
             ThemeText.wrapped(graphics, font, Component.translatable("propwash.video.config.no_goggles"), this.left,
                     this.y + Metrics.SECTION_HEIGHT + Metrics.GAP, total, Palette.TEXT_MUTED);
+            if (this.cameraSection != null) {
+                this.reportBottom(this.cameraSection.extract(graphics, font, this.left, total));
+            }
             return;
         }
         ThemeDraw.sectionTitle(graphics, font, Component.translatable("propwash.video.config.section.worn", systemName(this.profile)), this.left,
@@ -311,6 +335,9 @@ public final class VideoConfigTab extends ConfigTab {
         Component format = this.formatLine();
         if (format != null) {
             ThemeText.wrapped(graphics, font, format, this.left, this.formatY + Metrics.GAP, total, Palette.TEXT_MUTED);
+        }
+        if (this.cameraSection != null) {
+            this.cameraSection.extract(graphics, font, this.left, total);
         }
         int y = this.statusY;
         ThemeDraw.sectionTitle(graphics, font, Component.translatable("propwash.video.config.preview"), this.left, y, total);
@@ -332,7 +359,20 @@ public final class VideoConfigTab extends ConfigTab {
     }
 
     @Override
+    public Storage storage() {
+        return this.cameraSection != null && this.cameraSection.editable() ? Storage.MIXED : Storage.GAME;
+    }
+
+    @Override
+    public String mixedStorageKey() {
+        return CameraAngleSection.FOOTER_KEY;
+    }
+
+    @Override
     public void resetDefaults() {
+        if (this.cameraSection != null && this.cameraSection.editable()) {
+            this.cameraSection.resetUptilt();
+        }
         if (!VideoTabRules.showsSettings(this.profile)) {
             return;
         }
@@ -381,11 +421,16 @@ public final class VideoConfigTab extends ConfigTab {
         if (failure == null) {
             return null;
         }
+        if (failure == VideoPass.Failure.CHECK) {
+            return Component.translatable(pass.level() == VideoCheck.Level.NONE ? "propwash.video.status.simplified.none"
+                    : "propwash.video.status.simplified");
+        }
         return Component.translatable("propwash.video.status.fallback", Component.translatable(failure.translationKey()));
     }
 
     private static boolean shaderFailed() {
-        return VideoPass.INSTANCE.failure() != null || VideoPass.INSTANCE.lensFailure() != null || HeadlightPass.INSTANCE.failure() != null;
+        return VideoPass.INSTANCE.failure() != null || VideoPass.INSTANCE.lensFailure() != null || HeadlightPass.INSTANCE.failure() != null
+                || VideoPass.INSTANCE.checkSimplified();
     }
 
     private static @Nullable Component headlightText() {

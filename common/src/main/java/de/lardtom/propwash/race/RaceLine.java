@@ -87,7 +87,8 @@ public final class RaceLine {
         int count = gates.size();
         int next = tracker.nextGate();
         boolean holeshot = tracker.holeshot();
-        int remaining = remainingGates(count, tracker.lap(), tracker.lapTarget(), next, holeshot);
+        int remaining = tracker.pointToPoint() ? PointToPoint.remaining(count, next, holeshot)
+                : remainingGates(count, tracker.lap(), tracker.lapTarget(), next, holeshot);
         int passed = passedGates(count, tracker.lap(), next, holeshot);
         return build(gates, next, ahead, remaining, passed, px, py, pz);
     }
@@ -105,7 +106,8 @@ public final class RaceLine {
         if (distance(px, py, pz, start.centerX(), start.centerY(), start.centerZ()) > APPROACH_RANGE) {
             return Path.EMPTY;
         }
-        int remaining = remainingGates(gates.size(), 1, tracker.lapTarget(), 0, true);
+        int remaining = tracker.pointToPoint() ? PointToPoint.remaining(gates.size(), 0, true)
+                : remainingGates(gates.size(), 1, tracker.lapTarget(), 0, true);
         return build(gates, 0, ahead, remaining, 0, px, py, pz);
     }
 

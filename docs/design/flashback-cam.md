@@ -34,6 +34,7 @@ Ohne Flashback (NeoForge oder Fabric ohne die Mod) gibt es das Item trotzdem; de
 | Ein Aufnahme-Knopf für alle Kameras (F9, Funktion „Aufnahme“); nur mit Flashback zusätzlich der Abschnitt „Flashback“ im Tab Action-Cam | wie bei einer echten Funke: der Knopf löst die Kamera aus, die auf der Drohne sitzt; keine zweite Taste, die mit F9 konkurriert | eigene Taste, die nur mit Flashback erscheint |
 | „Flashback mitstarten“ (Standard an): startet Flashback, wenn es noch nicht aufnimmt, und beendet die Aufnahme mit dem Kamerapfad | ein Flug = eine Wiederholung ohne Umweg über Flashbacks Menü; nimmt der Spieler selbst auf, hängen sich die Flüge an seine Aufnahme an und sie läuft weiter | immer manuell starten (Hinweis „Flashback nimmt nicht auf“ bleibt für „aus“) |
 | Zeitbasis: geschriebene Ticks der Flashback-Aufnahme (`Recorder.writtenTicks`, privates Feld) plus Teil-Tick des Bildes; eine Probe pro Bild, danach auf ganze Ticks abgetastet | stimmt mit Flashbacks Zeitleiste überein, Pausen in Flashback und im Spiel fallen heraus; pro Bild statt pro Tick, weil Ticks im Bildraster ruckeln | Probe am Tick-Ende |
+| Lage vor dem Abtasten auf ganze Ticks tiefpassgefiltert (seit 0.6.0, Befund RC2-5): `PathResampler.perTick` mittelt die Lage um jeden Tick mit einem Lanczos-Fenster über ±3 Ticks (`ANTI_ALIAS_TICKS`), gerechnet auf der Drehung (Tangentialraum um die Lage des Ticks) über den Pfad aus den Proben jedes Bildes; dreht sich die Kamera im Fenster weiter als 180°, wird der Logarithmus entfaltet (von der Probe vor dem Tick aus nach beiden Seiten je Probe der Zweig, der der Nachbarprobe am nächsten liegt, Befund AUTO44-1); Position und Sichtfeld bleiben am Tick abgetastet | Keyframes je Tick zeigen nur Schwingungen bis 10 Hz. Ungefiltert wurde Propwash-Zittern über 10 Hz zu langsamem Wackeln gefaltet (1° bei 17 Hz → 0,95° bei 3 Hz, bei 19 Hz → 0,94° bei 1 Hz); Flashback zeigte dadurch ein Schaukeln, das es live nicht gab. Gefiltert: über 14 Hz unter 1,2 % Rest, bis 5 Hz wie vorher (Faktor 0,95 durch Flashbacks Spline); gleichmäßige Drehungen bleiben exakt, auch an der Ratengrenze (1998°/s je Achse, alle drei zusammen 3461°/s; Rest der Quadratur unter 0,001°). Ohne Entfaltung sprang der Vektor ab etwa 1200°/s auf den anderen Zweig (1998°/s mit 20 % Schwankung: Tick-Lage 11,8° falsch, gleichmäßig 2,3°) | ungefiltert abtasten; Dreieck über ±1 Tick (bei 5 Hz nur noch Faktor 0,76); Keyframes zwischen den Ticks (Flashback kennt nur ganze Ticks) |
 | Pose: Schwerpunkt der Drohne aus der Physik + Linsen-Offset + Uptilt, **ohne** Videolatenz; Sichtfeld aus dem Videomodul (bzw. Kreativ-Brille) als vertikaler Wert für 16:9 | die Kamera sitzt in der Wiederholung in der Drohne, nicht 30 ms dahinter; 16:9 wie die Videos der anderen Action-Cams und Flashbacks Standard-Export | das angezeigte, verzögerte FPV-Bild; Sichtfeld fürs Seitenverhältnis des Fensters |
 | Winkel im Format von Minecraft/Flashback (Gier, Neigung in −90…90, Roll lokal um die Blickachse); nahe der Senkrechten werden Gier und Roll so verteilt, dass Flashbacks Interpolation auf dem kürzesten Weg nicht verdreht (`EulerPath`, Keyframe-Fehler ≤ 2°) | Flips führen durch die Senkrechte; ohne Korrektur dreht sich das Bild dort um bis zu 180° | Quaternionen (Flashback kennt nur Winkel) |
 | Keyframes (seit 0.5.2): Regler „Vereinfachung“ von „Aus“ (jeder Tick) bis 20 cm / 10°, Standard 1 cm / 0,5° (das frühere „Ausgedünnt“); jede Strecke wird zusätzlich gegen Flashbacks eigene Spline geprüft und bei mehr als dem 1,5-Fachen der Toleranz geteilt | gespeicherter Pfad bleibt auch zur gleichen Zeit in der angezeigten Toleranz (früher bis 0,3 Blöcke vor oder nach), Details in [`flashback-keyframe-budget.md`](flashback-keyframe-budget.md) | Auswahl „Jeder Tick / Ausgedünnt“ (nur lineare Prüfung, Tempo schwankte in Zeitlupe) |
@@ -89,6 +90,14 @@ Flashbacks Zeitleiste kann nur eine begrenzte Zahl Keyframes auf einmal zeichnen
   vor oder nach der echten Position (die Bahn selbst bleibt auf etwa 1 cm).
 - Die Drohne in der Wiederholung kommt aus Flashbacks Aufnahme der Entity (Position pro Tick, Lage vom Server); sie läuft
   etwa einen Tick hinter der Kamera. Nahaufnahmen mit freier Kamera näher als 0,5 Blöcke blenden sie aus.
+- Schwingungen schneller als etwa 10 Hz (feines Propwash-Zittern) kann ein Pfad mit einem Keyframe je Tick nicht zeigen. Seit
+  0.6.0 fallen sie vor dem Abtasten weg, statt als langsames Schaukeln im Export zu landen; über 6 Hz zeigt der Export
+  daher etwas weniger als das Live-Bild. Gemessen am Propwash-Flug der Simulation (`FlashbackPropwashTest`): Regler „Aus“
+  Wackeln 0,5–8 Hz Faktor 0,97–0,99 des Live-Bilds, Schein-Wackeln 0,5–3 Hz höchstens 0,02° (vorher 0,08–0,23°).
+- Mit Vereinfachung hält der gespeicherte Pfad die Toleranz ein, schwingt dazwischen aber auf seiner eigenen Spline:
+  Standard (1 cm / 0,5°) Faktor 0,98–1,03, bei 50 % bis 1,2, bei 100 % bis 1,35 des Live-Wackelns (Schein-Wackeln
+  0,5–3 Hz im Propwash: Standard etwa 0,1°, 50 % etwa 0,6°, 100 % etwa 1,8°). Wer Propwash genau wie live sehen will,
+  nimmt „Aus“; die Obergrenze für lange Flüge vergröbert ebenso.
 - Getestet mit Flashback 0.43.6 für Minecraft 26.3. Ändert Flashback Klassen oder Felder, meldet der Tab „nicht
   unterstützt“ mit Grund, und die Kamera nimmt nichts auf.
 
@@ -99,6 +108,20 @@ Flashbacks Zeitleiste kann nur eine begrenzte Zahl Keyframes auf einmal zeichnen
   `video: Flashback-Budget – …` (siehe [`flashback-keyframe-budget.md`](flashback-keyframe-budget.md)).
 - JUnit: `CameraAnglesTest`, `EulerPathTest` (Flips ohne Verdrehen: ohne Korrektur über 90°, mit unter 25°),
   `CameraTrackTest` (Abtastung, Ausdünnen, Sichtfeld, Puffer), `ReplayViewTest`.
+- Tiefpass vor dem Abtasten (0.6.0, Befund RC2-5): `AntiAliasTest` (1° bei 13,3–33 Hz ergibt im Export unter 0,05° bei
+  der Faltungsfrequenz, vorher bis 0,95°; 0,5–3 Hz bei 30, 60 und 144 Bildern pro Sekunde mit und ohne Bildzeit-Zittern
+  Faktor 0,95–1,01; gleichmäßige Drehung exakt von 500°/s bis 3461°/s bei 30–240 Bildern pro Sekunde; schnelle Drehungen
+  bis 3461°/s mit 20 % Schwankung bei 5 Hz: Tick-Lage höchstens 3 % der Schwankung neben der Drehung, Export bis 2826°/s
+  höchstens 0,5° schlechter als mit Punktproben, Befund AUTO44-1; Position und Sichtfeld unverändert),
+  `FlashbackPropwashTest` (Whoop, Freestyle und Racer fallen achtmal in den eigenen Abwind, 60 und 144 Bilder pro
+  Sekunde: Schein-Wackeln 0,5–3 Hz im Propwash unter 0,05°, Wackeln 0,5–8 Hz Faktor 0,93–1,03, Standard-Vereinfachung
+  unter 1,05). Auswertung in `PathWobble` (devtest: Abweichung von der geglätteten Live-Lage, Bandpass per FFT).
+- Selbsttest „video: Action-Cam (Flashback) – Propwash im Kamerapfad wie live“ (Fabric mit Flashback): 18 m steigen, dann
+  dreimal 0,7 s mit wenig Gas fallen lassen, 1,3 s mit 1,05-fachem Schwebegas im eigenen Abwind sinken und zurück auf
+  die Starthöhe; Kamerapfad mit Regler „Aus“. Danach Flashbacks eigene Interpolation der Szene mit 120 Hz gegen den Pfad
+  aus jedem Bild, nur in Zeiten mit Propwash über 0,3 (mindestens 1 s). Grenzen: Schein-Wackeln 0,5–3 Hz höchstens
+  0,01° (gemessen 0,001°, ohne Tiefpass 0,024°), Wackeln 0,5–8 Hz Faktor 0,9–1,05. Die Kurven stehen in
+  `propwash-flashback-wobble.csv` im Run-Verzeichnis.
 - Selbsttest (Fabric mit Flashback im Mod-Ordner des Selbsttests): echter Flug; beim Schweben in den ersten Sekunden der
   Aufnahme wird jede neue Probe des Kamerapfads mit der echten Spielkamera desselben Bildes verglichen (Position, Blick-
   und Oben-Richtung, waagerechtes Sichtfeld aus `Camera#getFov` und Fenster-Seitenverhältnis) und der Uptilt unabhängig

@@ -62,5 +62,9 @@
   "propwash.join.screen.status.unknown": "Unbekannte Teile",
   "propwash.join.screen.status.inactive": "Hier inaktiv",
   "propwash.join.screen.todo": "Was zu tun ist",
-  "propwash.join.screen.other": "Außerdem anders (das erlaubt Propwash)"
+  "propwash.join.screen.other": "Außerdem anders (das erlaubt Propwash)",
+  "propwash.join.fabric_sync.failed": "Der Inhalt dieses Fabric-Servers ließ sich nicht abgleichen: %s",
+  "propwash.join.fabric_sync.unknown_entries": "Dieser Fabric-Server hat Inhalte, die deinem Spiel fehlen (aus: %s). Installiere dieselben Mods wie der Server.",
+  "propwash.join.fabric_sync.unknown_registries": "Dieser Fabric-Server nutzt Inhaltstypen, die dein Spiel nicht kennt: %s",
+  "propwash.join.not_neoforge": "Dieser Server läuft mit NeoForge. Tritt mit NeoForge und Propwash FPV %s (Netzwerkprotokoll %s) bei – mit Fabric oder ohne Mods geht es hier nicht."
 }

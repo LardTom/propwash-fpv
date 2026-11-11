@@ -20,7 +20,8 @@ public enum SimEventType {
     AIRMODE_ACTIVE,
     FRAME_HITCH,
     SIM_FAULT,
-    MOTOR_DERATE,
     MOTOR_THERMAL_WEAR,
-    ESC_BURNED
+    ESC_BURNED,
+    MOTOR_HOT,
+    ESC_DERATE
 }

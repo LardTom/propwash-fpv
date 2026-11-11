@@ -16,7 +16,10 @@ import de.lardtom.propwash.race.GateGeometry;
 import de.lardtom.propwash.race.GateSize;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.DronePaint;
+import de.lardtom.propwash.race.EntryGhost;
 import de.lardtom.propwash.race.GhostCodec;
+import de.lardtom.propwash.race.GhostKey;
+import de.lardtom.propwash.race.GhostServer;
 import de.lardtom.propwash.race.GhostLook;
 import de.lardtom.propwash.race.GhostTrack;
 import de.lardtom.propwash.race.LapTracker;
@@ -26,7 +29,6 @@ import de.lardtom.propwash.race.RaceModule;
 import de.lardtom.propwash.race.RaceRecords;
 import de.lardtom.propwash.race.RacePayloads;
 import de.lardtom.propwash.race.RaceServer;
-import de.lardtom.propwash.race.RecordGhosts;
 import de.lardtom.propwash.race.StartLights;
 import de.lardtom.propwash.ui.client.theme.ThemedScreen;
 import net.minecraft.client.Minecraft;
@@ -114,6 +116,7 @@ public final class RaceSelfTests {
         SelfTest.clientStep("race: Bestenliste und Plausibilität", 200, RaceSelfTests::leaderboardStep);
         SelfTest.clientStep("race: Bestenliste sortiert Klassen und Zeiten", 100, RaceSelfTests::rankingStep);
         SelfTest.clientStep("race: Bestenliste im Theme-Fenster", 200, RaceSelfTests::leaderboardScreenStep);
+        RaceGhostsSelfTests.register();
         SelfTest.clientStep("race: Startaufstellung, Ampel und Frühstart", 400, RaceSelfTests::lobbyStep);
         SelfTest.clientStep("race: Rennuhr steht in der Pause", 200, RaceSelfTests::pauseStep);
         SelfTest.clientStep("race: Aufräumen", 200, RaceSelfTests::cleanupStep);
@@ -127,6 +130,15 @@ public final class RaceSelfTests {
         GateRedstoneSelfTests.register();
         GatePoleSelfTests.register();
         CourseEditSelfTests.register();
+        RaceScoringSelfTests.register();
+        RaceTopologySelfTests.register();
+        GatePushSelfTests.register();
+        GateNudgeTabSelfTests.register();
+        GateTurnSelfTests.register();
+        GateStackRulesSelfTests.register();
+        GateStackTurnSelfTests.register();
+        GateStackPreviewSelfTests.register();
+        GateStackRowSelfTests.register();
         SelfTest.afterLeaveStep("race: Zustand nach dem Verlassen", 20, ctx -> StepResult.check(
                 !RaceState.INSTANCE.racing() && RaceState.INSTANCE.courseId() == LapTracker.NO_COURSE && ClientCourses.all().isEmpty(),
                 "Rennzustand nach dem Verlassen nicht zurückgesetzt: racing=" + RaceState.INSTANCE.racing() + " kurs="
@@ -245,8 +257,11 @@ public final class RaceSelfTests {
         CourseToolItem.useOnGate(tool, player, placed.get(1));
         int course = CourseToolItem.courseOf(tool);
         CourseRegistry.Course data = registry.course(course);
-        if (data == null || data.gates.size() != GATE_COUNT) {
-            throw new IllegalStateException("Kurs " + course + " hat nicht " + GATE_COUNT + " Gates");
+        if (data == null || data.gates.size() != GATE_COUNT + 1 || placed.get(1).passes().size() != 2) {
+            throw new IllegalStateException("Zweiter Klick auf Gate 2 hängt keinen weiteren Durchgang an");
+        }
+        if (!registry.detachGate(data, GATE_COUNT) || data.gates.size() != GATE_COUNT || placed.get(1).passes().size() != 1) {
+            throw new IllegalStateException("Weiterer Durchgang von Gate 2 lässt sich nicht einzeln entfernen");
         }
         for (int i = 0; i < GATE_COUNT; i++) {
             GateEntity gate = placed.get(i);
@@ -681,21 +696,27 @@ public final class RaceSelfTests {
         if (!ranking.getFirst().frame().equals(frame) || ranking.getFirst().dateMillis() <= 0L) {
             return "Klasse oder Datum fehlen: " + ranking.getFirst();
         }
-        RecordGhosts.Stored stored = registry.ghosts().get(id, frame);
-        if (stored == null || stored.nanos() != lap || stored.layout() != course.toData().layoutHash()) {
-            return "Rekord-Geist nicht gespeichert: " + stored;
+        EntryGhost stored = registry.entryGhosts().get(course.key(), GhostKey.of(ranking.getFirst()));
+        if (stored == null || stored.info().nanos() != lap || stored.info().layout() != course.toData().layoutHash()) {
+            return "Geist der Bestenliste nicht gespeichert: " + (stored == null ? "keiner" : stored.info());
+        }
+        if (stored.info().code().isEmpty() || !stored.info().hasUptilt() || stored.info().source() != EntryGhost.Source.SERVER) {
+            return "Geist der Bestenliste ohne Sharecode oder Kamerawinkel: " + stored.info();
         }
         try {
-            GhostTrack ghost = GhostCodec.decode(stored.data());
+            GhostTrack ghost = stored.decodeTrack();
             double[] pos = new double[3];
             if (ghost.samples() < 10 || !ghost.pose(0L, pos, new Quaternionf()) || Math.abs(pos[2] - gates.getFirst().z()) > 1.5) {
-                return "Rekord-Geist unbrauchbar: " + ghost.samples() + " Proben, Start z=" + pos[2];
+                return "Geist der Bestenliste unbrauchbar: " + ghost.samples() + " Proben, Start z=" + pos[2];
+            }
+            if (ghost.intervalNanos() != GhostServer.FINE_INTERVAL_NANOS) {
+                return "Geist der Bestenliste nicht fein genug: " + ghost.intervalNanos() / MS + " ms";
             }
             if (piloted != null && !GhostLook.of(piloted.build(), piloted.paint()).equals(ghost.look())) {
-                return "Rekord-Geist ohne den Bauplan der Drohne: " + ghost.look();
+                return "Geist der Bestenliste ohne den Bauplan der Drohne: " + ghost.look();
             }
         } catch (IOException e) {
-            return "Rekord-Geist nicht lesbar: " + e.getMessage();
+            return "Geist der Bestenliste nicht lesbar: " + e.getMessage();
         }
         crossed = flyLap(player, gates, crossed, lap);
         t = crossed + 100L * MS;
@@ -813,20 +834,20 @@ public final class RaceSelfTests {
             board.submit(fake, "Test" + i, i % 2 == 0 ? "whoop_65" : "race_5", own + (i - 3) * 250L * MS + 1L, now - i);
         }
         registry.records().changed();
-        List<Leaderboard.Entry> top = board.top(null, Leaderboard.TOP);
+        List<Leaderboard.Entry> top = board.top(null, Integer.MAX_VALUE);
         for (int i = 1; i < top.size(); i++) {
             if (top.get(i).nanos() < top.get(i - 1).nanos()) {
                 return "Bestenliste nicht nach Zeit sortiert: " + top;
             }
         }
-        if (top.size() != Leaderboard.TOP || !top.getFirst().name().equals("Test0")) {
+        if (top.size() != fakes.size() + 1 || !top.getFirst().name().equals("Test0")) {
             return "Rekordhalter falsch: " + (top.isEmpty() ? "keiner" : top.getFirst().name());
         }
         int rank = board.rank(player.getUUID(), null);
         if (rank != 4) {
             return "Eigener Platz " + rank + " statt 4";
         }
-        for (Leaderboard.Entry entry : board.top("whoop_65", Leaderboard.TOP)) {
+        for (Leaderboard.Entry entry : board.top("whoop_65", Integer.MAX_VALUE)) {
             if (!entry.frame().equals("whoop_65")) {
                 return "Klassenfilter liefert " + entry.frame();
             }
@@ -858,9 +879,10 @@ public final class RaceSelfTests {
             return StepResult.fail("Bestenliste ist kein Theme-Fenster");
         }
         List<RacePayloads.BoardRow> rows = screen.shownRows();
-        if (rows.size() != Leaderboard.TOP) {
+        int total = ClientLeaderboards.get(course).total(null, false);
+        if (rows.size() != total || rows.size() <= 10) {
             minecraft.gui.setScreen(null);
-            return StepResult.fail("Bestenliste zeigt " + rows.size() + " Zeilen");
+            return StepResult.fail("Bestenliste zeigt " + rows.size() + " von " + total + " Zeilen");
         }
         for (int i = 1; i < rows.size(); i++) {
             if (rows.get(i).nanos() < rows.get(i - 1).nanos() || rows.get(i).overallRank() != i + 1) {

@@ -1,0 +1,5 @@
+{
+  "gamerule.propwash.camera_chunks": "Chunks um Kamera-Drohnen",
+  "gamerule.propwash.camera_chunks.description": "Größter Radius in Chunks, den der Server um die eigene Kamera-Drohne eines Spielers lädt und schickt, solange ein Add-on sie aufzeichnet, etwa für Flashback-Aufnahmen weit weg vom Spieler. Die Ansicht des Spielers ändert sich nicht. Höchstens 2 Bereiche je Spieler und 16 auf dem Server. 0 = aus.",
+  "gamerule.propwash.camera_chunks.value.0": "Aus"
+}

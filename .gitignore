@@ -40,3 +40,6 @@ docs/screenshots/flight_school_labels/
 .cache/
 docs/screenshots/camera_shake/
 docs/screenshots/glass_feel/
+
+# release-artefakte
+/release/

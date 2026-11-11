@@ -265,7 +265,7 @@ final class FlightModeSelfTests {
             return "OSD zeigt " + osd.mode + " statt " + wanted;
         }
         boolean device = RadioState.INSTANCE.source() != RadioSource.KEYBOARD && RadioState.INSTANCE.connected();
-        int bits = RadioState.INSTANCE.activeSwitches();
+        long bits = RadioState.INSTANCE.activeSwitches();
         for (StabMode mode : StabMode.values()) {
             if (ModesTab.modeLit(mode, device, bits) != (mode == wanted)) {
                 return "Modi-Tab: Lampe " + mode + " ist " + (mode == wanted ? "aus" : "an");
@@ -286,7 +286,7 @@ final class FlightModeSelfTests {
     private static String describe() {
         RadioState radio = RadioState.INSTANCE;
         PilotSession session = PilotSession.INSTANCE;
-        return "Quelle " + radio.source() + " " + radio.deviceGuid() + ", Schalter " + Integer.toBinaryString(radio.activeSwitches())
+        return "Quelle " + radio.source() + " " + radio.deviceGuid() + ", Schalter " + Long.toBinaryString(radio.activeSwitches())
                 + ", Sitzung " + session.isActive() + ", Modus " + session.flightMode() + " (" + session.flightModeSource() + ")";
     }
 

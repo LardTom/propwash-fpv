@@ -1,6 +1,5 @@
 package de.lardtom.propwash.apiimpl;
 
-import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.api.registry.LootInjections;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -28,8 +27,8 @@ public final class LootInjectionsImpl implements LootInjections {
             throw new IllegalStateException("Truhen-Beute " + addonTable.identifier() + " für " + target.identifier()
                     + " kommt zu spät: nur während der Mod-Initialisierung anmelden (Fabric onInitialize, NeoForge Mod-Konstruktor)");
         }
-        String namespace = addonTable.identifier().getNamespace();
-        if ("minecraft".equals(namespace) || Constants.MOD_ID.equals(namespace)) {
+        NamespaceRules.requireForeign(addonTable.identifier().toString(), "loot table");
+        if ("minecraft".equals(addonTable.identifier().getNamespace())) {
             throw new IllegalArgumentException("Die Beutetabelle eines Addons braucht den eigenen Namensraum: " + addonTable.identifier());
         }
         if (target.equals(addonTable)) {

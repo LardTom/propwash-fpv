@@ -79,6 +79,9 @@ public final class CreativeShareCode {
                     return Optional.empty();
                 }
             }
+            if (!inflater.finished()) {
+                return Optional.empty();
+            }
         } catch (DataFormatException e) {
             return Optional.empty();
         } finally {

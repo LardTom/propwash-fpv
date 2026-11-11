@@ -61,7 +61,7 @@
   "gamerule.propwash.ground_effect": "Ground effect",
   "gamerule.propwash.ground_effect.description": "Extra lift close to the ground.",
   "gamerule.propwash.hardware_limits": "Hardware limits",
-  "gamerule.propwash.hardware_limits.description": "On: hot motors throttle back and wear out, and an ESC burns out on arming when the battery has more cells than it allows. Off: no thermal throttling, no heat wear, no burnt ESC.",
+  "gamerule.propwash.hardware_limits.description": "On: very hot motors lose power and wear out, an overheating ESC throttles back to protect itself, and an ESC burns out on arming when the battery has more cells than it allows. Off: hot motors keep their full power and do not wear, no ESC throttles back, no burnt ESC.",
   "gamerule.propwash.part_compatibility": "Parts must fit",
   "gamerule.propwash.part_compatibility.description": "On: the workbench, imports and field service only build drones from parts that would fit together in reality (mounts, prop size, battery for the frame, accessory mounts). Off: every part fits every other. The notes stay visible, the drone flies with the real data of its parts and doesn't count for leaderboards. Overvoltage is still governed by “Hardware limits”.",
   "gamerule.propwash.wind": "Wind",

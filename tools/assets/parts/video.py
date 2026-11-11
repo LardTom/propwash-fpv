@@ -70,12 +70,6 @@ def build_analog_race():
     camera(m, 19.0, 19.0, 17.0, -8.0, 12.0, 6.5, bezel="cam_bezel_red")
     m.box(-10.0, -8.0, 9.0, 10.0, -2.0, 30.0, "vtx_wrap", name="vtx", decals={"up": vtx_label})
     m.box(-2.2, -2.0, 24.0, 2.2, 1.0, 28.0, "brass", name="mmcx")
-    antenna(m, 0.0, 1.0, 26.0, (42, 0, 0), 26.0, 2.4, stalk="antenna_black")
-    tip_y = 1.0
-    m.box(-5.5, tip_y + 26.0, 26.0 - 5.5, 5.5, tip_y + 33.0, 26.0 + 5.5, "antenna_red", name="lollipop",
-          rot=(42, 0, 0), origin=(0.0, 1.0, 26.0))
-    m.box(-4.0, tip_y + 25.0, 26.0 - 4.0, 4.0, tip_y + 34.2, 26.0 + 4.0, "antenna_red", name="lollipop_cap",
-          rot=(42, 45, 0), origin=(0.0, 1.0, 26.0))
     for i, mat in enumerate(("wire_yellow", "wire_red", "wire_black")):
         m.box(-2.0 + i * 1.6 - 0.5, -5.0, 9.0 - 1.5, -2.0 + i * 1.6 + 0.5, -4.0, 9.0, mat, name="cam_wire")
     return m
@@ -87,9 +81,6 @@ def build_digital_lite():
     m.box(-10.5, -5.0, 7.0, 10.5, 1.0, 29.0, "vtx_lite", name="vtx", decals={"up": lite_label})
     m.box(-9.5, 1.0, 10.0, 9.5, 2.4, 26.0, "heatsink", name="vtx_heatsink")
     m.box(-1.5, -2.0, 6.5, 1.5, 0.0, 7.0, "coax", name="ribbon")
-    for s in (-1, 1):
-        antenna(m, s * 7.5, 1.0, 27.0, (58, s * 32, 0), 20.0, 1.6, stalk="antenna_black",
-                tee=(14.0, 1.4, "antenna_white"))
     return m
 
 
@@ -102,10 +93,6 @@ def build_digital_hd():
         x = -12.5 + i * 5.0
         m.box(x - 1.0, 12.5, 15.0, x + 1.0, 15.5, 43.0, "heatsink", name="fin")
     m.box(-9.0, 2.5, 46.0, 9.0, 10.5, 47.0, "airunit_port", name="port_panel")
-    for s in (-1, 1):
-        m.box(s * 11.0 - 2.0, 8.0, 44.0, s * 11.0 + 2.0, 11.0, 48.5, "brass", name="antenna_socket")
-        antenna(m, s * 11.0, 11.0, 46.5, (64, s * 28, 0), 34.0, 3.4, stalk="antenna_black", tip="antenna_red",
-                tip_len=8.0, tip_d=4.2)
     return m
 
 
@@ -145,3 +132,4 @@ def register_materials():
 def build_all():
     register_materials()
     return [build_analog_nano(), build_analog_race(), build_digital_lite(), build_digital_hd()]
+

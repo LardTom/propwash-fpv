@@ -7,6 +7,7 @@ import java.util.Map;
 
 public final class TrainingProgress implements Curriculum.StarSource {
     public Map<String, LessonRecord> lessons = new LinkedHashMap<>();
+    public boolean unlockAll;
 
     public static final class LessonRecord {
         public int stars;
@@ -45,6 +46,11 @@ public final class TrainingProgress implements Curriculum.StarSource {
     public int stars(String lessonId) {
         LessonRecord record = this.lessons == null ? null : this.lessons.get(lessonId);
         return record == null ? 0 : Math.clamp(record.stars, 0, StarRule.MAX_STARS);
+    }
+
+    @Override
+    public boolean allUnlocked() {
+        return this.unlockAll;
     }
 
     public @Nullable LessonRecord get(String lessonId) {

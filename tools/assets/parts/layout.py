@@ -49,7 +49,7 @@ FRAMES = {
         "camera_tilt_default": 10.0,
         "accessories": {"top": {"position": [0.0, 44.7, -47.0], "tilt": 10.0},
                         "bottom": {"position": [0.0, -3.0, -24.0], "tilt": 30.0, "length": 26.0},
-                        "front": {"position": [0.0, -3.0, -50.0], "tilt": 0.0}},
+                        "front": {"position": [0.0, -3.0, -30.0], "tilt": 0.0}},
         "preset": ("aio_20", "m1404_4600", "p3_3b", "digital_lite", "b4s_650"),
     },
     "freestyle_5": {
@@ -61,7 +61,7 @@ FRAMES = {
         "camera_tilt_default": 28.0,
         "accessories": {"top": {"position": [0.0, 34.7, -69.0], "tilt": 22.0},
                         "bottom": {"position": [0.0, -3.0, -56.0], "tilt": 30.0, "length": 34.0},
-                        "front": {"position": [0.0, 0.0, -72.0], "tilt": 0.0}},
+                        "front": {"position": [0.0, 0.0, -64.0], "tilt": 0.0}},
         "preset": ("stack_30", "m2207_1750", "p51_3b", "digital_hd", "b6s_1300"),
     },
     "race_5": {
@@ -74,7 +74,7 @@ FRAMES = {
         "camera_tilt_default": 38.0,
         "accessories": {"top": {"position": [0.0, 26.7, -67.0], "tilt": 20.0},
                         "bottom": {"position": [0.0, -2.0, -48.0], "tilt": 30.0, "length": 28.0},
-                        "front": {"position": [0.0, 0.0, -66.0], "tilt": 0.0}},
+                        "front": {"position": [0.0, 0.0, -56.0], "tilt": 0.0}},
         "preset": ("stack_30", "m2306_1860", "p51_29_3b", "analog_race", "b6s_1100"),
     },
     "long_range_7": {
@@ -86,7 +86,7 @@ FRAMES = {
         "camera_tilt_default": 20.0,
         "accessories": {"top": {"position": [0.0, 38.7, -68.0], "tilt": 20.0},
                         "bottom": {"position": [0.0, -2.5, -60.0], "tilt": 30.0, "length": 36.0},
-                        "front": {"position": [0.0, 0.0, -76.0], "tilt": 0.0}},
+                        "front": {"position": [0.0, 0.0, -68.0], "tilt": 0.0}},
         "preset": ("stack_30", "m2807_1300", "p7_2b", "digital_hd", "b6s_4000_lion"),
     },
 }

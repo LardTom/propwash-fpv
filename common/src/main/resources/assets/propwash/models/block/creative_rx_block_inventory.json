@@ -1,0 +1,8 @@
+{
+  "parent": "propwash:block/rx_block_inventory",
+  "textures": {
+    "body_side": "propwash:block/creative_rx_block_body_side",
+    "body_top": "propwash:block/creative_rx_block_body_top",
+    "particle": "propwash:block/creative_rx_block_body_side"
+  }
+}

@@ -1,13 +1,14 @@
 package de.lardtom.propwash.video.client.record;
 
 import com.mojang.blaze3d.pipeline.RenderTarget;
-import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.ActionCamSpec;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.drone.net.CameraChargeC2S;
+import de.lardtom.propwash.drone.operator.client.GimbalRecording;
+import de.lardtom.propwash.drone.operator.client.OperatorView;
 import de.lardtom.propwash.input.DeviceProfile;
 import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.input.KeyRepeatFilter;
@@ -16,12 +17,15 @@ import de.lardtom.propwash.input.SwitchAssignment;
 import de.lardtom.propwash.input.SwitchFunction;
 import de.lardtom.propwash.input.client.InputKeys;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.preview.PreviewBuild;
+import de.lardtom.propwash.preview.client.PreviewMark;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemedToast;
 import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.ImageArea;
 import de.lardtom.propwash.video.client.FpvImage;
 import de.lardtom.propwash.video.client.FpvLens;
+import de.lardtom.propwash.video.client.GpuInfo;
 import de.lardtom.propwash.video.record.Backpressure;
 import de.lardtom.propwash.video.record.BuiltinEncoder;
 import de.lardtom.propwash.video.record.CamPower;
@@ -31,6 +35,8 @@ import de.lardtom.propwash.video.record.EncoderChoice;
 import de.lardtom.propwash.video.record.FrameEncoder;
 import de.lardtom.propwash.video.record.FrameStats;
 import de.lardtom.propwash.video.record.FrameClock;
+import de.lardtom.propwash.video.record.ImageGuard;
+import de.lardtom.propwash.video.record.ImagePath;
 import de.lardtom.propwash.video.record.PipelineStats;
 import de.lardtom.propwash.video.record.RecordTrigger;
 import de.lardtom.propwash.video.record.RecordingDiagnosis;
@@ -58,9 +64,13 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 public final class ActionCamRecorder {
     public static final ActionCamRecorder INSTANCE = new ActionCamRecorder();
@@ -80,6 +90,9 @@ public final class ActionCamRecorder {
     private static final long SAVED_TOAST_MILLIS = 6000L;
     private static final long AUDIO_SLACK = AudioCapture.RATE * 12L / 100L;
     private static final long DIAGNOSIS_MILLIS = 1000L;
+    private static final String BLANK_IMAGE = "graphics card returned only empty frames";
+    private static final Set<ImagePath> ANNOUNCED = EnumSet.noneOf(ImagePath.class);
+    private static final ActionCamSpec REPLAY_CAMERA = ActionCamSpec.HEAVY;
 
     private final ActionCamCapture capture = new ActionCamCapture();
     private final RecordTrigger trigger = new RecordTrigger();
@@ -101,6 +114,8 @@ public final class ActionCamRecorder {
     private @Nullable FrameClock clock;
     private @Nullable RecordingFormat format;
     private @Nullable AccessoryType camera;
+    private @Nullable ActionCamSpec cameraSpec;
+    private @Nullable BooleanSupplier replayAlive;
     private @Nullable QuadcopterEntity drone;
     private Stabilizer.Mode stabilization = Stabilizer.Mode.OFF;
     private RecordingQuality quality = RecordingQuality.DEFAULT;
@@ -135,6 +150,8 @@ public final class ActionCamRecorder {
     private @Nullable RecordingFormat warmedFormat;
     private boolean prewarm;
     private HardwareEncoders.Status startStatus = HardwareEncoders.Status.NONE;
+    private ImageGuard guard = new ImageGuard(false);
+    private boolean imageAbort;
 
     private ActionCamRecorder() {
     }
@@ -147,6 +164,10 @@ public final class ActionCamRecorder {
         return this.phase == Phase.RECORDING;
     }
 
+    public boolean replayRecording() {
+        return this.phase == Phase.RECORDING && this.replayAlive != null;
+    }
+
     public boolean paused() {
         FrameClock c = this.clock;
         return this.phase == Phase.RECORDING && c != null && c.paused();
@@ -155,6 +176,11 @@ public final class ActionCamRecorder {
     public long recordedNanos() {
         FrameClock c = this.clock;
         return c == null ? 0L : c.elapsedNanos(Util.getNanos());
+    }
+
+    public long replayFrameNanos() {
+        FrameClock c = this.clock;
+        return c == null ? 0L : c.nextSlotNanos(Util.getNanos());
     }
 
     public @Nullable RecordingFormat format() {
@@ -221,6 +247,18 @@ public final class ActionCamRecorder {
 
     public RecordingDiagnosis diagnosis() {
         return this.diagnosis;
+    }
+
+    public RecordingDiagnosis finishedDiagnosis() {
+        return this.lastWorst;
+    }
+
+    public ImagePath imagePath() {
+        return this.guard.path();
+    }
+
+    public ImageGuard imageGuard() {
+        return this.guard;
     }
 
     public float strength() {
@@ -305,6 +343,52 @@ public final class ActionCamRecorder {
         return spec.stabilization() ? RecordingConfig.get().stabilization : Stabilizer.Mode.OFF;
     }
 
+    public RecordingFormat replayFormat() {
+        if (this.testFormat != null) {
+            return this.testFormat;
+        }
+        return formatFor(REPLAY_CAMERA);
+    }
+
+    public Result startReplay(Minecraft minecraft, BooleanSupplier alive) {
+        if (this.phase != Phase.IDLE) {
+            return this.phase == Phase.RECORDING ? Result.ALREADY : Result.BUSY;
+        }
+        if (this.launch(minecraft, "propwash_replay_", this.replayFormat(), false, REPLAY_CAMERA) == null) {
+            toast(minecraft, Component.translatable("propwash.video.record.toast.not_started"), Component.translatable(Result.FAILED.translationKey()),
+                    Palette.WARNING, FAIL_TOAST_MILLIS);
+            return Result.FAILED;
+        }
+        this.camera = null;
+        this.drone = null;
+        this.stabilization = Stabilizer.Mode.OFF;
+        this.automatic = false;
+        this.audioCapture.stop();
+        this.replayAlive = alive;
+        return Result.STARTED;
+    }
+
+    public void finishReplay(Minecraft minecraft) {
+        if (this.replayRecording()) {
+            this.endRecording(minecraft, StopReason.USER, false);
+        }
+    }
+
+    public void cancelReplay() {
+        RecordingJob current = this.job;
+        if (!this.replayRecording() || current == null) {
+            return;
+        }
+        current.cancel();
+        RecordingThumbnails.delete(RecordingLibrary.thumbnailOf(current.file()));
+        this.job = null;
+        this.clock = null;
+        this.replayAlive = null;
+        this.phase = Phase.IDLE;
+        this.stabilizer.reset();
+        this.audioCapture.stop();
+    }
+
     public Result toggle(Minecraft minecraft) {
         if (this.phase == Phase.RECORDING) {
             this.stop(minecraft, StopReason.USER);
@@ -327,8 +411,8 @@ public final class ActionCamRecorder {
             return this.phase == Phase.RECORDING ? Result.ALREADY : Result.BUSY;
         }
         PilotSession session = PilotSession.INSTANCE;
-        QuadcopterEntity flown = session.drone();
-        if (!session.isActive() || flown == null) {
+        QuadcopterEntity flown = session.isActive() ? session.drone() : OperatorView.recordingDrone();
+        if (flown == null) {
             return Result.NO_SESSION;
         }
         Optional<AccessoryType> type = cameraOf(flown);
@@ -336,7 +420,7 @@ public final class ActionCamRecorder {
         if (type.isEmpty() || spec.isEmpty()) {
             return Result.NO_CAMERA;
         }
-        if (!session.isFpv()) {
+        if (session.isActive() && !session.isFpv()) {
             return Result.NOT_FPV;
         }
         float charge = flown.cameraCharge();
@@ -346,13 +430,36 @@ public final class ActionCamRecorder {
         if (!spec.get().ownBattery() && flown.batteryCharge() <= FLIGHT_BATTERY_EMPTY) {
             return Result.NO_POWER;
         }
+        RecordingFormat chosen = this.testFormat != null ? this.testFormat : formatFor(spec.get());
+        RecordingJob started = this.launch(minecraft, "propwash_", chosen, RecordingConfig.get().audio, spec.get());
+        if (started == null) {
+            return Result.FAILED;
+        }
+        this.camera = type.get();
+        this.drone = flown;
+        this.stabilization = GimbalRecording.mode(flown, stabilizationFor(spec.get()));
+        this.automatic = automatic;
+        this.cameraCharge = charge;
+        this.sentCharge = charge;
+        if (started.hasAudio()) {
+            this.audioCapture.listen(flown.getId());
+        } else {
+            this.audioCapture.stop();
+        }
+        Component detail = Component.translatable("propwash.video.record.started", Component.translatable(type.get().translationKey()),
+                chosen.label(), Component.translatable(this.stabilization.translationKey()));
+        toast(minecraft, Component.translatable(automatic ? "propwash.video.record.toast.started_auto" : "propwash.video.record.toast.started"),
+                detail, REC_ACCENT, START_TOAST_MILLIS);
+        return Result.STARTED;
+    }
+
+    private @Nullable RecordingJob launch(Minecraft minecraft, String prefix, RecordingFormat chosen, boolean audio, ActionCamSpec spec) {
         if (this.capture.failure() != null) {
             this.capture.retry();
         }
-        RecordingFormat chosen = this.testFormat != null ? this.testFormat : formatFor(spec.get());
         Path dir = directory(minecraft);
         this.cleanOnce(dir);
-        Path file = dir.resolve("propwash_" + LocalDateTime.now().format(NAMES) + ".mp4");
+        Path file = dir.resolve(prefix + LocalDateTime.now().format(NAMES) + ".mp4");
         RecordingConfig config = RecordingConfig.get();
         long memory = config.memoryCapBytes();
         if (!this.saving.isEmpty()) {
@@ -363,19 +470,20 @@ public final class ActionCamRecorder {
         RecordingJob started;
         try {
             started = RecordingJob.start(new RecordingJob.Options(file, dir.resolve(".spool"), chosen, config.threads(), memory,
-                    spoolCap(dir), config.audio, config.quality, encoder));
+                    spoolCap(dir), audio, config.quality, encoder));
         } catch (IOException | RuntimeException e) {
             Constants.LOG.error("Action-Cam: Aufnahme konnte nicht starten", e);
             this.lastError = e.getMessage();
-            return Result.FAILED;
+            return null;
         }
         this.ensureShutdownHook();
+        this.guard = new ImageGuard(ActionCamCapture.fallbacksAvailable(minecraft.gameRenderer.mainRenderTarget()));
+        this.imageAbort = false;
         this.job = started;
         this.startStatus = hardware;
         this.format = chosen;
-        this.camera = type.get();
-        this.drone = flown;
-        this.stabilization = stabilizationFor(spec.get());
+        this.cameraSpec = spec;
+        this.replayAlive = null;
         this.strength = config.strength();
         this.quality = started.quality();
         this.diagnosis = RecordingDiagnosis.NONE;
@@ -384,9 +492,6 @@ public final class ActionCamRecorder {
         this.diagnosisBacklog = 0;
         this.lastDiagnosis = Util.getMillis();
         this.stabilizer.reset();
-        this.automatic = automatic;
-        this.cameraCharge = charge;
-        this.sentCharge = charge;
         this.capturedFrames = 0L;
         this.lastError = null;
         FrameClock c = new FrameClock(chosen.fps());
@@ -405,30 +510,25 @@ public final class ActionCamRecorder {
         this.thumbnailFinal = false;
         this.audioSubmitted = 0L;
         this.audioSkip = 0L;
-        if (started.hasAudio()) {
-            this.audioCapture.listen(flown.getId());
-        } else {
-            this.audioCapture.stop();
-        }
         this.phase = Phase.RECORDING;
-        Component detail = Component.translatable("propwash.video.record.started", Component.translatable(type.get().translationKey()),
-                chosen.label(), Component.translatable(this.stabilization.translationKey()));
-        toast(minecraft, Component.translatable(automatic ? "propwash.video.record.toast.started_auto" : "propwash.video.record.toast.started"),
-                detail, REC_ACCENT, START_TOAST_MILLIS);
-        return Result.STARTED;
+        return started;
     }
 
     public void stop(Minecraft minecraft, StopReason reason) {
-        if (this.phase != Phase.RECORDING) {
+        if (this.phase != Phase.RECORDING || this.replayAlive != null && reason == StopReason.USER) {
             return;
         }
+        this.endRecording(minecraft, reason, reason != StopReason.DISCONNECT);
+    }
+
+    private void endRecording(Minecraft minecraft, StopReason reason, boolean announce) {
         FrameClock c = this.clock;
         this.pumpAudio();
         this.audioCapture.stop();
         this.stopEndSlot = c == null ? 0L : c.endSlot(Util.getNanos());
         this.syncCharge(true);
         this.phase = Phase.STOPPING;
-        if (reason != StopReason.DISCONNECT) {
+        if (announce) {
             toast(minecraft, Component.translatable(reason.error ? "propwash.video.record.toast.aborted" : "propwash.video.record.toast.stopped"),
                     Component.translatable(reason.translationKey()), reason.accent(), STOP_TOAST_MILLIS);
         }
@@ -462,11 +562,15 @@ public final class ActionCamRecorder {
         RecordingJob current = this.job;
         FrameClock c = this.clock;
         RecordingFormat target = this.format;
-        AccessoryType type = this.camera;
-        if (current == null || c == null || target == null || type == null) {
+        ActionCamSpec spec = this.cameraSpec;
+        if (current == null || c == null || target == null || spec == null) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
+        if (this.imageAbort) {
+            this.abortBlank(minecraft);
+            return;
+        }
         long now = Util.getNanos();
         if (!this.canCapture(minecraft)) {
             c.pause(now);
@@ -482,7 +586,6 @@ public final class ActionCamRecorder {
         if (!c.due(now)) {
             return;
         }
-        ActionCamSpec spec = type.camera().orElse(ActionCamSpec.LIGHT);
         long elapsed = c.elapsedNanos(now);
         double seconds = Math.max(0L, elapsed - this.lastCaptureElapsed) * 1.0E-9;
         this.lastCaptureElapsed = elapsed;
@@ -522,8 +625,8 @@ public final class ActionCamRecorder {
         float noise = CameraLook.grain(spec, RecordingConfig.get().grain);
         float seed = (float) (slot % 997L + 1L);
         long issuedFrame = this.renderFrame;
-        boolean issued = this.capture.capture(main, target, this.stabilizer.warp(), this.tangents, sharpness, noise, seed,
-                view -> this.accept(current, target, slot, issuedFrame, view));
+        boolean issued = this.capture.capture(main, target, this.guard.path(), this.stabilizer.warp(), this.tangents, sharpness, noise, seed,
+                (data, path) -> this.accept(current, target, slot, issuedFrame, data, path));
         pipeline.captured(Util.getNanos() - now);
         if (!issued && this.capture.ringFull()) {
             pipeline.ringFull();
@@ -535,7 +638,22 @@ public final class ActionCamRecorder {
         }
     }
 
-    private void accept(RecordingJob target, RecordingFormat frameFormat, long slot, long issuedFrame, GpuBufferSlice.MappedView view) {
+    private void accept(RecordingJob target, RecordingFormat frameFormat, long slot, long issuedFrame, ByteBuffer data, ImagePath path) {
+        switch (this.guard.check(path, ImageGuard.blank(data, frameFormat))) {
+            case ACCEPT -> {
+            }
+            case DROP -> {
+                return;
+            }
+            case SWITCH -> {
+                this.imageSwitched(path);
+                return;
+            }
+            case ABORT -> {
+                this.imageAbort = true;
+                return;
+            }
+        }
         long started = Util.getNanos();
         ByteBuffer buffer = target.acquire();
         if (buffer == null) {
@@ -544,12 +662,51 @@ public final class ActionCamRecorder {
             }
             return;
         }
-        buffer.put(0, view.data(), 0, frameFormat.frameBytes());
+        buffer.put(0, data, 0, frameFormat.frameBytes());
+        if (PreviewBuild.ENABLED) {
+            PreviewMark.stampFrame(buffer, frameFormat.width(), frameFormat.height());
+        }
         this.stats.sample(buffer, frameFormat, slot);
         this.thumbnailFrom(buffer, frameFormat, slot);
         this.capturedFrames++;
         target.submit(slot, buffer);
         target.stats().readback(Util.getNanos() - started, this.renderFrame - issuedFrame);
+    }
+
+    private void imageSwitched(ImagePath from) {
+        ImagePath to = this.guard.path();
+        this.diagnosis = this.diagnosis.withImage(to);
+        this.worstDiagnosis = this.worstDiagnosis.withImage(to);
+        Constants.LOG.warn("Action-Cam: leeres Aufnahmebild (Y-Ebene 0) über Bildweg {}, weiter über {} (Grafik: {})", from.key(), to.key(),
+                GpuInfo.describe());
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level != null && ANNOUNCED.add(to)) {
+            minecraft.gui.hud.getChat().addClientSystemMessage(
+                    Component.translatable("propwash.video.record.image.switched." + to.key()).withStyle(ChatFormatting.YELLOW));
+        }
+    }
+
+    private void abortBlank(Minecraft minecraft) {
+        this.imageAbort = false;
+        RecordingJob current = this.job;
+        boolean saved = this.guard.acceptedFrames() > 0L;
+        if (current != null && !saved) {
+            current.cancel();
+        }
+        this.diagnosis = this.diagnosis.withImage(ImagePath.NONE);
+        this.worstDiagnosis = this.worstDiagnosis.withImage(ImagePath.NONE);
+        this.lastError = BLANK_IMAGE;
+        String tried = this.guard.broken().stream().map(ImagePath::key).collect(Collectors.joining(", "));
+        Constants.LOG.error("Action-Cam: Aufnahme abgebrochen, kein Bildweg liefert ein Bild (leer über {}; {} leere, {} verworfene, {} gute Bilder; {}; "
+                        + "Grafik: {})", tried, this.guard.blankFrames(), this.guard.droppedFrames(), this.guard.acceptedFrames(),
+                saved ? "Video bis dahin gespeichert" : "kein Video gespeichert", GpuInfo.describe());
+        if (minecraft.level != null) {
+            minecraft.gui.hud.getChat().addClientSystemMessage(Component.translatable(saved ? "propwash.video.record.image.aborted.saved"
+                    : "propwash.video.record.image.aborted").withStyle(ChatFormatting.RED));
+        }
+        if (this.phase == Phase.RECORDING) {
+            this.stop(minecraft, StopReason.BLANK_IMAGE);
+        }
     }
 
     private void thumbnailFrom(ByteBuffer i420, RecordingFormat frameFormat, long slot) {
@@ -577,9 +734,12 @@ public final class ActionCamRecorder {
         if (minecraft.level == null || minecraft.isPaused()) {
             return false;
         }
-        PilotSession session = PilotSession.INSTANCE;
-        QuadcopterEntity flown = session.drone();
-        return session.isFpv() && flown != null && flown == this.drone && minecraft.getCameraEntity() == flown;
+        BooleanSupplier replay = this.replayAlive;
+        if (replay != null) {
+            return replay.getAsBoolean();
+        }
+        QuadcopterEntity flown = OperatorView.recordingDrone();
+        return flown != null && flown == this.drone && minecraft.getCameraEntity() == flown;
     }
 
     private void completeStop() {
@@ -594,6 +754,7 @@ public final class ActionCamRecorder {
         this.job = null;
         this.clock = null;
         this.drone = null;
+        this.replayAlive = null;
         this.phase = Phase.IDLE;
         this.stabilizer.reset();
         this.capture.release();
@@ -611,6 +772,9 @@ public final class ActionCamRecorder {
         this.radioSwitch(minecraft);
         this.warmUp(minecraft);
         this.autoRecord(minecraft);
+        if (this.imageAbort) {
+            this.abortBlank(minecraft);
+        }
         if (this.phase == Phase.RECORDING) {
             this.pumpAudio();
             this.sampleHeap();
@@ -666,7 +830,8 @@ public final class ActionCamRecorder {
             return;
         }
         RecordingJob.Backlog backlog = current.backlog();
-        RecordingDiagnosis next = RecordingDiagnosis.of(snapshot.since(base), backlog, this.diagnosisBacklog, encoderTip(current));
+        RecordingDiagnosis next = RecordingDiagnosis.of(snapshot.since(base), backlog, this.diagnosisBacklog, encoderTip(current))
+                .withImage(this.guard.path());
         this.diagnosisBacklog = backlog.queued();
         if (next.limit() != this.diagnosis.limit() && next.limit() != RecordingDiagnosis.Limit.NONE) {
             Constants.LOG.info("Action-Cam: Engpass {}", next.describe());
@@ -675,6 +840,7 @@ public final class ActionCamRecorder {
         if (severity(next) > severity(this.worstDiagnosis)) {
             this.worstDiagnosis = next;
         }
+        this.worstDiagnosis = this.worstDiagnosis.withImage(this.guard.path());
     }
 
     private static RecordingDiagnosis.Tip encoderTip(RecordingJob current) {
@@ -805,6 +971,7 @@ public final class ActionCamRecorder {
             RecordingJob.Progress progress = current == null ? null : current.progress();
             this.lastError = progress == null ? "" : progress.error();
             this.phase = Phase.IDLE;
+            this.replayAlive = null;
             this.audioCapture.stop();
             if (current != null) {
                 this.saving.add(current);
@@ -813,9 +980,16 @@ public final class ActionCamRecorder {
             this.clock = null;
             return;
         }
+        BooleanSupplier replay = this.replayAlive;
+        if (replay != null) {
+            if (!replay.getAsBoolean()) {
+                this.endRecording(minecraft, StopReason.SESSION_END, false);
+            }
+            return;
+        }
         PilotSession session = PilotSession.INSTANCE;
-        QuadcopterEntity flown = session.drone();
-        if (!session.isActive() || flown == null || flown != this.drone || flown.isRemoved()) {
+        QuadcopterEntity flown = session.isActive() ? session.drone() : OperatorView.recordingDrone();
+        if (flown == null || flown != this.drone || flown.isRemoved()) {
             this.stop(minecraft, StopReason.SESSION_END);
             return;
         }
@@ -902,6 +1076,9 @@ public final class ActionCamRecorder {
             if (finished == this.lastFinishedJob && this.lastWorst.limit() != RecordingDiagnosis.Limit.NONE) {
                 Constants.LOG.info("Action-Cam: stärkster Engpass {}", this.lastWorst.describe());
             }
+            if (finished == this.lastFinishedJob && this.lastWorst.image() != ImagePath.GPU) {
+                Constants.LOG.info("Action-Cam: aufgenommen über Bildweg {}, die Grafikkarte lieferte leere Bilder", this.lastWorst.image().key());
+            }
             if (finished.encoderFailed()) {
                 HardwareEncoders.markBroken(progress.error());
                 Constants.LOG.warn("Action-Cam: Hardware-Encoder ausgefallen, Video bis dahin gespeichert: {}", progress.error());
@@ -935,6 +1112,7 @@ public final class ActionCamRecorder {
     }
 
     public void onDisconnect(Minecraft minecraft) {
+        this.cancelReplay();
         if (this.phase == Phase.RECORDING) {
             this.stop(minecraft, StopReason.DISCONNECT);
         }
@@ -958,6 +1136,7 @@ public final class ActionCamRecorder {
         this.job = null;
         this.clock = null;
         this.drone = null;
+        this.replayAlive = null;
         this.phase = Phase.IDLE;
         this.audioCapture.stop();
     }
@@ -1057,7 +1236,8 @@ public final class ActionCamRecorder {
         CAMERA_BATTERY("camera_battery", true),
         FLIGHT_BATTERY("flight_battery", true),
         DISCONNECT("disconnect", false),
-        ERROR("error", true);
+        ERROR("error", true),
+        BLANK_IMAGE("blank_image", true);
 
         private final String key;
         private final boolean error;
@@ -1073,7 +1253,7 @@ public final class ActionCamRecorder {
 
         public int accent() {
             return switch (this) {
-                case ERROR -> Palette.ERROR;
+                case ERROR, BLANK_IMAGE -> Palette.ERROR;
                 case CAMERA_BATTERY, FLIGHT_BATTERY -> Palette.WARNING;
                 default -> Palette.ACCENT;
             };

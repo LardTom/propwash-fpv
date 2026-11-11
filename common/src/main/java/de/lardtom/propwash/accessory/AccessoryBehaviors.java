@@ -5,12 +5,14 @@ import de.lardtom.propwash.api.accessory.AccessoryBehavior;
 import de.lardtom.propwash.api.accessory.AccessoryInventory;
 import de.lardtom.propwash.api.accessory.AccessoryRegistry;
 import de.lardtom.propwash.api.part.AccessorySlot;
+import de.lardtom.propwash.apiimpl.NamespaceRules;
 import de.lardtom.propwash.build.AccessoryMount;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.interact.DroneCargo;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
@@ -36,9 +38,7 @@ public final class AccessoryBehaviors implements AccessoryRegistry {
     public void register(Identifier accessoryId, AccessoryBehavior behavior) {
         Objects.requireNonNull(accessoryId, "accessoryId");
         Objects.requireNonNull(behavior, "behavior");
-        if (Constants.MOD_ID.equals(accessoryId.getNamespace())) {
-            throw new IllegalArgumentException("Der Namensraum propwash gehört dem eingebauten Zubehör: " + accessoryId);
-        }
+        NamespaceRules.requireForeign(accessoryId.toString(), "accessory behavior");
         int slots = behavior.slots();
         if (slots < 0 || slots > AccessoryBehavior.MAX_SLOTS) {
             throw new IllegalArgumentException(accessoryId + ": Inventar mit " + slots + " Slots (erlaubt 0 bis " + AccessoryBehavior.MAX_SLOTS + ")");
@@ -129,13 +129,33 @@ public final class AccessoryBehaviors implements AccessoryRegistry {
         return stack == null || stack.isEmpty() ? 0.0 : DroneCargo.grams(stack);
     }
 
+    @Override
+    public boolean triggerAction(Entity drone, int number, boolean pressed, ServerPlayer actor) {
+        return AccessoryHost.trigger(drone, number, pressed, actor);
+    }
+
+    @Override
+    public List<ItemStack> cargo(Entity drone) {
+        return DroneCargo.cargo(drone);
+    }
+
+    @Override
+    public boolean grabCargo(Entity drone, ServerPlayer actor) {
+        return DroneCargo.grab(drone, actor);
+    }
+
+    @Override
+    public int releaseCargo(Entity drone, ServerPlayer actor) {
+        return DroneCargo.releaseBy(drone, actor);
+    }
+
     public double payloadGrams(AccessoryType type, List<ItemStack> contents) {
         AccessoryBehavior behavior = this.of(type);
         if (behavior != null) {
             try {
                 OptionalDouble custom = behavior.payloadGrams(List.copyOf(contents));
                 if (custom.isPresent() && Double.isFinite(custom.getAsDouble())) {
-                    return Math.max(0.0, Math.min(AccessoryPayload.MAX_PAYLOAD_GRAMS, custom.getAsDouble()));
+                    return Math.max(0.0, custom.getAsDouble());
                 }
             } catch (RuntimeException e) {
                 Constants.LOG.warn("Zubehör {}: payloadGrams() fehlgeschlagen", type.id(), e);
@@ -145,7 +165,7 @@ public final class AccessoryBehaviors implements AccessoryRegistry {
         for (ItemStack stack : contents) {
             sum += this.itemGrams(stack);
         }
-        return Math.min(AccessoryPayload.MAX_PAYLOAD_GRAMS, sum);
+        return Double.isFinite(sum) ? sum : 0.0;
     }
 
     private static List<ItemStack> copies(List<ItemStack> stacks) {

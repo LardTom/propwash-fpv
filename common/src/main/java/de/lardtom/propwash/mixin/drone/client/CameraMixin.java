@@ -1,6 +1,7 @@
 package de.lardtom.propwash.mixin.drone.client;
 
 import com.mojang.blaze3d.platform.Window;
+import de.lardtom.propwash.drone.client.CameraClip;
 import de.lardtom.propwash.drone.client.FpvEyeGuard;
 import de.lardtom.propwash.drone.client.FpvView;
 import net.minecraft.client.Camera;
@@ -119,6 +120,10 @@ public abstract class CameraMixin {
         }
         cameraState.entityRenderState.hurtTime = -1.0F;
         cameraState.entityRenderState.bob = 0.0F;
+        Level world = this.level;
+        if (world != null && CameraClip.active() && world.getBlockState(cameraState.blockPos).isSolidRender()) {
+            cameraState.smartCull = false;
+        }
     }
 
     @ModifyArg(method = "update", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setupPerspective(FFFFF)V"), index = 0)

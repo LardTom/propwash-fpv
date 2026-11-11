@@ -57,22 +57,30 @@ public final class RaceModule {
         }
         initialized = true;
         WorldCourses.init();
+        RaceStandards.init();
         PropwashNet.registerS2C(RacePayloads.CourseSyncS2C.TYPE, RacePayloads.CourseSyncS2C.CODEC);
         PropwashNet.registerS2C(RacePayloads.RaceSettingsS2C.TYPE, RacePayloads.RaceSettingsS2C.CODEC);
         PropwashNet.registerC2S(RacePayloads.RaceReportC2S.TYPE, RacePayloads.RaceReportC2S.CODEC, RaceServer::onReport);
         PropwashNet.registerC2S(RacePayloads.LeaderboardRequestC2S.TYPE, RacePayloads.LeaderboardRequestC2S.CODEC, RaceServer::onLeaderboardRequest);
-        PropwashNet.registerC2S(RacePayloads.GhostRequestC2S.TYPE, RacePayloads.GhostRequestC2S.CODEC, RaceServer::onGhostRequest);
+        PropwashNet.registerC2S(RacePayloads.GhostFetchC2S.TYPE, RacePayloads.GhostFetchC2S.CODEC, GhostServer::onFetch);
+        PropwashNet.registerC2S(RacePayloads.TimeRemoveC2S.TYPE, RacePayloads.TimeRemoveC2S.CODEC, GhostServer::onRemove);
+        PropwashNet.registerC2S(RacePayloads.GhostUploadC2S.TYPE, RacePayloads.GhostUploadC2S.CODEC, GhostUploads::onChunk);
         PropwashNet.registerC2S(RacePayloads.LobbyC2S.TYPE, RacePayloads.LobbyC2S.CODEC, RaceServer::onLobby);
         PropwashNet.registerC2S(RacePayloads.CourseEditC2S.TYPE, RacePayloads.CourseEditC2S.CODEC, CourseEdits::onEdit);
         PropwashNet.registerC2S(RacePayloads.CourseDefaultsC2S.TYPE, RacePayloads.CourseDefaultsC2S.CODEC, CourseEdits::onDefaults);
+        PropwashNet.registerC2S(RacePayloads.CourseCreativeFcC2S.TYPE, RacePayloads.CourseCreativeFcC2S.CODEC, CourseEdits::onCreativeFc);
         PropwashNet.registerC2S(RacePayloads.GatePreferenceC2S.TYPE, RacePayloads.GatePreferenceC2S.CODEC, GateMounting::onPreference);
         PropwashNet.registerC2S(RacePayloads.GateRotateC2S.TYPE, RacePayloads.GateRotateC2S.CODEC, GateMounting::onRotate);
         PropwashNet.registerC2S(RacePayloads.GateEditC2S.TYPE, RacePayloads.GateEditC2S.CODEC, GateMounting::onEdit);
         PropwashNet.registerC2S(RacePayloads.GateSignalC2S.TYPE, RacePayloads.GateSignalC2S.CODEC, GateMounting::onSignal);
         PropwashNet.registerS2C(RacePayloads.LeaderboardS2C.TYPE, RacePayloads.LeaderboardS2C.CODEC);
-        PropwashNet.registerS2C(RacePayloads.GhostS2C.TYPE, RacePayloads.GhostS2C.CODEC);
+        PropwashNet.registerS2C(RacePayloads.GhostChunkS2C.TYPE, RacePayloads.GhostChunkS2C.CODEC);
+        PropwashNet.registerS2C(RacePayloads.GhostUploadS2C.TYPE, RacePayloads.GhostUploadS2C.CODEC);
         PropwashNet.registerS2C(RacePayloads.LobbyS2C.TYPE, RacePayloads.LobbyS2C.CODEC);
         PropwashNet.registerS2C(RacePayloads.RaceStartS2C.TYPE, RacePayloads.RaceStartS2C.CODEC);
+        PropwashNet.registerC2S(RacePayloads.LeaderboardPageC2S.TYPE, RacePayloads.LeaderboardPageC2S.CODEC, RaceServer::onLeaderboardPage);
+        PropwashNet.registerS2C(RacePayloads.LeaderboardPageS2C.TYPE, RacePayloads.LeaderboardPageS2C.CODEC);
+        PropwashNet.registerS2C(RacePayloads.LapVerdictS2C.TYPE, RacePayloads.LapVerdictS2C.CODEC);
         ServerBus.STARTED.register(CourseRegistry::start);
         ServerBus.STARTED.register(server -> GateSignals.clear());
         ServerBus.STOPPED.register(server -> {
@@ -96,6 +104,7 @@ public final class RaceModule {
         ServerBus.PLAYER_LEAVE.register(GateMounting::forget);
         ServerBus.PLAYER_LEAVE.register(CourseEdits::forget);
         ServerBus.REGISTER_COMMANDS.register((dispatcher, context, selection) -> RaceCommands.register(dispatcher));
+        ServerBus.REGISTER_COMMANDS.register((dispatcher, context, selection) -> RaceStandardCommands.register(dispatcher));
     }
 
     public static Optional<Item> item(CourseElement kind, GateSize size) {

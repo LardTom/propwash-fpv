@@ -127,6 +127,10 @@ public final class RecordingHud {
                 colors.add(Palette.TEXT_MUTED);
             }
         }
+        if (diagnosis.image().replacement()) {
+            lines.add(Component.translatable("propwash.video.record.hud.image." + diagnosis.image().key()));
+            colors.add(Palette.WARNING);
+        }
         if (spec != null && spec.ownBattery()) {
             float charge = recorder.cameraCharge();
             if (charge < LOW_CAMERA_CHARGE) {

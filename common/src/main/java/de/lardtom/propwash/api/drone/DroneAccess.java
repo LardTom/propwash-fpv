@@ -1,6 +1,10 @@
 package de.lardtom.propwash.api.drone;
 
 import de.lardtom.propwash.api.flight.Intercept;
+import de.lardtom.propwash.apiimpl.Api17Registries;
+import de.lardtom.propwash.capture.CaptureServer;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
@@ -26,4 +30,28 @@ public interface DroneAccess {
     ObstacleScan scan(Entity drone, double range);
 
     Optional<Intercept.Aim> aim(Vec3 shooter, Entity drone, double projectileSpeedPerTick, double gravityPerTick);
+
+    default List<Entity> loaded(ServerLevel level) {
+        return List.of();
+    }
+
+    default Optional<CameraPose> cameraPose(Entity drone) {
+        return Optional.empty();
+    }
+
+    default void registerCollisionRule(Identifier id, CollisionRule rule) {
+        Api17Registries.registerCollisionRule(id, rule);
+    }
+
+    default AutonomyAccess autonomy() {
+        return Api17Registries.AUTONOMY;
+    }
+
+    default OperatorAccess operators() {
+        return Api17Registries.OPERATORS;
+    }
+
+    default CameraChunkSupply cameraChunks() {
+        return CaptureServer.API;
+    }
 }

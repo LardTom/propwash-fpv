@@ -51,6 +51,7 @@ public final class FlightViewScene {
         Anchor onHead = Anchor.on(PILOT, 0.0F, 1.95F, 0.0F);
         Anchor overHead = Anchor.on(PILOT, 0.0F, 2.2F, 0.0F);
         ScenePos loopEnd = LOOP.getLast();
+        ScenePos parked = loopEnd.add(0.0F, 0.2F, -0.2F);
         ScenePos landing = new ScenePos(0.3F, 1.0F, 0.9F);
         return SceneBuilder.scene(ID)
                 .icon(GOGGLES_DIGITAL)
@@ -70,17 +71,17 @@ public final class FlightViewScene {
                     s.at(14.0F).spawn(PILOT, new ActorSpec.Pilot(GOGGLES_DIGITAL, REMOTE), PILOT_POS, SceneKit.pilotYaw(PILOT_POS, START),
                             Cue.Appear.POP, 10.0F);
                     s.at(14.0F).look(PILOT, SceneKit.headPitch(PILOT_POS, HOVER), 10.0F);
-                    s.at(16.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true), START, 0.0F, Cue.Appear.POP, 10.0F);
+                    s.at(16.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true), START, 180.0F, Cue.Appear.POP, 10.0F);
                     s.at(26.0F).callout("fpv", onHead, Cue.Side.ABOVE, 24.0F);
                     s.at(32.0F).arm(DRONE, true);
                     s.at(32.0F).throttle(DRONE, 0.55F, 12.0F);
                     s.at(36.0F).move(DRONE, 20.0F, Ease.IN_OUT, HOVER);
                     s.at(50.0F).camera(HOVER.add(0.0F, 0.3F, -0.6F), CHASE_YAW, 12.0F, 2.8F, 16.0F);
-                    s.at(62.0F).turn(DRONE, 0.0F, -18.0F, 0.0F, 10.0F);
+                    s.at(62.0F).turn(DRONE, 180.0F, 18.0F, 0.0F, 10.0F);
                     s.at(66.0F).move(DRONE, 56.0F, Ease.IN_OUT, FAR);
                     s.at(66.0F).camera(FAR.add(0.0F, 0.3F, -0.6F), CHASE_YAW, 12.0F, 2.8F, 56.0F);
                     s.at(70.0F).callout("osd", onDrone, Cue.Side.RIGHT, 0.0F);
-                    s.at(112.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 12.0F);
+                    s.at(112.0F).turn(DRONE, 180.0F, 0.0F, 0.0F, 12.0F);
                 })
                 .step("los", 190.0F, s -> {
                     s.at(0.0F).camera(OVERVIEW, OVERVIEW_YAW, 26.0F, 1.0F, 20.0F);
@@ -93,15 +94,15 @@ public final class FlightViewScene {
                 })
                 .step("hud", 110.0F, s -> {
                     s.at(0.0F).camera(new ScenePos(1.3F, 2.2F, 1.3F), OVERVIEW_YAW, 16.0F, 1.5F, 20.0F);
-                    s.at(0.0F).move(DRONE, 30.0F, Ease.IN_OUT, loopEnd.add(0.0F, 0.2F, -0.2F));
-                    s.at(0.0F).look(PILOT, SceneKit.headPitch(PILOT_POS, loopEnd.add(0.0F, 0.2F, -0.2F)), 20.0F);
+                    s.at(0.0F).move(DRONE, 30.0F, Ease.IN_OUT, parked);
+                    s.at(0.0F).look(PILOT, SceneKit.headPitch(PILOT_POS, parked), 20.0F);
                     s.at(6.0F).callout("hud", Anchor.on(PILOT, 0.0F, 1.2F, 0.0F), Cue.Side.LEFT, 0.0F);
                     s.at(40.0F).callout("locked", onDrone, Cue.Side.RIGHT, 0.0F);
                 })
                 .step("stop", 110.0F, s -> {
                     s.at(0.0F).camera(OVERVIEW.add(0.4F, 0.0F, 0.4F), OVERVIEW_YAW, 24.0F, 1.1F, 20.0F);
                     s.at(0.0F).move(DRONE, 34.0F, Ease.IN_OUT, landing);
-                    s.at(0.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 20.0F);
+                    s.at(0.0F).turn(DRONE, SceneKit.heading(parked, landing), 0.0F, 0.0F, 20.0F);
                     s.at(0.0F).look(PILOT, SceneKit.headPitch(PILOT_POS, landing), 30.0F);
                     s.at(20.0F).throttle(DRONE, 0.08F, 14.0F);
                     s.at(36.0F).arm(DRONE, false);

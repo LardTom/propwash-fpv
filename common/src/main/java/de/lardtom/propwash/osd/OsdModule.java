@@ -5,5 +5,6 @@ public final class OsdModule {
     }
 
     public static void init() {
+        SpectatorCountServer.init();
     }
 }

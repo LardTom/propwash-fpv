@@ -15,6 +15,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RecordingDiagnosisTest {
@@ -202,8 +203,42 @@ class RecordingDiagnosisTest {
         }
     }
 
+    @Test
+    void imagePathIsNotedWithoutChangingTheLimit() {
+        RecordingDiagnosis plain = RecordingDiagnosis.of(flight(60, 2, 25.0, 0).snapshot(), EMPTY, 0, RecordingDiagnosis.Tip.LOWER);
+        assertEquals(ImagePath.GPU, plain.image());
+        assertEquals(ImagePath.GPU, RecordingDiagnosis.NONE.image());
+        assertFalse(plain.describe().contains("Bildweg"));
+        RecordingDiagnosis read = plain.withImage(ImagePath.READ);
+        assertEquals(ImagePath.READ, read.image());
+        assertEquals(plain.limit(), read.limit());
+        assertEquals(plain.tip(), read.tip());
+        assertEquals(plain.lostFrames(), read.lostFrames());
+        assertTrue(read.describe().contains("Bildweg read"), read.describe());
+        assertTrue(RecordingDiagnosis.NONE.withImage(ImagePath.NONE).describe().contains("Bildweg none"));
+        assertSame(plain, plain.withImage(ImagePath.GPU));
+    }
+
+    @Test
+    void imageTextsInBothLanguages() throws IOException {
+        for (String language : List.of("en_us", "de_de")) {
+            JsonObject lang = lang("fix-intel-video", language);
+            for (ImagePath path : List.of(ImagePath.READ, ImagePath.CPU)) {
+                assertTrue(lang.has("propwash.video.record.hud.image." + path.key()), language + " hud " + path);
+                assertTrue(lang.has("propwash.video.record.image.switched." + path.key()), language + " chat " + path);
+            }
+            assertTrue(lang.has("propwash.video.record.image.aborted"), language);
+            assertTrue(lang.has("propwash.video.record.image.aborted.saved"), language);
+            assertTrue(lang.has("propwash.video.record.stop.blank_image"), language);
+        }
+    }
+
     private static JsonObject videoLang(String language) throws IOException {
-        for (Path dir : List.of(Path.of("common/src/lang/video"), Path.of("src/lang/video"))) {
+        return lang("video", language);
+    }
+
+    private static JsonObject lang(String module, String language) throws IOException {
+        for (Path dir : List.of(Path.of("common/src/lang/" + module), Path.of("src/lang/" + module))) {
             if (Files.isDirectory(dir)) {
                 try (Reader reader = Files.newBufferedReader(dir.resolve(language + ".json"), StandardCharsets.UTF_8)) {
                     return JsonParser.parseReader(reader).getAsJsonObject();

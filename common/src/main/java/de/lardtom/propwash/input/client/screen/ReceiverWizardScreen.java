@@ -126,7 +126,7 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
     private final SwitchEvaluator previewSwitches = new SwitchEvaluator();
     private long physicsFrameNanos;
     private StickPositions previewSticks = StickPositions.IDLE;
-    private int previewBits;
+    private long previewBits;
 
     private final RemoteDemoView demo = new RemoteDemoView();
     private boolean confirming;
@@ -550,10 +550,17 @@ public final class ReceiverWizardScreen extends Screen implements ThemedScreen {
 
     private SwitchFunction[] functions() {
         SwitchFunction[] all = InputConfig.get().mode3dUnlocked ? ALL_FUNCTIONS : FUNCTIONS_WITHOUT_3D;
-        if (all.length * SWITCH_ROW_MIN <= this.footerY - 26 - this.contentTop) {
+        int room = this.footerY - 26 - this.contentTop;
+        if (all.length * SWITCH_ROW_MIN <= room) {
             return all;
         }
-        return Arrays.stream(all).filter(f -> f != SwitchFunction.TURTLE).toArray(SwitchFunction[]::new);
+        List<SwitchFunction> shown = new ArrayList<>(Arrays.stream(all).filter(f -> f != SwitchFunction.TURTLE).toList());
+        for (int i = shown.size() - 1; i >= 0 && shown.size() * SWITCH_ROW_MIN > room; i--) {
+            if (!shown.get(i).builtIn()) {
+                shown.remove(i);
+            }
+        }
+        return shown.toArray(SwitchFunction[]::new);
     }
 
     private void initCalibrate(@Nullable DeviceProfile profile) {

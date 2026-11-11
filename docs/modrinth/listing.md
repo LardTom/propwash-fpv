@@ -1,8 +1,10 @@
-# Modrinth listing — Propwash FPV 0.5.2
+# Modrinth listing — Propwash FPV 0.6.0
 
 Everything needed to fill in the Modrinth project page. Body text: [`description.md`](description.md) (English, paste
 as the project description) and [`description_de.md`](description_de.md) (German, for a translated page or as a
-spoiler section). Player-facing changelog for the version upload: [`CHANGELOG.md`](../../CHANGELOG.md), section 0.5.2.
+spoiler section). Player-facing changelog for the version upload: [`CHANGELOG.md`](../../CHANGELOG.md), section 0.6.0
+(paste it from the highlights down to the compatibility notes; the German details are in
+[`RELEASE-NOTES.md`](../RELEASE-NOTES.md)).
 
 ## Project
 
@@ -15,7 +17,7 @@ spoiler section). Player-facing changelog for the version upload: [`CHANGELOG.md
 | License | up to 0.4.0 All Rights Reserved (Modrinth: `LicenseRef-All-Rights-Reserved`). From 0.5.0: custom license `LicenseRef-PolyForm-Shield-1.0.0` with the URL of `LICENSE` in the public repository (until it exists: https://polyformproject.org/licenses/shield/1.0.0); the MIT parts are listed in `LICENSE-MIT` |
 | Client side | Required |
 | Server side | Required |
-| Links (source, issues, wiki, Discord) | wiki: `https://propwashfpv.com/docs/` (from 0.5.0); source, issues and Discord none yet. The mod metadata points to `https://modrinth.com/mod/propwash-fpv` (`homepage_url` in `gradle.properties`, used by `fabric.mod.json` and `neoforge.mods.toml`); change it there if the slug differs |
+| Links (source, issues, wiki, Discord, donation) | source: `https://github.com/LardTom/propwash-fpv`, issues: `https://github.com/LardTom/propwash-fpv/issues`, wiki: `https://propwashfpv.com/docs/`, Discord: `https://discord.gg/bNhkSXYSgZ`, donation (Ko-fi): `https://ko-fi.com/propwashfpv`. The mod metadata points to `https://modrinth.com/mod/propwash-fpv` (`homepage_url` in `gradle.properties`, used by `fabric.mod.json` and `neoforge.mods.toml`); change it there if the slug differs |
 
 ### Summary (≤ 256 characters)
 
@@ -46,20 +48,28 @@ Upload one version per loader; both are built from the same commit.
 
 | Field | Fabric | NeoForge |
 |---|---|---|
-| File | `fabric/build/libs/propwash-fabric-26.3-0.5.2.jar` | `neoforge/build/libs/propwash-neoforge-26.3-0.5.2.jar` |
-| Version number (suggestion) | `0.5.2+fabric` | `0.5.2+neoforge` |
-| Version name (suggestion) | Propwash FPV 0.5.2 (Fabric) | Propwash FPV 0.5.2 (NeoForge) |
+| File | `fabric/build/libs/propwash-fabric-26.3-0.6.0.jar` | `neoforge/build/libs/propwash-neoforge-26.3-0.6.0.jar` |
+| Version number (suggestion) | `0.6.0+fabric` | `0.6.0+neoforge` |
+| Version name (suggestion) | Propwash FPV 0.6.0 (Fabric) | Propwash FPV 0.6.0 (NeoForge) |
 | Loaders | Fabric | NeoForge |
 | Game versions | 26.3 | 26.3 |
 | Dependencies | Fabric API — required; LambDynamicLights — optional | LambDynamicLights — optional |
 | Release channel (suggestion) | Beta | Beta |
-| Changelog | `CHANGELOG.md`, section 0.5.2 | same |
+| Changelog | `CHANGELOG.md`, section 0.6.0 | same |
+| Incompatible (suggestion) | Propwash: Just More Parts below 1.2.0 | same |
 
 Do not upload the `-sources` or `-javadoc` jars as primary files.
 
-0.5.2 is a feature update (fisheye lens, waterproof drones and turtle mode, zones, VTX power, bando maps, new battery
-curve and ground contact, add-on API 1.6). Update the project description with the new “New in 0.5.2” section;
-Just More Parts gets a new upload 1.1.1 (follows the new battery curve). Clients and servers need 0.5.2 together.
+0.6.0 is a feature update (share codes PW3 for every add-on, a bigger race system with course IDs and race standard,
+freecam drone, RX block, motor heat in the ESC, slime, wool and honey, zones for everyone, bosses that fight drones, add-on API 1.8). Update the
+project description with the new “New in 0.6.0” section and the public server mc.propwashfpv.com (Fabric and NeoForge
+players can join); the heat line under “New in 0.4.0” is corrected (the ESC
+throttles back, hot motors lose power and wear out). Clients and servers need 0.6.0 together (network protocol 20).
+Propwash 0.6.0 does not start with Just More Parts 1.1.x: upload Propwash 0.6.0 first and Just More Parts 1.2.0 as soon
+as Propwash 0.6.0 is approved on the platform.
+
+0.5.2 (done): feature update (fisheye lens, waterproof drones and turtle mode, zones, VTX power, bando maps, new battery
+curve and ground contact, add-on API 1.6); Just More Parts got the upload 1.1.1.
 
 Order for 0.5.0 (done): the changelog says the code is source-available and takes pull requests, and the website roadmap marks
 "Source code goes public" as done. Publish the GitHub repositories first (`docs/RELEASING.md` §4, step 9), then upload
@@ -82,10 +92,10 @@ project card and in search results.
 | 4 | `race_gates.png` | Racing line of sight | Race gates linked into a course, the next gate lit green, the radio HUD and the radio in hand. |
 | 5 | `pilot_third_person.png` | The pilot | Goggles on, radio in both hands. |
 | 6 | `pilot_from_drone.png` | Looking back | The FPV view from the drone back to the pilot. |
-| 7 | `flight_school_index.png` | Flight School | Nineteen animated lessons (twenty in creative mode) that explain the whole mod in the game. |
+| 7 | `flight_school_index.png` | Flight School | Twenty-two animated lessons (twenty-three in creative mode) that explain the whole mod in the game. |
 | 8 | `flight_school_build.png` | A Flight School lesson | 3D diorama with callouts, timeline and step-by-step playback. |
 | 9 | `configurator_rates.png` | Configurator: rates | Betaflight-style configurator with live rate curves. |
-| 10 | `configurator_osd.png` | Configurator: OSD | Choose, place and style 43 OSD elements. |
+| 10 | `configurator_osd.png` | Configurator: OSD | Choose, place and style over 40 OSD elements. |
 | 11 | `items_remote_battery_charger.png` | Radio and charger | The radio held in both hands and the battery charger topping up three packs. |
 | 12 | `charger_gui.png` | Battery Charger | Four bays, each pack with its own charge; faster with redstone. |
 | 13 | `recipe_book.png` | Survival crafting | Every part is craftable and unlocks in the recipe book. |
@@ -96,6 +106,16 @@ Optional extras: `drone_service_menu.png` (service menu: battery and props), `co
 `remote_display_contexts.png` (radio on an armor stand, in an item frame, on the ground), `remote_first_person.png`
 (the radio held with both hands), `configurator_keys.png` (every key in one list), `flight_school_fly.png`,
 `dust_takeoff.png` / `dust_takeoff_max.png` (subtle dust under a drone just after take-off).
+
+New in 0.6.0 (gallery candidates; the 1708 × 960 shots are fine for the gallery, the others are 1920 × 1080):
+`osd_flight_path_marker.png` (flight path marker in the OSD), `freecam_osd.png` and `freecam_menu.png` (freecam drone),
+`rx_block_leds.png` and `rx_block_window.png` (RX block), `race_topo_loop.png`, `race_topo_row.png`,
+`race_topo_cube.png` and `race_score_flag_pillar.png` (race system), `race_data_course_window_en.png` (course ID),
+`race_rules_standard.png` (race standard), `zones_open_marker.png` (Zone Marker), `battery_plugged_freestyle_5.png`
+(battery in, no plugs or leads), `motor_heat_osd_esc.png` (*ESC OVERHEAT*), `surface_honey_wall.png` (honey wall),
+`barriers_markers.png` (barriers), `gate_hint_window.png` (gate hint) and `share/share_export_854x480_en.png` plus
+`share-chat/share_chat_named_854x480_en.png` (share codes, smaller GUI shots – better on a feature page than in the
+gallery). Shots with `_de` are the German versions.
 
 New in 0.5.0 (gallery candidates): `training_rings_fpv.png` and `training_hover_fpv.png` (flight training in FPV),
 `training_screen.png` (lesson list), `configurator_world_rules.png` (World rules tab), `trick_chain_fpv.png` (trick chain
@@ -147,6 +167,8 @@ Do not use:
   `docs/screenshots/`; they are developer references with German labels, never gallery images.
 - `remote_first_person_ahead.png` — a check shot of the radio when looking straight ahead, not meant for the page.
 
-Images inside the description: Modrinth cannot resolve repository paths. After uploading the gallery, copy the image
-URLs from the gallery and embed them in the description if wanted (for example under the headings "Build your own
-drones", "Racing" and "Flight School").
+Images inside the description: from 0.6.0 the description shows banners, section headers and GIFs. They live in the
+public repository under `.github/listing/` and the description links them as
+`https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/<file>`, so they show up once the
+repository is pushed (the release pushes GitHub before Modrinth). The CurseForge text is
+[`../curseforge/description.md`](../curseforge/description.md) with the same images.

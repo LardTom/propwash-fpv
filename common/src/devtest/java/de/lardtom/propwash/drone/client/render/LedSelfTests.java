@@ -7,6 +7,7 @@ import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
+import de.lardtom.propwash.dev.example.ExampleAddon;
 import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.DronePiloting;
 import de.lardtom.propwash.drone.QuadcopterEntity;
@@ -33,7 +34,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,6 +52,8 @@ public final class LedSelfTests {
 
     public static void register() {
         SelfTest.clientStep("drone-render: LED-Streifen leuchtet in Farbe und Modus", 1, ctx -> glowStep());
+        SelfTest.clientStep("drone-render: LED-Pfad – LEDs des Beispiel-Rings liegen auf dem Pfad und leuchten in jedem Modus", 1,
+                ctx -> pathStep(ctx));
         SelfTest.clientStep("drone-render: LED-Einstellungen in der Drohne gespeichert und sichtbar", 300, LedSelfTests::entityStep);
         SelfTest.clientStep("ui: LED-Tab bearbeitet Farbe, Modus, Helligkeit und Scheinwerfer", 1, ctx -> tabStep());
     }
@@ -117,6 +122,80 @@ public final class LedSelfTests {
                 return StepResult.fail(where + ": Blinken in der Aus-Phase leuchtet trotzdem");
             }
         }
+        return StepResult.pass();
+    }
+
+    private static StepResult pathStep(SelfTest.StepContext ctx) {
+        AccessoryType ring = AccessoryType.byId(ExampleAddon.LED_RING).orElse(null);
+        if (ring == null) {
+            return StepResult.fail("Beispiel-Zubehör " + ExampleAddon.LED_RING + " nicht angemeldet");
+        }
+        if (!ring.hasLedPath() || ring.ledPath().size() != 25 || ring.ledCount != 20) {
+            return StepResult.fail("LED-Pfad nicht geladen: " + ring.ledPath().size() + " Punkte, " + ring.ledCount + " LEDs");
+        }
+        float mm = DroneVisualScale.MM_TO_UNITS;
+        DroneBuild build = DroneBuild.FREESTYLE.withAccessory(ring);
+        DroneRenderState preview = new DroneRenderState();
+        DroneVisuals.fillPreview(preview, build);
+        if (preview.stripMount != AccessoryMount.TOP.ordinal() || preview.stripLeds != ring.ledCount) {
+            return StepResult.fail("Ring nicht als LED-Zubehör erkannt (Halterung " + preview.stripMount + ", LEDs " + preview.stripLeds + ")");
+        }
+        DroneAssembly.Accessory mounted = DroneVisuals.resources().assembly(build).accessory(AccessoryMount.TOP);
+        if (mounted.stretchX() != 1.0F) {
+            return StepResult.fail("Ring wird gestreckt: " + mounted.stretchX());
+        }
+        for (int i = 0; i < preview.stripLeds; i++) {
+            double[] led = ring.ledMm(i, ring.widthMm);
+            double radius = Math.hypot(led[0], led[2]);
+            if (Math.abs(radius - 20.0) > 0.2 || Math.abs(led[1] - 7.0) > 1.0E-6) {
+                return StepResult.fail("LED " + i + " liegt nicht auf dem Ring: r = " + radius + ", y = " + led[1]);
+            }
+            Shape glow = preview.stripGlow[i];
+            Shape halo = preview.stripHalo[i];
+            if (glow.isEmpty() || halo.isEmpty()) {
+                return StepResult.fail("LED " + i + " ohne Leuchtform");
+            }
+            float cx = (glow.min().x() + glow.max().x()) * 0.5F / mm;
+            float cz = (glow.min().z() + glow.max().z()) * 0.5F / mm;
+            if (Math.abs(cx - led[0]) > 0.01 || Math.abs(cz - led[2]) > 0.01) {
+                return StepResult.fail("Leuchten von LED " + i + " sitzt bei " + cx + "/" + cz + " statt " + led[0] + "/" + led[2]);
+            }
+        }
+        PoseStack poseStack = new PoseStack();
+        for (LedMode mode : LedMode.values()) {
+            for (boolean armed : new boolean[]{false, true}) {
+                double seconds = 0.2 + mode.ordinal() * 0.41;
+                LedSettings settings = new LedSettings(mode, LedColor.MAGENTA, 80, false);
+                DroneRenderState state = DroneVisuals.ledPreviewState(build, settings, armed, seconds);
+                if (state == null || state.stripLeds != ring.ledCount) {
+                    return StepResult.fail(mode + ": keine LED-Vorschau mit " + ring.ledCount + " LEDs");
+                }
+                LedAnimator.Input input = new LedAnimator.Input(armed, true, 1.0F, seconds);
+                Set<Integer> colors = new HashSet<>();
+                for (int i = 0; i < state.stripLeds; i++) {
+                    int expected = LedAnimator.color(settings, i, state.stripLeds, input);
+                    if (state.stripColor[i] != expected) {
+                        return StepResult.fail(mode + " scharf=" + armed + ": LED " + i + " zeigt " + Integer.toHexString(state.stripColor[i])
+                                + " statt " + Integer.toHexString(expected));
+                    }
+                    colors.add(expected);
+                }
+                if (mode == LedMode.RAINBOW && colors.size() < state.stripLeds / 2) {
+                    return StepResult.fail("Regenbogen läuft nicht um den Ring: nur " + colors.size() + " Farben");
+                }
+                SubmitNodeStorage storage = new SubmitNodeStorage();
+                DroneVisuals.submit(state, poseStack, storage);
+                boolean lit = colors.stream().anyMatch(color -> color != 0);
+                boolean drawn = !storage.order(1).translucentCustomGeometry.isEmpty();
+                if (lit && !drawn || !armed && !lit && drawn) {
+                    return StepResult.fail(mode + " scharf=" + armed + ": LEDs an = " + lit + ", Leuchten gezeichnet = " + drawn);
+                }
+                if (!poseStack.isEmpty()) {
+                    return StepResult.fail("PoseStack nach dem Zeichnen nicht leer");
+                }
+            }
+        }
+        ctx.log("LED-Ring: " + ring.ledCount + " LEDs auf " + ring.ledPath().size() + " Punkten, alle Modi wie der Streifen");
         return StepResult.pass();
     }
 

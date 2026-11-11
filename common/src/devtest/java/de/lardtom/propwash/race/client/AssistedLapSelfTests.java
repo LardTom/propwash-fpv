@@ -3,6 +3,7 @@ package de.lardtom.propwash.race.client;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.content.ContentIds;
 import de.lardtom.propwash.core.CoreComponents;
+import de.lardtom.propwash.dev.PersonalRulesDev;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.client.Screenshots;
@@ -28,7 +29,9 @@ import de.lardtom.propwash.race.RaceModule;
 import de.lardtom.propwash.race.RacePayloads;
 import de.lardtom.propwash.race.RaceServer;
 import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.server.client.ClientPersonalRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
+import de.lardtom.propwash.server.rules.RuleSpec;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.HoldMode;
@@ -54,19 +57,25 @@ import org.joml.Vector3d;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class AssistedLapSelfTests {
     private static final long MS = 1_000_000L;
     private static final int HOLD = LapAssist.HOLD_MODE.bit();
     private static final int RESCUE = LapAssist.RESCUE.bit();
-    private static final int PHYSICS = LapAssist.WORLD_PHYSICS.bit();
+    private static final int PHYSICS = LapAssist.PERSONAL_RULES.bit();
     private static final AtomicReference<@Nullable Site> SITE = new AtomicReference<>();
     private static final AtomicReference<@Nullable String> RESULT = new AtomicReference<>();
     private static final String FUTURE = "future";
+    private static final String OPENED = "opened";
+    private static final String LOADED = "loaded";
+    private static final String PROBE = "probe";
+    private static final int LOAD_TICKS = 200;
 
     private AssistedLapSelfTests() {
     }
@@ -101,7 +110,19 @@ public final class AssistedLapSelfTests {
     }
 
     private static StepResult serverStep(SelfTest.StepContext ctx) {
-        if (ctx.tick() == 0) {
+        AtomicBoolean loaded = (AtomicBoolean) ctx.state().computeIfAbsent(LOADED, key -> new AtomicBoolean());
+        if (!loaded.get()) {
+            if (ctx.tick() > LOAD_TICKS) {
+                return StepResult.fail("Chunks im Umkreis von " + CovRaceSite.HOME_CHUNKS + " um den Spieler nicht geladen");
+            }
+            CompletableFuture<?> probe = (CompletableFuture<?>) ctx.state().get(PROBE);
+            if (probe == null || probe.isDone()) {
+                ctx.state().put(PROBE, ctx.onServer(server -> loaded.set(CovRaceSite.loadedAround(player(server).level(), player(server).position(),
+                        CovRaceSite.HOME_CHUNKS))));
+            }
+            return StepResult.pending();
+        }
+        if (!ctx.state().containsKey(FUTURE)) {
             RESULT.set(null);
             ctx.state().put(FUTURE, ctx.onServer(server -> RESULT.set(check(server))));
             return StepResult.pending();
@@ -243,7 +264,7 @@ public final class AssistedLapSelfTests {
         if (verdict != RaceServer.Verdict.ACCEPTED || race == null || race.nanos() != lap + faster || board.raceBest(player.getUUID(), 2) != LapTracker.NONE) {
             return "Rennen mit Flughilfe nicht getrennt gespeichert: " + verdict + " " + race;
         }
-        WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, 130);
+        PersonalRulesDev.personal(server, player.getUUID(), Map.of(WorldRuleSpecs.GRAVITY_SCALE, 130));
         try {
             t = crossed + 2_000L * MS;
             RaceServer.handle(report(RacePayloads.ReportKind.START, id, 0, 0L, 0L, 0), player, t);
@@ -256,13 +277,14 @@ public final class AssistedLapSelfTests {
             verdict = RaceServer.handle(report(RacePayloads.ReportKind.LAP, id, 1, quick, 0L, 0), player, crossed + 100L * MS);
             Leaderboard.Entry physics = board.bestAssisted(player.getUUID(), null);
             if (verdict != RaceServer.Verdict.ACCEPTED || physics == null || physics.nanos() != quick || (physics.assist() & PHYSICS) == 0) {
-                return "Runde mit veränderter Welt-Physik nicht als Flughilfe gespeichert: " + verdict + " " + physics;
+                return "Runde mit persönlicher Physik nicht als Flughilfe gespeichert: " + verdict + " " + physics;
             }
             if (board.best(player.getUUID(), null).nanos() != faster) {
                 return "Runde mit veränderter Physik verändert die Wertung ohne Flughilfe";
             }
         } finally {
             WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.GRAVITY_SCALE.defaultValue());
+            PersonalRulesDev.clear(server);
         }
         RacePayloads.LeaderboardS2C payload = RaceServer.leaderboardPayload(board, course, player.getUUID(), false, true);
         long assistedRows = payload.rows().stream().filter(RacePayloads.BoardRow::assisted).count();
@@ -294,12 +316,16 @@ public final class AssistedLapSelfTests {
         }
         Minecraft mc = Minecraft.getInstance();
         if (ctx.tick() == 0) {
-            ctx.state().put(FUTURE, ctx.onServer(server -> RaceServer.sendLeaderboard(player(server), site.course(), true)));
+            ctx.state().put(FUTURE, ctx.onServer(server -> RaceServer.sendLeaderboard(player(server), site.course(), false)));
             return StepResult.pending();
         }
         StepResult waiting = future(ctx);
         if (waiting != null) {
             return waiting;
+        }
+        if (ctx.state().putIfAbsent(OPENED, true) == null) {
+            mc.gui.setScreen(new LeaderboardScreen(null, site.course()));
+            return StepResult.pending();
         }
         LeaderboardScreen screen = LeaderboardScreen.active();
         if (screen == null || screen.courseId() != site.course() || screen.assistedRowsDrawn() == 0 || !ClientWorldRules.INSTANCE.on(WorldRuleSpecs.SAVE_ASSISTED_LAPS)) {
@@ -397,9 +423,10 @@ public final class AssistedLapSelfTests {
                     session.setTestInput(new StickPositions(0.0F, 0.0F, 0.0F, 0.0F), false, StabMode.ANGLE);
                     Site site = SITE.get();
                     CourseData course = site == null ? null : ClientCourses.get(site.course());
-                    if (course == null || !ClientWorldRules.INSTANCE.physics().modified()
+                    if (course == null || !ClientPersonalRules.INSTANCE.assisting().contains(WorldRuleSpecs.GRAVITY_SCALE)
                             || !ClientWorldRules.INSTANCE.on(WorldRuleSpecs.SAVE_ASSISTED_LAPS)) {
-                        return ctx.tick() - this.since > 200 ? StepResult.fail("Kurs oder Welt-Regeln fehlen beim Client") : StepResult.pending();
+                        return ctx.tick() - this.since > 200 ? StepResult.fail("Kurs, persönliche Schwerkraft oder Welt-Regeln fehlen beim Client: Kurs="
+                                + (course != null) + " persönlich=" + ClientPersonalRules.INSTANCE.assisting().stream().map(RuleSpec::name).toList()) : StepResult.pending();
                     }
                     List<GateGeometry> gates = ClientCourses.geometry(course);
                     GateGeometry gate = gates.getFirst();
@@ -448,7 +475,7 @@ public final class AssistedLapSelfTests {
                                 + tracker.tracker().racing() + " Hilfe=" + tracker.lapAssist()) : StepResult.pending();
                     }
                     if ((tracker.lapAssist() & PHYSICS) == 0) {
-                        return StepResult.fail("Grund Welt-Physik fehlt: " + tracker.lapAssist());
+                        return StepResult.fail("Grund persönliche Regeln fehlt: " + tracker.lapAssist());
                     }
                     this.targetY = session.comPosition(new Vector3d()).y + HOVER_RISE;
                     this.phase = 4;
@@ -487,7 +514,7 @@ public final class AssistedLapSelfTests {
             ServerPlayer player = player(server);
             ServerLevel level = player.level();
             WorldRules.set(server, WorldRuleSpecs.SAVE_ASSISTED_LAPS, 1);
-            WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, 130);
+            PersonalRulesDev.personal(server, player.getUUID(), Map.of(WorldRuleSpecs.GRAVITY_SCALE, 130));
             Site site = SITE.get();
             if (site == null) {
                 site = build(server);
@@ -564,6 +591,7 @@ public final class AssistedLapSelfTests {
             this.armedAt = -1;
             ctx.onServer(server -> {
                 WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.GRAVITY_SCALE.defaultValue());
+                PersonalRulesDev.clear(server);
                 ServerPlayer player = player(server);
                 if (id >= 0 && player.level().getEntity(id) instanceof QuadcopterEntity drone) {
                     if (drone.pilot().isPresent()) {
@@ -614,8 +642,14 @@ public final class AssistedLapSelfTests {
                 return StepResult.fail("kein Kurs");
             }
             if (!ctx.state().containsKey("sent")) {
-                ctx.state().put("sent", true);
-                ctx.onServer(server -> RaceServer.sendLeaderboard(player(server), site.course(), true));
+                ctx.state().put("sent", ctx.onServer(server -> RaceServer.sendLeaderboard(player(server), site.course(), false)));
+                return StepResult.pending();
+            }
+            if (ctx.state().get("sent") instanceof CompletableFuture<?> sent && !sent.isDone()) {
+                return StepResult.pending();
+            }
+            if (ctx.state().putIfAbsent(OPENED, true) == null) {
+                Minecraft.getInstance().gui.setScreen(new LeaderboardScreen(null, site.course()));
                 return StepResult.pending();
             }
             LeaderboardScreen screen = LeaderboardScreen.active();
@@ -646,6 +680,7 @@ public final class AssistedLapSelfTests {
             Screenshots.parkMouse(Minecraft.getInstance());
             this.requested = false;
             ctx.state().remove("sent");
+            ctx.state().remove(OPENED);
             ctx.onServer(AssistedLapSelfTests::teardown);
         }
     }

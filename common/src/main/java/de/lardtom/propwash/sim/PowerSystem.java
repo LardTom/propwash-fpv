@@ -17,6 +17,7 @@ final class PowerSystem {
     final int[] mode = new int[AirframeSpec.MOTORS];
     final double[] inputCurrent = new double[AirframeSpec.MOTORS];
     final double[] loadScale = {1.0, 1.0, 1.0, 1.0};
+    final double[] torqueScale = {1.0, 1.0, 1.0, 1.0};
     final double[] snagLoad = {1.0, 1.0, 1.0, 1.0};
     final double[] fluidLoad = {1.0, 1.0, 1.0, 1.0};
     final double[] driveSign = {1.0, 1.0, 1.0, 1.0};
@@ -74,6 +75,15 @@ final class PowerSystem {
         this.packSoc = c;
         this.packMah = (1.0 - c) * this.p.capacityMah;
         this.packCurrent = 0.0;
+    }
+
+    void settleLoad(double batteryCurrent, boolean sag) {
+        double current = Double.isFinite(batteryCurrent) ? Math.max(0.0, batteryCurrent) : 0.0;
+        double rested = restingSoc(this.soc, sag);
+        this.polarization = OperatingPoints.slowResistance(this.p, rested) * current;
+        this.fastPolarization = OperatingPoints.fastResistance(this.p, rested) * this.batteryResistanceScale * current;
+        this.heatCurrent = current;
+        this.lastBatteryCurrent = current;
     }
 
     void keepCharge() {
@@ -274,14 +284,15 @@ final class PowerSystem {
             double shaft;
             double slope;
             if (active) {
-                shaft = kt * (this.current[i] - i0 * SimMath.smoothSign(w));
+                double ts = this.torqueScale[i];
+                shaft = kt * (ts * this.current[i] - i0 * SimMath.smoothSign(w));
                 double electrical;
                 int m = this.mode[i];
                 if (m == FREE) {
-                    electrical = kt * kt / this.resistance[i];
+                    electrical = kt * kt * ts / this.resistance[i];
                 } else if (m == INPUT_LIMIT) {
                     double c = this.current[i];
-                    electrical = kt * kt * c / Math.max(2.0 * this.resistance[i] * c + kt * w, 1e-9);
+                    electrical = kt * kt * ts * c / Math.max(2.0 * this.resistance[i] * c + kt * w, 1e-9);
                 } else {
                     electrical = 0.0;
                 }
@@ -319,15 +330,16 @@ final class PowerSystem {
             double slope;
             if (active) {
                 double startup = aw < sync ? ModelConstants.STARTUP_TORQUE + (1.0 - ModelConstants.STARTUP_TORQUE) * aw / sync : 1.0;
-                shaft = startup * kt * this.current[i] - kt * i0 * SimMath.smoothSign(w);
+                double ts = this.torqueScale[i];
+                shaft = startup * kt * (ts * this.current[i]) - kt * i0 * SimMath.smoothSign(w);
                 double electrical;
                 int m = this.mode[i];
                 if (m == FREE) {
-                    electrical = kt * kt / this.resistance[i];
+                    electrical = kt * kt * ts / this.resistance[i];
                 } else if (m == INPUT_LIMIT) {
                     double s = this.driveSign[i];
                     double c = s * this.current[i];
-                    electrical = kt * kt * c / Math.max(2.0 * this.resistance[i] * c + kt * s * w, 1e-9);
+                    electrical = kt * kt * ts * c / Math.max(2.0 * this.resistance[i] * c + kt * s * w, 1e-9);
                 } else {
                     electrical = 0.0;
                 }

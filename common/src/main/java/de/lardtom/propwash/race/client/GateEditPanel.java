@@ -1,6 +1,7 @@
 package de.lardtom.propwash.race.client;
 
 import de.lardtom.propwash.input.client.KeyDefaults;
+import de.lardtom.propwash.race.CourseData;
 import de.lardtom.propwash.race.CourseElement;
 import de.lardtom.propwash.race.FreeformFill;
 import de.lardtom.propwash.race.GateEntity;
@@ -9,6 +10,8 @@ import de.lardtom.propwash.race.GateSignal;
 import de.lardtom.propwash.race.GateSignalTarget;
 import de.lardtom.propwash.race.GateSize;
 import de.lardtom.propwash.race.GateTilt;
+import de.lardtom.propwash.race.PassZoneOverlap;
+import de.lardtom.propwash.race.ScoreArea;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
@@ -23,7 +26,9 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.Util;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -44,14 +49,24 @@ final class GateEditPanel {
     private static final int MARKER = 2;
     private static final int OFF_SCREEN = -10000;
     private static final int SAMPLE_COUNT = 99;
-    private static final int PAGE_BUTTON_HEIGHT = 12;
-    private static final int PAGE_GAP = 4;
+    private static final int TAB_HEIGHT = 12;
+    private static final int TAB_GAP = 2;
+    private static final int TAB_TEXT_PAD = 12;
+    private static final int TAB_MIN = 24;
     private static final int SCREEN_MARGIN = 2;
     private static final int TIP_INSET = 3;
     private static final int TIP_STRIPE = 2;
     private static final int TIP_PAD = 1;
     private static final int TIP_GAP = 3;
     private static final int TIP_LIFT = 2;
+    private static final int ROW_TIP_MAX = 170;
+    private static final int ROW_TIP_MIN = 90;
+    private static final int ROW_TIP_GAP = 4;
+    private static final int ROW_TIP_PAD = 4;
+    private static final long ROW_TIP_BASE_MS = 4000L;
+    private static final long ROW_TIP_PER_CHAR_MS = 50L;
+    private static final long ROW_TIP_MAX_MS = 15000L;
+    static final int NO_ROOM = Integer.MIN_VALUE;
 
     private final GateEditor editor;
     private final boolean interactive;
@@ -74,18 +89,21 @@ final class GateEditPanel {
     private boolean compact;
     private int laidHeight = -1;
     private int laidPage = -1;
-    private int pageWidth;
-    private int signalInfoY;
-    private int signalInfoLines;
+    private int tabY = -1;
+    private int pageInfoY;
+    private int pageInfoLines;
     private int separatorY;
     private int tipY;
     private int tipHeight;
     private int infoY;
+    private GateEditModel.@Nullable Row tipRow;
+    private List<PassZoneOverlap.Finding> laidOverlaps = List.of();
+    private long tipSince;
 
     private record Slot(GateEditModel.Row row, int y, AbstractWidget main, @Nullable AbstractWidget minus, @Nullable AbstractWidget plus) {
     }
 
-    private record Title(Component text, int y, boolean first) {
+    private record Title(Component text, int y) {
     }
 
     private record Line(FormattedCharSequence text, int color) {
@@ -163,6 +181,7 @@ final class GateEditPanel {
         return width != this.laidWidth || height != this.laidHeight || this.editor.model().page() != this.laidPage
                 || !this.compact && font().split(this.describe(), inner()).size() != this.info.size()
                 || this.compact && this.statusLines().size() != this.laidStatus
+                || !this.editor.overlaps().equals(this.laidOverlaps)
                 || this.signalLines() != this.laidSignal;
     }
 
@@ -170,13 +189,32 @@ final class GateEditPanel {
         return this.editor.model().rows().contains(GateEditModel.Row.SIGNAL) ? font().split(this.signalInfo(), inner()).size() : 0;
     }
 
-    private static int pageBody(List<GateEditModel.Row> rows, int signalLines) {
+    private int pageBody(List<GateEditModel.Row> rows) {
         int body = bodyHeight(rows);
-        return rows.contains(GateEditModel.Row.SIGNAL) && signalLines > 0 ? body + 2 + signalLines * Metrics.LINE_HEIGHT : body;
+        Component info = this.pageInfo(rows);
+        int lines = info == null ? 0 : font().split(info, inner()).size();
+        return lines > 0 ? body + 2 + lines * Metrics.LINE_HEIGHT : body;
     }
 
-    private Component pageLabel(int page) {
-        return Component.translatable(page == 0 ? "propwash.race.edit.page.signal" : "propwash.race.edit.page.pose");
+    private @Nullable Component pageInfo(List<GateEditModel.Row> rows) {
+        if (rows.contains(GateEditModel.Row.SIGNAL)) {
+            return this.signalInfo();
+        }
+        return rows.contains(GateEditModel.Row.NUDGE_STEP) ? positionInfo(this.editor.gate().kind()) : null;
+    }
+
+    static Component tabLabel(CourseElement kind, GateEditModel.Page page) {
+        return switch (page) {
+            case SIGNAL -> Component.translatable("propwash.race.edit.tab.signal");
+            case SCORE -> Component.translatable("propwash.race.edit.tab.score");
+            case POSITION -> Component.translatable("propwash.race.edit.tab.position");
+            case POSE -> kind.gate() ? Component.translatable("propwash.race.edit.tab.gate") : GateMounting.elementName(kind);
+        };
+    }
+
+    static Component positionInfo(CourseElement kind) {
+        return Component.translatable("propwash.race.nudge.info", tabLabel(kind, GateEditModel.Page.POSE),
+                Component.keybind(KeyDefaults.GATE_ROTATE.mappingName()));
     }
 
     static Component title(CourseElement kind) {
@@ -203,6 +241,12 @@ final class GateEditPanel {
         if (section == GateEditModel.Section.SIGNAL) {
             return Component.translatable("propwash.race.edit.redstone");
         }
+        if (section == GateEditModel.Section.SCORE) {
+            return Component.translatable("propwash.race.score.section");
+        }
+        if (section == GateEditModel.Section.POSITION) {
+            return Component.translatable("propwash.race.nudge.section");
+        }
         if (kind.freeform()) {
             return Component.translatable("propwash.race.freeform.edit.section");
         }
@@ -214,10 +258,9 @@ final class GateEditPanel {
                 blocksText(gate.standardOpeningWidth()), blocksText(gate.standardOpeningHeight()));
     }
 
-    private String rowKey(GateEditModel.Row row) {
-        CourseElement kind = this.editor.gate().kind();
+    static String rowKey(CourseElement kind, GateEditModel.Row row) {
         return switch (row) {
-            case HEADING -> kind.gate() ? "heading" : "element.heading";
+            case HEADING -> kind.gate() ? "heading" : kind.freeform() ? "freeform.heading" : "element.heading";
             case PITCH -> "pitch";
             case ROLL -> "roll";
             case VARIANT -> "variant." + kind.key();
@@ -226,6 +269,80 @@ final class GateEditPanel {
             case SIGNAL -> "signal";
             case PULSE -> "pulse";
             case RACE_ONLY -> "race_only";
+            case OPEN_EDGES -> "open_edges";
+            case SCORE_ROLE -> "score.role";
+            case SCORE_SIDE -> "score.side";
+            case SCORE_REACH -> "score.reach";
+            case SCORE_BELOW -> "score.below";
+            case SCORE_ABOVE -> "score.above";
+            case NUDGE_STEP -> "nudge.step";
+            case MOVE_X -> "nudge.x";
+            case MOVE_Y -> "nudge.y";
+            case MOVE_Z -> "nudge.z";
+        };
+    }
+
+    static String labelKey(CourseElement kind, GateEditModel.Row row) {
+        return "propwash.race.edit." + rowKey(kind, row);
+    }
+
+    static String tooltipKey(CourseElement kind, GateEditModel.Row row) {
+        if (row == GateEditModel.Row.VARIANT) {
+            return kind.freeform() ? "propwash.race.freeform.edit.flip.tooltip" : "propwash.race.element.edit.variant." + kind.key() + ".tooltip";
+        }
+        return labelKey(kind, row) + ".tooltip";
+    }
+
+    static @Nullable String fineKey(CourseElement kind, GateEditModel.Row row) {
+        if (row.angle()) {
+            return kind.freeform() ? null : "propwash.race.edit.fine.angle";
+        }
+        if (row == GateEditModel.Row.PULSE) {
+            return "propwash.race.edit.fine.pulse";
+        }
+        return row.move() ? "propwash.race.edit.fine.move" : null;
+    }
+
+    static String valueHintKey(List<GateEditModel.Row> rows) {
+        for (GateEditModel.Row row : rows) {
+            if (row.angle()) {
+                return "propwash.race.edit.hint.value.angle";
+            }
+        }
+        return rows.contains(GateEditModel.Row.PULSE) ? "propwash.race.edit.hint.value.pulse" : "propwash.race.edit.hint.value.plain";
+    }
+
+    static String freeformHintKey(List<GateEditModel.Row> rows, GateEditModel.Row selected) {
+        if (rows.contains(GateEditModel.Row.SIGNAL)) {
+            return valueHintKey(rows);
+        }
+        return switch (selected) {
+            case HEADING -> "propwash.race.edit.hint.freeform.turn";
+            case OPEN_EDGES -> "propwash.race.edit.hint.freeform.toggle";
+            default -> "propwash.race.edit.hint.flip";
+        };
+    }
+
+    static String stepText(double step) {
+        if (Math.abs(step - GateEditModel.HALF_NUDGE) < 1.0E-9) {
+            return "1/32";
+        }
+        if (Math.abs(step - 1.0 / 16.0) < 1.0E-9) {
+            return "1/16";
+        }
+        if (Math.abs(step - 0.25) < 1.0E-9) {
+            return "1/4";
+        }
+        return GateMounting.blocks(step);
+    }
+
+    private Component choiceName(GateEditModel.Row row, double value) {
+        return switch (row) {
+            case SCORE_ROLE -> Component.translatable("propwash.race.score.role." + ScoreArea.Role.byOrdinal((int) Math.round(value)).key());
+            case SCORE_SIDE -> Component.translatable((this.editor.model().score().role() == ScoreArea.Role.TURN
+                    ? "propwash.race.score.turn." : "propwash.race.score.pass.") + ScoreArea.sideKey((int) Math.round(value)));
+            case NUDGE_STEP -> Component.translatable("propwash.race.nudge.step.value", stepText(value));
+            default -> Component.literal(GateMounting.blocks(value));
         };
     }
 
@@ -238,13 +355,15 @@ final class GateEditPanel {
         return Component.translatable(on ? "propwash.race.edit.toggle.on" : "propwash.race.edit.toggle.off");
     }
 
-    private Component rowTooltip(GateEditModel.Row row) {
+    private static Component edgesName(boolean ignore) {
+        return Component.translatable(ignore ? "propwash.race.freeform.edges.ignore" : "propwash.race.freeform.edges.report");
+    }
+
+    Component rowTooltip(GateEditModel.Row row) {
         CourseElement kind = this.editor.gate().kind();
-        if (row == GateEditModel.Row.VARIANT) {
-            return Component.translatable(kind.freeform() ? "propwash.race.freeform.edit.flip.tooltip"
-                    : "propwash.race.element.edit.variant." + kind.key() + ".tooltip");
-        }
-        return Component.translatable("propwash.race.edit." + this.rowKey(row) + ".tooltip");
+        MutableComponent text = Component.translatable(tooltipKey(kind, row));
+        String fine = fineKey(kind, row);
+        return fine == null ? text : text.append("\n").append(Component.translatable(fine));
     }
 
     private Component variantName(int variant) {
@@ -277,8 +396,9 @@ final class GateEditPanel {
             case FREE -> Palette.SUCCESS;
             default -> Palette.ERROR;
         };
+        boolean signalPage = this.editor.model().pageKind(this.laidPage) == GateEditModel.Page.SIGNAL;
         Component state = signalOnly ? Component.translatable("propwash.race.edit.status.signal")
-                : status == GateEditor.Status.SAME && this.laidPage == 1 ? Component.translatable("propwash.race.edit.status.signal_same")
+                : status == GateEditor.Status.SAME && signalPage ? Component.translatable("propwash.race.edit.status.signal_same")
                 : GateEditor.statusText(status);
         for (FormattedCharSequence line : font.split(state, inner())) {
             lines.add(new Line(line, color));
@@ -292,7 +412,63 @@ final class GateEditPanel {
                 lines.add(new Line(line, tint));
             }
         }
+        for (Component text : this.overlapTexts()) {
+            for (FormattedCharSequence line : font.split(text, inner())) {
+                lines.add(new Line(line, Palette.WARNING));
+            }
+        }
         return lines;
+    }
+
+    private List<Component> overlapTexts() {
+        List<PassZoneOverlap.Finding> findings = this.editor.overlaps();
+        CourseData course = findings.isEmpty() ? null : ClientCourses.get(this.editor.gate().courseId());
+        if (course == null) {
+            return List.of();
+        }
+        List<Component> out = new ArrayList<>();
+        for (PassZoneOverlap.Finding finding : findings) {
+            if (finding.element() < course.gates().size() && finding.neighbour() < course.gates().size()) {
+                out.add(this.editor.gate().hasPass(finding.element())
+                        ? Component.translatable("propwash.race.overlap.short", GateMounting.elementName(course.gates().get(finding.neighbour()).kind()), finding.neighbour() + 1)
+                        : Component.translatable("propwash.race.overlap.short_other", GateMounting.elementName(course.gates().get(finding.element()).kind()), finding.element() + 1));
+            }
+        }
+        PassZoneOverlap.Finding own = this.editor.ownOverlap();
+        if (own != null && !own.shortenable()) {
+            out.add(Component.translatable("propwash.race.overlap.fix.move"));
+        }
+        return out;
+    }
+
+    private int overlapLines() {
+        int lines = 0;
+        for (Component text : this.overlapTexts()) {
+            lines += font().split(text, inner()).size();
+        }
+        return lines;
+    }
+
+    private boolean showsTrim() {
+        PassZoneOverlap.Finding own = this.editor.ownOverlap();
+        return this.interactive && own != null && own.shortenable();
+    }
+
+    private void trimButton(int x, int y, int inner) {
+        PassZoneOverlap.Finding own = this.editor.ownOverlap();
+        CourseData course = ClientCourses.get(this.editor.gate().courseId());
+        if (own == null || course == null || own.neighbour() >= course.gates().size()) {
+            return;
+        }
+        String value = blocksText(own.shortened());
+        Component name = GateMounting.elementName(this.editor.gate().kind());
+        Component warning = Component.translatable("propwash.race.overlap.warning", name, own.element() + 1, GateMounting.elementName(course.gates().get(own.neighbour()).kind()),
+                own.neighbour() + 1);
+        boolean turning = this.editor.gate().geometry().scoringKind() == CourseElement.FLAG;
+        FlatButton trim = new FlatButton(x, y, inner, BUTTON, Component.translatable("propwash.race.overlap.trim", value), FlatButton.Style.NORMAL, this.editor::shortenOverlap);
+        trim.setTooltip(Tooltip.create(Component.empty().append(warning).append(" ")
+                .append(Component.translatable(turning ? "propwash.race.overlap.fix.flag" : "propwash.race.overlap.fix.pole", value))));
+        this.widgets.add(trim);
     }
 
     private int statusReserve() {
@@ -313,25 +489,41 @@ final class GateEditPanel {
     }
 
     private List<Component> hints() {
+        return this.hints(this.editor.model().selected());
+    }
+
+    private List<Component> hints(GateEditModel.Row selected) {
         List<Component> hints = new ArrayList<>();
+        GateEditModel model = this.editor.model();
+        int page = model.page(selected);
         if (this.editor.freeform()) {
-            hints.add(Component.translatable("propwash.race.edit.hint.flip", Component.keybind(KeyDefaults.GATE_ROTATE.mappingName())));
+            hints.add(Component.translatable(freeformHintKey(model.rows(page), selected), Component.keybind(KeyDefaults.GATE_ROTATE.mappingName())));
+            hints.add(Component.translatable("propwash.race.edit.hint.row", Component.keybind("key.sneak")));
+        } else if (model.pageKind(page) == GateEditModel.Page.POSITION) {
+            hints.add(Component.translatable("propwash.race.nudge.hint.move"));
+            hints.add(Component.translatable("propwash.race.nudge.hint"));
+            hints.add(Component.translatable("propwash.race.edit.hint.row", Component.keybind("key.sneak")));
         } else {
-            hints.add(Component.translatable("propwash.race.edit.hint.value"));
+            hints.add(Component.translatable(valueHintKey(model.rows(page))));
             hints.add(Component.translatable("propwash.race.edit.hint.row", Component.keybind("key.sneak")));
         }
         hints.add(Component.translatable("propwash.race.edit.hint.apply", Component.keybind("key.use")));
-        hints.add(Component.translatable("propwash.race.edit.hint.cancel"));
+        hints.add(Component.translatable(model.pages() > 1 ? "propwash.race.edit.hint.cancel_tab" : "propwash.race.edit.hint.cancel"));
         return hints;
     }
 
     private int hudFooterLines() {
         Font font = font();
-        int lines = 0;
-        for (Component hint : this.hints()) {
-            lines += font.split(hint, inner()).size();
+        GateEditModel model = this.editor.model();
+        int most = 0;
+        for (GateEditModel.Row row : model.rows(model.page())) {
+            int lines = 0;
+            for (Component hint : this.hints(row)) {
+                lines += font.split(hint, inner()).size();
+            }
+            most = Math.max(most, lines);
         }
-        return lines;
+        return most;
     }
 
     private int cursorFooterHeight() {
@@ -355,13 +547,15 @@ final class GateEditPanel {
         int inner = inner();
         this.info = font.split(this.describe(), inner);
         List<GateEditModel.Row> rows = model.rows(page);
-        int signal = this.signalLines();
+        boolean tabs = pages > 1;
         int body = 0;
         for (int p = 0; p < pages; p++) {
-            body = Math.max(body, pageBody(model.rows(p), signal));
+            body = Math.max(body, this.pageBody(model.rows(p)));
         }
         int footer = Math.max(this.hudFooterLines() * Metrics.LINE_HEIGHT, this.cursorFooterHeight());
-        int status = this.statusReserve();
+        int status = this.statusReserve() + this.overlapLines();
+        int trim = this.showsTrim() ? BUTTON + 2 : 0;
+        this.laidOverlaps = this.editor.overlaps();
         int infoGap = 4;
         int footerGap = 6;
         int room = height - 2 * SCREEN_MARGIN;
@@ -369,22 +563,22 @@ final class GateEditPanel {
         int tip = this.tipHeight + TIP_GAP;
         int tipLift = 0;
         int total = HEADER + Metrics.PADDING + tip + this.info.size() * Metrics.LINE_HEIGHT + infoGap + body
-                + status * Metrics.LINE_HEIGHT + footerGap + footer + Metrics.PADDING;
+                + status * Metrics.LINE_HEIGHT + trim + footerGap + footer + Metrics.PADDING;
         this.compact = total > room;
         if (this.compact) {
             this.info = List.of(this.describe().getVisualOrderText());
             status = this.statusLines().size();
-            body = pageBody(rows, signal);
+            body = this.pageBody(rows);
             footer = this.interactive ? 2 * (BUTTON + BUTTON_GAP) : this.hints().size() * Metrics.LINE_HEIGHT;
             this.tipHeight = Metrics.LINE_HEIGHT;
             tip = this.tipHeight;
             tipLift = TIP_LIFT;
-            total = HEADER + Metrics.PADDING + tip + Metrics.LINE_HEIGHT + infoGap + body + status * Metrics.LINE_HEIGHT + footerGap + footer
+            total = HEADER + Metrics.PADDING + tip + Metrics.LINE_HEIGHT + infoGap + body + status * Metrics.LINE_HEIGHT + trim + footerGap + footer
                     + Metrics.PADDING;
-            int tighter = Math.clamp(total - room, 0, 3);
+            int tighter = Math.clamp(total - room, 0, footerGap);
             footerGap -= tighter;
             total -= tighter;
-            tighter = Math.clamp(total - room, 0, 3);
+            tighter = Math.clamp(total - room, 0, infoGap);
             infoGap -= tighter;
             total -= tighter;
         }
@@ -396,41 +590,68 @@ final class GateEditPanel {
         this.tipY = this.top + HEADER + Metrics.PADDING - tipLift;
         this.infoY = this.top + HEADER + Metrics.PADDING + tip;
         int y = this.infoY + this.info.size() * Metrics.LINE_HEIGHT + infoGap;
-        GateEditModel.Section last = null;
-        this.pageWidth = 0;
-        if (pages > 1) {
-            Component label = this.pageLabel(page);
-            this.pageWidth = font.width(label) + 8;
-            if (this.interactive) {
-                int target = (page + 1) % pages;
-                FlatButton turn = new FlatButton(x + inner - this.pageWidth, y - 2, this.pageWidth, PAGE_BUTTON_HEIGHT, label, FlatButton.Style.NORMAL,
-                        () -> this.editor.showPage(target));
-                turn.setTooltip(Tooltip.create(Component.translatable("propwash.race.edit.page.tooltip")));
-                this.widgets.add(turn);
-            }
-        }
         int bodyTop = y;
+        this.tabY = -1;
+        if (tabs) {
+            this.tabs(x, y, inner);
+            this.tabY = y;
+        }
+        GateEditModel.Section last = null;
         for (GateEditModel.Row row : rows) {
             GateEditModel.Section section = GateEditModel.section(row);
             if (section != last) {
                 if (last != null) {
                     y += 4;
                 }
-                this.titles.add(new Title(this.sectionTitle(section), y, last == null));
+                if (last != null || !tabs) {
+                    this.titles.add(new Title(this.sectionTitle(section), y));
+                }
                 y += Metrics.SECTION_HEIGHT;
                 last = section;
             }
             this.row(row, x, y, inner);
             y += ROW;
         }
-        this.signalInfoY = y + 2;
-        this.laidSignal = signal;
-        this.signalInfoLines = rows.contains(GateEditModel.Row.SIGNAL) ? signal : 0;
+        Component pageInfo = this.pageInfo(rows);
+        this.pageInfoY = y + 2;
+        this.laidSignal = this.signalLines();
+        this.pageInfoLines = pageInfo == null ? 0 : font.split(pageInfo, inner).size();
         this.statusY = Math.max(y, bodyTop + body - 4) + 4;
+        if (trim > 0) {
+            this.trimButton(x, this.statusY + status * Metrics.LINE_HEIGHT, inner);
+        }
         this.footerY = this.bottom - Metrics.PADDING - footer;
         this.separatorY = this.footerY - (footerGap + 2) / 2;
         if (this.interactive) {
             this.buttons(x, this.footerY, inner);
+        }
+    }
+
+    private void tabs(int x, int y, int inner) {
+        GateEditModel model = this.editor.model();
+        Font font = font();
+        int pages = model.pages();
+        List<Component> labels = new ArrayList<>();
+        int natural = 0;
+        for (int p = 0; p < pages; p++) {
+            Component label = tabLabel(model.kind(), model.pageKind(p));
+            labels.add(label);
+            natural += font.width(label) + TAB_TEXT_PAD;
+        }
+        int room = inner - (pages - 1) * TAB_GAP;
+        int left = x;
+        for (int p = 0; p < pages; p++) {
+            int want = font.width(labels.get(p)) + TAB_TEXT_PAD;
+            int width = natural <= room ? want : Math.max(TAB_MIN, want * room / natural);
+            width = Math.min(width, x + inner - left);
+            int target = p;
+            FlatButton tab = new FlatButton(left, y, width, TAB_HEIGHT, labels.get(p), FlatButton.Style.TAB, () -> this.editor.model().page() == target,
+                    () -> this.editor.showPage(target));
+            if (this.interactive) {
+                tab.setTooltip(Tooltip.create(Component.translatable("propwash.race.edit.tab.tooltip")));
+            }
+            this.widgets.add(tab);
+            left += width + TAB_GAP;
         }
     }
 
@@ -448,11 +669,48 @@ final class GateEditPanel {
 
     private void row(GateEditModel.Row row, int x, int y, int inner) {
         GateEditModel model = this.editor.model();
-        Component label = Component.translatable("propwash.race.edit." + this.rowKey(row));
+        Component label = Component.translatable(labelKey(model.kind(), row));
         if (row.toggle()) {
-            boolean fallback = row == GateEditModel.Row.SIGNAL ? GateSignal.DEFAULT.enabled() : GateSignal.DEFAULT.raceOnly();
-            ChoiceButton<Boolean> choice = new ChoiceButton<>(x, y, inner, Metrics.CONTROL_HEIGHT, label, LABEL_WIDTH, List.of(true, false),
-                    () -> model.value(row) >= 0.5, v -> this.editor.set(row, v ? 1.0 : 0.0), GateEditPanel::toggleName, () -> fallback);
+            boolean fallback = row == GateEditModel.Row.SIGNAL ? GateSignal.DEFAULT.enabled()
+                    : row == GateEditModel.Row.OPEN_EDGES ? model.startScore().open() : GateSignal.DEFAULT.raceOnly();
+            ChoiceButton<Boolean> choice = new ChoiceButton<>(x, y, inner, Metrics.CONTROL_HEIGHT, label, LABEL_WIDTH,
+                    row == GateEditModel.Row.OPEN_EDGES ? List.of(false, true) : List.of(true, false),
+                    () -> model.value(row) >= 0.5, v -> this.editor.set(row, v ? 1.0 : 0.0),
+                    row == GateEditModel.Row.OPEN_EDGES ? GateEditPanel::edgesName : GateEditPanel::toggleName, () -> fallback);
+            this.add(choice, row);
+            this.slots.add(new Slot(row, y, choice, null, null));
+            return;
+        }
+        if (row == GateEditModel.Row.SCORE_ROLE || row == GateEditModel.Row.SCORE_SIDE || row == GateEditModel.Row.NUDGE_STEP) {
+            List<Double> values = new ArrayList<>();
+            double fallback;
+            if (row == GateEditModel.Row.SCORE_ROLE) {
+                for (ScoreArea.Role role : model.roles()) {
+                    values.add((double) role.ordinal());
+                }
+                fallback = model.startScore().role().ordinal();
+            } else if (row == GateEditModel.Row.SCORE_SIDE) {
+                values.add((double) CourseElement.LEFT);
+                values.add((double) CourseElement.RIGHT);
+                fallback = model.startScore().side();
+            } else {
+                values.addAll(GateEditModel.NUDGE_STEPS);
+                fallback = GateEditModel.DEFAULT_NUDGE_STEP;
+            }
+            ChoiceButton<Double> choice = new ChoiceButton<>(x, y, inner, Metrics.CONTROL_HEIGHT, label, LABEL_WIDTH, values,
+                    () -> model.value(row), v -> this.editor.set(row, v), v -> this.choiceName(row, v), () -> fallback);
+            this.add(choice, row);
+            this.slots.add(new Slot(row, y, choice, null, null));
+            return;
+        }
+        if (row == GateEditModel.Row.HEADING && model.quarterTurns()) {
+            List<Double> turns = new ArrayList<>();
+            for (int quarter = 0; quarter < 4; quarter++) {
+                turns.add((double) (quarter * GateEditModel.QUARTER_TURN));
+            }
+            double start = model.heading();
+            ChoiceButton<Double> choice = new ChoiceButton<>(x, y, inner, Metrics.CONTROL_HEIGHT, label, LABEL_WIDTH, turns, () -> model.value(row),
+                    v -> this.editor.set(row, v), v -> Component.literal(degreesText(v)), () -> start);
             this.add(choice, row);
             this.slots.add(new Slot(row, y, choice, null, null));
             return;
@@ -516,6 +774,25 @@ final class GateEditPanel {
                 step = 1.0;
                 fallback = () -> GateSignal.DEFAULT_PULSE;
             }
+            case SCORE_REACH -> {
+                min = ScoreArea.MIN_REACH;
+                max = ScoreArea.MAX_REACH;
+                step = ScoreArea.STEP;
+                fallback = () -> ScoreArea.DEFAULT_REACH;
+            }
+            case SCORE_BELOW, SCORE_ABOVE -> {
+                min = 0.0;
+                max = ScoreArea.MAX_EXTENT;
+                step = ScoreArea.STEP;
+                double start = row == GateEditModel.Row.SCORE_BELOW ? ScoreArea.DEFAULT_BELOW : ScoreArea.DEFAULT_ABOVE;
+                fallback = () -> start;
+            }
+            case MOVE_X, MOVE_Y, MOVE_Z -> {
+                min = -GateMounting.MAX_NUDGE;
+                max = GateMounting.MAX_NUDGE;
+                step = GateEditModel.FINE_NUDGE;
+                fallback = () -> 0.0;
+            }
             default -> {
                 min = GateSize.MIN_OPENING;
                 max = GateSize.MAX_OPENING;
@@ -523,25 +800,33 @@ final class GateEditPanel {
                 fallback = gate::standardOpeningHeight;
             }
         }
+        boolean moveRow = row.move();
         if (row.angle()) {
             buttonStep = GateMountKeys.step();
             format = GateEditPanel::degreesText;
         } else if (row == GateEditModel.Row.PULSE) {
             buttonStep = GateEditModel.PULSE_STEP;
             format = GateEditPanel::pulseText;
+        } else if (moveRow) {
+            buttonStep = (float) model.nudgeStep();
+            format = GateMounting::signedBlocks;
+        } else if (row.score()) {
+            buttonStep = (float) ScoreArea.STEP;
+            format = GateEditPanel::blocksText;
         } else {
             buttonStep = (float) GateSize.OPENING_STEP;
             format = GateEditPanel::blocksText;
         }
         int sliderWidth = inner - 2 * (STEP_BUTTON + 2);
         FlatButton minus = new FlatButton(x, y, STEP_BUTTON, Metrics.CONTROL_HEIGHT, Component.literal("−"), FlatButton.Style.NORMAL,
-                () -> this.editor.set(row, model.value(row) - buttonStep));
+                moveRow ? () -> this.editor.change(row, -1) : () -> this.editor.set(row, model.value(row) - buttonStep));
         ValueSlider slider = new ValueSlider(x + STEP_BUTTON + 2, y, sliderWidth, Metrics.CONTROL_HEIGHT, label, LABEL_WIDTH, min, max, step,
                 () -> model.value(row), v -> this.editor.set(row, v), fallback, format);
         FlatButton plus = new FlatButton(x + STEP_BUTTON + 4 + sliderWidth, y, STEP_BUTTON, Metrics.CONTROL_HEIGHT, Component.literal("+"),
-                FlatButton.Style.NORMAL, () -> this.editor.set(row, model.value(row) + buttonStep));
+                FlatButton.Style.NORMAL, moveRow ? () -> this.editor.change(row, 1) : () -> this.editor.set(row, model.value(row) + buttonStep));
         if (this.interactive) {
-            Component stepHint = Component.translatable("propwash.race.edit.step", format.apply(buttonStep));
+            Component stepHint = moveRow ? Component.translatable("propwash.race.nudge.step.hint", stepText(model.nudgeStep()))
+                    : Component.translatable("propwash.race.edit.step", format.apply(buttonStep));
             minus.setTooltip(Tooltip.create(stepHint));
             plus.setTooltip(Tooltip.create(stepHint));
         }
@@ -588,11 +873,21 @@ final class GateEditPanel {
                     this.editor::rescan);
             first.setTooltip(Tooltip.create(Component.translatable("propwash.race.freeform.edit.rescan.tooltip")));
         } else {
-            boolean signalPage = this.laidPage == 1;
-            first = new FlatButton(x, y, half, BUTTON, Component.translatable("propwash.race.edit.reset"), FlatButton.Style.NORMAL,
-                    signalPage ? this.editor::resetSignal : this.editor::reset);
-            first.setTooltip(Tooltip.create(Component.translatable(signalPage ? "propwash.race.edit.reset.signal.tooltip"
-                    : "propwash.race.edit.reset.tooltip")));
+            GateEditModel.Page shown = this.editor.model().pageKind(this.laidPage);
+            Runnable action = switch (shown) {
+                case SIGNAL -> this.editor::resetSignal;
+                case SCORE -> this.editor::resetScore;
+                case POSITION -> this.editor::resetOffset;
+                case POSE -> this.editor::reset;
+            };
+            String tooltip = switch (shown) {
+                case SIGNAL -> "propwash.race.edit.reset.signal.tooltip";
+                case SCORE -> "propwash.race.score.reset.tooltip";
+                case POSITION -> "propwash.race.nudge.reset.tooltip";
+                case POSE -> "propwash.race.edit.reset.tooltip";
+            };
+            first = new FlatButton(x, y, half, BUTTON, Component.translatable("propwash.race.edit.reset"), FlatButton.Style.NORMAL, action);
+            first.setTooltip(Tooltip.create(Component.translatable(tooltip)));
         }
         this.widgets.add(first);
         this.apply = new FlatButton(x + half + 4, y, inner - half - 4, BUTTON, Component.translatable("propwash.race.edit.apply"),
@@ -657,13 +952,11 @@ final class GateEditPanel {
                 y += Metrics.LINE_HEIGHT;
             }
         }
+        if (this.tabY >= 0) {
+            ThemeDraw.separator(g, x, right - Metrics.PADDING, this.tabY + TAB_HEIGHT);
+        }
         for (Title title : this.titles) {
-            boolean marker = title.first() && this.pageWidth > 0;
-            ThemeDraw.sectionTitle(g, font, title.text(), x, title.y(), marker ? inner() - this.pageWidth - PAGE_GAP : inner());
-            if (marker && !this.interactive) {
-                Component label = this.pageLabel(this.laidPage);
-                ThemeText.text(g, font, label, x + inner() - font.width(label), title.y(), Palette.TEXT_FAINT);
-            }
+            ThemeDraw.sectionTitle(g, font, title.text(), x, title.y(), inner());
         }
         GateEditModel.Row selected = this.editor.model().selected();
         for (Slot slot : this.slots) {
@@ -712,10 +1005,11 @@ final class GateEditPanel {
     void foreground(GuiGraphicsExtractor g) {
         Font font = font();
         int x = this.left + Metrics.PADDING;
-        if (this.signalInfoLines > 0) {
-            List<FormattedCharSequence> lines = font.split(this.signalInfo(), inner());
+        Component pageInfo = this.pageInfoLines > 0 ? this.pageInfo(this.editor.model().rows(this.laidPage)) : null;
+        if (pageInfo != null) {
+            List<FormattedCharSequence> lines = font.split(pageInfo, inner());
             for (int i = 0; i < lines.size(); i++) {
-                ThemeText.text(g, font, lines.get(i), x, this.signalInfoY + i * Metrics.LINE_HEIGHT, Palette.TEXT_MUTED);
+                ThemeText.text(g, font, lines.get(i), x, this.pageInfoY + i * Metrics.LINE_HEIGHT, Palette.TEXT_MUTED);
             }
         }
         int y = this.statusY;
@@ -740,10 +1034,18 @@ final class GateEditPanel {
         }
     }
 
-    void extractHud(GuiGraphicsExtractor g, float partialTick) {
-        if (this.stale(g.guiWidth(), g.guiHeight())) {
-            this.layout(g.guiWidth(), g.guiHeight());
+    void prepare(int width, int height) {
+        if (this.stale(width, height)) {
+            this.layout(width, height);
         }
+    }
+
+    void extractHud(GuiGraphicsExtractor g, float partialTick) {
+        this.extractHud(g, partialTick, null);
+    }
+
+    boolean extractHud(GuiGraphicsExtractor g, float partialTick, int @Nullable [] keepClear) {
+        this.prepare(g.guiWidth(), g.guiHeight());
         this.background(g);
         GateEditModel.Row selected = this.editor.model().selected();
         for (Slot slot : this.slots) {
@@ -753,5 +1055,62 @@ final class GateEditPanel {
             widget.extractRenderState(g, OFF_SCREEN, OFF_SCREEN, partialTick);
         }
         this.foreground(g);
+        return this.rowTip(g, selected, keepClear);
+    }
+
+    static long rowTipMillis(int characters) {
+        return Math.min(ROW_TIP_MAX_MS, ROW_TIP_BASE_MS + ROW_TIP_PER_CHAR_MS * Math.max(0, characters));
+    }
+
+    static int rowTipTop(int rowY, int high, int floor) {
+        int lowest = floor - high;
+        return lowest < SCREEN_MARGIN ? NO_ROOM : Math.clamp(rowY - 1, SCREEN_MARGIN, lowest);
+    }
+
+    private boolean rowTip(GuiGraphicsExtractor g, GateEditModel.Row row, int @Nullable [] keepClear) {
+        long now = Util.getMillis();
+        if (row != this.tipRow) {
+            this.tipRow = row;
+            this.tipSince = now;
+        }
+        Slot slot = null;
+        for (Slot each : this.slots) {
+            if (each.row() == row) {
+                slot = each;
+            }
+        }
+        if (slot == null) {
+            return true;
+        }
+        Component text = this.rowTooltip(row);
+        if (now - this.tipSince > rowTipMillis(text.getString().length())) {
+            return true;
+        }
+        Font font = font();
+        int room = Math.min(ROW_TIP_MAX, this.left - ROW_TIP_GAP - SCREEN_MARGIN) - 2 * ROW_TIP_PAD;
+        if (room < ROW_TIP_MIN) {
+            return true;
+        }
+        List<FormattedCharSequence> lines = font.split(text, room);
+        int wide = 0;
+        for (FormattedCharSequence line : lines) {
+            wide = Math.max(wide, font.width(line));
+        }
+        int x1 = this.left - ROW_TIP_GAP;
+        int x0 = x1 - wide - 2 * ROW_TIP_PAD;
+        int high = lines.size() * Metrics.LINE_HEIGHT + 2 * ROW_TIP_PAD - 2;
+        boolean overlaps = keepClear != null && x0 < keepClear[2] && keepClear[0] < x1;
+        int y0 = overlaps ? rowTipTop(slot.y(), high, Math.min(g.guiHeight() - SCREEN_MARGIN, keepClear[1] - ROW_TIP_GAP)) : NO_ROOM;
+        boolean clear = !overlaps || y0 != NO_ROOM;
+        if (y0 == NO_ROOM) {
+            y0 = Math.clamp(slot.y() - 1, SCREEN_MARGIN, Math.max(SCREEN_MARGIN, g.guiHeight() - SCREEN_MARGIN - high));
+        }
+        ThemeDraw.tooltipFrame(g, x0, y0, x1, y0 + high);
+        int y = y0 + ROW_TIP_PAD;
+        for (FormattedCharSequence line : lines) {
+            ThemeText.text(g, font, line, x0 + ROW_TIP_PAD, y, Palette.TEXT);
+            y += Metrics.LINE_HEIGHT;
+        }
+        return clear;
     }
 }

@@ -15,6 +15,7 @@ import de.lardtom.propwash.parts.PartsHandshake;
 import de.lardtom.propwash.parts.PartsModule;
 import de.lardtom.propwash.registry.PropwashRegistries;
 import de.lardtom.propwash.registry.RegList;
+import de.lardtom.propwash.server.AddonWorldRules;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
@@ -47,6 +48,7 @@ public final class PropwashFabric implements ModInitializer {
         flushRegistries();
         AddonItems.INSTANCE.flush((key, item) -> Registry.register(BuiltInRegistries.ITEM, key, item), true);
         ExtensionTabs.INSTANCE.flush((key, tab) -> Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, key, tab), true);
+        AddonWorldRules.flush((key, rule) -> Registry.register(BuiltInRegistries.GAME_RULE, key, rule), true);
         registerPayloads();
         registerServerEvents();
         FabricChestLoot.register();

@@ -29,11 +29,15 @@ public final class GatePoleLinks {
         return new AABB(x - SEARCH, y - SEARCH, z - SEARCH, x + SEARCH, y + SEARCH, z + SEARCH);
     }
 
+    public static boolean rides(CourseElement kind) {
+        return GatePoles.seatable(kind);
+    }
+
     public static @Nullable GateEntity riderOn(Level level, GatePoles.Seat seat) {
         for (GateEntity other : level.getEntitiesOfClass(GateEntity.class, around(seat.x(), seat.y(), seat.z()),
-                gate -> !gate.isRemoved() && gate.kind() == CourseElement.GATE_POLE)) {
+                gate -> !gate.isRemoved() && rides(gate.kind()))) {
             GateGeometry geometry = other.geometry();
-            if (GatePoles.standing(geometry) && GatePoles.on(geometry, seat)) {
+            if (GatePoles.seated(geometry) && GatePoles.on(geometry, seat)) {
                 return other;
             }
         }
@@ -57,7 +61,7 @@ public final class GatePoleLinks {
 
     public static @Nullable GateEntity support(GateEntity pole) {
         GateGeometry own = pole.geometry();
-        if (!GatePoles.standing(own)) {
+        if (!GatePoles.seated(own)) {
             return null;
         }
         for (GateEntity other : pole.level().getEntitiesOfClass(GateEntity.class, around(own.x(), own.y(), own.z()),
@@ -111,7 +115,7 @@ public final class GatePoleLinks {
             int chain = chainBelow(top);
             return new Target(seats.getFirst(), chain, GatePoles.check(chain));
         }
-        if (!clicked.kind().gate()) {
+        if (!clicked.kind().gate() && clicked.kind() != CourseElement.CUBE) {
             return null;
         }
         GateEntity gate = clicked.stackable() ? clicked.stack().getLast() : clicked;

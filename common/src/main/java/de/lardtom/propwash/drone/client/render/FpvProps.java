@@ -11,6 +11,7 @@ import de.lardtom.propwash.compat.iris.client.IrisCompat;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.drone.operator.client.GimbalProps;
 import de.lardtom.propwash.video.client.SpectateSession;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -24,6 +25,7 @@ import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +50,7 @@ public final class FpvProps {
     private static final int BLUR_RIM_ALPHA = 0x1C;
     private static volatile int maskRgb = -1;
     private static volatile int guardMaskRgb = -1;
+    private static volatile int armMaskRgb = -1;
     private static int generation = Integer.MIN_VALUE;
     private static boolean warned;
     static int framesDrawn;
@@ -55,6 +58,8 @@ public final class FpvProps {
     static int blursDrawn;
     static int guardFrames;
     static int guardQuadsSubmitted;
+    static int armFrames;
+    static int armQuadsSubmitted;
     static int shadowPassCalls;
 
     private FpvProps() {
@@ -74,7 +79,8 @@ public final class FpvProps {
     }
 
     public static boolean extractsCameraDrone(Entity entity) {
-        return entity instanceof QuadcopterEntity drone && enabled() && QuadcopterRenderer.isOwnFpvDrone(drone);
+        return entity instanceof QuadcopterEntity drone && QuadcopterRenderer.isOwnFpvDrone(drone)
+                && (enabled() || AccessoryDisplayState.shownInOwnFpv(drone));
     }
 
     public static float cameraTilt(QuadcopterEntity drone) {
@@ -120,7 +126,32 @@ public final class FpvProps {
             hubs[slot] = assembly.prop(slot).position();
         }
         FpvGuardMesh guards = ducts ? FpvGuards.mesh(assembly.frame(), build.frame()) : FpvGuardMesh.EMPTY;
-        return new FpvPropGeometry(hubs, build.prop().diameterMm * 0.5F, lens(build), tiltDegrees, guards.points());
+        FpvGuardMesh arms = FpvGuards.arms(assembly.frame(), build.frame());
+        boolean[] attached = FpvGuards.armZone(build.frame(), res.layout(build.frame())).attached(arms.points());
+        return new FpvPropGeometry(hubs, build.prop().diameterMm * 0.5F, lens(build), tiltDegrees, guards.points(), armQuads(arms, assembly), attached);
+    }
+
+    private static float[] armQuads(FpvGuardMesh arms, DroneAssembly assembly) {
+        FpvGuardMesh[] motors = new FpvGuardMesh[DroneLayout.SLOTS];
+        int total = arms.points().length;
+        for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
+            motors[slot] = FpvGuards.part(assembly.motor(slot));
+            total += motors[slot].points().length;
+        }
+        float[] quads = new float[total];
+        int at = arms.points().length;
+        System.arraycopy(arms.points(), 0, quads, 0, at);
+        for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
+            float[] points = motors[slot].points();
+            Vector3fc position = assembly.motor(slot).position();
+            for (int i = 0; i + 2 < points.length; i += 3) {
+                quads[at + i] = points[i] + position.x();
+                quads[at + i + 1] = points[i + 1] + position.y();
+                quads[at + i + 2] = points[i + 2] + position.z();
+            }
+            at += points.length;
+        }
+        return quads;
     }
 
     public static synchronized Vector3fc lens(DroneBuild build) {
@@ -140,12 +171,19 @@ public final class FpvProps {
     }
 
     public static boolean prepare(DroneRenderState state, QuadcopterEntity drone) {
-        return prepare(state, enabled() ? cameraTilt(drone) : Float.NaN);
+        float tilt = enabled() ? cameraTilt(drone) : Float.NaN;
+        return prepare(state, Float.isFinite(tilt) && GimbalProps.shown(drone, tilt) ? tilt : Float.NaN);
+    }
+
+    public static void clearArms(DroneRenderState state) {
+        state.fpvArms = FpvGuardMesh.EMPTY;
+        Arrays.fill(state.fpvMotors, FpvGuardMesh.EMPTY);
     }
 
     static boolean prepare(DroneRenderState state, float tiltDegrees) {
         state.fpvGeometry = null;
         state.fpvGuards = FpvGuardMesh.EMPTY;
+        clearArms(state);
         if (!enabled()) {
             return false;
         }
@@ -154,10 +192,17 @@ public final class FpvProps {
             if (state.fpvGeometry != null && ductsEnabled()) {
                 state.fpvGuards = FpvGuards.mesh(state.frame, state.build.frame());
             }
+            if (state.fpvGeometry != null && propsEnabled()) {
+                state.fpvArms = FpvGuards.arms(state.frame, state.build.frame());
+                for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
+                    state.fpvMotors[slot] = FpvGuards.part(state.motors[slot]);
+                }
+            }
         } catch (RuntimeException e) {
             warn(e);
             state.fpvGeometry = null;
             state.fpvGuards = FpvGuardMesh.EMPTY;
+            clearArms(state);
         }
         return state.fpvGeometry != null;
     }
@@ -188,12 +233,14 @@ public final class FpvProps {
             boolean guardMask = guardMaskRgb >= 0;
             boolean props = false;
             boolean showProps = maskRgb >= 0 || propsEnabled();
-            for (int slot = 0; slot < DroneLayout.SLOTS && !props && !guardMask && showProps; slot++) {
-                props = geometry.visible(slot, tanX, tanY);
+            boolean armMask = armMaskRgb >= 0;
+            for (int slot = 0; slot < DroneLayout.SLOTS && !props && !guardMask && !armMask && showProps; slot++) {
+                props = shows(geometry, slot, tanX, tanY);
             }
-            FpvGuardMesh guards = maskRgb >= 0 ? FpvGuardMesh.EMPTY : state.fpvGuards;
+            FpvGuardMesh guards = maskRgb >= 0 || armMask ? FpvGuardMesh.EMPTY : state.fpvGuards;
             boolean showGuards = !guards.isEmpty() && geometry.guardsVisible(tanX, tanY);
-            if (!props && !showGuards) {
+            boolean showArms = maskRgb < 0 && !guardMask && (armMask || propsEnabled()) && hasArms(state) && geometry.armsVisible(tanX, tanY);
+            if (!props && !showGuards && !showArms) {
                 return;
             }
             ps.pushPose();
@@ -203,6 +250,9 @@ public final class FpvProps {
                     ps.translate((float) (camera.pos.x - state.x), (float) (camera.pos.y - state.y), (float) (camera.pos.z - state.z));
                 }
                 ps.rotate(camera.orientation);
+                if (showArms) {
+                    submitArms(state, ps, collector, geometry);
+                }
                 if (showGuards) {
                     submitGuards(state, ps, collector, geometry, guards);
                 }
@@ -216,20 +266,27 @@ public final class FpvProps {
                     Vector3fc lens = geometry.lensMm();
                     ps.translate(-lens.x() * MM_TO_UNITS, -lens.y() * MM_TO_UNITS, -lens.z() * MM_TO_UNITS);
                     for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
-                        if (drawsDisc(state, slot) || !geometry.visible(slot, tanX, tanY)) {
+                        if (maskRgb >= 0 || !shows(geometry, slot, tanX, tanY)) {
                             continue;
                         }
                         DroneRenderState.PartSlot prop = state.props[slot];
+                        boolean spinning = state.propBlur[slot];
                         ps.pushPose();
                         try {
                             Vector3fc hub = prop.position;
                             ps.translate(hub.x() * MM_TO_UNITS, hub.y() * MM_TO_UNITS, hub.z() * MM_TO_UNITS);
                             ps.rotate(Axis.YP, state.rotorAngle[slot]);
-                            DroneVisuals.submitPart(prop, ps, collector, state.lightCoords, 0);
+                            if (spinning) {
+                                DroneVisuals.submitCenter(prop, ps, collector, state.lightCoords);
+                            } else {
+                                DroneVisuals.submitPart(prop, ps, collector, state.lightCoords, 0);
+                            }
                         } finally {
                             ps.popPose();
                         }
-                        drawn++;
+                        if (!spinning) {
+                            drawn++;
+                        }
                     }
                 }
             } finally {
@@ -242,26 +299,66 @@ public final class FpvProps {
         }
     }
 
-    private static void submitGuards(DroneRenderState state, PoseStack ps, SubmitNodeCollector collector, FpvPropGeometry geometry, FpvGuardMesh guards) {
+    private static boolean shows(FpvPropGeometry geometry, int slot, float tanX, float tanY) {
+        return (maskRgb >= 0 || geometry.attached(slot)) && geometry.visible(slot, tanX, tanY);
+    }
+
+    private static boolean hasArms(DroneRenderState state) {
+        if (!state.fpvArms.isEmpty()) {
+            return true;
+        }
+        for (FpvGuardMesh motor : state.fpvMotors) {
+            if (!motor.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void submitArms(DroneRenderState state, PoseStack ps, SubmitNodeCollector collector, FpvPropGeometry geometry) {
         ps.pushPose();
         try {
             ps.rotateDegrees(Axis.XP, -geometry.tiltDegrees());
             float unit = DroneVisualScale.MODEL_UNIT_SCALE;
             ps.scale(unit, unit, unit);
             Vector3fc lens = geometry.lensMm();
-            float tilt = geometry.tiltDegrees();
-            float near = geometry.nearScale();
-            int key = guardMaskRgb;
-            int light = key >= 0 ? LightCoordsUtil.FULL_BRIGHT : state.lightCoords;
-            for (FpvGuardMesh.Batch batch : guards.batches()) {
-                RenderType type = key >= 0 ? DroneVisuals.solidType() : batch.type();
-                collector.submitCustomGeometry(ps, type, (pose, buffer) -> emitGuards(batch, pose, buffer, lens, tilt, near, light, key));
-                guardQuadsSubmitted += batch.quads();
+            int key = armMaskRgb;
+            armQuadsSubmitted += submitMesh(state, ps, collector, geometry, state.fpvArms, lens, key);
+            for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
+                if (geometry.attached(slot)) {
+                    Vector3fc atMotor = new Vector3f(lens).sub(state.motors[slot].position);
+                    armQuadsSubmitted += submitMesh(state, ps, collector, geometry, state.fpvMotors[slot], atMotor, key);
+                }
             }
+            armFrames++;
+        } finally {
+            ps.popPose();
+        }
+    }
+
+    private static void submitGuards(DroneRenderState state, PoseStack ps, SubmitNodeCollector collector, FpvPropGeometry geometry, FpvGuardMesh guards) {
+        ps.pushPose();
+        try {
+            ps.rotateDegrees(Axis.XP, -geometry.tiltDegrees());
+            float unit = DroneVisualScale.MODEL_UNIT_SCALE;
+            ps.scale(unit, unit, unit);
+            guardQuadsSubmitted += submitMesh(state, ps, collector, geometry, guards, geometry.lensMm(), guardMaskRgb);
             guardFrames++;
         } finally {
             ps.popPose();
         }
+    }
+
+    private static int submitMesh(DroneRenderState state, PoseStack ps, SubmitNodeCollector collector, FpvPropGeometry geometry, FpvGuardMesh mesh,
+                                  Vector3fc lens, int key) {
+        float tilt = geometry.tiltDegrees();
+        float near = geometry.nearScale();
+        int light = key >= 0 ? LightCoordsUtil.FULL_BRIGHT : state.lightCoords;
+        for (FpvGuardMesh.Batch batch : mesh.batches()) {
+            RenderType type = key >= 0 ? DroneVisuals.solidType() : batch.type();
+            collector.submitCustomGeometry(ps, type, (pose, buffer) -> emitGuards(batch, pose, buffer, lens, tilt, near, light, key));
+        }
+        return mesh.quads();
     }
 
     static void emitGuards(FpvGuardMesh.Batch batch, PoseStack.Pose pose, VertexConsumer buffer, Vector3fc lensMm, float tiltDegrees, float nearScale,
@@ -335,7 +432,7 @@ public final class FpvProps {
             float tilt = geometry.tiltDegrees();
             float near = geometry.nearScale();
             for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
-                if (!drawsDisc(state, slot) || !geometry.visible(slot, tanX, tanY)) {
+                if (!drawsDisc(state, slot) || !shows(geometry, slot, tanX, tanY)) {
                     continue;
                 }
                 int mask = maskRgb;
@@ -439,6 +536,14 @@ public final class FpvProps {
         return guardMaskRgb;
     }
 
+    public static void armMaskColor(int rgb) {
+        armMaskRgb = rgb < 0 ? -1 : rgb & 0xFFFFFF;
+    }
+
+    public static int armMaskColor() {
+        return armMaskRgb;
+    }
+
     static synchronized Shape mask(PropType prop, int rgb) {
         return shape(prop, rgb, true);
     }
@@ -515,6 +620,14 @@ public final class FpvProps {
 
     public static int guardQuadsSubmitted() {
         return guardQuadsSubmitted;
+    }
+
+    public static int armFrames() {
+        return armFrames;
+    }
+
+    public static int armQuadsSubmitted() {
+        return armQuadsSubmitted;
     }
 
     private static void warn(RuntimeException e) {

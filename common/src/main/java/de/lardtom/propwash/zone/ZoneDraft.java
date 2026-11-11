@@ -28,10 +28,15 @@ public final class ZoneDraft {
         PRIORITY,
         RACE_LEGAL,
         TRANSITION,
-        RULE;
+        RULE,
+        LOCKED;
 
         public boolean geometry() {
             return this.ordinal() <= DEPTH.ordinal();
+        }
+
+        public boolean rule() {
+            return this == RULE || this == LOCKED;
         }
     }
 
@@ -48,11 +53,25 @@ public final class ZoneDraft {
     private final Zone original;
     private Zone zone;
     private Row selected;
+    private ZoneRelease release;
 
     public ZoneDraft(Zone zone) {
+        this(zone, ZoneRelease.DEFAULT);
+    }
+
+    public ZoneDraft(Zone zone, ZoneRelease release) {
         this.original = zone;
         this.zone = zone;
+        this.release = release;
         this.selected = this.rows().getFirst();
+    }
+
+    public ZoneRelease release() {
+        return this.release;
+    }
+
+    public void release(ZoneRelease value) {
+        this.release = value;
     }
 
     public static Zone fresh(String dimension, String name, double x, double y, double z) {
@@ -93,7 +112,14 @@ public final class ZoneDraft {
         out.add(Row.of(Kind.RACE_LEGAL));
         out.add(Row.of(Kind.TRANSITION));
         for (RuleSpec spec : PhysicsRules.SPECS) {
-            out.add(new Row(Kind.RULE, spec));
+            if (this.release.released(spec)) {
+                out.add(new Row(Kind.RULE, spec));
+            }
+        }
+        for (RuleSpec spec : PhysicsRules.SPECS) {
+            if (!this.release.released(spec) && this.zone.sets(spec)) {
+                out.add(new Row(Kind.LOCKED, spec));
+            }
         }
         return out;
     }
@@ -131,6 +157,10 @@ public final class ZoneDraft {
     }
 
     public void change(Row row, int notches, boolean fine, PhysicsRules world) {
+        this.change(row, notches, fine, world, world);
+    }
+
+    public void change(Row row, int notches, boolean fine, PhysicsRules world, PhysicsRules below) {
         if (notches == 0) {
             return;
         }
@@ -150,7 +180,8 @@ public final class ZoneDraft {
             case PRIORITY -> this.zone.withPriority(this.zone.priority() + notches);
             case RACE_LEGAL -> this.zone.withRaceLegal(!this.zone.raceLegal());
             case TRANSITION -> this.zone.withTransition(this.zone.transitionTenths() + notches);
-            case RULE -> rule(this.zone, row.spec(), notches, fine, world);
+            case RULE -> row.spec() != null && this.release.released(row.spec()) ? rule(this.zone, row.spec(), notches, fine, world, below) : this.zone;
+            case LOCKED -> this.zone;
         };
     }
 
@@ -159,18 +190,35 @@ public final class ZoneDraft {
     }
 
     static Zone rule(Zone zone, @Nullable RuleSpec spec, int notches, boolean fine, PhysicsRules world) {
+        return rule(zone, spec, notches, fine, world, world);
+    }
+
+    static Zone rule(Zone zone, @Nullable RuleSpec spec, int notches, boolean fine, PhysicsRules world, PhysicsRules below) {
         if (spec == null) {
             return zone;
         }
+        ZoneRuleMode mode = zone.mode(spec);
         if (spec.kind() == RuleSpec.Kind.BOOL) {
-            int state = zone.overrides(spec) ? 1 + (zone.value(spec, 0) != 0 ? 0 : 1) : 0;
-            int next = Math.floorMod(state + notches, 3);
-            return next == 0 ? zone.without(spec) : zone.withOverride(spec, next == 1 ? 1 : 0);
+            int state = switch (mode) {
+                case BELOW -> 0;
+                case OWN -> zone.value(spec, 0) != 0 ? 1 : 2;
+                case WORLD -> 3;
+            };
+            return switch (Math.floorMod(state + notches, 4)) {
+                case 1 -> zone.withOverride(spec, 1);
+                case 2 -> zone.withOverride(spec, 0);
+                case 3 -> zone.withWorld(spec);
+                default -> zone.without(spec);
+            };
         }
         int step = spec.display() == RuleSpec.Display.PERCENT && !fine ? Math.max(spec.step(), COARSE_PERCENT) : spec.step();
-        int current = zone.overrides(spec) ? zone.value(spec, spec.defaultValue()) : world.value(spec);
+        int current = switch (mode) {
+            case OWN -> zone.value(spec, spec.defaultValue());
+            case WORLD -> world.value(spec);
+            case BELOW -> below.value(spec);
+        };
         int next = spec.clamp(current + step * notches);
-        if (!zone.overrides(spec) && next == current) {
+        if (mode != ZoneRuleMode.OWN && next == current) {
             next = spec.clamp(current - step * notches);
         }
         return zone.withOverride(spec, next);
@@ -179,7 +227,9 @@ public final class ZoneDraft {
     public void reset(Row row) {
         this.select(row);
         if (row.kind() == Kind.RULE && row.spec() != null) {
-            this.zone = this.zone.without(row.spec());
+            if (this.release.released(row.spec())) {
+                this.zone = this.zone.mode(row.spec()) == ZoneRuleMode.BELOW ? this.zone.withWorld(row.spec()) : this.zone.without(row.spec());
+            }
         } else if (row.kind() == Kind.PRIORITY) {
             this.zone = this.zone.withPriority(0);
         } else if (row.kind() == Kind.TRANSITION) {

@@ -24,9 +24,10 @@ Der Tab erscheint nur bei Kreativ-Drohnen.
   einem Viertel des automatischen Werts“, „Schneller als die Server-Grenze von 540 km/h“, dazu die Hinweise der Werkbank.
 - **Vorlagen und Teilen**: Startwerte laden aus den eingebauten Teilen, jedem Preset (Whoop bis Long Range), Presets von
   Add-ons oder eigenen Vorlagen. „Merken“ speichert die aktuellen Werte unter einem Namen auf deinem Rechner
-  (`config/propwash/creative_templates.json`), „Löschen“ entfernt eine eigene Vorlage. „Teilen-Code kopieren“ legt alle
-  Werte als kurzen Code (`PWD1-…`) in die Zwischenablage, „Code einfügen“ liest ihn wieder ein – zum Teilen im Chat
-  oder auf Discord.
+  (`config/propwash/creative_templates.json`), „Löschen“ entfernt eine eigene Vorlage. „Teilen-Code kopieren“ legt die Drohne
+  samt aller Werte als Sharecode (`PW3-…`, seit 0.6.0; vorher `PWD1-…`) in die Zwischenablage, „Code einfügen“ liest ihn
+  (und alte PWD1-Codes) wieder ein – zum Teilen im Chat oder auf Discord. Im Kreativmodus erzeugt der Tab „Sharecode“
+  aus dem Code die Drohne mit allen Werten (`docs/sharecode-ui.md` §8).
 - **Basis-Teile**: Von diesen Teilen kommen alle Werte, die du nicht selbst änderst, auch Dinge ohne eigenes Feld
   (Zellchemie und ihre Spannungskurve, Rahmenform, Ducts im Detail, Statorgröße und Wärmeverhalten der Motoren).
   „Eingebaut“ nimmt das Teil in der Drohne. Ein Preset als Vorlage setzt genau diese Basis-Teile – die Drohne fliegt
@@ -64,7 +65,7 @@ creative drone. Open the configurator with the drone in your hand or while flyin
 masses and inertia, motor positions, props with thrust and power coefficient, motors (KV, resistance, current), battery
 (cells, capacity, internal resistance, C rating), ESC current, drag areas and coefficient, ducts, impact tolerance and
 the camera (position, uptilt, field of view). Key figures and notes update live. Start from the installed parts, any
-preset or your own templates, keep templates and share them as a `PWD1-…` code. Right-click a value to go back to the
+preset or your own templates, keep templates and share them as a `PW3-…` share code (old `PWD1-…` codes still paste). Right-click a value to go back to the
 base or automatic value. Values are clamped to sane ranges, the physics stays the same. Only editable in creative mode –
 the server checks every change –, read-only in survival, and creative drones do not count for leaderboards.
 
@@ -83,7 +84,8 @@ the server checks every change –, read-only in survival, and creative drones d
   Baupläne sind bytegleich), Item-Komponente `propwash:creative_spec` am Flugcontroller. Netz: der Bauplan-Stream
   schreibt die Werte nur nach einem Kreativ-FC, normale Baupläne sind auf dem Draht bytegleich zu 0.4.0
   (`SaveFormatGoldenTest`, `MissingPartsCodecTest`).
-- Teilen-Code: `PWD1-` + Base64url (ohne Padding) eines Deflate-Stroms (raw) aus Zeilen `base.<art>=<teil>` und
+- Teilen-Code seit 0.6.0: PW3 mit der Ebene Kreativ-Werte (Erweiterung 0, `docs/sharecode/pw3.md` §3.6). Bis 0.5.x und
+  für die eigenen Vorlagen (`creative_templates.json`) weiter: `PWD1-` + Base64url (ohne Padding) eines Deflate-Stroms (raw) aus Zeilen `base.<art>=<teil>` und
   `<schlüssel>=<zahl>`; höchstens 4096 Zeichen Code und 16 KiB Text, unbekannte Schlüssel überlebt der Code und fallen
   erst beim Begrenzen weg (ältere Versionen lesen neuere Codes so weit wie möglich).
 

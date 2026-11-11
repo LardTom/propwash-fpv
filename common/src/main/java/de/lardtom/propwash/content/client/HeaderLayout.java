@@ -21,17 +21,20 @@ public final class HeaderLayout {
             while (total > space) {
                 int pick = -1;
                 int widest = -1;
+                int next = -1;
                 for (int i = 0; i < shown; i++) {
                     int[] options = widths.get(i);
-                    if (variants[i] + 1 < options.length && options[variants[i] + 1] < options[variants[i]] && options[variants[i]] > widest) {
+                    int smaller = smaller(options, variants[i]);
+                    if (smaller >= 0 && options[variants[i]] > widest) {
                         widest = options[variants[i]];
                         pick = i;
+                        next = smaller;
                     }
                 }
                 if (pick < 0) {
                     break;
                 }
-                variants[pick]++;
+                variants[pick] = next;
                 total = total(widths, variants, gap) + (more ? moreWidth + gap : 0);
             }
             if (total <= space) {
@@ -41,6 +44,15 @@ public final class HeaderLayout {
         boolean more = count > 0;
         int width = more ? moreWidth + gap : 0;
         return new Result(0, new int[0], more, width);
+    }
+
+    private static int smaller(int[] options, int current) {
+        for (int next = current + 1; next < options.length; next++) {
+            if (options[next] < options[current]) {
+                return next;
+            }
+        }
+        return -1;
     }
 
     private static int total(List<int[]> widths, int[] variants, int gap) {

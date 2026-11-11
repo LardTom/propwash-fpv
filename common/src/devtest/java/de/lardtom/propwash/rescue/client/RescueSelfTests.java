@@ -50,6 +50,7 @@ public final class RescueSelfTests {
         AutonomousRescueSelfTests.register();
         HomePointSelfTests.register();
         HomeResetSelfTests.register();
+        HomeSpaceSelfTests.register();
     }
 
     private static StepResult tabLayoutStep(SelfTest.StepContext ctx) {

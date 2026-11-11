@@ -1,6 +1,7 @@
 package de.lardtom.propwash.drone.client.render;
 
 import de.lardtom.propwash.build.AccessoryMount;
+import de.lardtom.propwash.build.AntennaRules;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.DronePaint;
 import de.lardtom.propwash.build.PaintChannel;
@@ -113,7 +114,7 @@ public final class PaintPicker {
             nearest = battery;
             front = PaintSlot.BATTERY;
         }
-        float stack = hit(s.stack, origin, direction, 0.0F, 1.0F);
+        float stack = hit(stackSlot(s), origin, direction, 0.0F, 1.0F);
         if (!Float.isNaN(stack) && stack > nearest) {
             nearest = stack;
             front = PaintSlot.STACK;
@@ -123,6 +124,9 @@ public final class PaintPicker {
         }
         if (front != null) {
             return Optional.of(front);
+        }
+        if (bestProp == null && !Float.isNaN(hit(s.antenna, origin, direction, 0.0F, 1.0F))) {
+            return Optional.of(PaintSlot.ANTENNA);
         }
         if (!Float.isNaN(hit(s.frame, origin, direction, 0.0F, 1.0F))) {
             return Optional.of(PaintSlot.FRAME);
@@ -149,9 +153,10 @@ public final class PaintPicker {
                     out.add(center(s.motors[i], 0.0F));
                 }
             }
-            case STACK -> out.add(center(s.stack, 0.0F));
+            case STACK -> out.add(center(stackSlot(s), 0.0F));
             case BATTERY -> out.add(center(s.battery, 0.0F));
-            case CAMERA, ANTENNA -> out.add(center(s.video, s.cameraTiltDegrees));
+            case CAMERA -> out.add(center(s.video, s.cameraTiltDegrees));
+            case ANTENNA -> out.add(s.antenna.useItem || !s.antenna.solid.isEmpty() ? center(s.antenna, 0.0F) : center(s.video, s.cameraTiltDegrees));
             case ACCESSORIES -> {
                 for (int i = 0; i < DroneAssembly.MOUNTS; i++) {
                     if (s.accessoryType[i] != null) {
@@ -172,7 +177,11 @@ public final class PaintPicker {
     public static Map<PaintSlot, Integer> defaults(DroneBuild build) {
         DroneRenderResources res = DroneVisuals.resources();
         Map<PaintSlot, Integer> out = new EnumMap<>(PaintSlot.class);
-        List<DroneAssembly.Part> parts = parts(res.assembly(build));
+        DroneAssembly assembly = res.assembly(build);
+        if (!assembly.antenna().solid().isEmpty()) {
+            out.put(PaintSlot.ANTENNA, AntennaGeometry.capColor(AntennaRules.antenna(build.video().definition())) & 0xFFFFFF);
+        }
+        List<DroneAssembly.Part> parts = parts(assembly);
         for (int index = 0; index < parts.size(); index++) {
             DroneAssembly.Part part = parts.get(index);
             if (part.model() == null) {
@@ -192,7 +201,8 @@ public final class PaintPicker {
     }
 
     private static List<DroneAssembly.Part> parts(DroneAssembly assembly) {
-        List<DroneAssembly.Part> parts = new ArrayList<>(List.of(assembly.frame(), assembly.stack(), assembly.battery(), assembly.video()));
+        List<DroneAssembly.Part> parts = new ArrayList<>(List.of(assembly.frame(), assembly.stack(), assembly.battery(), assembly.video(),
+                assembly.antenna()));
         for (int i = 0; i < DroneLayout.SLOTS; i++) {
             parts.add(assembly.motor(i));
             parts.add(assembly.prop(i));
@@ -210,7 +220,11 @@ public final class PaintPicker {
     public static Set<PaintSlot> available(DroneBuild build) {
         DroneRenderResources res = DroneVisuals.resources();
         Set<PaintChannel> channels = EnumSet.noneOf(PaintChannel.class);
-        List<DroneAssembly.Part> parts = parts(res.assembly(build));
+        DroneAssembly assembly = res.assembly(build);
+        if (!assembly.antenna().solid().isEmpty()) {
+            channels.add(PaintChannel.ANTENNA);
+        }
+        List<DroneAssembly.Part> parts = parts(assembly);
         boolean any = false;
         for (DroneAssembly.Part part : parts) {
             if (part.model() == null) {
@@ -228,6 +242,10 @@ public final class PaintPicker {
             }
         }
         return slots;
+    }
+
+    static DroneRenderState.PartSlot stackSlot(DroneRenderState s) {
+        return s.powerLead.shown(s) ? s.powerLead.stack : s.stack;
     }
 
     private static Vector3f center(DroneRenderState.PartSlot slot, float tiltDegrees) {

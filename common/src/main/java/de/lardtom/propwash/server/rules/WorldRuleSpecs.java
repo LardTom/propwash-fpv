@@ -23,25 +23,35 @@ public final class WorldRuleSpecs {
     public static final RuleSpec CRASH_DAMAGE = add(RuleSpec.bool("crash_damage", true, Group.CRASH));
     public static final RuleSpec CRASH_DAMAGE_SCALE = add(RuleSpec.percent("crash_damage_scale", 100, 25, 300, 5, false, Group.CRASH));
     public static final RuleSpec CRASH_TOLERANCE = add(RuleSpec.percent("crash_tolerance", 100, 50, 400, 5, false, Group.CRASH));
-    public static final RuleSpec CRASH_DISARM = add(RuleSpec.bool("crash_disarm", true, Group.CRASH));
+    public static final RuleSpec CRASH_DISARM = add(RuleSpec.bool("crash_disarm", true, Group.CRASH).neutral());
     public static final RuleSpec PROP_STRIKES = add(RuleSpec.bool("prop_strikes", true, Group.CRASH));
     public static final RuleSpec INFINITE_RANGE_ANALOG = add(RuleSpec.bool("infinite_range_analog", false, Group.VIDEO));
     public static final RuleSpec INFINITE_RANGE_DIGITAL = add(RuleSpec.bool("infinite_range_digital", false, Group.VIDEO));
-    public static final RuleSpec MAX_VIDEO_CHANNELS = add(RuleSpec.number("max_video_channels", 0, 0, 64, true, Group.VIDEO));
-    public static final RuleSpec SIGNAL_REPEATERS = add(RuleSpec.number("signal_repeaters", 4, 0, 4, true, Group.VIDEO));
+    public static final RuleSpec MAX_VIDEO_CHANNELS = add(RuleSpec.number("max_video_channels", 0, 0, 64, true, Group.VIDEO).neutral());
+    public static final RuleSpec SIGNAL_REPEATERS = add(RuleSpec.number("signal_repeaters", 4, 0, 4, true, Group.VIDEO).neutral());
     public static final RuleSpec DRONE_HITS_ENTITIES = add(RuleSpec.bool("drone_hits_entities", true, Group.GAMEPLAY));
     public static final RuleSpec DRONES_BREAK_BLOCKS = add(RuleSpec.bool("drones_break_blocks", false, Group.GAMEPLAY));
     public static final RuleSpec BREAK_IMPACT_SCALE = add(RuleSpec.percent("break_impact_scale", 100, 0, 300, 10, true, Group.GAMEPLAY));
-    public static final RuleSpec ALLOW_3D_MODE = add(RuleSpec.bool("allow_3d_mode", true, Group.GAMEPLAY));
-    public static final RuleSpec PART_COMPATIBILITY = add(RuleSpec.bool("part_compatibility", true, Group.GAMEPLAY));
-    public static final RuleSpec AUTONOMOUS_RESCUE = add(RuleSpec.bool("autonomous_rescue", true, Group.GAMEPLAY));
-    public static final RuleSpec FREEFORM_GATE_MAX_SIZE = add(RuleSpec.number("freeform_gate_max_size", 20, 1, 64, false, Group.GAMEPLAY));
-    public static final RuleSpec DRONES_GENERATE_CHUNKS = add(RuleSpec.bool("drones_generate_chunks", true, Group.GAMEPLAY));
-    public static final RuleSpec SAVE_ASSISTED_LAPS = add(RuleSpec.bool("save_assisted_laps", false, Group.GAMEPLAY));
-    public static final RuleSpec DRONE_TRAILS = add(RuleSpec.bool("drone_trails", false, Group.GAMEPLAY));
-    public static final RuleSpec INVULNERABLE_PILOTS = add(RuleSpec.bool("invulnerable_pilots", false, Group.GAMEPLAY));
+    public static final RuleSpec DRONES_TRIGGER_SCULK = add(RuleSpec.bool("drones_trigger_sculk", true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec DRONES_BOSS_INTERACTIONS = add(RuleSpec.bool("drones_boss_interactions", true, Group.GAMEPLAY));
+    public static final RuleSpec ALLOW_3D_MODE = add(RuleSpec.bool("allow_3d_mode", true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec PART_COMPATIBILITY = add(RuleSpec.bool("part_compatibility", true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec AUTONOMOUS_RESCUE = add(RuleSpec.bool("autonomous_rescue", true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec FREEFORM_GATE_MAX_SIZE = add(RuleSpec.number("freeform_gate_max_size", 20, 1, 64, false, Group.GAMEPLAY).neutral());
+    public static final RuleSpec DRONES_GENERATE_CHUNKS = add(RuleSpec.bool("drones_generate_chunks", true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec SAVE_ASSISTED_LAPS = add(RuleSpec.bool("save_assisted_laps", false, Group.GAMEPLAY).neutral());
+    public static final RuleSpec DRONE_TRAILS = add(RuleSpec.bool("drone_trails", false, Group.GAMEPLAY).neutral());
+    public static final RuleSpec INVULNERABLE_PILOTS = add(RuleSpec.bool("invulnerable_pilots", false, Group.GAMEPLAY).neutral());
     public static final RuleSpec WATERPROOF_DRONES = add(RuleSpec.bool("waterproof_drones", false, Group.GAMEPLAY));
-    public static final RuleSpec ALLOW_RESET = add(RuleSpec.bool("allow_reset", true, Group.GAMEPLAY));
+    public static final RuleSpec ALLOW_RESET = add(RuleSpec.bool("allow_reset", true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec ALLOW_FREECAM = add(RuleSpec.bool("allow_freecam", false, Group.GAMEPLAY).neutral());
+    public static final RuleSpec PLAYERS_CREATE_ZONES = add(RuleSpec.bool("players_create_zones", true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec FREE_COURSE_PLACEMENT = add(RuleSpec.bool("free_course_placement", false, Group.GAMEPLAY).neutral());
+    public static final RuleSpec FOREIGN_GHOSTS = add(RuleSpec.levels("foreign_ghosts", 2, 2, Group.GAMEPLAY).neutral());
+    public static final RuleSpec CAMERA_CHUNKS = add(RuleSpec.number("camera_chunks", 4, 0, 8, true, Group.VIDEO).neutral());
+    public static final RuleSpec AUTONOMOUS_FLIGHTS_PER_PLAYER = add(RuleSpec.number("autonomous_flights_per_player", 1, 0, 8, true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec AUTONOMOUS_FLIGHTS_TOTAL = add(RuleSpec.number("autonomous_flights_total", 6, 0, 32, true, Group.GAMEPLAY).neutral());
+    public static final RuleSpec CREATIVE_FC_RACE_LEGAL = add(RuleSpec.bool("creative_fc_race_legal", false, Group.GAMEPLAY).neutral());
 
     private WorldRuleSpecs() {
     }

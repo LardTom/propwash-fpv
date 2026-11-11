@@ -67,6 +67,8 @@ public final class HeadlightPass {
     private boolean hookSeen;
     private long lastHookNanos;
     private long framesDrawn;
+    private long shaderCopies;
+    private long blitCopies;
     private HeadlightCheck.@Nullable Result lastCheck;
     private int checksPassed;
     private int checksFailed;
@@ -209,7 +211,7 @@ public final class HeadlightPass {
         if (this.fault == Fault.BLACK_SCENE && copyTexture != null) {
             RenderSystem.getDevice().createCommandEncoder().clearColorTexture(copyTexture, BLACK);
         } else {
-            copy.copyColorFrom(main);
+            this.copyScene(main, copy);
         }
         GpuTextureView sceneView = copy.getColorTextureView();
         if (sceneView == null) {
@@ -244,6 +246,27 @@ public final class HeadlightPass {
         }
         buffer.rotate();
         this.framesDrawn++;
+    }
+
+    private void copyScene(RenderTarget main, TextureTarget copy) {
+        CompiledRenderPipeline simple = RenderSystem.getCompiledPipelineNullable(VideoPass.SIMPLE_PIPELINE);
+        GpuTextureView from = main.getColorTextureView();
+        GpuTextureView to = copy.getColorTextureView();
+        if (simple == null || from == null || to == null) {
+            copy.copyColorFrom(main);
+            this.blitCopies++;
+            return;
+        }
+        VideoPass.simple(simple, from, to, "propwash fpv headlight copy");
+        this.shaderCopies++;
+    }
+
+    public long shaderCopies() {
+        return this.shaderCopies;
+    }
+
+    public long blitCopies() {
+        return this.blitCopies;
     }
 
     private @Nullable HeadlightProbe beginCheck(GpuTexture color, int width, int height) {

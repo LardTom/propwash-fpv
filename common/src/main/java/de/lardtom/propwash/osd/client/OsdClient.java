@@ -47,5 +47,6 @@ public final class OsdClient {
         ClientBus.DISCONNECT.register(OsdHud::onDisconnect);
         ClientBus.DISCONNECT.register(RadioHud::onDisconnect);
         ConfigTabs.register(OsdConfigTab::new);
+        SpectatorCountClient.init();
     }
 }

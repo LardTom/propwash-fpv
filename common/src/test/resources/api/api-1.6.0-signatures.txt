@@ -1,0 +1,1360 @@
+F de.lardtom.propwash.api.PropwashApi API_VERSION Ljava/lang/String; static final -
+F de.lardtom.propwash.api.PropwashApi MOD_ID Ljava/lang/String; static final -
+F de.lardtom.propwash.api.PropwashApi VERSION Lde/lardtom/propwash/api/ApiVersion; static final -
+F de.lardtom.propwash.api.accessory.AccessoryBehavior MAX_SLOTS I static final -
+F de.lardtom.propwash.api.build.BuildStats WARNINGS Ljava/util/List; static final Ljava/util/List<Ljava/lang/String;>;
+F de.lardtom.propwash.api.build.DroneData MAX_NAME_LENGTH I static final -
+F de.lardtom.propwash.api.build.ImportLayer NAME Lde/lardtom/propwash/api/build/ImportLayer; static final -
+F de.lardtom.propwash.api.build.ImportLayer PAINT Lde/lardtom/propwash/api/build/ImportLayer; static final -
+F de.lardtom.propwash.api.build.ImportLayer PARTS Lde/lardtom/propwash/api/build/ImportLayer; static final -
+F de.lardtom.propwash.api.build.ImportLayer TUNE Lde/lardtom/propwash/api/build/ImportLayer; static final -
+F de.lardtom.propwash.api.build.ImportStatus APPLIED Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus BUSY Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus INVALID Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus MISSING_DYES Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus MISSING_PARTS Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus NOT_ALLOWED Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus NO_TARGET Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus UNCHANGED Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportStatus UNKNOWN_PARTS Lde/lardtom/propwash/api/build/ImportStatus; static final -
+F de.lardtom.propwash.api.build.ImportTarget HELD_DRONE Lde/lardtom/propwash/api/build/ImportTarget; static final -
+F de.lardtom.propwash.api.build.ImportTarget NEW_DRONE Lde/lardtom/propwash/api/build/ImportTarget; static final -
+F de.lardtom.propwash.api.build.ImportTarget WORKBENCH Lde/lardtom/propwash/api/build/ImportTarget; static final -
+F de.lardtom.propwash.api.build.PaintSpec DEFAULT Lde/lardtom/propwash/api/build/PaintSpec; static final -
+F de.lardtom.propwash.api.build.PaintSpec SLOTS Ljava/util/List; static final Ljava/util/List<Ljava/lang/String;>;
+F de.lardtom.propwash.api.build.TuneGroup CAMERA Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup FEEDFORWARD Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup FILTERS Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup FLIGHT Ljava/util/Set; static final Ljava/util/Set<Lde/lardtom/propwash/api/build/TuneGroup;>;
+F de.lardtom.propwash.api.build.TuneGroup HOLD Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup LED Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup OTHER Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup PID Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup RATES Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup THROTTLE Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup TPA Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneGroup VTX Lde/lardtom/propwash/api/build/TuneGroup; static final -
+F de.lardtom.propwash.api.build.TuneSpec CAMERA_UPTILT Ljava/lang/String; static final -
+F de.lardtom.propwash.api.build.TuneSpec EMPTY Lde/lardtom/propwash/api/build/TuneSpec; static final -
+F de.lardtom.propwash.api.build.TuneSpec MAX_ENTRIES I static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes ACTION_CAM Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes ALL Ljava/util/List; static final Ljava/util/List<Ljava/lang/String;>;
+F de.lardtom.propwash.api.client.FlightSchoolScenes BATTERY Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes BIND Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes CONFIGURATOR Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes COURSE_ELEMENTS Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes DRONE_BUILD Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes FPV_LOS Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes GATE_FREE Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes GRIPPER Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes HOLD Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes MODE_3D Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes RACE Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes RECOVERY Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes REPAIR Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes RESCUE Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes SURVIVAL Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes TRICKS Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.FlightSchoolScenes VIDEO Ljava/lang/String; static final -
+F de.lardtom.propwash.api.client.OsdLayoutSpec CURRENT_VERSION I static final -
+F de.lardtom.propwash.api.client.OsdLayoutSpec MAX_JSON_LENGTH I static final -
+F de.lardtom.propwash.api.client.WorkbenchContext BUTTON_GAP I static final -
+F de.lardtom.propwash.api.client.WorkbenchContext BUTTON_PADDING I static final -
+F de.lardtom.propwash.api.client.WorkbenchContext ICON_BUTTON_SIZE I static final -
+F de.lardtom.propwash.api.client.WorkbenchContext MAX_BUTTON_WIDTH I static final -
+F de.lardtom.propwash.api.drone.DronePhysics MAX_ARM D static final -
+F de.lardtom.propwash.api.drone.DronePhysics MAX_FORCE D static final -
+F de.lardtom.propwash.api.drone.DronePhysics MAX_IMPULSE D static final -
+F de.lardtom.propwash.api.drone.DronePhysics MAX_SECONDS D static final -
+F de.lardtom.propwash.api.event.EntityHit MAX_DAMAGE F static final -
+F de.lardtom.propwash.api.event.EntityHit MAX_KNOCKBACK F static final -
+F de.lardtom.propwash.api.event.PropwashEvents ACCESSORY_ACTION Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$AccessoryActionUsed;>;
+F de.lardtom.propwash.api.event.PropwashEvents BUILD_IMPORTED Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$BuildImported;>;
+F de.lardtom.propwash.api.event.PropwashEvents DRONE_ASSEMBLED Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$DroneAssembled;>;
+F de.lardtom.propwash.api.event.PropwashEvents DRONE_DAMAGED Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$DroneDamaged;>;
+F de.lardtom.propwash.api.event.PropwashEvents DRONE_DISASSEMBLED Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$DroneDisassembled;>;
+F de.lardtom.propwash.api.event.PropwashEvents DRONE_HIT_ENTITY Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$DroneHitEntity;>;
+F de.lardtom.propwash.api.event.PropwashEvents ESC_BURNED Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$EscBurned;>;
+F de.lardtom.propwash.api.event.PropwashEvents PART_REGISTERED Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$PartRegistered;>;
+F de.lardtom.propwash.api.event.PropwashEvents REGISTRY_FROZEN Lde/lardtom/propwash/api/event/PropwashEvent; static final Lde/lardtom/propwash/api/event/PropwashEvent<Lde/lardtom/propwash/api/event/PropwashEvents$RegistryFrozen;>;
+F de.lardtom.propwash.api.flight.AssistOutput MAX_CLIMB D static final -
+F de.lardtom.propwash.api.flight.AssistOutput MAX_LABEL I static final -
+F de.lardtom.propwash.api.flight.AssistOutput MAX_SPEED D static final -
+F de.lardtom.propwash.api.flight.FlightState ACTIONS I static final -
+F de.lardtom.propwash.api.flight.ForceSink MAX_FORCE D static final -
+F de.lardtom.propwash.api.flight.ForceSink MAX_TORQUE D static final -
+F de.lardtom.propwash.api.flight.GimbalModel$Mode FOLLOW Lde/lardtom/propwash/api/flight/GimbalModel$Mode; static final -
+F de.lardtom.propwash.api.flight.GimbalModel$Mode FPV Lde/lardtom/propwash/api/flight/GimbalModel$Mode; static final -
+F de.lardtom.propwash.api.flight.GimbalModel$Mode LOCK Lde/lardtom/propwash/api/flight/GimbalModel$Mode; static final -
+F de.lardtom.propwash.api.flight.Intercept ITERATIONS I static final -
+F de.lardtom.propwash.api.flight.SensorDirection BACK Lde/lardtom/propwash/api/flight/SensorDirection; static final -
+F de.lardtom.propwash.api.flight.SensorDirection DOWN Lde/lardtom/propwash/api/flight/SensorDirection; static final -
+F de.lardtom.propwash.api.flight.SensorDirection FORWARD Lde/lardtom/propwash/api/flight/SensorDirection; static final -
+F de.lardtom.propwash.api.flight.SensorDirection LEFT Lde/lardtom/propwash/api/flight/SensorDirection; static final -
+F de.lardtom.propwash.api.flight.SensorDirection RIGHT Lde/lardtom/propwash/api/flight/SensorDirection; static final -
+F de.lardtom.propwash.api.flight.SensorDirection UP Lde/lardtom/propwash/api/flight/SensorDirection; static final -
+F de.lardtom.propwash.api.flight.StabilizationMode ACRO Lde/lardtom/propwash/api/flight/StabilizationMode; static final -
+F de.lardtom.propwash.api.flight.StabilizationMode ANGLE Lde/lardtom/propwash/api/flight/StabilizationMode; static final -
+F de.lardtom.propwash.api.flight.StabilizationMode HORIZON Lde/lardtom/propwash/api/flight/StabilizationMode; static final -
+F de.lardtom.propwash.api.part.AccessorySlot BOTTOM Lde/lardtom/propwash/api/part/AccessorySlot; static final -
+F de.lardtom.propwash.api.part.AccessorySlot FRONT Lde/lardtom/propwash/api/part/AccessorySlot; static final -
+F de.lardtom.propwash.api.part.AccessorySlot TOP Lde/lardtom/propwash/api/part/AccessorySlot; static final -
+F de.lardtom.propwash.api.part.AirframeGeometry DEFAULT_CAMERA_TILT D static final -
+F de.lardtom.propwash.api.part.AirframeGeometry MAX_CAMERA_TILT D static final -
+F de.lardtom.propwash.api.part.AirframeGeometry MIN_CAMERA_TILT D static final -
+F de.lardtom.propwash.api.part.AnchorSpec MAX_TILT D static final -
+F de.lardtom.propwash.api.part.AnchorSpec MIN_TILT D static final -
+F de.lardtom.propwash.api.part.BatteryDefinition LIHV Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.BatteryDefinition LION Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.BatteryDefinition LIPO Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.BatteryDefinition MAX_CELLS I static final -
+F de.lardtom.propwash.api.part.CellChemistry SOC_GRID Ljava/util/List; static final Ljava/util/List<Ljava/lang/Double;>;
+F de.lardtom.propwash.api.part.DuctSpec STANDARD Lde/lardtom/propwash/api/part/DuctSpec; static final -
+F de.lardtom.propwash.api.part.FrameDefinition MAX_PROP_MM I static final -
+F de.lardtom.propwash.api.part.FrameRole CINELIFTER Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameRole CINEWHOOP Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameRole FREESTYLE Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameRole LONG_RANGE Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameRole RACE Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameRole TOOTHPICK Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameRole WHOOP Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameRole X_CLASS Lde/lardtom/propwash/api/part/FrameRole; static final -
+F de.lardtom.propwash.api.part.FrameShape CUSTOM Lde/lardtom/propwash/api/part/FrameShape; static final -
+F de.lardtom.propwash.api.part.FrameShape DEADCAT Lde/lardtom/propwash/api/part/FrameShape; static final -
+F de.lardtom.propwash.api.part.FrameShape H_FRAME Lde/lardtom/propwash/api/part/FrameShape; static final -
+F de.lardtom.propwash.api.part.FrameShape SQUASHED_X Lde/lardtom/propwash/api/part/FrameShape; static final -
+F de.lardtom.propwash.api.part.FrameShape STRETCHED_X Lde/lardtom/propwash/api/part/FrameShape; static final -
+F de.lardtom.propwash.api.part.FrameShape TRUE_X Lde/lardtom/propwash/api/part/FrameShape; static final -
+F de.lardtom.propwash.api.part.MassSplit DUCTED Lde/lardtom/propwash/api/part/MassSplit; static final -
+F de.lardtom.propwash.api.part.MassSplit OPEN Lde/lardtom/propwash/api/part/MassSplit; static final -
+F de.lardtom.propwash.api.part.MotorArm COUNT I static final -
+F de.lardtom.propwash.api.part.MotorArm FRONT_LEFT I static final -
+F de.lardtom.propwash.api.part.MotorArm FRONT_RIGHT I static final -
+F de.lardtom.propwash.api.part.MotorArm PROPS_IN Ljava/util/List; static final Ljava/util/List<Lde/lardtom/propwash/api/part/MotorArm$Spin;>;
+F de.lardtom.propwash.api.part.MotorArm REAR_LEFT I static final -
+F de.lardtom.propwash.api.part.MotorArm REAR_RIGHT I static final -
+F de.lardtom.propwash.api.part.MotorArm$Spin CCW Lde/lardtom/propwash/api/part/MotorArm$Spin; static final -
+F de.lardtom.propwash.api.part.MotorArm$Spin CW Lde/lardtom/propwash/api/part/MotorArm$Spin; static final -
+F de.lardtom.propwash.api.part.MotorThermal DEFAULT Lde/lardtom/propwash/api/part/MotorThermal; static final -
+F de.lardtom.propwash.api.part.Mounts MOTOR_M08 Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.Mounts MOTOR_M14 Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.Mounts MOTOR_M22 Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.Mounts MOTOR_M28 Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.Mounts PROP_UNIVERSAL Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.Mounts STACK_S20 Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.Mounts STACK_S30 Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.Mounts STACK_WHOOP_AIO Lnet/minecraft/resources/Identifier; static final -
+F de.lardtom.propwash.api.part.PartBasics DEFAULT_SORT_ORDER I static final -
+F de.lardtom.propwash.api.part.PartKind ACCESSORY Lde/lardtom/propwash/api/part/PartKind; static final -
+F de.lardtom.propwash.api.part.PartKind BATTERY Lde/lardtom/propwash/api/part/PartKind; static final -
+F de.lardtom.propwash.api.part.PartKind FRAME Lde/lardtom/propwash/api/part/PartKind; static final -
+F de.lardtom.propwash.api.part.PartKind MOTOR Lde/lardtom/propwash/api/part/PartKind; static final -
+F de.lardtom.propwash.api.part.PartKind PROP Lde/lardtom/propwash/api/part/PartKind; static final -
+F de.lardtom.propwash.api.part.PartKind STACK Lde/lardtom/propwash/api/part/PartKind; static final -
+F de.lardtom.propwash.api.part.PartKind VIDEO Lde/lardtom/propwash/api/part/PartKind; static final -
+F de.lardtom.propwash.api.part.PartVisual NONE Lde/lardtom/propwash/api/part/PartVisual; static final -
+F de.lardtom.propwash.api.part.PropDefinition MAX_REVERSE_THRUST D static final -
+F de.lardtom.propwash.api.part.PropDefinition MIN_REVERSE_THRUST D static final -
+F de.lardtom.propwash.api.part.PropMaterial CARBON Lde/lardtom/propwash/api/part/PropMaterial; static final -
+F de.lardtom.propwash.api.part.PropMaterial CARBON_FIBER_NYLON Lde/lardtom/propwash/api/part/PropMaterial; static final -
+F de.lardtom.propwash.api.part.PropMaterial GLASS_FIBER_NYLON Lde/lardtom/propwash/api/part/PropMaterial; static final -
+F de.lardtom.propwash.api.part.PropMaterial POLYCARBONATE Lde/lardtom/propwash/api/part/PropMaterial; static final -
+F de.lardtom.propwash.api.part.RecycleYield NONE Lde/lardtom/propwash/api/part/RecycleYield; static final -
+F de.lardtom.propwash.api.part.Vec3Mm ZERO Lde/lardtom/propwash/api/part/Vec3Mm; static final -
+F de.lardtom.propwash.api.part.VideoDefinition MAX_VTX_LEVELS I static final -
+F de.lardtom.propwash.api.part.VideoLink ANALOG Lde/lardtom/propwash/api/part/VideoLink; static final -
+F de.lardtom.propwash.api.part.VideoLink DIGITAL Lde/lardtom/propwash/api/part/VideoLink; static final -
+F de.lardtom.propwash.api.registry.ExtensionTab TITLE_KEY Ljava/lang/String; static final -
+F de.lardtom.propwash.api.registry.TabSection ACCESSORIES Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection BATTERIES Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection ENTRIES Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection FRAMES Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection MOTORS Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection PRESETS Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection PROPS Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection STACKS Lde/lardtom/propwash/api/registry/TabSection; static final -
+F de.lardtom.propwash.api.registry.TabSection VIDEO Lde/lardtom/propwash/api/registry/TabSection; static final -
+M de.lardtom.propwash.api.ApiVersion <init>(III)V instance concrete -
+M de.lardtom.propwash.api.ApiVersion compareTo(Lde/lardtom/propwash/api/ApiVersion;)I instance concrete -
+M de.lardtom.propwash.api.ApiVersion equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.ApiVersion hashCode()I instance concrete -
+M de.lardtom.propwash.api.ApiVersion major()I instance concrete -
+M de.lardtom.propwash.api.ApiVersion minor()I instance concrete -
+M de.lardtom.propwash.api.ApiVersion parse(Ljava/lang/String;)Lde/lardtom/propwash/api/ApiVersion; static concrete -
+M de.lardtom.propwash.api.ApiVersion patch()I instance concrete -
+M de.lardtom.propwash.api.ApiVersion satisfies(Lde/lardtom/propwash/api/ApiVersion;)Z instance concrete -
+M de.lardtom.propwash.api.ApiVersion toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.PropwashApi accessories()Lde/lardtom/propwash/api/accessory/AccessoryRegistry; static concrete -
+M de.lardtom.propwash.api.PropwashApi builds()Lde/lardtom/propwash/api/build/BuildAccess; static concrete -
+M de.lardtom.propwash.api.PropwashApi creativeTab()Lde/lardtom/propwash/api/registry/CreativeEntries; static concrete -
+M de.lardtom.propwash.api.PropwashApi drones()Lde/lardtom/propwash/api/drone/DroneAccess; static concrete -
+M de.lardtom.propwash.api.PropwashApi extensionTab(Ljava/lang/String;)Lde/lardtom/propwash/api/registry/ExtensionTab; static concrete -
+M de.lardtom.propwash.api.PropwashApi extensionTabs()Ljava/util/List; static concrete ()Ljava/util/List<Lde/lardtom/propwash/api/registry/ExtensionTab;>;
+M de.lardtom.propwash.api.PropwashApi flight()Lde/lardtom/propwash/api/flight/FlightExtensions; static concrete -
+M de.lardtom.propwash.api.PropwashApi isCompatible(Ljava/lang/String;)Z static concrete -
+M de.lardtom.propwash.api.PropwashApi loot()Lde/lardtom/propwash/api/registry/LootInjections; static concrete -
+M de.lardtom.propwash.api.PropwashApi partItems()Lde/lardtom/propwash/api/registry/PartItems; static concrete -
+M de.lardtom.propwash.api.PropwashApi parts()Lde/lardtom/propwash/api/part/PartRegistry; static concrete -
+M de.lardtom.propwash.api.PropwashApi requireVersion(Ljava/lang/String;Ljava/lang/String;)V static concrete -
+M de.lardtom.propwash.api.PropwashApi text(Ljava/lang/String;Ljava/lang/String;)Ljava/util/Optional; static concrete (Ljava/lang/String;Ljava/lang/String;)Ljava/util/Optional<Ljava/lang/String;>;
+M de.lardtom.propwash.api.accessory.AccessoryAction number()I instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryAction player()Lnet/minecraft/server/level/ServerPlayer; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryAction pressed()Z instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryBehavior accepts(ILnet/minecraft/world/item/ItemStack;)Z instance concrete -
+M de.lardtom.propwash.api.accessory.AccessoryBehavior maxStackSize(ILnet/minecraft/world/item/ItemStack;)I instance concrete -
+M de.lardtom.propwash.api.accessory.AccessoryBehavior onAction(Lde/lardtom/propwash/api/accessory/AccessoryAction;)V instance concrete -
+M de.lardtom.propwash.api.accessory.AccessoryBehavior payloadGrams(Ljava/util/List;)Ljava/util/OptionalDouble; instance concrete (Ljava/util/List<Lnet/minecraft/world/item/ItemStack;>;)Ljava/util/OptionalDouble;
+M de.lardtom.propwash.api.accessory.AccessoryBehavior slots()I instance concrete -
+M de.lardtom.propwash.api.accessory.AccessoryBehavior tick(Lde/lardtom/propwash/api/accessory/AccessoryContext;)V instance concrete -
+M de.lardtom.propwash.api.accessory.AccessoryContext accessory()Lnet/minecraft/resources/Identifier; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext actionHeld(I)Z instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext armed()Z instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext drone()Lnet/minecraft/world/entity/Entity; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext flying()Z instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext inventory()Lde/lardtom/propwash/api/accessory/AccessoryInventory; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext level()Lnet/minecraft/server/level/ServerLevel; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext mount()Lde/lardtom/propwash/api/accessory/MountPose; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext physics()Lde/lardtom/propwash/api/drone/DronePhysics; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext pilot()Ljava/util/Optional; instance abstract ()Ljava/util/Optional<Lnet/minecraft/server/level/ServerPlayer;>;
+M de.lardtom.propwash.api.accessory.AccessoryContext slot()Lde/lardtom/propwash/api/part/AccessorySlot; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryContext velocity()Lnet/minecraft/world/phys/Vec3; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryInventory contents()Ljava/util/List; instance abstract ()Ljava/util/List<Lnet/minecraft/world/item/ItemStack;>;
+M de.lardtom.propwash.api.accessory.AccessoryInventory firstFilled()I instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryInventory get(I)Lnet/minecraft/world/item/ItemStack; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryInventory isEmpty()Z instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryInventory payloadGrams()D instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryInventory set(ILnet/minecraft/world/item/ItemStack;)V instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryInventory size()I instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryInventory take(II)Lnet/minecraft/world/item/ItemStack; instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryRegistry accessoryAt(Lnet/minecraft/world/entity/Entity;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/entity/Entity;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.accessory.AccessoryRegistry behavior(Lnet/minecraft/resources/Identifier;)Ljava/util/Optional; instance abstract (Lnet/minecraft/resources/Identifier;)Ljava/util/Optional<Lde/lardtom/propwash/api/accessory/AccessoryBehavior;>;
+M de.lardtom.propwash.api.accessory.AccessoryRegistry contents(Lnet/minecraft/world/entity/Entity;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/List; instance abstract (Lnet/minecraft/world/entity/Entity;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/List<Lnet/minecraft/world/item/ItemStack;>;
+M de.lardtom.propwash.api.accessory.AccessoryRegistry contents(Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/List; instance abstract (Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/List<Lnet/minecraft/world/item/ItemStack;>;
+M de.lardtom.propwash.api.accessory.AccessoryRegistry inventory(Lnet/minecraft/world/entity/Entity;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/entity/Entity;Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional<Lde/lardtom/propwash/api/accessory/AccessoryInventory;>;
+M de.lardtom.propwash.api.accessory.AccessoryRegistry itemGrams(Lnet/minecraft/world/item/ItemStack;)D instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryRegistry register(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/accessory/AccessoryBehavior;)V instance abstract -
+M de.lardtom.propwash.api.accessory.AccessoryRegistry registered()Ljava/util/List; instance abstract ()Ljava/util/List<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.accessory.MountPose <init>(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;)V instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose anchor()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose at(DDD)Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose center()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose forward()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose front()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose hashCode()I instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose right()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.accessory.MountPose up()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.build.BuildAccess analyze(Lde/lardtom/propwash/api/build/BuildSpec;)Ljava/util/Optional; instance abstract (Lde/lardtom/propwash/api/build/BuildSpec;)Ljava/util/Optional<Lde/lardtom/propwash/api/build/BuildStats;>;
+M de.lardtom.propwash.api.build.BuildAccess applyImport(Lnet/minecraft/server/level/ServerPlayer;Lde/lardtom/propwash/api/build/ImportRequest;)Lde/lardtom/propwash/api/build/ImportResult; instance abstract -
+M de.lardtom.propwash.api.build.BuildAccess cameraView(Lde/lardtom/propwash/api/build/BuildSpec;)Ljava/util/Optional; instance concrete (Lde/lardtom/propwash/api/build/BuildSpec;)Ljava/util/Optional<Lde/lardtom/propwash/api/build/CameraView;>;
+M de.lardtom.propwash.api.build.BuildAccess cameraView(Lde/lardtom/propwash/api/build/BuildSpec;D)Ljava/util/Optional; instance concrete (Lde/lardtom/propwash/api/build/BuildSpec;D)Ljava/util/Optional<Lde/lardtom/propwash/api/build/CameraView;>;
+M de.lardtom.propwash.api.build.BuildAccess check(Lde/lardtom/propwash/api/build/BuildSpec;)Lde/lardtom/propwash/api/build/BuildCheck; instance abstract -
+M de.lardtom.propwash.api.build.BuildAccess createDrone(Lde/lardtom/propwash/api/build/DroneData;)Lnet/minecraft/world/item/ItemStack; instance abstract -
+M de.lardtom.propwash.api.build.BuildAccess defaultTune(Lde/lardtom/propwash/api/build/BuildSpec;)Lde/lardtom/propwash/api/build/TuneSpec; instance abstract -
+M de.lardtom.propwash.api.build.BuildAccess footprintMm(Lde/lardtom/propwash/api/build/BuildSpec;)D instance concrete -
+M de.lardtom.propwash.api.build.BuildAccess isDrone(Lnet/minecraft/world/item/ItemStack;)Z instance abstract -
+M de.lardtom.propwash.api.build.BuildAccess paintCost(Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/build/PaintSpec;)Ljava/util/Map; instance concrete (Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/build/PaintSpec;)Ljava/util/Map<Ljava/lang/String;Ljava/lang/Integer;>;
+M de.lardtom.propwash.api.build.BuildAccess partCompatibility()Z instance concrete -
+M de.lardtom.propwash.api.build.BuildAccess partCondition(Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/part/PartKind;)Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.build.BuildAccess presets()Ljava/util/List; instance abstract ()Ljava/util/List<Lde/lardtom/propwash/api/build/DronePreset;>;
+M de.lardtom.propwash.api.build.BuildAccess read(Lnet/minecraft/world/item/ItemStack;)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/item/ItemStack;)Ljava/util/Optional<Lde/lardtom/propwash/api/build/DroneData;>;
+M de.lardtom.propwash.api.build.BuildAccess registerPreset(Lde/lardtom/propwash/api/build/DronePreset;)Lde/lardtom/propwash/api/build/DronePreset; instance abstract -
+M de.lardtom.propwash.api.build.BuildAccess uptiltRange(Lnet/minecraft/resources/Identifier;)Ljava/util/Optional; instance concrete (Lnet/minecraft/resources/Identifier;)Ljava/util/Optional<Lde/lardtom/propwash/api/build/CameraView$UptiltRange;>;
+M de.lardtom.propwash.api.build.BuildAccess withPaint(Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/build/PaintSpec;)Lnet/minecraft/world/item/ItemStack; instance abstract -
+M de.lardtom.propwash.api.build.BuildAccess withTune(Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/build/TuneSpec;)Lnet/minecraft/world/item/ItemStack; instance abstract -
+M de.lardtom.propwash.api.build.BuildCheck <init>(Lde/lardtom/propwash/api/build/BuildSpec;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V instance concrete (Lde/lardtom/propwash/api/build/BuildSpec;Ljava/util/List<Lnet/minecraft/resources/Identifier;>;Ljava/util/List<Ljava/lang/String;>;Ljava/util/List<Ljava/lang/String;>;)V
+M de.lardtom.propwash.api.build.BuildCheck buildable()Z instance concrete -
+M de.lardtom.propwash.api.build.BuildCheck equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.BuildCheck hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.BuildCheck known()Z instance concrete -
+M de.lardtom.propwash.api.build.BuildCheck problems()Ljava/util/List; instance concrete ()Ljava/util/List<Ljava/lang/String;>;
+M de.lardtom.propwash.api.build.BuildCheck spec()Lde/lardtom/propwash/api/build/BuildSpec; instance concrete -
+M de.lardtom.propwash.api.build.BuildCheck toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.BuildCheck translationKey(Ljava/lang/String;)Ljava/lang/String; static concrete -
+M de.lardtom.propwash.api.build.BuildCheck unknownParts()Ljava/util/List; instance concrete ()Ljava/util/List<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.build.BuildCheck warnings()Ljava/util/List; instance concrete ()Ljava/util/List<Ljava/lang/String;>;
+M de.lardtom.propwash.api.build.BuildSpec <init>(Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Ljava/util/Map;)V instance concrete (Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Ljava/util/Map<Lde/lardtom/propwash/api/part/AccessorySlot;Lnet/minecraft/resources/Identifier;>;)V
+M de.lardtom.propwash.api.build.BuildSpec accessories()Ljava/util/Map; instance concrete ()Ljava/util/Map<Lde/lardtom/propwash/api/part/AccessorySlot;Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.build.BuildSpec accessory(Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional; instance concrete (Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.build.BuildSpec allParts()Ljava/util/List; instance concrete ()Ljava/util/List<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.build.BuildSpec battery()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec frame()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec motor()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec of(Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/build/BuildSpec; static concrete -
+M de.lardtom.propwash.api.build.BuildSpec part(Lde/lardtom/propwash/api/part/PartKind;)Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec prop()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec stack()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec video()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec withAccessory(Lde/lardtom/propwash/api/part/AccessorySlot;Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/build/BuildSpec; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec withPart(Lde/lardtom/propwash/api/part/PartKind;Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/build/BuildSpec; instance concrete -
+M de.lardtom.propwash.api.build.BuildSpec withoutAccessory(Lde/lardtom/propwash/api/part/AccessorySlot;)Lde/lardtom/propwash/api/build/BuildSpec; instance concrete -
+M de.lardtom.propwash.api.build.BuildStats <init>(DDDDDDDDDDDDDLjava/util/List;)V instance concrete (DDDDDDDDDDDDDLjava/util/List<Ljava/lang/String;>;)V
+M de.lardtom.propwash.api.build.BuildStats <init>(DDDDDDDDDDDDDLjava/util/List;DDDDDDDDDD)V instance concrete (DDDDDDDDDDDDDLjava/util/List<Ljava/lang/String;>;DDDDDDDDDD)V
+M de.lardtom.propwash.api.build.BuildStats <init>(DDDDDDDDDDDDDLjava/util/List;DDDDDDDDDDDDDDD)V instance concrete (DDDDDDDDDDDDDLjava/util/List<Ljava/lang/String;>;DDDDDDDDDDDDDDD)V
+M de.lardtom.propwash.api.build.BuildStats aggressiveFlightTimeMin()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats avionicsPowerW()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats batteryLoadPercent()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats crashSpeedMs()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats cruiseCurrentA()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats cruiseFlightTimeMin()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats cruiseSpeedKmh()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.BuildStats escLoadPercent()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats fullThrottleCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats fullThrottleCurrentA()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.BuildStats hoverCurrentA()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats hoverFlightTimeMin()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats hoverThrottlePercent()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats landingCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats massGrams()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats mixedCurrentA()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats mixedFlightTimeMin()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats mixedMotorTempC()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats motorResponseMs()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats motorTempMinuteC()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats pitchAuthorityRadS2()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats propsInViewPercent()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats propwashNoise()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats rollAuthorityRadS2()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats sustainedMotorTempC()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats thrustToWeight()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.BuildStats topSpeedKmh()D instance concrete -
+M de.lardtom.propwash.api.build.BuildStats warningTranslationKey(Ljava/lang/String;)Ljava/lang/String; static concrete -
+M de.lardtom.propwash.api.build.BuildStats warnings()Ljava/util/List; instance concrete ()Ljava/util/List<Ljava/lang/String;>;
+M de.lardtom.propwash.api.build.BuildStats yawAuthorityRadS2()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView <init>(Lde/lardtom/propwash/api/part/Vec3Mm;DDDLjava/util/List;D)V instance concrete (Lde/lardtom/propwash/api/part/Vec3Mm;DDDLjava/util/List<Lde/lardtom/propwash/api/build/CameraView$PropDisc;>;D)V
+M de.lardtom.propwash.api.build.CameraView <init>(Lde/lardtom/propwash/api/part/Vec3Mm;DDDLjava/util/List;DLde/lardtom/propwash/api/build/CameraView$UptiltRange;)V instance concrete (Lde/lardtom/propwash/api/part/Vec3Mm;DDDLjava/util/List<Lde/lardtom/propwash/api/build/CameraView$PropDisc;>;DLde/lardtom/propwash/api/build/CameraView$UptiltRange;)V
+M de.lardtom.propwash.api.build.CameraView aspect()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView defaultUptiltDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.CameraView hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.CameraView horizontalFovDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView lensMm()Lde/lardtom/propwash/api/part/Vec3Mm; instance concrete -
+M de.lardtom.propwash.api.build.CameraView props()Ljava/util/List; instance concrete ()Ljava/util/List<Lde/lardtom/propwash/api/build/CameraView$PropDisc;>;
+M de.lardtom.propwash.api.build.CameraView propsInViewPercent()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.CameraView uptiltDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView uptiltMaxDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView uptiltMinDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView uptiltRange()Lde/lardtom/propwash/api/build/CameraView$UptiltRange; instance concrete -
+M de.lardtom.propwash.api.build.CameraView verticalFovDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView$PropDisc <init>(Lde/lardtom/propwash/api/part/Vec3Mm;DD)V instance concrete -
+M de.lardtom.propwash.api.build.CameraView$PropDisc centerMm()Lde/lardtom/propwash/api/part/Vec3Mm; instance concrete -
+M de.lardtom.propwash.api.build.CameraView$PropDisc equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.CameraView$PropDisc hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.CameraView$PropDisc hubRadiusMm()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView$PropDisc radiusMm()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView$PropDisc toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange <init>(DDD)V instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange clamp(D)D instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange contains(D)Z instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange defaultDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange maxDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange minDeg()D instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.CameraView$UptiltRange unrestricted(D)Lde/lardtom/propwash/api/build/CameraView$UptiltRange; static concrete -
+M de.lardtom.propwash.api.build.DroneData <init>(Lde/lardtom/propwash/api/build/BuildSpec;Lde/lardtom/propwash/api/build/PaintSpec;Lde/lardtom/propwash/api/build/TuneSpec;Ljava/util/Optional;)V instance concrete (Lde/lardtom/propwash/api/build/BuildSpec;Lde/lardtom/propwash/api/build/PaintSpec;Lde/lardtom/propwash/api/build/TuneSpec;Ljava/util/Optional<Ljava/lang/String;>;)V
+M de.lardtom.propwash.api.build.DroneData build()Lde/lardtom/propwash/api/build/BuildSpec; instance concrete -
+M de.lardtom.propwash.api.build.DroneData equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.DroneData hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.DroneData name()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Ljava/lang/String;>;
+M de.lardtom.propwash.api.build.DroneData of(Lde/lardtom/propwash/api/build/BuildSpec;)Lde/lardtom/propwash/api/build/DroneData; static concrete -
+M de.lardtom.propwash.api.build.DroneData paint()Lde/lardtom/propwash/api/build/PaintSpec; instance concrete -
+M de.lardtom.propwash.api.build.DroneData toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.DroneData tune()Lde/lardtom/propwash/api/build/TuneSpec; instance concrete -
+M de.lardtom.propwash.api.build.DroneData withBuild(Lde/lardtom/propwash/api/build/BuildSpec;)Lde/lardtom/propwash/api/build/DroneData; instance concrete -
+M de.lardtom.propwash.api.build.DroneData withName(Ljava/lang/String;)Lde/lardtom/propwash/api/build/DroneData; instance concrete -
+M de.lardtom.propwash.api.build.DroneData withPaint(Lde/lardtom/propwash/api/build/PaintSpec;)Lde/lardtom/propwash/api/build/DroneData; instance concrete -
+M de.lardtom.propwash.api.build.DroneData withTune(Lde/lardtom/propwash/api/build/TuneSpec;)Lde/lardtom/propwash/api/build/DroneData; instance concrete -
+M de.lardtom.propwash.api.build.DronePreset <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/build/DroneData;Z)V instance concrete -
+M de.lardtom.propwash.api.build.DronePreset creativeListed()Z instance concrete -
+M de.lardtom.propwash.api.build.DronePreset data()Lde/lardtom/propwash/api/build/DroneData; instance concrete -
+M de.lardtom.propwash.api.build.DronePreset equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.DronePreset hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.DronePreset id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.build.DronePreset of(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/build/DroneData;)Lde/lardtom/propwash/api/build/DronePreset; static concrete -
+M de.lardtom.propwash.api.build.DronePreset toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.DronePreset translationKey()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.ImportLayer translationKey()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.ImportLayer valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/build/ImportLayer; static concrete -
+M de.lardtom.propwash.api.build.ImportLayer values()[Lde/lardtom/propwash/api/build/ImportLayer; static concrete -
+M de.lardtom.propwash.api.build.ImportRequest <init>(Lde/lardtom/propwash/api/build/DroneData;Ljava/util/Set;Ljava/util/Set;Lde/lardtom/propwash/api/build/ImportTarget;)V instance concrete (Lde/lardtom/propwash/api/build/DroneData;Ljava/util/Set<Lde/lardtom/propwash/api/build/ImportLayer;>;Ljava/util/Set<Lde/lardtom/propwash/api/build/TuneGroup;>;Lde/lardtom/propwash/api/build/ImportTarget;)V
+M de.lardtom.propwash.api.build.ImportRequest createDrone(Lde/lardtom/propwash/api/build/DroneData;)Lde/lardtom/propwash/api/build/ImportRequest; static concrete -
+M de.lardtom.propwash.api.build.ImportRequest data()Lde/lardtom/propwash/api/build/DroneData; instance concrete -
+M de.lardtom.propwash.api.build.ImportRequest equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.ImportRequest hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.ImportRequest layers()Ljava/util/Set; instance concrete ()Ljava/util/Set<Lde/lardtom/propwash/api/build/ImportLayer;>;
+M de.lardtom.propwash.api.build.ImportRequest onHeldDrone(Lde/lardtom/propwash/api/build/DroneData;Ljava/util/Set;)Lde/lardtom/propwash/api/build/ImportRequest; static concrete (Lde/lardtom/propwash/api/build/DroneData;Ljava/util/Set<Lde/lardtom/propwash/api/build/ImportLayer;>;)Lde/lardtom/propwash/api/build/ImportRequest;
+M de.lardtom.propwash.api.build.ImportRequest paintOnHeldDrone(Lde/lardtom/propwash/api/build/DroneData;)Lde/lardtom/propwash/api/build/ImportRequest; static concrete -
+M de.lardtom.propwash.api.build.ImportRequest target()Lde/lardtom/propwash/api/build/ImportTarget; instance concrete -
+M de.lardtom.propwash.api.build.ImportRequest toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.ImportRequest tuneGroups()Ljava/util/Set; instance concrete ()Ljava/util/Set<Lde/lardtom/propwash/api/build/TuneGroup;>;
+M de.lardtom.propwash.api.build.ImportRequest tuneOnHeldDrone(Lde/lardtom/propwash/api/build/DroneData;)Lde/lardtom/propwash/api/build/ImportRequest; static concrete -
+M de.lardtom.propwash.api.build.ImportRequest wholeBuild(Lde/lardtom/propwash/api/build/DroneData;)Lde/lardtom/propwash/api/build/ImportRequest; static concrete -
+M de.lardtom.propwash.api.build.ImportResult <init>(Lde/lardtom/propwash/api/build/ImportStatus;Ljava/util/Set;Ljava/util/List;Ljava/util/Map;)V instance concrete (Lde/lardtom/propwash/api/build/ImportStatus;Ljava/util/Set<Lde/lardtom/propwash/api/build/ImportLayer;>;Ljava/util/List<Lnet/minecraft/resources/Identifier;>;Ljava/util/Map<Ljava/lang/String;Ljava/lang/Integer;>;)V
+M de.lardtom.propwash.api.build.ImportResult applied()Ljava/util/Set; instance concrete ()Ljava/util/Set<Lde/lardtom/propwash/api/build/ImportLayer;>;
+M de.lardtom.propwash.api.build.ImportResult applied(Ljava/util/Set;)Lde/lardtom/propwash/api/build/ImportResult; static concrete (Ljava/util/Set<Lde/lardtom/propwash/api/build/ImportLayer;>;)Lde/lardtom/propwash/api/build/ImportResult;
+M de.lardtom.propwash.api.build.ImportResult equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.ImportResult hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.ImportResult missingDyes()Ljava/util/Map; instance concrete ()Ljava/util/Map<Ljava/lang/String;Ljava/lang/Integer;>;
+M de.lardtom.propwash.api.build.ImportResult missingDyes(Ljava/util/Map;)Lde/lardtom/propwash/api/build/ImportResult; static concrete (Ljava/util/Map<Ljava/lang/String;Ljava/lang/Integer;>;)Lde/lardtom/propwash/api/build/ImportResult;
+M de.lardtom.propwash.api.build.ImportResult missingParts()Ljava/util/List; instance concrete ()Ljava/util/List<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.build.ImportResult missingParts(Ljava/util/List;)Lde/lardtom/propwash/api/build/ImportResult; static concrete (Ljava/util/List<Lnet/minecraft/resources/Identifier;>;)Lde/lardtom/propwash/api/build/ImportResult;
+M de.lardtom.propwash.api.build.ImportResult of(Lde/lardtom/propwash/api/build/ImportStatus;)Lde/lardtom/propwash/api/build/ImportResult; static concrete -
+M de.lardtom.propwash.api.build.ImportResult status()Lde/lardtom/propwash/api/build/ImportStatus; instance concrete -
+M de.lardtom.propwash.api.build.ImportResult toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.ImportStatus success()Z instance concrete -
+M de.lardtom.propwash.api.build.ImportStatus translationKey()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.ImportStatus valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/build/ImportStatus; static concrete -
+M de.lardtom.propwash.api.build.ImportStatus values()[Lde/lardtom/propwash/api/build/ImportStatus; static concrete -
+M de.lardtom.propwash.api.build.ImportTarget valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/build/ImportTarget; static concrete -
+M de.lardtom.propwash.api.build.ImportTarget values()[Lde/lardtom/propwash/api/build/ImportTarget; static concrete -
+M de.lardtom.propwash.api.build.PaintSpec <init>(Ljava/util/Map;)V instance concrete (Ljava/util/Map<Ljava/lang/String;Ljava/lang/Integer;>;)V
+M de.lardtom.propwash.api.build.PaintSpec color(Ljava/lang/String;)Ljava/util/Optional; instance concrete (Ljava/lang/String;)Ljava/util/Optional<Ljava/lang/Integer;>;
+M de.lardtom.propwash.api.build.PaintSpec colors()Ljava/util/Map; instance concrete ()Ljava/util/Map<Ljava/lang/String;Ljava/lang/Integer;>;
+M de.lardtom.propwash.api.build.PaintSpec equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.PaintSpec hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.PaintSpec isDefault()Z instance concrete -
+M de.lardtom.propwash.api.build.PaintSpec toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.PaintSpec with(Ljava/lang/String;I)Lde/lardtom/propwash/api/build/PaintSpec; instance concrete -
+M de.lardtom.propwash.api.build.PaintSpec without(Ljava/lang/String;)Lde/lardtom/propwash/api/build/PaintSpec; instance concrete -
+M de.lardtom.propwash.api.build.TuneGroup of(Ljava/lang/String;)Lde/lardtom/propwash/api/build/TuneGroup; static concrete -
+M de.lardtom.propwash.api.build.TuneGroup translationKey()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.TuneGroup valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/build/TuneGroup; static concrete -
+M de.lardtom.propwash.api.build.TuneGroup values()[Lde/lardtom/propwash/api/build/TuneGroup; static concrete -
+M de.lardtom.propwash.api.build.TuneSpec <init>(Ljava/util/Map;)V instance concrete (Ljava/util/Map<Ljava/lang/String;Ljava/lang/Float;>;)V
+M de.lardtom.propwash.api.build.TuneSpec equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.build.TuneSpec hashCode()I instance concrete -
+M de.lardtom.propwash.api.build.TuneSpec only(Ljava/util/Collection;)Lde/lardtom/propwash/api/build/TuneSpec; instance concrete (Ljava/util/Collection<Lde/lardtom/propwash/api/build/TuneGroup;>;)Lde/lardtom/propwash/api/build/TuneSpec;
+M de.lardtom.propwash.api.build.TuneSpec overlay(Lde/lardtom/propwash/api/build/TuneSpec;Ljava/util/Collection;)Lde/lardtom/propwash/api/build/TuneSpec; instance concrete (Lde/lardtom/propwash/api/build/TuneSpec;Ljava/util/Collection<Lde/lardtom/propwash/api/build/TuneGroup;>;)Lde/lardtom/propwash/api/build/TuneSpec;
+M de.lardtom.propwash.api.build.TuneSpec toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.build.TuneSpec values()Ljava/util/Map; instance concrete ()Ljava/util/Map<Ljava/lang/String;Ljava/lang/Float;>;
+M de.lardtom.propwash.api.build.TuneSpec without(Ljava/util/Collection;)Lde/lardtom/propwash/api/build/TuneSpec; instance concrete (Ljava/util/Collection<Lde/lardtom/propwash/api/build/TuneGroup;>;)Lde/lardtom/propwash/api/build/TuneSpec;
+M de.lardtom.propwash.api.client.ClientInput action(I)Z instance abstract -
+M de.lardtom.propwash.api.client.ClientInput drone()Ljava/util/Optional; instance abstract ()Ljava/util/Optional<Lnet/minecraft/world/entity/Entity;>;
+M de.lardtom.propwash.api.client.ClientInput flying()Z instance abstract -
+M de.lardtom.propwash.api.client.ClientInput pitch()D instance abstract -
+M de.lardtom.propwash.api.client.ClientInput roll()D instance abstract -
+M de.lardtom.propwash.api.client.ClientInput throttle()D instance abstract -
+M de.lardtom.propwash.api.client.ClientInput yaw()D instance abstract -
+M de.lardtom.propwash.api.client.ClientTune apply(Lde/lardtom/propwash/api/build/TuneSpec;)Z instance abstract -
+M de.lardtom.propwash.api.client.ClientTune available()Z instance abstract -
+M de.lardtom.propwash.api.client.ClientTune current()Lde/lardtom/propwash/api/build/TuneSpec; instance abstract -
+M de.lardtom.propwash.api.client.ClientTune defaults()Lde/lardtom/propwash/api/build/TuneSpec; instance abstract -
+M de.lardtom.propwash.api.client.OsdLayoutAccess apply(Lde/lardtom/propwash/api/client/OsdLayoutSpec;)Z instance abstract -
+M de.lardtom.propwash.api.client.OsdLayoutAccess current()Lde/lardtom/propwash/api/client/OsdLayoutSpec; instance abstract -
+M de.lardtom.propwash.api.client.OsdLayoutAccess defaults()Lde/lardtom/propwash/api/client/OsdLayoutSpec; instance abstract -
+M de.lardtom.propwash.api.client.OsdLayoutAccess validate(Lde/lardtom/propwash/api/client/OsdLayoutSpec;)Z instance concrete -
+M de.lardtom.propwash.api.client.OsdLayoutSpec <init>(ILjava/lang/String;)V instance concrete -
+M de.lardtom.propwash.api.client.OsdLayoutSpec equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.client.OsdLayoutSpec hashCode()I instance concrete -
+M de.lardtom.propwash.api.client.OsdLayoutSpec json()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.client.OsdLayoutSpec toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.client.OsdLayoutSpec version()I instance concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi flightSchoolDrone(Lde/lardtom/propwash/api/build/BuildSpec;ZF)Lde/lardtom/propwash/guide/scene/ActorSpec$Drone; static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi flightSchoolScenes(Lnet/minecraft/world/item/ItemStack;)Ljava/util/List; static concrete (Lnet/minecraft/world/item/ItemStack;)Ljava/util/List<Ljava/lang/String;>;
+M de.lardtom.propwash.api.client.PropwashClientApi forceShiftHelp(Ljava/lang/Boolean;)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi heldDrone()Ljava/util/Optional; static concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/build/DroneData;>;
+M de.lardtom.propwash.api.client.PropwashClientApi input()Lde/lardtom/propwash/api/client/ClientInput; static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi isAddonActive(Ljava/lang/String;)Z static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi linkFlightSchoolItems(Ljava/lang/String;[Ljava/lang/String;)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi linkFlightSchoolParts(Ljava/lang/String;Ljava/lang/String;[Lde/lardtom/propwash/api/part/PartKind;)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi openConfigTab(Ljava/lang/String;Lnet/minecraft/client/gui/screens/Screen;)Z static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi openFlightSchool(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/client/gui/screens/Screen;)Z static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi openFlightSchoolScene(Ljava/lang/String;Lnet/minecraft/client/gui/screens/Screen;)Z static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi osd()Lde/lardtom/propwash/api/client/OsdLayoutAccess; static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi registerConfigTab(Ljava/util/function/Supplier;)V static concrete (Ljava/util/function/Supplier<+Lde/lardtom/propwash/ui/client/config/ConfigTab;>;)V
+M de.lardtom.propwash.api.client.PropwashClientApi registerFlightSchoolScene(Ljava/util/function/Supplier;)V static concrete (Ljava/util/function/Supplier<Lde/lardtom/propwash/guide/scene/Scene;>;)V
+M de.lardtom.propwash.api.client.PropwashClientApi registerFlightSchoolScene(Ljava/util/function/Supplier;Ljava/util/function/BooleanSupplier;)V static concrete (Ljava/util/function/Supplier<Lde/lardtom/propwash/guide/scene/Scene;>;Ljava/util/function/BooleanSupplier;)V
+M de.lardtom.propwash.api.client.PropwashClientApi registerGimbal(Ljava/lang/String;Lde/lardtom/propwash/api/client/camera/GimbalProvider;)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi registerHudElement(Ljava/lang/String;Lde/lardtom/propwash/api/client/hud/HudElement;)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi registerWorkbenchExtension(Lde/lardtom/propwash/api/client/WorkbenchExtension;)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi renderPreview(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lde/lardtom/propwash/api/build/DroneData;IIIIF)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi renderPreview(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lde/lardtom/propwash/api/build/DroneData;IIIIFF)V static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi sendCreateDrone(Lde/lardtom/propwash/api/build/DroneData;)Ljava/util/concurrent/CompletableFuture; static concrete (Lde/lardtom/propwash/api/build/DroneData;)Ljava/util/concurrent/CompletableFuture<Lde/lardtom/propwash/api/build/ImportResult;>;
+M de.lardtom.propwash.api.client.PropwashClientApi sendImport(Lde/lardtom/propwash/api/build/ImportRequest;)Ljava/util/concurrent/CompletableFuture; static concrete (Lde/lardtom/propwash/api/build/ImportRequest;)Ljava/util/concurrent/CompletableFuture<Lde/lardtom/propwash/api/build/ImportResult;>;
+M de.lardtom.propwash.api.client.PropwashClientApi tune()Lde/lardtom/propwash/api/client/ClientTune; static concrete -
+M de.lardtom.propwash.api.client.PropwashClientApi workbenchExtensions()Ljava/util/List; static concrete ()Ljava/util/List<Lde/lardtom/propwash/api/client/WorkbenchExtension;>;
+M de.lardtom.propwash.api.client.WorkbenchContext addButton(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/Component;Ljava/lang/Runnable;)V instance abstract -
+M de.lardtom.propwash.api.client.WorkbenchContext addButton(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/Component;Ljava/lang/Runnable;)V instance concrete -
+M de.lardtom.propwash.api.client.WorkbenchContext addIconButton(Lnet/minecraft/resources/Identifier;Lnet/minecraft/network/chat/Component;Ljava/lang/Runnable;)V instance concrete -
+M de.lardtom.propwash.api.client.WorkbenchContext buttonWidth(Lnet/minecraft/network/chat/Component;)I instance concrete -
+M de.lardtom.propwash.api.client.WorkbenchContext containerId()I instance abstract -
+M de.lardtom.propwash.api.client.WorkbenchContext creative()Z instance abstract -
+M de.lardtom.propwash.api.client.WorkbenchContext headerSpace()I instance concrete -
+M de.lardtom.propwash.api.client.WorkbenchContext importIntoWorkbench(Lde/lardtom/propwash/api/build/DroneData;Ljava/util/Set;Ljava/util/Set;)Ljava/util/concurrent/CompletableFuture; instance abstract (Lde/lardtom/propwash/api/build/DroneData;Ljava/util/Set<Lde/lardtom/propwash/api/build/ImportLayer;>;Ljava/util/Set<Lde/lardtom/propwash/api/build/TuneGroup;>;)Ljava/util/concurrent/CompletableFuture<Lde/lardtom/propwash/api/build/ImportResult;>;
+M de.lardtom.propwash.api.client.WorkbenchContext missingParts(Lde/lardtom/propwash/api/build/DroneData;)Ljava/util/List; instance concrete (Lde/lardtom/propwash/api/build/DroneData;)Ljava/util/List<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.client.WorkbenchContext openChild(Ljava/util/function/Function;)V instance abstract (Ljava/util/function/Function<Lnet/minecraft/client/gui/screens/Screen;Lnet/minecraft/client/gui/screens/Screen;>;)V
+M de.lardtom.propwash.api.client.WorkbenchContext result()Ljava/util/Optional; instance abstract ()Ljava/util/Optional<Lde/lardtom/propwash/api/build/DroneData;>;
+M de.lardtom.propwash.api.client.WorkbenchContext screen()Lnet/minecraft/client/gui/screens/Screen; instance abstract -
+M de.lardtom.propwash.api.client.WorkbenchContext slot(Lde/lardtom/propwash/api/part/PartKind;I)Ljava/util/Optional; instance abstract (Lde/lardtom/propwash/api/part/PartKind;I)Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.client.WorkbenchExtension id()Lnet/minecraft/resources/Identifier; instance abstract -
+M de.lardtom.propwash.api.client.WorkbenchExtension init(Lde/lardtom/propwash/api/client/WorkbenchContext;)V instance abstract -
+M de.lardtom.propwash.api.client.WorkbenchExtension order()I instance concrete -
+M de.lardtom.propwash.api.client.camera.GimbalContext deltaSeconds()D instance abstract -
+M de.lardtom.propwash.api.client.camera.GimbalContext drone()Lnet/minecraft/world/entity/Entity; instance abstract -
+M de.lardtom.propwash.api.client.camera.GimbalContext frame()Lorg/joml/Quaternionfc; instance abstract -
+M de.lardtom.propwash.api.client.camera.GimbalContext spectating()Z instance abstract -
+M de.lardtom.propwash.api.client.camera.GimbalContext uptiltDegrees()F instance abstract -
+M de.lardtom.propwash.api.client.camera.GimbalProvider appliesTo(Lnet/minecraft/world/entity/Entity;)Z instance abstract -
+M de.lardtom.propwash.api.client.camera.GimbalProvider orient(Lde/lardtom/propwash/api/client/camera/GimbalContext;Lorg/joml/Quaternionf;)V instance abstract -
+M de.lardtom.propwash.api.client.camera.GimbalProvider suppressesShake()Z instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry <init>(ZLjava/lang/String;Ljava/util/Optional;DDDDDDDDDDDDZDDDZIDDDDDDD)V instance concrete (ZLjava/lang/String;Ljava/util/Optional<Ljava/lang/String;>;DDDDDDDDDDDDZDDDZIDDDDDDD)V
+M de.lardtom.propwash.api.client.hud.FlightTelemetry armed()Z instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry assistLabel()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Ljava/lang/String;>;
+M de.lardtom.propwash.api.client.hud.FlightTelemetry batteryCharge()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry batteryVoltage()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry cellVoltage()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry flightSeconds()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry gpsFix()Z instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry hasHome()Z instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry hashCode()I instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry headingDeg()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry homeBearingDeg()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry homeDistance()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry homeHeight()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry homeX()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry homeY()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry homeZ()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry linkQuality()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry mode()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry pitchDeg()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry rollDeg()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry satellites()I instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry speed()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry stickPitch()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry stickRoll()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry stickThrottle()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry stickYaw()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry throttle()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry verticalSpeed()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry videoSignal()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry x()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry y()D instance concrete -
+M de.lardtom.propwash.api.client.hud.FlightTelemetry z()D instance concrete -
+M de.lardtom.propwash.api.client.hud.HudContext drone()Lnet/minecraft/world/entity/Entity; instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext font()Lnet/minecraft/client/gui/Font; instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext fpv()Z instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext imageHeight()I instance concrete -
+M de.lardtom.propwash.api.client.hud.HudContext imageWidth()I instance concrete -
+M de.lardtom.propwash.api.client.hud.HudContext imageX0()I instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext imageX1()I instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext imageY0()I instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext imageY1()I instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext lineOfSight()Z instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext partialTick()F instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext spectating()Z instance abstract -
+M de.lardtom.propwash.api.client.hud.HudContext telemetry()Lde/lardtom/propwash/api/client/hud/FlightTelemetry; instance abstract -
+M de.lardtom.propwash.api.client.hud.HudElement active(Lde/lardtom/propwash/api/client/hud/HudContext;)Z instance concrete -
+M de.lardtom.propwash.api.client.hud.HudElement render(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lde/lardtom/propwash/api/client/hud/HudContext;)V instance abstract -
+M de.lardtom.propwash.api.client.hud.HudElement replacesOsd(Lde/lardtom/propwash/api/client/hud/HudContext;)Z instance concrete -
+M de.lardtom.propwash.api.drone.DroneAccess aim(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/entity/Entity;DD)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/entity/Entity;DD)Ljava/util/Optional<Lde/lardtom/propwash/api/flight/Intercept$Aim;>;
+M de.lardtom.propwash.api.drone.DroneAccess dronesNear(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/phys/Vec3;DZ)Ljava/util/List; instance abstract (Lnet/minecraft/world/level/Level;Lnet/minecraft/world/phys/Vec3;DZ)Ljava/util/List<Lde/lardtom/propwash/api/drone/DroneView;>;
+M de.lardtom.propwash.api.drone.DroneAccess isDrone(Lnet/minecraft/world/entity/Entity;)Z instance abstract -
+M de.lardtom.propwash.api.drone.DroneAccess nearestDrone(Lnet/minecraft/world/entity/Mob;DZZ)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/entity/Mob;DZZ)Ljava/util/Optional<Lde/lardtom/propwash/api/drone/DroneView;>;
+M de.lardtom.propwash.api.drone.DroneAccess obstacleDistance(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;DZLnet/minecraft/world/entity/Entity;)D instance abstract -
+M de.lardtom.propwash.api.drone.DroneAccess physics(Lnet/minecraft/world/entity/Entity;)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/entity/Entity;)Ljava/util/Optional<Lde/lardtom/propwash/api/drone/DronePhysics;>;
+M de.lardtom.propwash.api.drone.DroneAccess scan(Lnet/minecraft/world/entity/Entity;D)Lde/lardtom/propwash/api/drone/ObstacleScan; instance abstract -
+M de.lardtom.propwash.api.drone.DroneAccess view(Lnet/minecraft/world/entity/Entity;)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/entity/Entity;)Ljava/util/Optional<Lde/lardtom/propwash/api/drone/DroneView;>;
+M de.lardtom.propwash.api.drone.DronePhysics impulse(Lnet/minecraft/world/phys/Vec3;)Z instance concrete -
+M de.lardtom.propwash.api.drone.DronePhysics impulse(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;)Z instance abstract -
+M de.lardtom.propwash.api.drone.DronePhysics push(Lnet/minecraft/world/phys/Vec3;ZLnet/minecraft/world/phys/Vec3;D)Z instance abstract -
+M de.lardtom.propwash.api.drone.DroneView <init>(Lnet/minecraft/world/entity/Entity;Ljava/util/Optional;ZZZLnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;DLjava/util/Map;)V instance concrete (Lnet/minecraft/world/entity/Entity;Ljava/util/Optional<Ljava/util/UUID;>;ZZZLnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;DLjava/util/Map<Lde/lardtom/propwash/api/part/AccessorySlot;Lnet/minecraft/resources/Identifier;>;)V
+M de.lardtom.propwash.api.drone.DroneView accessories()Ljava/util/Map; instance concrete ()Ljava/util/Map<Lde/lardtom/propwash/api/part/AccessorySlot;Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.drone.DroneView accessory(Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional; instance concrete (Lde/lardtom/propwash/api/part/AccessorySlot;)Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.drone.DroneView armed()Z instance concrete -
+M de.lardtom.propwash.api.drone.DroneView autopilot()Z instance concrete -
+M de.lardtom.propwash.api.drone.DroneView center()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.drone.DroneView entity()Lnet/minecraft/world/entity/Entity; instance concrete -
+M de.lardtom.propwash.api.drone.DroneView equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.drone.DroneView flying()Z instance concrete -
+M de.lardtom.propwash.api.drone.DroneView forward()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.drone.DroneView hashCode()I instance concrete -
+M de.lardtom.propwash.api.drone.DroneView massKg()D instance concrete -
+M de.lardtom.propwash.api.drone.DroneView pilot()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Ljava/util/UUID;>;
+M de.lardtom.propwash.api.drone.DroneView speed()D instance concrete -
+M de.lardtom.propwash.api.drone.DroneView toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.drone.DroneView up()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.drone.DroneView velocity()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan <init>(D[D)V instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan clear(Lde/lardtom/propwash/api/flight/SensorDirection;)Z instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan distance(Lde/lardtom/propwash/api/flight/SensorDirection;)D instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan distances()[D instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan hashCode()I instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan nearest()D instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan range()D instance concrete -
+M de.lardtom.propwash.api.drone.ObstacleScan toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage <init>(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)V instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage amount()F instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage cancel()V instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage cancelled()Z instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage drone()Lnet/minecraft/world/entity/Entity; instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage level()Lnet/minecraft/server/level/ServerLevel; instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage originalAmount()F instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage setAmount(F)V instance concrete -
+M de.lardtom.propwash.api.event.DroneDamage source()Lnet/minecraft/world/damagesource/DamageSource; instance concrete -
+M de.lardtom.propwash.api.event.EntityHit <init>(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/phys/Vec3;DLnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Ljava/util/Optional;Ljava/util/Optional;FF)V instance concrete (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/phys/Vec3;DLnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Ljava/util/Optional<Lde/lardtom/propwash/api/part/AccessorySlot;>;Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;FF)V
+M de.lardtom.propwash.api.event.EntityHit accessory()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.event.EntityHit addDamage(F)V instance concrete -
+M de.lardtom.propwash.api.event.EntityHit baseDamage()F instance concrete -
+M de.lardtom.propwash.api.event.EntityHit closingSpeed()D instance concrete -
+M de.lardtom.propwash.api.event.EntityHit damage()F instance concrete -
+M de.lardtom.propwash.api.event.EntityHit drone()Lnet/minecraft/world/entity/Entity; instance concrete -
+M de.lardtom.propwash.api.event.EntityHit framePoint()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.event.EntityHit knockback()F instance concrete -
+M de.lardtom.propwash.api.event.EntityHit normal()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.event.EntityHit pilot()Lnet/minecraft/server/level/ServerPlayer; instance concrete -
+M de.lardtom.propwash.api.event.EntityHit relativeVelocity()Lnet/minecraft/world/phys/Vec3; instance concrete -
+M de.lardtom.propwash.api.event.EntityHit setDamage(F)V instance concrete -
+M de.lardtom.propwash.api.event.EntityHit setKnockback(F)V instance concrete -
+M de.lardtom.propwash.api.event.EntityHit slot()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/part/AccessorySlot;>;
+M de.lardtom.propwash.api.event.EntityHit target()Lnet/minecraft/world/entity/LivingEntity; instance concrete -
+M de.lardtom.propwash.api.event.PropwashEvent <init>(Ljava/lang/String;)V instance concrete -
+M de.lardtom.propwash.api.event.PropwashEvent fire(Ljava/util/function/Consumer;)V instance concrete (Ljava/util/function/Consumer<-TT;>;)V
+M de.lardtom.propwash.api.event.PropwashEvent hasListeners()Z instance concrete -
+M de.lardtom.propwash.api.event.PropwashEvent name()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.event.PropwashEvent register(Ljava/lang/Object;)V instance concrete (TT;)V
+M de.lardtom.propwash.api.event.PropwashEvent toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.event.PropwashEvents$AccessoryActionUsed onAccessoryAction(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/entity/Entity;IZ)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$BuildImported onBuildImported(Lnet/minecraft/server/level/ServerPlayer;Lde/lardtom/propwash/api/build/ImportRequest;Lde/lardtom/propwash/api/build/ImportResult;)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$DroneAssembled onDroneAssembled(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/build/DroneData;)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$DroneDamaged onDroneDamaged(Lde/lardtom/propwash/api/event/DroneDamage;)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$DroneDisassembled onDroneDisassembled(Lnet/minecraft/server/level/ServerPlayer;Lde/lardtom/propwash/api/build/DroneData;)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$DroneHitEntity onDroneHitEntity(Lde/lardtom/propwash/api/event/EntityHit;)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$EscBurned onEscBurned(Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/item/ItemStack;Lde/lardtom/propwash/api/build/DroneData;I)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$PartRegistered onPartRegistered(Lde/lardtom/propwash/api/part/PartDefinition;)V instance abstract -
+M de.lardtom.propwash.api.event.PropwashEvents$RegistryFrozen onRegistryFrozen(Lde/lardtom/propwash/api/part/PartRegistry;)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput climb(D)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput heading(D)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput holdAltitude(D)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput holdPosition(DD)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput label(Ljava/lang/String;)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput maxSpeed(D)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput mode(Lde/lardtom/propwash/api/flight/StabilizationMode;)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput requestReturnHome()V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput sticks(DDDD)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput velocity(DD)V instance abstract -
+M de.lardtom.propwash.api.flight.AssistOutput yawRate(D)V instance abstract -
+M de.lardtom.propwash.api.flight.DroneProfile <init>(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;D)V instance concrete (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map<Ljava/lang/String;Ljava/lang/String;>;D)V
+M de.lardtom.propwash.api.flight.DroneProfile accessories()Ljava/util/Map; instance concrete ()Ljava/util/Map<Ljava/lang/String;Ljava/lang/String;>;
+M de.lardtom.propwash.api.flight.DroneProfile accessory(Ljava/lang/String;)Ljava/util/Optional; instance concrete (Ljava/lang/String;)Ljava/util/Optional<Ljava/lang/String;>;
+M de.lardtom.propwash.api.flight.DroneProfile battery()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile frame()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile has(Ljava/lang/String;)Z instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile hasAccessory(Ljava/lang/String;)Z instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile hashCode()I instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile massKg()D instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile motor()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile prop()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile stack()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.DroneProfile video()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.FlightAssist reset()V instance concrete -
+M de.lardtom.propwash.api.flight.FlightAssist sensorRange()D instance concrete -
+M de.lardtom.propwash.api.flight.FlightAssist update(Lde/lardtom/propwash/api/flight/FlightState;Lde/lardtom/propwash/api/flight/AssistOutput;)V instance abstract -
+M de.lardtom.propwash.api.flight.FlightExtensions assistIds()Ljava/util/List; instance abstract ()Ljava/util/List<Ljava/lang/String;>;
+M de.lardtom.propwash.api.flight.FlightExtensions forceIds()Ljava/util/List; instance abstract ()Ljava/util/List<Ljava/lang/String;>;
+M de.lardtom.propwash.api.flight.FlightExtensions registerAssist(Ljava/lang/String;Ljava/util/function/Function;)V instance abstract (Ljava/lang/String;Ljava/util/function/Function<Lde/lardtom/propwash/api/flight/DroneProfile;Lde/lardtom/propwash/api/flight/FlightAssist;>;)V
+M de.lardtom.propwash.api.flight.FlightExtensions registerForces(Ljava/lang/String;Ljava/util/function/Function;)V instance abstract (Ljava/lang/String;Ljava/util/function/Function<Lde/lardtom/propwash/api/flight/DroneProfile;Lde/lardtom/propwash/api/flight/ForceProvider;>;)V
+M de.lardtom.propwash.api.flight.FlightState action(I)Z instance abstract -
+M de.lardtom.propwash.api.flight.FlightState armed()Z instance abstract -
+M de.lardtom.propwash.api.flight.FlightState batteryCharge()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState estimatedVx()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState estimatedVy()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState estimatedVz()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState estimatedX()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState estimatedY()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState estimatedZ()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState failsafe()Z instance abstract -
+M de.lardtom.propwash.api.flight.FlightState forwardX()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState forwardY()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState forwardZ()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState gpsFix()Z instance abstract -
+M de.lardtom.propwash.api.flight.FlightState gravity()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState grounded()Z instance abstract -
+M de.lardtom.propwash.api.flight.FlightState headingDeg()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState heightAboveGround()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState hoverThrottle()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState massKg()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState obstacleDistance(Lde/lardtom/propwash/api/flight/SensorDirection;)D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState pilotMode()Lde/lardtom/propwash/api/flight/StabilizationMode; instance abstract -
+M de.lardtom.propwash.api.flight.FlightState pitchDeg()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState pitchRateDps()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState positionValid()Z instance abstract -
+M de.lardtom.propwash.api.flight.FlightState rightX()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState rightY()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState rightZ()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState rollDeg()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState rollRateDps()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState satellites()I instance abstract -
+M de.lardtom.propwash.api.flight.FlightState stickPitch()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState stickRoll()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState stickThrottle()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState stickYaw()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState time()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState upX()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState upY()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState upZ()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState vx()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState vy()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState vz()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState x()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState y()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState yawRateDps()D instance abstract -
+M de.lardtom.propwash.api.flight.FlightState z()D instance abstract -
+M de.lardtom.propwash.api.flight.ForceProvider apply(Lde/lardtom/propwash/api/flight/FlightState;Lde/lardtom/propwash/api/flight/ForceSink;)V instance abstract -
+M de.lardtom.propwash.api.flight.ForceSink addForce(DDD)V instance abstract -
+M de.lardtom.propwash.api.flight.ForceSink addForceAt(DDDDDD)V instance abstract -
+M de.lardtom.propwash.api.flight.ForceSink addTorque(DDD)V instance abstract -
+M de.lardtom.propwash.api.flight.GimbalModel <init>()V instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel atLimit()Z instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel commandedPitch()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel headingDeg()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel lockHeading(D)Lde/lardtom/propwash/api/flight/GimbalModel; instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel mechanicalLimits(DDDD)Lde/lardtom/propwash/api/flight/GimbalModel; instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel mode()Lde/lardtom/propwash/api/flight/GimbalModel$Mode; instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel mode(Lde/lardtom/propwash/api/flight/GimbalModel$Mode;)Lde/lardtom/propwash/api/flight/GimbalModel; instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel pitch(D)Lde/lardtom/propwash/api/flight/GimbalModel; instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel pitchDeg()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel pitchRange(DD)Lde/lardtom/propwash/api/flight/GimbalModel; instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel qw()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel qx()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel qy()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel qz()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel reset()V instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel rollDeg()D instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel smoothing(DDD)Lde/lardtom/propwash/api/flight/GimbalModel; instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel update(DDDDD)V instance concrete -
+M de.lardtom.propwash.api.flight.GimbalModel$Mode valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/flight/GimbalModel$Mode; static concrete -
+M de.lardtom.propwash.api.flight.GimbalModel$Mode values()[Lde/lardtom/propwash/api/flight/GimbalModel$Mode; static concrete -
+M de.lardtom.propwash.api.flight.Intercept aim(DDDDDDDDDDDD)Ljava/util/Optional; static concrete (DDDDDDDDDDDD)Ljava/util/Optional<Lde/lardtom/propwash/api/flight/Intercept$Aim;>;
+M de.lardtom.propwash.api.flight.Intercept$Aim <init>(DDDD)V instance concrete -
+M de.lardtom.propwash.api.flight.Intercept$Aim dx()D instance concrete -
+M de.lardtom.propwash.api.flight.Intercept$Aim dy()D instance concrete -
+M de.lardtom.propwash.api.flight.Intercept$Aim dz()D instance concrete -
+M de.lardtom.propwash.api.flight.Intercept$Aim equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.flight.Intercept$Aim hashCode()I instance concrete -
+M de.lardtom.propwash.api.flight.Intercept$Aim time()D instance concrete -
+M de.lardtom.propwash.api.flight.Intercept$Aim toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.flight.SensorDirection valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/flight/SensorDirection; static concrete -
+M de.lardtom.propwash.api.flight.SensorDirection values()[Lde/lardtom/propwash/api/flight/SensorDirection; static concrete -
+M de.lardtom.propwash.api.flight.SensorDirection x()D instance concrete -
+M de.lardtom.propwash.api.flight.SensorDirection y()D instance concrete -
+M de.lardtom.propwash.api.flight.SensorDirection z()D instance concrete -
+M de.lardtom.propwash.api.flight.StabilizationMode valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/flight/StabilizationMode; static concrete -
+M de.lardtom.propwash.api.flight.StabilizationMode values()[Lde/lardtom/propwash/api/flight/StabilizationMode; static concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/AccessorySlot;DDDDDILjava/util/Optional;DD)V instance concrete (Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/AccessorySlot;DDDDDILjava/util/Optional<Lde/lardtom/propwash/api/part/ActionCamDefinition;>;DD)V
+M de.lardtom.propwash.api.part.AccessoryDefinition actionCam()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/part/ActionCamDefinition;>;
+M de.lardtom.propwash.api.part.AccessoryDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition builder(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; static concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition depthMm()D instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition flightBatteryWatts()D instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition frontalAreaM2()D instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition heightMm()D instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition ledCount()I instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition lensLengthMm()D instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition lensXMm()D instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition slot()Lde/lardtom/propwash/api/part/AccessorySlot; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition widthMm()D instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder actionCam(Lde/lardtom/propwash/api/part/ActionCamDefinition;)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder basics(Lde/lardtom/propwash/api/part/PartBasics;)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder build()Lde/lardtom/propwash/api/part/AccessoryDefinition; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder flightBatteryWatts(D)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder frontalArea(D)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder leds(I)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder lens(DD)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder mass(D)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder size(DDD)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessoryDefinition$Builder slot(Lde/lardtom/propwash/api/part/AccessorySlot;)Lde/lardtom/propwash/api/part/AccessoryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.AccessorySlot byKey(Ljava/lang/String;)Ljava/util/Optional; static concrete (Ljava/lang/String;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/AccessorySlot;>;
+M de.lardtom.propwash.api.part.AccessorySlot key()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.AccessorySlot valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/part/AccessorySlot; static concrete -
+M de.lardtom.propwash.api.part.AccessorySlot values()[Lde/lardtom/propwash/api/part/AccessorySlot; static concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition <init>(IIZZDDDDDDD)V instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition fovDegrees()D instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition horizonLevelling()Z instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition imageQuality()D instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition lowLightNoise()D instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition maxFps()I instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition maxHeight()I instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition maxRecordWatts()D instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition ownBatteryWh()D instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition recordWatts()D instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition sensorInches()D instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition stabilization()Z instance concrete -
+M de.lardtom.propwash.api.part.ActionCamDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry <init>(Ljava/util/List;ZDDLjava/util/Optional;DLde/lardtom/propwash/api/part/Vec3Mm;Lde/lardtom/propwash/api/part/MassSplit;Ljava/util/Map;)V instance concrete (Ljava/util/List<Lde/lardtom/propwash/api/part/MotorArm;>;ZDDLjava/util/Optional<Lde/lardtom/propwash/api/part/Vec3Mm;>;DLde/lardtom/propwash/api/part/Vec3Mm;Lde/lardtom/propwash/api/part/MassSplit;Ljava/util/Map<Lde/lardtom/propwash/api/part/AccessorySlot;Lde/lardtom/propwash/api/part/AnchorSpec;>;)V
+M de.lardtom.propwash.api.part.AirframeGeometry accessoryAnchors()Ljava/util/Map; instance concrete ()Ljava/util/Map<Lde/lardtom/propwash/api/part/AccessorySlot;Lde/lardtom/propwash/api/part/AnchorSpec;>;
+M de.lardtom.propwash.api.part.AirframeGeometry arms()Ljava/util/List; instance concrete ()Ljava/util/List<Lde/lardtom/propwash/api/part/MotorArm;>;
+M de.lardtom.propwash.api.part.AirframeGeometry armsOrTrueX(I)Ljava/util/List; instance concrete (I)Ljava/util/List<Lde/lardtom/propwash/api/part/MotorArm;>;
+M de.lardtom.propwash.api.part.AirframeGeometry batteryOnTop()Z instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry batteryPlateMm()D instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry cameraMm()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/part/Vec3Mm;>;
+M de.lardtom.propwash.api.part.AirframeGeometry cameraTiltDeg()D instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry defaultBatteryOnTop(I)Z static concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry defaultBatteryPlateMm(I)D static concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry defaultElectronicsMm(I)D static concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry electronicsMm()D instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry frameCenterOfMassMm()Lde/lardtom/propwash/api/part/Vec3Mm; instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry hasExplicitArms()Z instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry massSplit()Lde/lardtom/propwash/api/part/MassSplit; instance concrete -
+M de.lardtom.propwash.api.part.AirframeGeometry toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec <init>(DDDDD)V instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec lengthMm()D instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec tiltDeg()D instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec x()D instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec y()D instance concrete -
+M de.lardtom.propwash.api.part.AnchorSpec z()D instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;IIDILnet/minecraft/resources/Identifier;Ljava/util/Optional;Ljava/lang/String;)V instance concrete (Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;IIDILnet/minecraft/resources/Identifier;Ljava/util/Optional<Lde/lardtom/propwash/api/part/PackSize;>;Ljava/lang/String;)V
+M de.lardtom.propwash.api.part.BatteryDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition builder(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; static concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition cRating()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition capacityMah()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition cellResistanceOhm()D instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition cells()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition chemistry()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition connector()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition maxContinuousCurrent()D instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition packSize()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/part/PackSize;>;
+M de.lardtom.propwash.api.part.BatteryDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder basics(Lde/lardtom/propwash/api/part/PartBasics;)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder build()Lde/lardtom/propwash/api/part/BatteryDefinition; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder cRating(I)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder capacity(I)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder cellResistance(D)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder cells(I)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder chemistry(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder connector(Ljava/lang/String;)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder mass(D)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryDefinition$Builder packSize(Lde/lardtom/propwash/api/part/PackSize;)Lde/lardtom/propwash/api/part/BatteryDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule <init>(IIDII)V instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule maxCells()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule maxMassGrams()D instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule minCells()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule preferredMinCapacityMah()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule preferredMinCells()I instance concrete -
+M de.lardtom.propwash.api.part.BatteryFitRule toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry <init>(Lnet/minecraft/resources/Identifier;DDDDDDLjava/util/List;)V instance concrete (Lnet/minecraft/resources/Identifier;DDDDDDLjava/util/List<Ljava/lang/Double;>;)V
+M de.lardtom.propwash.api.part.CellChemistry <init>(Lnet/minecraft/resources/Identifier;DDDDDDLjava/util/List;Ljava/util/OptionalDouble;)V instance concrete (Lnet/minecraft/resources/Identifier;DDDDDDLjava/util/List<Ljava/lang/Double;>;Ljava/util/OptionalDouble;)V
+M de.lardtom.propwash.api.part.CellChemistry cutoffCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry densityGramsPerCm3()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry effectiveUsableFraction()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry emptyCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry fullCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry landingCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry nominalCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry ocvShape()Ljava/util/List; instance concrete ()Ljava/util/List<Ljava/lang/Double;>;
+M de.lardtom.propwash.api.part.CellChemistry storageCellVoltage()D instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.CellChemistry usableFraction()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec <init>(Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;)V instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec clearanceMm()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec friction()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec restitution()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec thrustGain()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec translationalLiftGain()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec washLoss()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.DuctSpec washNoise()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.FrameAero <init>(DDLjava/util/OptionalDouble;Ljava/util/OptionalDouble;)V instance concrete -
+M de.lardtom.propwash.api.part.FrameAero dragCoefficient()D instance concrete -
+M de.lardtom.propwash.api.part.FrameAero equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.FrameAero frontalAreaM2()D instance concrete -
+M de.lardtom.propwash.api.part.FrameAero hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.FrameAero of(DD)Lde/lardtom/propwash/api/part/FrameAero; static concrete -
+M de.lardtom.propwash.api.part.FrameAero sideAreaM2()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.FrameAero toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.FrameAero topAreaM2()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/FrameRole;Lde/lardtom/propwash/api/part/FrameShape;IIILjava/util/Set;Ljava/util/Set;Ljava/util/Set;Lde/lardtom/propwash/api/part/AirframeGeometry;Lde/lardtom/propwash/api/part/FrameAero;Ljava/util/Optional;DLde/lardtom/propwash/api/part/BatteryFitRule;)V instance concrete (Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/FrameRole;Lde/lardtom/propwash/api/part/FrameShape;IIILjava/util/Set<Lnet/minecraft/resources/Identifier;>;Ljava/util/Set<Lnet/minecraft/resources/Identifier;>;Ljava/util/Set<Lde/lardtom/propwash/api/part/AccessorySlot;>;Lde/lardtom/propwash/api/part/AirframeGeometry;Lde/lardtom/propwash/api/part/FrameAero;Ljava/util/Optional<Lde/lardtom/propwash/api/part/DuctSpec;>;DLde/lardtom/propwash/api/part/BatteryFitRule;)V
+M de.lardtom.propwash.api.part.FrameDefinition accessoryMounts()Ljava/util/Set; instance concrete ()Ljava/util/Set<Lde/lardtom/propwash/api/part/AccessorySlot;>;
+M de.lardtom.propwash.api.part.FrameDefinition aero()Lde/lardtom/propwash/api/part/FrameAero; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition batteryFit()Lde/lardtom/propwash/api/part/BatteryFitRule; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition builder(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; static concrete -
+M de.lardtom.propwash.api.part.FrameDefinition duct()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/part/DuctSpec;>;
+M de.lardtom.propwash.api.part.FrameDefinition ducted()Z instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition geometry()Lde/lardtom/propwash/api/part/AirframeGeometry; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition impactTolerance()D instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition maxPropMm()I instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition minPropMm()I instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition motorMounts()Ljava/util/Set; instance concrete ()Ljava/util/Set<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.part.FrameDefinition nominalPropInches()D instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition role()Lde/lardtom/propwash/api/part/FrameRole; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition shape()Lde/lardtom/propwash/api/part/FrameShape; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition stackMounts()Ljava/util/Set; instance concrete ()Ljava/util/Set<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.part.FrameDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition wheelbaseMm()I instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder accessoryMount([Lde/lardtom/propwash/api/part/AccessorySlot;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder aero(DD)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder anchor(Lde/lardtom/propwash/api/part/AccessorySlot;Lde/lardtom/propwash/api/part/AnchorSpec;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder arms(Ljava/util/List;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete (Ljava/util/List<Lde/lardtom/propwash/api/part/MotorArm;>;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder;
+M de.lardtom.propwash.api.part.FrameDefinition$Builder basics(Lde/lardtom/propwash/api/part/PartBasics;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder battery(ZD)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder batteryFit(Lde/lardtom/propwash/api/part/BatteryFitRule;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder build()Lde/lardtom/propwash/api/part/FrameDefinition; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder camera(Lde/lardtom/propwash/api/part/Vec3Mm;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder cameraTilt(D)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder centerOfMass(Lde/lardtom/propwash/api/part/Vec3Mm;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder duct(Lde/lardtom/propwash/api/part/DuctSpec;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder electronics(D)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder impactTolerance(D)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder mass(D)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder massSplit(Lde/lardtom/propwash/api/part/MassSplit;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder maxProp(I)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder motorMount([Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder props(II)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder role(Lde/lardtom/propwash/api/part/FrameRole;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder shape(Lde/lardtom/propwash/api/part/FrameShape;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder sideArea(D)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder stackMount([Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder topArea(D)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameDefinition$Builder wheelbase(I)Lde/lardtom/propwash/api/part/FrameDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.FrameRole byKey(Ljava/lang/String;)Ljava/util/Optional; static concrete (Ljava/lang/String;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/FrameRole;>;
+M de.lardtom.propwash.api.part.FrameRole key()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.FrameRole tricksByDefault()Z instance concrete -
+M de.lardtom.propwash.api.part.FrameRole valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/part/FrameRole; static concrete -
+M de.lardtom.propwash.api.part.FrameRole values()[Lde/lardtom/propwash/api/part/FrameRole; static concrete -
+M de.lardtom.propwash.api.part.FrameShape byKey(Ljava/lang/String;)Ljava/util/Optional; static concrete (Ljava/lang/String;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/FrameShape;>;
+M de.lardtom.propwash.api.part.FrameShape key()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.FrameShape valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/part/FrameShape; static concrete -
+M de.lardtom.propwash.api.part.FrameShape values()[Lde/lardtom/propwash/api/part/FrameShape; static concrete -
+M de.lardtom.propwash.api.part.MassSplit <init>(DDD)V instance concrete -
+M de.lardtom.propwash.api.part.MassSplit arms()D instance concrete -
+M de.lardtom.propwash.api.part.MassSplit duct()D instance concrete -
+M de.lardtom.propwash.api.part.MassSplit equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.MassSplit hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.MassSplit plate()D instance concrete -
+M de.lardtom.propwash.api.part.MassSplit toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.MotorArm <init>(Lde/lardtom/propwash/api/part/Vec3Mm;Lde/lardtom/propwash/api/part/MotorArm$Spin;)V instance concrete -
+M de.lardtom.propwash.api.part.MotorArm equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.MotorArm hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.MotorArm of(DDDLde/lardtom/propwash/api/part/MotorArm$Spin;)Lde/lardtom/propwash/api/part/MotorArm; static concrete -
+M de.lardtom.propwash.api.part.MotorArm position()Lde/lardtom/propwash/api/part/Vec3Mm; instance concrete -
+M de.lardtom.propwash.api.part.MotorArm spin()Lde/lardtom/propwash/api/part/MotorArm$Spin; instance concrete -
+M de.lardtom.propwash.api.part.MotorArm toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.MotorArm trueX(ID)Ljava/util/List; static concrete (ID)Ljava/util/List<Lde/lardtom/propwash/api/part/MotorArm;>;
+M de.lardtom.propwash.api.part.MotorArm$Spin key()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.MotorArm$Spin valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/part/MotorArm$Spin; static concrete -
+M de.lardtom.propwash.api.part.MotorArm$Spin values()[Lde/lardtom/propwash/api/part/MotorArm$Spin; static concrete -
+M de.lardtom.propwash.api.part.MotorDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Ljava/lang/String;DDILnet/minecraft/resources/Identifier;DDIILnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/MotorThermal;)V instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition builder(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; static concrete -
+M de.lardtom.propwash.api.part.MotorDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition kv()I instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition maxCells()I instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition maxCurrentAmps()D instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition minCells()I instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition mount()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition parseStatorLabel(Ljava/lang/String;)[D static concrete -
+M de.lardtom.propwash.api.part.MotorDefinition propMount()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition resistanceOhm()D instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition statorDiameterMm()D instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition statorHeightMm()D instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition statorLabel()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition thermal()Lde/lardtom/propwash/api/part/MotorThermal; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder basics(Lde/lardtom/propwash/api/part/PartBasics;)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder build()Lde/lardtom/propwash/api/part/MotorDefinition; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder cells(II)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder kv(I)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder mass(D)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder maxCurrent(D)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder mount(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder propMount(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder resistance(D)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder stator(Ljava/lang/String;)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder statorSize(DD)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorDefinition$Builder thermal(Lde/lardtom/propwash/api/part/MotorThermal;)Lde/lardtom/propwash/api/part/MotorDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal <init>(Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;DDD)V instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal builder()Lde/lardtom/propwash/api/part/MotorThermal$Builder; static concrete -
+M de.lardtom.propwash.api.part.MotorThermal coolingWPerK()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal coolingWPerKPerRadS()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal derateStartC()D instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal heatCapacityJPerK()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal limits(DD)Lde/lardtom/propwash/api/part/MotorThermal; static concrete -
+M de.lardtom.propwash.api.part.MotorThermal maxTempC()D instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal wearPerSecondAtMax()D instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal$Builder build()Lde/lardtom/propwash/api/part/MotorThermal; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal$Builder cooling(D)Lde/lardtom/propwash/api/part/MotorThermal$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal$Builder coolingPerRadS(D)Lde/lardtom/propwash/api/part/MotorThermal$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal$Builder heatCapacity(D)Lde/lardtom/propwash/api/part/MotorThermal$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal$Builder limits(DD)Lde/lardtom/propwash/api/part/MotorThermal$Builder; instance concrete -
+M de.lardtom.propwash.api.part.MotorThermal$Builder wearAtMax(D)Lde/lardtom/propwash/api/part/MotorThermal$Builder; instance concrete -
+M de.lardtom.propwash.api.part.Mounts propFits(Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;)Z static concrete -
+M de.lardtom.propwash.api.part.PackSize <init>(DDD)V instance concrete -
+M de.lardtom.propwash.api.part.PackSize equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.PackSize hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.PackSize heightMm()D instance concrete -
+M de.lardtom.propwash.api.part.PackSize lengthMm()D instance concrete -
+M de.lardtom.propwash.api.part.PackSize toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.PackSize widthMm()D instance concrete -
+M de.lardtom.propwash.api.part.PartBasics <init>(DIIZDLjava/util/Optional;Lde/lardtom/propwash/api/part/PartVisual;)V instance concrete (DIIZDLjava/util/Optional<Lde/lardtom/propwash/api/part/RecycleYield;>;Lde/lardtom/propwash/api/part/PartVisual;)V
+M de.lardtom.propwash.api.part.PartBasics <init>(DIIZDLjava/util/Optional;Lde/lardtom/propwash/api/part/PartVisual;Ljava/util/Optional;)V instance concrete (DIIZDLjava/util/Optional<Lde/lardtom/propwash/api/part/RecycleYield;>;Lde/lardtom/propwash/api/part/PartVisual;Ljava/util/Optional<Lnet/minecraft/world/item/Rarity;>;)V
+M de.lardtom.propwash.api.part.PartBasics creativeListed()Z instance concrete -
+M de.lardtom.propwash.api.part.PartBasics durability()D instance concrete -
+M de.lardtom.propwash.api.part.PartBasics equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.PartBasics hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.PartBasics massGrams()D instance concrete -
+M de.lardtom.propwash.api.part.PartBasics of(D)Lde/lardtom/propwash/api/part/PartBasics; static concrete -
+M de.lardtom.propwash.api.part.PartBasics rarity()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lnet/minecraft/world/item/Rarity;>;
+M de.lardtom.propwash.api.part.PartBasics recycle()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/part/RecycleYield;>;
+M de.lardtom.propwash.api.part.PartBasics sortOrder()I instance concrete -
+M de.lardtom.propwash.api.part.PartBasics stackSize()I instance concrete -
+M de.lardtom.propwash.api.part.PartBasics toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics visual()Lde/lardtom/propwash/api/part/PartVisual; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics withCreativeListed(Z)Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics withDurability(D)Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics withMass(Lde/lardtom/propwash/api/part/PartBasics;D)Lde/lardtom/propwash/api/part/PartBasics; static concrete -
+M de.lardtom.propwash.api.part.PartBasics withRarity(Lnet/minecraft/world/item/Rarity;)Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics withRecycle(Lde/lardtom/propwash/api/part/RecycleYield;)Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics withSortOrder(I)Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics withStackSize(I)Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PartBasics withVisual(Lde/lardtom/propwash/api/part/PartVisual;)Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PartDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance abstract -
+M de.lardtom.propwash.api.part.PartDefinition id()Lnet/minecraft/resources/Identifier; instance abstract -
+M de.lardtom.propwash.api.part.PartDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance abstract -
+M de.lardtom.propwash.api.part.PartDefinition massGrams()D instance concrete -
+M de.lardtom.propwash.api.part.PartKind byKey(Ljava/lang/String;)Ljava/util/Optional; static concrete (Ljava/lang/String;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/PartKind;>;
+M de.lardtom.propwash.api.part.PartKind key()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.PartKind requiredCount()I instance concrete -
+M de.lardtom.propwash.api.part.PartKind slotCount()I instance concrete -
+M de.lardtom.propwash.api.part.PartKind valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/part/PartKind; static concrete -
+M de.lardtom.propwash.api.part.PartKind values()[Lde/lardtom/propwash/api/part/PartKind; static concrete -
+M de.lardtom.propwash.api.part.PartRegistry all()Ljava/util/List; instance abstract ()Ljava/util/List<Lde/lardtom/propwash/api/part/PartDefinition;>;
+M de.lardtom.propwash.api.part.PartRegistry all(Lde/lardtom/propwash/api/part/PartKind;)Ljava/util/List; instance abstract (Lde/lardtom/propwash/api/part/PartKind;)Ljava/util/List<Lde/lardtom/propwash/api/part/PartDefinition;>;
+M de.lardtom.propwash.api.part.PartRegistry chemistries()Ljava/util/List; instance abstract ()Ljava/util/List<Lde/lardtom/propwash/api/part/CellChemistry;>;
+M de.lardtom.propwash.api.part.PartRegistry chemistry(Lnet/minecraft/resources/Identifier;)Ljava/util/Optional; instance abstract (Lnet/minecraft/resources/Identifier;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/CellChemistry;>;
+M de.lardtom.propwash.api.part.PartRegistry chemistryFromJson(Lnet/minecraft/resources/Identifier;Lcom/google/gson/JsonObject;)Lde/lardtom/propwash/api/part/CellChemistry; instance concrete -
+M de.lardtom.propwash.api.part.PartRegistry fingerprint()Ljava/lang/String; instance abstract -
+M de.lardtom.propwash.api.part.PartRegistry fromJson(Lde/lardtom/propwash/api/part/PartKind;Lnet/minecraft/resources/Identifier;Lcom/google/gson/JsonObject;)Lde/lardtom/propwash/api/part/PartDefinition; instance concrete -
+M de.lardtom.propwash.api.part.PartRegistry get(Ljava/lang/Class;Lnet/minecraft/resources/Identifier;)Ljava/util/Optional; instance abstract <D::Lde/lardtom/propwash/api/part/PartDefinition;>(Ljava/lang/Class<TD;>;Lnet/minecraft/resources/Identifier;)Ljava/util/Optional<TD;>;
+M de.lardtom.propwash.api.part.PartRegistry get(Lnet/minecraft/resources/Identifier;)Ljava/util/Optional; instance abstract (Lnet/minecraft/resources/Identifier;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/PartDefinition;>;
+M de.lardtom.propwash.api.part.PartRegistry isBuiltin(Lnet/minecraft/resources/Identifier;)Z instance abstract -
+M de.lardtom.propwash.api.part.PartRegistry isFrozen()Z instance abstract -
+M de.lardtom.propwash.api.part.PartRegistry loadBundled(Ljava/lang/String;)I instance abstract -
+M de.lardtom.propwash.api.part.PartRegistry register(Lde/lardtom/propwash/api/part/PartDefinition;)Lde/lardtom/propwash/api/part/PartDefinition; instance abstract <D::Lde/lardtom/propwash/api/part/PartDefinition;>(TD;)TD;
+M de.lardtom.propwash.api.part.PartRegistry registerChemistry(Lde/lardtom/propwash/api/part/CellChemistry;)Lde/lardtom/propwash/api/part/CellChemistry; instance abstract -
+M de.lardtom.propwash.api.part.PartRegistry toJson(Lde/lardtom/propwash/api/part/CellChemistry;)Lcom/google/gson/JsonObject; instance concrete -
+M de.lardtom.propwash.api.part.PartRegistry toJson(Lde/lardtom/propwash/api/part/PartDefinition;)Lcom/google/gson/JsonObject; instance concrete -
+M de.lardtom.propwash.api.part.PartVisual <init>(Ljava/util/OptionalInt;Ljava/util/Optional;)V instance concrete (Ljava/util/OptionalInt;Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;)V
+M de.lardtom.propwash.api.part.PartVisual accent(I)Lde/lardtom/propwash/api/part/PartVisual; static concrete -
+M de.lardtom.propwash.api.part.PartVisual accentRgb()Ljava/util/OptionalInt; instance concrete -
+M de.lardtom.propwash.api.part.PartVisual equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.PartVisual hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.PartVisual renderModel()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.part.PartVisual toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.PartVisual withRenderModel(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/PartVisual; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;IDIDDLde/lardtom/propwash/api/part/PropMaterial;DLnet/minecraft/resources/Identifier;)V instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;IDIDDLde/lardtom/propwash/api/part/PropMaterial;DLnet/minecraft/resources/Identifier;Ljava/util/OptionalDouble;)V instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition blades()I instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition builder(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/PropDefinition$Builder; static concrete -
+M de.lardtom.propwash.api.part.PropDefinition diameterInches()D instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition diameterMm()I instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition material()Lde/lardtom/propwash/api/part/PropMaterial; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition mount()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition pitchInch()D instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition powerCoefficient()D instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition reverseThrust()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition stiffness()D instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition thrustCoefficient()D instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder basics(Lde/lardtom/propwash/api/part/PartBasics;)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder build()Lde/lardtom/propwash/api/part/PropDefinition; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder coefficients(DD)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder durability(D)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder mass(D)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder material(Lde/lardtom/propwash/api/part/PropMaterial;)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder mount(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder reverseThrust(D)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder size(IDI)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropDefinition$Builder stiffness(D)Lde/lardtom/propwash/api/part/PropDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.PropMaterial byKey(Ljava/lang/String;)Ljava/util/Optional; static concrete (Ljava/lang/String;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/PropMaterial;>;
+M de.lardtom.propwash.api.part.PropMaterial defaultDurability()D instance concrete -
+M de.lardtom.propwash.api.part.PropMaterial defaultStiffness()D instance concrete -
+M de.lardtom.propwash.api.part.PropMaterial key()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.PropMaterial valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/part/PropMaterial; static concrete -
+M de.lardtom.propwash.api.part.PropMaterial values()[Lde/lardtom/propwash/api/part/PropMaterial; static concrete -
+M de.lardtom.propwash.api.part.RecycleYield <init>(Lnet/minecraft/resources/Identifier;I)V instance concrete -
+M de.lardtom.propwash.api.part.RecycleYield count()I instance concrete -
+M de.lardtom.propwash.api.part.RecycleYield equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.RecycleYield hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.RecycleYield item()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.RecycleYield none()Z instance concrete -
+M de.lardtom.propwash.api.part.RecycleYield toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lnet/minecraft/resources/Identifier;DIIZLjava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;Ljava/util/OptionalDouble;)V instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition allInOne()Z instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition boardSizeMm()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition brownoutVoltage()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition builder(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/StackDefinition$Builder; static concrete -
+M de.lardtom.propwash.api.part.StackDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition escBurstAmps()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition escContinuousAmps()D instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition escResistanceOhm()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition maxCells()I instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition minCells()I instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition mount()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder allInOne(Z)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder basics(Lde/lardtom/propwash/api/part/PartBasics;)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder boardSize(D)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder brownout(D)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder build()Lde/lardtom/propwash/api/part/StackDefinition; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder cells(II)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder escBurst(D)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder escContinuous(D)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder escResistance(D)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder mass(D)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.StackDefinition$Builder mount(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/StackDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm <init>(DDD)V instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm horizontalDistance()D instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm x()D instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm y()D instance concrete -
+M de.lardtom.propwash.api.part.Vec3Mm z()D instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/VideoLink;IIDDLjava/util/OptionalDouble;I)V instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/VideoLink;IIDDLjava/util/OptionalDouble;ILjava/util/OptionalDouble;)V instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition <init>(Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/VideoLink;IIDDLjava/util/OptionalDouble;ILjava/util/OptionalDouble;Ljava/util/List;)V instance concrete (Lnet/minecraft/resources/Identifier;Lde/lardtom/propwash/api/part/PartBasics;Lde/lardtom/propwash/api/part/VideoLink;IIDDLjava/util/OptionalDouble;ILjava/util/OptionalDouble;Ljava/util/List<Ljava/lang/Integer;>;)V
+M de.lardtom.propwash.api.part.VideoDefinition basics()Lde/lardtom/propwash/api/part/PartBasics; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition builder(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; static concrete -
+M de.lardtom.propwash.api.part.VideoDefinition cameraFovDeg()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition cameraWidthMm()D instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition equals(Ljava/lang/Object;)Z instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition hashCode()I instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition id()Lnet/minecraft/resources/Identifier; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition imageQuality()D instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition kind()Lde/lardtom/propwash/api/part/PartKind; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition latencyMs()I instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition link()Lde/lardtom/propwash/api/part/VideoLink; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition powerW()Ljava/util/OptionalDouble; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition rangeBlocks()I instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition toString()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition vtxLevelsMw()Ljava/util/List; instance concrete ()Ljava/util/List<Ljava/lang/Integer;>;
+M de.lardtom.propwash.api.part.VideoDefinition vtxPowerMw()I instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder basics(Lde/lardtom/propwash/api/part/PartBasics;)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder build()Lde/lardtom/propwash/api/part/VideoDefinition; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder cameraFov(D)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder cameraWidth(D)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder imageQuality(D)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder latency(I)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder link(Lde/lardtom/propwash/api/part/VideoLink;)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder mass(D)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder powerWatts(D)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder range(I)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder vtxLevels([I)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoDefinition$Builder vtxPower(I)Lde/lardtom/propwash/api/part/VideoDefinition$Builder; instance concrete -
+M de.lardtom.propwash.api.part.VideoLink byKey(Ljava/lang/String;)Ljava/util/Optional; static concrete (Ljava/lang/String;)Ljava/util/Optional<Lde/lardtom/propwash/api/part/VideoLink;>;
+M de.lardtom.propwash.api.part.VideoLink key()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.part.VideoLink valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/part/VideoLink; static concrete -
+M de.lardtom.propwash.api.part.VideoLink values()[Lde/lardtom/propwash/api/part/VideoLink; static concrete -
+M de.lardtom.propwash.api.registry.CreativeEntries add(Ljava/util/function/Supplier;)V instance abstract (Ljava/util/function/Supplier<+Ljava/util/Collection<Lnet/minecraft/world/item/ItemStack;>;>;)V
+M de.lardtom.propwash.api.registry.CreativeEntries collect()Ljava/util/List; instance abstract ()Ljava/util/List<Lnet/minecraft/world/item/ItemStack;>;
+M de.lardtom.propwash.api.registry.ExtensionTab contents()Ljava/util/List; instance abstract ()Ljava/util/List<Lnet/minecraft/world/item/ItemStack;>;
+M de.lardtom.propwash.api.registry.ExtensionTab icon(Ljava/util/function/Supplier;)Lde/lardtom/propwash/api/registry/ExtensionTab; instance abstract (Ljava/util/function/Supplier<Lnet/minecraft/world/item/ItemStack;>;)Lde/lardtom/propwash/api/registry/ExtensionTab;
+M de.lardtom.propwash.api.registry.ExtensionTab icon(Lnet/minecraft/resources/Identifier;)Lde/lardtom/propwash/api/registry/ExtensionTab; instance abstract -
+M de.lardtom.propwash.api.registry.ExtensionTab iconStack()Lnet/minecraft/world/item/ItemStack; instance abstract -
+M de.lardtom.propwash.api.registry.ExtensionTab nameKey()Ljava/lang/String; instance concrete -
+M de.lardtom.propwash.api.registry.ExtensionTab namespace()Ljava/lang/String; instance abstract -
+M de.lardtom.propwash.api.registry.ExtensionTab order([Lde/lardtom/propwash/api/registry/TabSection;)Lde/lardtom/propwash/api/registry/ExtensionTab; instance abstract -
+M de.lardtom.propwash.api.registry.ExtensionTab registered()Z instance abstract -
+M de.lardtom.propwash.api.registry.ExtensionTab sections()Ljava/util/List; instance abstract ()Ljava/util/List<Lde/lardtom/propwash/api/registry/TabSection;>;
+M de.lardtom.propwash.api.registry.ExtensionTab tabId()Lnet/minecraft/resources/Identifier; instance abstract -
+M de.lardtom.propwash.api.registry.LootInjections inject(Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/resources/ResourceKey;)V instance abstract (Lnet/minecraft/resources/ResourceKey<Lnet/minecraft/world/level/storage/loot/LootTable;>;Lnet/minecraft/resources/ResourceKey<Lnet/minecraft/world/level/storage/loot/LootTable;>;)V
+M de.lardtom.propwash.api.registry.LootInjections tablesFor(Lnet/minecraft/resources/ResourceKey;)Ljava/util/List; instance abstract (Lnet/minecraft/resources/ResourceKey<Lnet/minecraft/world/level/storage/loot/LootTable;>;)Ljava/util/List<Lnet/minecraft/resources/ResourceKey<Lnet/minecraft/world/level/storage/loot/LootTable;>;>;
+M de.lardtom.propwash.api.registry.PartItems item(Lnet/minecraft/resources/Identifier;)Ljava/util/Optional; instance abstract (Lnet/minecraft/resources/Identifier;)Ljava/util/Optional<Lnet/minecraft/world/item/Item;>;
+M de.lardtom.propwash.api.registry.PartItems partOf(Lnet/minecraft/world/item/ItemStack;)Ljava/util/Optional; instance abstract (Lnet/minecraft/world/item/ItemStack;)Ljava/util/Optional<Lnet/minecraft/resources/Identifier;>;
+M de.lardtom.propwash.api.registry.PartItems registerItem(Lnet/minecraft/resources/Identifier;Ljava/util/function/UnaryOperator;)V instance abstract (Lnet/minecraft/resources/Identifier;Ljava/util/function/UnaryOperator<Lnet/minecraft/world/item/Item$Properties;>;)V
+M de.lardtom.propwash.api.registry.PartItems registerItems(Ljava/lang/String;)I instance abstract -
+M de.lardtom.propwash.api.registry.PartItems stack(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/world/item/ItemStack; instance abstract -
+M de.lardtom.propwash.api.registry.PartItems stack(Lnet/minecraft/resources/Identifier;F)Lnet/minecraft/world/item/ItemStack; instance concrete -
+M de.lardtom.propwash.api.registry.TabSection complete(Ljava/util/List;)Ljava/util/List; static concrete (Ljava/util/List<Lde/lardtom/propwash/api/registry/TabSection;>;)Ljava/util/List<Lde/lardtom/propwash/api/registry/TabSection;>;
+M de.lardtom.propwash.api.registry.TabSection defaults()Ljava/util/List; static concrete ()Ljava/util/List<Lde/lardtom/propwash/api/registry/TabSection;>;
+M de.lardtom.propwash.api.registry.TabSection kind()Ljava/util/Optional; instance concrete ()Ljava/util/Optional<Lde/lardtom/propwash/api/part/PartKind;>;
+M de.lardtom.propwash.api.registry.TabSection of(Lde/lardtom/propwash/api/part/PartKind;)Ljava/util/Optional; static concrete (Lde/lardtom/propwash/api/part/PartKind;)Ljava/util/Optional<Lde/lardtom/propwash/api/registry/TabSection;>;
+M de.lardtom.propwash.api.registry.TabSection valueOf(Ljava/lang/String;)Lde/lardtom/propwash/api/registry/TabSection; static concrete -
+M de.lardtom.propwash.api.registry.TabSection values()[Lde/lardtom/propwash/api/registry/TabSection; static concrete -
+P de.lardtom.propwash.api.part.PartDefinition de/lardtom/propwash/api/part/AccessoryDefinition
+P de.lardtom.propwash.api.part.PartDefinition de/lardtom/propwash/api/part/BatteryDefinition
+P de.lardtom.propwash.api.part.PartDefinition de/lardtom/propwash/api/part/FrameDefinition
+P de.lardtom.propwash.api.part.PartDefinition de/lardtom/propwash/api/part/MotorDefinition
+P de.lardtom.propwash.api.part.PartDefinition de/lardtom/propwash/api/part/PropDefinition
+P de.lardtom.propwash.api.part.PartDefinition de/lardtom/propwash/api/part/StackDefinition
+P de.lardtom.propwash.api.part.PartDefinition de/lardtom/propwash/api/part/VideoDefinition
+S de.lardtom.propwash.api.ApiVersion java/lang/Comparable
+S de.lardtom.propwash.api.accessory.AccessoryAction de/lardtom/propwash/api/accessory/AccessoryContext
+S de.lardtom.propwash.api.part.AccessoryDefinition de/lardtom/propwash/api/part/PartDefinition
+S de.lardtom.propwash.api.part.BatteryDefinition de/lardtom/propwash/api/part/PartDefinition
+S de.lardtom.propwash.api.part.FrameDefinition de/lardtom/propwash/api/part/PartDefinition
+S de.lardtom.propwash.api.part.MotorDefinition de/lardtom/propwash/api/part/PartDefinition
+S de.lardtom.propwash.api.part.PropDefinition de/lardtom/propwash/api/part/PartDefinition
+S de.lardtom.propwash.api.part.StackDefinition de/lardtom/propwash/api/part/PartDefinition
+S de.lardtom.propwash.api.part.VideoDefinition de/lardtom/propwash/api/part/PartDefinition
+S de.lardtom.propwash.api.registry.ExtensionTab de/lardtom/propwash/api/registry/CreativeEntries
+T de.lardtom.propwash.api.ApiVersion record
+T de.lardtom.propwash.api.PropwashApi final-class
+T de.lardtom.propwash.api.accessory.AccessoryAction interface
+T de.lardtom.propwash.api.accessory.AccessoryBehavior interface
+T de.lardtom.propwash.api.accessory.AccessoryContext interface
+T de.lardtom.propwash.api.accessory.AccessoryInventory interface
+T de.lardtom.propwash.api.accessory.AccessoryRegistry interface
+T de.lardtom.propwash.api.accessory.MountPose record
+T de.lardtom.propwash.api.build.BuildAccess interface
+T de.lardtom.propwash.api.build.BuildCheck record
+T de.lardtom.propwash.api.build.BuildSpec record
+T de.lardtom.propwash.api.build.BuildStats record
+T de.lardtom.propwash.api.build.CameraView record
+T de.lardtom.propwash.api.build.CameraView$PropDisc record
+T de.lardtom.propwash.api.build.CameraView$UptiltRange record
+T de.lardtom.propwash.api.build.DroneData record
+T de.lardtom.propwash.api.build.DronePreset record
+T de.lardtom.propwash.api.build.ImportLayer enum
+T de.lardtom.propwash.api.build.ImportRequest record
+T de.lardtom.propwash.api.build.ImportResult record
+T de.lardtom.propwash.api.build.ImportStatus enum
+T de.lardtom.propwash.api.build.ImportTarget enum
+T de.lardtom.propwash.api.build.PaintSpec record
+T de.lardtom.propwash.api.build.TuneGroup enum
+T de.lardtom.propwash.api.build.TuneSpec record
+T de.lardtom.propwash.api.client.ClientInput interface
+T de.lardtom.propwash.api.client.ClientTune interface
+T de.lardtom.propwash.api.client.FlightSchoolScenes final-class
+T de.lardtom.propwash.api.client.OsdLayoutAccess interface
+T de.lardtom.propwash.api.client.OsdLayoutSpec record
+T de.lardtom.propwash.api.client.PropwashClientApi final-class
+T de.lardtom.propwash.api.client.WorkbenchContext interface
+T de.lardtom.propwash.api.client.WorkbenchExtension interface
+T de.lardtom.propwash.api.client.camera.GimbalContext interface
+T de.lardtom.propwash.api.client.camera.GimbalProvider interface
+T de.lardtom.propwash.api.client.hud.FlightTelemetry record
+T de.lardtom.propwash.api.client.hud.HudContext interface
+T de.lardtom.propwash.api.client.hud.HudElement interface
+T de.lardtom.propwash.api.drone.DroneAccess interface
+T de.lardtom.propwash.api.drone.DronePhysics interface
+T de.lardtom.propwash.api.drone.DroneView record
+T de.lardtom.propwash.api.drone.ObstacleScan record
+T de.lardtom.propwash.api.event.DroneDamage final-class
+T de.lardtom.propwash.api.event.EntityHit final-class
+T de.lardtom.propwash.api.event.PropwashEvent final-class
+T de.lardtom.propwash.api.event.PropwashEvents final-class
+T de.lardtom.propwash.api.event.PropwashEvents$AccessoryActionUsed interface
+T de.lardtom.propwash.api.event.PropwashEvents$BuildImported interface
+T de.lardtom.propwash.api.event.PropwashEvents$DroneAssembled interface
+T de.lardtom.propwash.api.event.PropwashEvents$DroneDamaged interface
+T de.lardtom.propwash.api.event.PropwashEvents$DroneDisassembled interface
+T de.lardtom.propwash.api.event.PropwashEvents$DroneHitEntity interface
+T de.lardtom.propwash.api.event.PropwashEvents$EscBurned interface
+T de.lardtom.propwash.api.event.PropwashEvents$PartRegistered interface
+T de.lardtom.propwash.api.event.PropwashEvents$RegistryFrozen interface
+T de.lardtom.propwash.api.flight.AssistOutput interface
+T de.lardtom.propwash.api.flight.DroneProfile record
+T de.lardtom.propwash.api.flight.FlightAssist interface
+T de.lardtom.propwash.api.flight.FlightExtensions interface
+T de.lardtom.propwash.api.flight.FlightState interface
+T de.lardtom.propwash.api.flight.ForceProvider interface
+T de.lardtom.propwash.api.flight.ForceSink interface
+T de.lardtom.propwash.api.flight.GimbalModel final-class
+T de.lardtom.propwash.api.flight.GimbalModel$Mode enum
+T de.lardtom.propwash.api.flight.Intercept final-class
+T de.lardtom.propwash.api.flight.Intercept$Aim record
+T de.lardtom.propwash.api.flight.SensorDirection enum
+T de.lardtom.propwash.api.flight.StabilizationMode enum
+T de.lardtom.propwash.api.part.AccessoryDefinition record
+T de.lardtom.propwash.api.part.AccessoryDefinition$Builder final-class
+T de.lardtom.propwash.api.part.AccessorySlot enum
+T de.lardtom.propwash.api.part.ActionCamDefinition record
+T de.lardtom.propwash.api.part.AirframeGeometry record
+T de.lardtom.propwash.api.part.AnchorSpec record
+T de.lardtom.propwash.api.part.BatteryDefinition record
+T de.lardtom.propwash.api.part.BatteryDefinition$Builder final-class
+T de.lardtom.propwash.api.part.BatteryFitRule record
+T de.lardtom.propwash.api.part.CellChemistry record
+T de.lardtom.propwash.api.part.DuctSpec record
+T de.lardtom.propwash.api.part.FrameAero record
+T de.lardtom.propwash.api.part.FrameDefinition record
+T de.lardtom.propwash.api.part.FrameDefinition$Builder final-class
+T de.lardtom.propwash.api.part.FrameRole enum
+T de.lardtom.propwash.api.part.FrameShape enum
+T de.lardtom.propwash.api.part.MassSplit record
+T de.lardtom.propwash.api.part.MotorArm record
+T de.lardtom.propwash.api.part.MotorArm$Spin enum
+T de.lardtom.propwash.api.part.MotorDefinition record
+T de.lardtom.propwash.api.part.MotorDefinition$Builder final-class
+T de.lardtom.propwash.api.part.MotorThermal record
+T de.lardtom.propwash.api.part.MotorThermal$Builder final-class
+T de.lardtom.propwash.api.part.Mounts final-class
+T de.lardtom.propwash.api.part.PackSize record
+T de.lardtom.propwash.api.part.PartBasics record
+T de.lardtom.propwash.api.part.PartDefinition interface
+T de.lardtom.propwash.api.part.PartKind enum
+T de.lardtom.propwash.api.part.PartRegistry interface
+T de.lardtom.propwash.api.part.PartVisual record
+T de.lardtom.propwash.api.part.PropDefinition record
+T de.lardtom.propwash.api.part.PropDefinition$Builder final-class
+T de.lardtom.propwash.api.part.PropMaterial enum
+T de.lardtom.propwash.api.part.RecycleYield record
+T de.lardtom.propwash.api.part.StackDefinition record
+T de.lardtom.propwash.api.part.StackDefinition$Builder final-class
+T de.lardtom.propwash.api.part.Vec3Mm record
+T de.lardtom.propwash.api.part.VideoDefinition record
+T de.lardtom.propwash.api.part.VideoDefinition$Builder final-class
+T de.lardtom.propwash.api.part.VideoLink enum
+T de.lardtom.propwash.api.registry.CreativeEntries interface
+T de.lardtom.propwash.api.registry.ExtensionTab interface
+T de.lardtom.propwash.api.registry.LootInjections interface
+T de.lardtom.propwash.api.registry.PartItems interface
+T de.lardtom.propwash.api.registry.TabSection enum

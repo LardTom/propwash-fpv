@@ -76,6 +76,7 @@ public final class VideoSelfTests {
         FisheyeSelfTests.register();
         VideoTabSelfTests.register();
         VtxPowerSelfTests.register();
+        VideoCheckSelfTests.register();
     }
 
     private static StepResult retryButtonStep(SelfTest.StepContext ctx) {

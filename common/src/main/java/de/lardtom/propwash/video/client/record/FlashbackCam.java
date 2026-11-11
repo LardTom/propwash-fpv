@@ -6,8 +6,11 @@ import de.lardtom.propwash.compat.flashback.client.FlashbackBridge;
 import de.lardtom.propwash.compat.flashback.client.FlashbackScene;
 import de.lardtom.propwash.compat.flashback.client.FlashbackUiScale;
 import de.lardtom.propwash.content.ContentIds;
+import de.lardtom.propwash.drone.DroneScale;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.drone.operator.client.GimbalFov;
+import de.lardtom.propwash.drone.operator.client.GimbalRecording;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemedToast;
 import de.lardtom.propwash.video.FovMath;
@@ -383,9 +386,10 @@ public final class FlashbackCam {
         session.bodyOrientation(this.rotation);
         this.lens.set((float) session.lensRightOffset(), (float) session.lensUpOffset(), (float) -session.lensForwardOffset());
         this.rotation.transform(this.lens);
-        this.rotation.rotateX((float) Math.toRadians(session.cameraUptiltDeg()));
+        DroneScale.eye(this.position, this.lens, session.comOffset(), flown.scale(), this.position);
+        GimbalRecording.path(flown, this.rotation, session.cameraUptiltDeg());
         double fov = FovMath.verticalFromHorizontal(horizontalFov(minecraft, session, flown), EXPORT_ASPECT);
-        boolean added = this.buffer.add(new PathSample(tick, this.position.x + this.lens.x, this.position.y + this.lens.y, this.position.z + this.lens.z,
+        boolean added = this.buffer.add(new PathSample(tick, this.position.x, this.position.y, this.position.z,
                 this.rotation.x, this.rotation.y, this.rotation.z, this.rotation.w, fov));
         if (added) {
             this.samples++;
@@ -393,7 +397,11 @@ public final class FlashbackCam {
         }
     }
 
-    static double horizontalFov(Minecraft minecraft, PilotSession session, QuadcopterEntity flown) {
+    public static double horizontalFov(Minecraft minecraft, PilotSession session, QuadcopterEntity flown) {
+        double gimbal = GimbalFov.path(flown, session.bodyOrientation(new Quaternionf()), session.cameraUptiltDeg());
+        if (!Double.isNaN(gimbal)) {
+            return gimbal;
+        }
         if (session.isFpv()) {
             return VideoState.INSTANCE.horizontalFov();
         }

@@ -1,0 +1,20 @@
+modLoader = "javafml"
+loaderVersion = "*"
+license = "LicenseRef-PolyForm-Shield-1.0.0"
+
+[[mods]]
+modId = "nsprobe"
+version = "1.0.0"
+displayName = "Namespace Probe"
+authors = "lardtom"
+description = '''Dev-only probe for the namespace check of Propwash. Never part of a release.'''
+
+[[mixins]]
+config = "nsprobe.mixins.json"
+
+[[dependencies.nsprobe]]
+modId = "propwash"
+type = "required"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"

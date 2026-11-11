@@ -9,20 +9,30 @@ import de.lardtom.propwash.api.build.ImportRequest;
 import de.lardtom.propwash.api.build.ImportResult;
 import de.lardtom.propwash.api.client.camera.GimbalProvider;
 import de.lardtom.propwash.api.client.hud.HudElement;
+import de.lardtom.propwash.api.client.osd.OsdElementSpec;
+import de.lardtom.propwash.api.client.osd.OsdWarning;
 import de.lardtom.propwash.api.part.PartKind;
+import de.lardtom.propwash.apiimpl.Api17Registries;
 import de.lardtom.propwash.apiimpl.BuildAccessImpl;
+import de.lardtom.propwash.apiimpl.NamespaceRules;
 import de.lardtom.propwash.apiimpl.client.ClientApiImpl;
 import de.lardtom.propwash.apiimpl.client.WorkbenchExtensions;
 import de.lardtom.propwash.build.PartAvailability;
+import de.lardtom.propwash.capture.client.CaptureClient;
 import de.lardtom.propwash.content.TooltipShift;
 import de.lardtom.propwash.guide.GuideScenes;
 import de.lardtom.propwash.guide.client.GuideOpener;
+import de.lardtom.propwash.guide.client.HoldToOpen;
 import de.lardtom.propwash.guide.scene.ActorSpec;
 import de.lardtom.propwash.guide.scene.Scene;
+import de.lardtom.propwash.input.addon.client.AddonTestRadio;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
@@ -46,7 +56,12 @@ public final class PropwashClientApi {
     }
 
     public static void registerConfigTab(Supplier<? extends ConfigTab> factory) {
-        ConfigTabs.register(Objects.requireNonNull(factory, "factory"));
+        Objects.requireNonNull(factory, "factory");
+        String mod = NamespaceRules.callerMod();
+        ConfigTabs.register(() -> {
+            ConfigTab tab = factory.get();
+            return tab != null && NamespaceRules.refuse(tab.id(), "config tab", mod) ? null : tab;
+        });
     }
 
     public static boolean openConfigTab(String tabId, @Nullable Screen parent) {
@@ -54,7 +69,9 @@ public final class PropwashClientApi {
     }
 
     public static void registerWorkbenchExtension(WorkbenchExtension extension) {
-        WorkbenchExtensions.register(extension);
+        if (!NamespaceRules.refuse(Objects.requireNonNull(extension, "extension").id().toString(), "workbench extension")) {
+            WorkbenchExtensions.register(extension);
+        }
     }
 
     public static List<WorkbenchExtension> workbenchExtensions() {
@@ -67,7 +84,10 @@ public final class PropwashClientApi {
 
     public static void registerFlightSchoolScene(Supplier<Scene> scene, BooleanSupplier visible) {
         Objects.requireNonNull(scene, "scene");
-        GuideScenes.register(() -> requireAddonScene(scene.get()), visible);
+        Scene created = Objects.requireNonNull(scene.get(), "scene");
+        if (!created.builtin() || !NamespaceRules.refuse(Scene.BUILTIN_NAMESPACE + ":" + created.id(), "flight school scene")) {
+            GuideScenes.register(() -> created, visible);
+        }
     }
 
     public static ActorSpec.Drone flightSchoolDrone(BuildSpec build, boolean assembled, float scale) {
@@ -114,6 +134,14 @@ public final class PropwashClientApi {
         return true;
     }
 
+    public static boolean simulateFlightSchoolHold(int slot) {
+        return HoldToOpen.simulate(slot);
+    }
+
+    public static void stopSimulatedFlightSchoolHold() {
+        HoldToOpen.stopSimulation();
+    }
+
     public static OsdLayoutAccess osd() {
         return ClientApiImpl.OSD;
     }
@@ -128,6 +156,38 @@ public final class PropwashClientApi {
 
     public static ClientInput input() {
         return ClientInputImpl.INSTANCE;
+    }
+
+    public static void registerOsdElement(OsdElementSpec spec) {
+        Api17Registries.Client.registerOsdElement(spec);
+    }
+
+    public static void registerOsdWarning(Identifier id, OsdWarning warning) {
+        Api17Registries.Client.registerOsdWarning(id, warning);
+    }
+
+    public static void bindSwitchKey(Identifier id, KeyMapping key) {
+        Api17Registries.Client.bindSwitchKey(id, key);
+    }
+
+    public static void bindAxisKeys(Identifier id, KeyMapping increase, KeyMapping decrease) {
+        Api17Registries.Client.bindAxisKeys(id, increase, decrease);
+    }
+
+    public static void registerServiceExtension(ServiceExtension extension) {
+        Api17Registries.Client.registerServiceExtension(extension);
+    }
+
+    public static RecordingControl recording() {
+        return Api17Registries.Client.RECORDING;
+    }
+
+    public static CameraChunkRequests cameraChunks() {
+        return CaptureClient.INSTANCE;
+    }
+
+    public static boolean spectate(Entity drone) {
+        return Api17Registries.Client.spectate(drone);
     }
 
     public static ClientTune tune() {
@@ -150,6 +210,38 @@ public final class PropwashClientApi {
         TooltipShift.override(shown);
     }
 
+    public static boolean simulateRadio(boolean gamepad) {
+        return AddonTestRadio.start(gamepad);
+    }
+
+    public static void stopSimulatedRadio() {
+        AddonTestRadio.stop();
+    }
+
+    public static boolean setSimulatedAxis(int axis, float value) {
+        return AddonTestRadio.axis(axis, value);
+    }
+
+    public static boolean setSimulatedButton(int button, boolean down) {
+        return AddonTestRadio.button(button, down);
+    }
+
+    public static boolean bindSimulatedSwitch(Identifier id, int button) {
+        return AddonTestRadio.bindButton(Objects.requireNonNull(id, "id"), button);
+    }
+
+    public static boolean bindSimulatedSwitch(Identifier id, int channel, int lowMicros, int highMicros) {
+        return AddonTestRadio.bindChannel(Objects.requireNonNull(id, "id"), channel, lowMicros, highMicros);
+    }
+
+    public static boolean bindSimulatedAction(int number, int button) {
+        return AddonTestRadio.bindActionButton(number, button);
+    }
+
+    public static boolean bindSimulatedAction(int number, int channel, int lowMicros, int highMicros) {
+        return AddonTestRadio.bindActionChannel(number, channel, lowMicros, highMicros);
+    }
+
     public static void renderPreview(GuiGraphicsExtractor graphics, DroneData drone, int x0, int y0, int x1, int y1, float yawDegrees) {
         ClientApiImpl.renderPreview(graphics, drone, x0, y0, x1, y1, yawDegrees);
     }
@@ -157,14 +249,5 @@ public final class PropwashClientApi {
     public static void renderPreview(GuiGraphicsExtractor graphics, DroneData drone, int x0, int y0, int x1, int y1, float yawDegrees,
                                      float pixelsPerMillimetre) {
         ClientApiImpl.renderPreview(graphics, drone, x0, y0, x1, y1, yawDegrees, pixelsPerMillimetre);
-    }
-
-    private static Scene requireAddonScene(Scene scene) {
-        Objects.requireNonNull(scene, "scene");
-        if (scene.builtin()) {
-            throw new IllegalArgumentException("Flugschul-Szenen von Addons brauchen eine Id mit eigenem Namensraum (z. B. meinmod:rahmen): "
-                    + scene.id());
-        }
-        return scene;
     }
 }

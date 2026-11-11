@@ -292,7 +292,12 @@ Schutz innerhalb der 10 s einer Freigabe, entscheidet weiter der Server beim Bru
   fällt heraus); 5-Zoll zerbricht einen Glasblock mit 30 m/s und stürzt ab; Abenteuermodus – keine Vorhersage, direkte
   Anfrage am Server mit `GAME_MODE` abgelehnt; geschützter Bereich (interner Schutz `DroneBreaks.GUARDS` wie ein
   Claim-Mod) – Freigabe vorab abgelehnt, die Drohne prallt beim ersten Treffer mit 25 m/s ab, keine Bruch-Anfrage, die
-  Scheibe verschwindet beim Client nie; verzierter Topf im Überleben – Scherben und Inhalt fallen heraus.
+  Scheibe verschwindet beim Client nie; verzierter Topf im Überleben – Scherben und Inhalt fallen heraus. Beim Abprallen
+  gilt „steckt im Block“ nur bei echter Überlappung mit einer Kollisionsform (mehr als 2 cm Eindringtiefe, jeden Tick
+  geprüft); liegt die Drohne ohne Überlappung hinter der Vorderkante der Scheibe, meldet der Schritt „neben oder unter
+  der Scheibe vorbei“. Die langsamen Flüge (Whoop, 5-Zoll mit 8 m/s) halten die Seitendrift entlang der Scheibe bei 1 m
+  von der Mitte an: Die Wand ist 5 Blöcke breit, nach dem Abprallen gleitet der Whoop mit bis zu 1,5 m/s seitlich, ohne
+  Bremse kam er vereinzelt bis neben ihr Ende.
 - Server-Rauchtest (dedizierter Server, beide Loader): ein Gast ohne Recht am Spawn wird mit `PROTECTED` abgelehnt
   (Spawn-Schutz 16, ein Operator auf der Liste) – schon die Freigabe vorab (`DroneBreaks#clearance`) –, als Operator und außerhalb des Schutzes zerbricht er, im Abenteuermodus
   und mit Regel aus nicht; Freigabe vorab und Bruch nennen in jedem Fall denselben Grund (`interact.BlockBreakRights`).

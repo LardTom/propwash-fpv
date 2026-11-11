@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/battery_swapped",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "battery_charged"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:battery_charger"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.battery_charged.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.battery_charged.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

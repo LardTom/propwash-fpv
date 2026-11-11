@@ -1,7 +1,6 @@
 package de.lardtom.propwash.relay;
 
 import de.lardtom.propwash.content.ContentIds;
-import de.lardtom.propwash.content.HelpBlockItem;
 import de.lardtom.propwash.registry.PropwashRegistries;
 import de.lardtom.propwash.registry.RegHolder;
 import net.minecraft.world.level.block.SoundType;
@@ -21,7 +20,7 @@ public final class RelayModule {
                     .noCollision()
                     .noOcclusion()
                     .pushReaction(PushReaction.POPPED),
-            HelpBlockItem::new,
+            SignalRepeaterItem::new,
             p -> p);
 
     public static final RegHolder<BlockEntityType<SignalRepeaterBlockEntity>> SIGNAL_REPEATER_BE = PropwashRegistries.blockEntity(

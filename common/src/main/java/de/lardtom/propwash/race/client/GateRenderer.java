@@ -6,6 +6,8 @@ import com.mojang.math.Axis;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.race.CourseElement;
+import de.lardtom.propwash.race.CourseData;
+import de.lardtom.propwash.race.CourseOrder;
 import de.lardtom.propwash.race.CourseToolItem;
 import de.lardtom.propwash.race.FreeformRegion;
 import de.lardtom.propwash.race.GateEntity;
@@ -17,6 +19,8 @@ import de.lardtom.propwash.race.GateSize;
 import de.lardtom.propwash.race.GateStacking;
 import de.lardtom.propwash.race.GateTilt;
 import de.lardtom.propwash.race.LapTracker;
+import de.lardtom.propwash.video.PilotFeed;
+import de.lardtom.propwash.video.client.WatchedPilot;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -51,6 +55,7 @@ import org.joml.Matrix3f;
 import org.joml.Quaternionf;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +74,7 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
     public static final float BANNER_CAP = 0.5F;
     public static final float PLATE_HEIGHT = 0.8F;
     public static final float PLATE_DEPTH = 0.12F;
-    public static final int CHEVRONS = 3;
+    public static final int CHEVRONS = ChevronWave.PERIOD;
     private static final int PULSE_STEPS = 12;
     private static final float LIGHT_INSET = 0.3F;
     private static final float CORNER_HALF_DEPTH = 0.3125F;
@@ -79,8 +84,6 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
     private static final float CHEVRON_HALF_LENGTH = 0.3F;
     private static final float CHEVRON_THICKNESS = 0.2F;
     private static final float CHEVRON_LIFT = 0.035F;
-    private static final float CHEVRON_WAVE = 0.05F;
-    private static final float CHEVRON_MIN = 0.35F;
     private static final float HALO_WIDTH = 0.32F;
     private static final float HALO_ALPHA = 0.6F;
     private static final float RIM = 0.06F;
@@ -95,7 +98,6 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
     private static final double NAME_DROP = 0.35;
     private static final float PLATE_GAP = 0.0625F;
     private static final float NAME_LIFT = 0.3F;
-    private static final double TILE_EPSILON = 1.0E-4;
     private static final double LEVEL_CHEVRONS = 0.6;
     private static final float EDITED_FILL = 0.55F;
     private static @Nullable GateRenderer current;
@@ -113,6 +115,7 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
     private final Map<Long, ItemStack> stacks = new HashMap<>();
     private final Map<Long, ItemStack> pieceStacks = new HashMap<>();
     private final Map<Integer, FormattedCharSequence> numbers = new HashMap<>();
+    private final Map<String, FormattedCharSequence> passLabels = new HashMap<>();
     private final GateRenderState edited = new GateRenderState();
     private static @Nullable RenderType glowType;
     private static @Nullable RenderType solidType;
@@ -300,6 +303,13 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
 
     public void submitEdited(GateEntity entity, GateGeometry geometry, PoseStack poseStack, SubmitNodeCollector collector, Vec3 camera,
                              float ageInTicks) {
+        GateStacking.Base base = entity.kind() == CourseElement.GATE_POLE ? GatePoles.base(geometry.mount(), entity.supported())
+                : GateStacking.placedBase(geometry);
+        this.submitEdited(entity, geometry, base, poseStack, collector, camera, ageInTicks);
+    }
+
+    public void submitEdited(GateEntity entity, GateGeometry geometry, GateStacking.Base base, PoseStack poseStack, SubmitNodeCollector collector,
+                             Vec3 camera, float ageInTicks) {
         GateRenderState state = this.edited;
         Level level = entity.level();
         Marking marking = marking(entity);
@@ -308,8 +318,6 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
             int light = entity.inCourse() ? lightColor(entity, ageInTicks) : FreeformGateRenderer.IDLE_COLOR;
             this.fill(state, geometry.at(0.0, 0.0, 0.0), null, marking, number, light, EDITED_FILL);
         } else {
-            GateStacking.Base base = entity.kind() == CourseElement.GATE_POLE ? GatePoles.base(geometry.mount(), entity.supported())
-                    : GateStacking.placedBase(geometry);
             this.fill(state, geometry.at(0.0, 0.0, 0.0), entity.size(), base, false, marking, number, lightColor(entity, ageInTicks), level);
         }
         BlockPos lightAt = BlockPos.containing(geometry.centerX(), geometry.centerY(), geometry.centerZ());
@@ -344,8 +352,15 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
             this.extractFreeform(entity, state, partialTicks);
             return;
         }
-        this.fill(state, entity.geometry().at(0.0, 0.0, 0.0), entity.size(), entity.base(), entity.covered() || entity.carrying(), marking(entity),
-                entity.gateIndex() + 1, lightColor(entity, state.ageInTicks), entity.level());
+        GateGeometry geometry = entity.geometry();
+        this.fill(state, geometry.at(0.0, 0.0, 0.0), entity.size(), entity.base(), entity.covered() || entity.carrying(), marking(entity),
+                entity.gateIndex() + 1, lightColor(entity, state.ageInTicks), entity.level(), entity.joints());
+        this.passLabel(state, entity);
+        this.pointLabel(state, entity);
+        state.scoringKind = geometry.scoringKind();
+        state.scoreSide = geometry.score().side();
+        state.scoreWidth = (float) geometry.score().reach();
+        state.markColor = state.kind == CourseElement.GATE_POLE ? lightColor(entity, state.ageInTicks) : state.lightColor;
         if (state.covered && state.nameTag != null) {
             state.nameTagAttachment = new Vec3(0.0, state.height - state.size.frame() - NAME_DROP, 0.0);
         } else if (state.mount != GateMount.STANDING || !state.tilt.none()) {
@@ -362,10 +377,16 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
         Vec3 viewer = FreeformGateRenderer.viewer(partialTicks);
         float fill = viewer == null ? 0.0F : FreeformGateRenderer.approach(geometry, viewer);
         ClientRaceTracker tracker = ClientRaceTracker.INSTANCE;
-        if (entity.inCourse() && entity.courseId() == tracker.courseId() && tracker.tracker().racing() && entity.gateIndex() == tracker.nextGateIndex()) {
+        PilotFeed watched = WatchedPilot.feed();
+        boolean next = watched != null
+                ? entity.courseId() == watched.courseId() && watched.racing() && entity.hasPass(watched.nextGateIndex())
+                : entity.courseId() == tracker.courseId() && tracker.tracker().racing() && entity.hasPass(tracker.nextGateIndex());
+        if (entity.inCourse() && next) {
             fill = Math.max(fill, 0.85F);
         }
         this.fill(state, geometry.at(0.0, 0.0, 0.0), entity, marking, entity.gateIndex() + 1, light, fill);
+        this.passLabel(state, entity);
+        this.pointLabel(state, entity);
         FreeformRegion region = geometry.region();
         if (region != null && state.nameTag != null) {
             double top = region.horizontal() ? 0.9 : region.height() * 0.5 + 0.4;
@@ -374,6 +395,9 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
     }
 
     public void fill(GateRenderState state, GateGeometry local, @Nullable GateEntity entity, Marking marking, int number, int lightColor, float fill) {
+        state.flownForward = true;
+        state.flownReversed = false;
+        state.joints = 0;
         state.kind = CourseElement.FREEFORM;
         state.variant = local.variant();
         state.marking = marking;
@@ -416,6 +440,14 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
 
     public void fill(GateRenderState state, GateGeometry local, GateSize size, GateStacking.Base base, boolean covered, Marking marking, int number,
                      int lightColor, @Nullable Level level) {
+        this.fill(state, local, size, base, covered, marking, number, lightColor, level, 0);
+    }
+
+    public void fill(GateRenderState state, GateGeometry local, GateSize size, GateStacking.Base base, boolean covered, Marking marking, int number,
+                     int lightColor, @Nullable Level level, int joints) {
+        state.joints = local.gate() ? joints : 0;
+        state.flownForward = true;
+        state.flownReversed = false;
         if (local.freeform()) {
             this.fill(state, local, null, marking, number, lightColor, 0.0F);
             return;
@@ -429,7 +461,7 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
         state.offsetX = (float) local.originX();
         state.offsetY = (float) local.originY();
         state.offsetZ = (float) local.originZ();
-        state.tiled = !size.standard(local.width(), local.height()) && this.piecesPresent;
+        state.tiled = (state.joints != 0 || !size.standard(local.width(), local.height())) && this.piecesPresent;
         state.size = size;
         state.yaw = yaw;
         state.mount = mount;
@@ -664,15 +696,128 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
         }
         this.submitBody(state, poseStack, collector);
         if (state.kind == CourseElement.GATE_POLE) {
+            if (state.scoringKind != CourseElement.GATE_POLE && state.marking != Marking.NONE) {
+                this.markings(state, poseStack, collector, true);
+            }
             super.submit(state, poseStack, collector, camera);
             return;
         }
         if (state.kind != CourseElement.GATE) {
-            this.elements.submitMarkings(this, state, poseStack, collector);
+            this.markings(state, poseStack, collector, true);
         } else if (state.marking != Marking.NONE) {
-            this.submitMarkings(state, poseStack, collector);
+            this.markings(state, poseStack, collector, false);
         }
         super.submit(state, poseStack, collector, camera);
+    }
+
+    private void markings(GateRenderState state, PoseStack poseStack, SubmitNodeCollector collector, boolean element) {
+        boolean forward = state.flownForward || !state.flownReversed;
+        if (forward) {
+            state.markTurned = false;
+            state.markPlate = true;
+            this.markingsOnce(state, poseStack, collector, element);
+        }
+        if (state.flownReversed) {
+            state.markTurned = true;
+            state.markPlate = !forward;
+            this.markingsOnce(state, poseStack, collector, element);
+        }
+        state.markTurned = false;
+        state.markPlate = true;
+    }
+
+    private void markingsOnce(GateRenderState state, PoseStack poseStack, SubmitNodeCollector collector, boolean element) {
+        if (element) {
+            this.elements.submitMarkings(this, state, poseStack, collector);
+        } else {
+            this.submitMarkings(state, poseStack, collector);
+        }
+    }
+
+    void passLabel(GateRenderState state, GateEntity entity) {
+        state.flownForward = entity.flownForward();
+        state.flownReversed = entity.flownReversed();
+        if (!entity.repeated() || state.label == null || state.marking == Marking.NONE) {
+            return;
+        }
+        List<CourseOrder.Pass> passes = entity.passes();
+        String key;
+        Component text;
+        if (state.marking == Marking.START) {
+            List<CourseOrder.Pass> rest = new ArrayList<>();
+            for (CourseOrder.Pass pass : passes) {
+                if (pass.index() != 0) {
+                    rest.add(pass);
+                }
+            }
+            boolean startReversed = entity.passReversed(0);
+            String start = state.covered || state.kind != CourseElement.GATE ? "propwash.race.gate.start_short" : "propwash.race.gate.banner";
+            String tail = (startReversed ? CourseOrder.REVERSE_MARK : "") + (rest.isEmpty() ? "" : CourseOrder.SEPARATOR + CourseOrder.label(rest));
+            key = start + "|" + tail;
+            text = Component.translatable(start).append(tail);
+        } else {
+            key = CourseOrder.label(passes);
+            text = Component.literal(key);
+        }
+        FormattedCharSequence label = this.passLabels.computeIfAbsent(key, k -> text.getVisualOrderText());
+        state.label = label;
+        state.labelWidth = this.getFont().width(label);
+    }
+
+    void pointLabel(GateRenderState state, GateEntity entity) {
+        if (state.label == null || state.marking == Marking.NONE || entity.kind() == CourseElement.GATE_POLE) {
+            return;
+        }
+        CourseData course = ClientCourses.get(entity.courseId());
+        if (course == null || !course.pointToPoint()) {
+            return;
+        }
+        int finish = course.gates().size() - 1;
+        boolean start = state.marking == Marking.START;
+        boolean last = entity.hasPass(finish);
+        if (!last && !start) {
+            return;
+        }
+        List<CourseOrder.Pass> rest = new ArrayList<>();
+        for (CourseOrder.Pass pass : entity.passes()) {
+            if (pass.index() != 0 && pass.index() != finish) {
+                rest.add(pass);
+            }
+        }
+        String startMark = start && entity.passReversed(0) ? CourseOrder.REVERSE_MARK : "";
+        String finishMark = last && entity.passReversed(finish) ? CourseOrder.REVERSE_MARK : "";
+        String middle = rest.isEmpty() ? "" : CourseOrder.label(rest);
+        String key = "p2p|" + start + startMark + "|" + middle + "|" + last + finishMark;
+        FormattedCharSequence label = this.passLabels.computeIfAbsent(key, k -> {
+            MutableComponent text = Component.empty();
+            if (start) {
+                text.append(Component.translatable("propwash.race.gate.start_short")).append(startMark);
+            }
+            if (!middle.isEmpty()) {
+                text.append(start ? CourseOrder.SEPARATOR + middle : middle);
+            }
+            if (last) {
+                text.append(start || !middle.isEmpty() ? CourseOrder.SEPARATOR : "").append(Component.translatable("propwash.race.p2p.gate.finish"))
+                        .append(finishMark);
+            }
+            return text.getVisualOrderText();
+        });
+        state.label = label;
+        state.labelWidth = this.getFont().width(label);
+    }
+
+    static @Nullable Component finishTag(GateEntity entity) {
+        if (!entity.inCourse()) {
+            return null;
+        }
+        CourseData course = ClientCourses.get(entity.courseId());
+        if (course == null || !course.pointToPoint()) {
+            return null;
+        }
+        if (entity.hasPass(course.gates().size() - 1)) {
+            return Component.translatable("propwash.race.p2p.gate.finish_tag");
+        }
+        return entity.hasPass(0) ? Component.translatable("propwash.race.p2p.gate.start_tag") : null;
     }
 
     private static boolean offset(GateRenderState state) {
@@ -734,54 +879,11 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
     }
 
     private void submitTiled(GateRenderState state, PoseStack poseStack, SubmitNodeCollector collector) {
-        float half = state.width * 0.5F;
-        float frame = state.size.frame();
-        float inner = half - frame;
-        float height = state.height;
-        GateStacking.Base variant = state.base;
         int light = state.lightCoords;
-        int glow = LightCoordsUtil.FULL_BRIGHT;
         poseStack.pushPose();
         toFrame(state, poseStack);
-        boolean stacked = variant == GateStacking.Base.STACKED;
-        this.piece(state, stacked ? Piece.TEE_LEFT : Piece.CORNER_LEFT, -half, 0.0F, light, poseStack, collector);
-        this.piece(state, stacked ? Piece.TEE_RIGHT : Piece.CORNER_RIGHT, half, 0.0F, light, poseStack, collector);
-        this.piece(state, Piece.CORNER_LEFT, -half, height - frame, light, poseStack, collector);
-        this.piece(state, Piece.CORNER_RIGHT, half, height - frame, light, poseStack, collector);
-        for (float y = frame; y < height - frame - TILE_EPSILON; ) {
-            boolean whole = height - frame - y >= 1.0F - TILE_EPSILON;
-            this.piece(state, whole ? Piece.POST_LEFT : Piece.POST_LEFT_HALF, -half, y, light, poseStack, collector);
-            this.piece(state, whole ? Piece.POST_RIGHT : Piece.POST_RIGHT_HALF, half, y, light, poseStack, collector);
-            this.piece(state, whole ? Piece.LED_POST_LEFT : Piece.LED_POST_LEFT_HALF, -half, y, glow, poseStack, collector);
-            this.piece(state, whole ? Piece.LED_POST_RIGHT : Piece.LED_POST_RIGHT_HALF, half, y, glow, poseStack, collector);
-            y += whole ? 1.0F : 0.5F;
-        }
-        for (float x = -inner; x < inner - TILE_EPSILON; ) {
-            boolean whole = inner - x >= 1.0F - TILE_EPSILON;
-            if (variant.bottomBar()) {
-                this.piece(state, whole ? Piece.BAR_BOTTOM : Piece.BAR_BOTTOM_HALF, x, 0.0F, light, poseStack, collector);
-                this.piece(state, whole ? Piece.LED_BOTTOM_OUTER : Piece.LED_BOTTOM_OUTER_HALF, x, 0.0F, glow, poseStack, collector);
-            }
-            if (variant != GateStacking.Base.LEGS) {
-                this.piece(state, whole ? Piece.LED_BOTTOM_INNER : Piece.LED_BOTTOM_INNER_HALF, x, 0.0F, glow, poseStack, collector);
-            }
-            this.piece(state, whole ? Piece.BAR_TOP : Piece.BAR_TOP_HALF, x, height, light, poseStack, collector);
-            this.piece(state, whole ? Piece.LED_TOP : Piece.LED_TOP_HALF, x, height, glow, poseStack, collector);
-            x += whole ? 1.0F : 0.5F;
-        }
-        if (variant.feet()) {
-            this.piece(state, Piece.FOOT_LEFT, -half, 0.0F, light, poseStack, collector);
-            this.piece(state, Piece.FOOT_RIGHT, half, 0.0F, light, poseStack, collector);
-        }
-        if (state.startModelled && !state.covered) {
-            this.piece(state, Piece.BANNER_CAP_LEFT, -half, height, light, poseStack, collector);
-            this.piece(state, Piece.BANNER_CAP_RIGHT, half, height, light, poseStack, collector);
-            for (float x = -half + BANNER_CAP; x < half - BANNER_CAP - TILE_EPSILON; ) {
-                boolean whole = half - BANNER_CAP - x >= 1.0F - TILE_EPSILON;
-                this.piece(state, whole ? Piece.BANNER_PANEL : Piece.BANNER_PANEL_HALF, x, height, light, poseStack, collector);
-                x += whole ? 1.0F : 0.5F;
-            }
-        }
+        GateTiles.layout(state.width, state.height, state.size.frame(), state.base, state.joints, state.startModelled && !state.covered,
+                (piece, x, y, glow) -> this.piece(state, piece, x, y, glow ? LightCoordsUtil.FULL_BRIGHT : light, poseStack, collector));
         poseStack.popPose();
     }
 
@@ -893,8 +995,9 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
         float halfDepth = size.depth() * 0.5F;
         int color = state.lightColor;
         float age = state.ageInTicks;
-        boolean start = state.marking == Marking.START;
-        boolean plate = !start || state.covered;
+        boolean full = state.markPlate;
+        boolean start = full && state.marking == Marking.START;
+        boolean plate = full && (!start || state.covered);
         float plateHalf = plateWidth(size) * 0.5F;
         float plateX = plateCenterX(size, width, state.covered);
         float plateY = plateBottom(height, state.covered);
@@ -905,16 +1008,22 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
             poseStack.pushPose();
             poseStack.translate(state.chevronX, state.chevronY, state.chevronZ);
             poseStack.rotate(state.chevronRotation);
+            if (state.markTurned) {
+                poseStack.rotateDegrees(Axis.YP, 180.0F);
+            }
             collector.order(1).submitCustomGeometry(poseStack, glowType(), (pose, buffer) -> floorChevrons(pose, buffer, inner, 0.0F, color, age));
             poseStack.popPose();
         }
         poseStack.pushPose();
         toFrame(state, poseStack);
+        if (state.markTurned) {
+            poseStack.rotateDegrees(Axis.YP, 180.0F);
+        }
         collector.order(1).submitCustomGeometry(poseStack, glowType(), (pose, buffer) -> {
             if (!level) {
                 floorChevrons(pose, buffer, inner, floor, color, age);
             }
-            if (!covered) {
+            if (!covered && full) {
                 exitMarks(pose, buffer, inner, frame, height);
             }
             if (start) {
@@ -927,6 +1036,10 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
             }
         });
         int light = state.lightCoords;
+        if (!full) {
+            poseStack.popPose();
+            return;
+        }
         if (plate) {
             collector.submitCustomGeometry(poseStack, solidType(), (pose, buffer) -> BoxDraw.box(pose, buffer, plateX - plateHalf, plateY,
                     -PLATE_DEPTH * 0.5F, plateX + plateHalf, plateY + PLATE_HEIGHT, PLATE_DEPTH * 0.5F, FRAME_COLOR, light));
@@ -983,11 +1096,8 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
         poseStack.popPose();
     }
 
-    public static float chevronBrightness(int fromFar, float ageInTicks) {
-        float wave = ageInTicks * CHEVRON_WAVE + fromFar / (float) CHEVRONS;
-        wave -= (float) Math.floor(wave);
-        float fall = 1.0F - wave;
-        return CHEVRON_MIN + (1.0F - CHEVRON_MIN) * fall * fall;
+    public static float chevronBrightness(int stepsLeft, float ageInTicks) {
+        return ChevronWave.brightness(stepsLeft, ageInTicks);
     }
 
     public static float chevronFloor(GateSize size, GateStacking.Base base) {
@@ -1001,7 +1111,7 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
             float center = -(CHEVRON_FIRST + CHEVRON_STEP * i);
             float tip = center + CHEVRON_HALF_LENGTH;
             float back = center - CHEVRON_HALF_LENGTH;
-            int shade = ARGB.color(chevronBrightness(CHEVRONS - 1 - i, age), color);
+            int shade = ARGB.color(chevronBrightness(ChevronWave.approach(i), age), color);
             for (int side = -1; side <= 1; side += 2) {
                 float x = half * side;
                 quad(pose, buffer,
@@ -1081,10 +1191,10 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
 
     private static void submitFallback(GateRenderState state, PoseStack poseStack, SubmitNodeCollector collector) {
         GateSize size = state.size;
-        GateGeometry frame = new GateGeometry(0.0, 0.0, 0.0, 0.0F, state.width, state.height, size.frame(), size.depth());
+        GateGeometry frame = new GateGeometry(0.0, 0.0, 0.0, 0.0F, state.width, state.height, size.frame(), size.depth()).withJoints(state.joints);
         float inset = size.frame() * LIGHT_INSET;
         GateGeometry lights = new GateGeometry(0.0, inset, 0.0, 0.0F, state.width - 2.0F * inset, state.height - 2.0F * inset,
-                size.frame() - 2.0F * inset, size.depth() + 0.03F);
+                size.frame() - 2.0F * inset, size.depth() + 0.03F).withJoints(state.joints);
         RenderType type = solidType();
         int frameLight = state.lightCoords;
         int lightColor = state.lightColor;
@@ -1158,19 +1268,34 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
         if (!gate.inCourse()) {
             return LIGHT_IDLE;
         }
+        PilotFeed watched = WatchedPilot.feed();
+        if (watched != null && gate.courseId() == watched.courseId()) {
+            if (watched.racing()) {
+                return gate.hasPass(watched.nextGateIndex()) ? LIGHT_GREEN : LIGHT_WHITE;
+            }
+            if (watched.countdown()) {
+                if (!gate.hasPass(watched.startGateIndex())) {
+                    return LIGHT_WHITE;
+                }
+                return watched.falseStarted() ? LIGHT_AMBER : LIGHT_RED;
+            }
+            if (watched.phase() == LapTracker.Phase.IDLE) {
+                return gate.hasPass(watched.startGateIndex()) ? LIGHT_GREEN : LIGHT_WHITE;
+            }
+        }
         ClientRaceTracker tracker = ClientRaceTracker.INSTANCE;
-        boolean ownCourse = gate.courseId() == tracker.courseId();
+        boolean ownCourse = watched == null && gate.courseId() == tracker.courseId();
         if (ownCourse && tracker.tracker().racing()) {
-            return gate.gateIndex() == tracker.nextGateIndex() ? LIGHT_GREEN : LIGHT_WHITE;
+            return gate.hasPass(tracker.nextGateIndex()) ? LIGHT_GREEN : LIGHT_WHITE;
         }
         if (ownCourse && tracker.countdownActive()) {
-            if (gate.gateIndex() != tracker.startGateIndex()) {
+            if (!gate.hasPass(tracker.startGateIndex())) {
                 return LIGHT_WHITE;
             }
             return tracker.tracker().falseStarted() ? LIGHT_AMBER : LIGHT_RED;
         }
         if (ownCourse && tracker.tracker().phase() == LapTracker.Phase.IDLE) {
-            return gate.gateIndex() == tracker.startGateIndex() ? LIGHT_GREEN : LIGHT_WHITE;
+            return gate.hasPass(tracker.startGateIndex()) ? LIGHT_GREEN : LIGHT_WHITE;
         }
         if (FpvView.spectating()) {
             return gate.gateIndex() == 0 ? LIGHT_GREEN : LIGHT_WHITE;
@@ -1211,9 +1336,14 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
         if (!holdingCourseTool()) {
             return super.getNameTag(entity);
         }
+        if (entity.kind() == CourseElement.GATE_POLE && entity.inCourse()) {
+            return Component.translatable("propwash.race.element.label", GateMounting.elementName(entity.kind()), entity.passText(),
+                    entity.courseId(), GateMounting.scoreName(entity.score()))
+                    .withStyle(entity.courseId() == heldCourse() ? ChatFormatting.GREEN : ChatFormatting.WHITE);
+        }
         if (entity.kind() == CourseElement.GATE_POLE) {
-            return Component.translatable("propwash.race.pole.label", GateMounting.elementName(entity.kind()),
-                    GateMounting.variantName(entity.geometry())).withStyle(ChatFormatting.GRAY);
+            return Component.translatable("propwash.race.score.pole.label", GateMounting.elementName(entity.kind()),
+                    GateMounting.variantName(entity.geometry()), GateMounting.scoreName(entity.score())).withStyle(ChatFormatting.GRAY);
         }
         if (!entity.inCourse()) {
             return entity.element() ? Component.translatable("propwash.race.element.label_none", GateMounting.elementName(entity.kind()),
@@ -1221,9 +1351,13 @@ public final class GateRenderer extends EntityRenderer<GateEntity, GateRenderSta
                     : Component.translatable("propwash.race.gate.label_none").withStyle(ChatFormatting.GRAY);
         }
         MutableComponent label = entity.element()
-                ? Component.translatable("propwash.race.element.label", GateMounting.elementName(entity.kind()), entity.gateIndex() + 1,
+                ? Component.translatable("propwash.race.element.label", GateMounting.elementName(entity.kind()), entity.passText(),
                 entity.courseId(), GateMounting.variantName(entity.geometry()))
-                : Component.translatable("propwash.race.gate.label", entity.gateIndex() + 1, entity.courseId());
+                : Component.translatable("propwash.race.gate.label", entity.passText(), entity.courseId());
+        Component tag = finishTag(entity);
+        if (tag != null) {
+            label = Component.translatable("propwash.race.p2p.gate.tagged", label, tag);
+        }
         return label.withStyle(entity.courseId() == heldCourse() ? ChatFormatting.GREEN : ChatFormatting.WHITE);
     }
 }

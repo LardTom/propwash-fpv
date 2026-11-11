@@ -1,0 +1,8 @@
+{
+  "propwash.accessory.menu.overloaded": "Load %s g · overloaded",
+  "propwash.accessory.menu.overloaded.hint": "Overloaded: an accessory plus its load counts at most %s g, the flight model carries %s g of this load.",
+  "propwash.build.issue.accessory_frame": "Accessory only fits other frames",
+  "propwash.content.workbench.slot_hint.accessory_other_frames": "Doesn't fit this frame, only: %s",
+  "propwash.drone.tooltip.overloaded": "Overloaded: an accessory plus its load weighs over %s kg",
+  "propwash.osd.warning.overloaded": "OVERLOADED"
+}

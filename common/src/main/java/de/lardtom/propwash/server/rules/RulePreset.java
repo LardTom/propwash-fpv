@@ -1,5 +1,7 @@
 package de.lardtom.propwash.server.rules;
 
+import de.lardtom.propwash.server.AddonWorldRules;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -96,7 +98,7 @@ public enum RulePreset {
                 return false;
             }
         }
-        return true;
+        return AddonWorldRules.presetActive(this.id());
     }
 
     public List<RuleSpec> changes(RuleValues current) {

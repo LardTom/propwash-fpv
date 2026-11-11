@@ -3,24 +3,31 @@ package de.lardtom.propwash.drone.client;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.race.RaceServer;
+import de.lardtom.propwash.race.RaceStandards;
+import de.lardtom.propwash.server.PersonalRulesServer;
 import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.SimTuning;
+import de.lardtom.propwash.zone.ZoneField;
+import de.lardtom.propwash.zone.ZoneServer;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class GravitySelfTests {
     private static final String PHASE = "gravity_phase";
     private static final String HOVER = "gravity_hover";
     private static final String SINCE = "gravity_since";
     private static final String FUTURE = "gravity_future";
-    private static final String FLAGGED = "gravity_flagged";
+    private static final String SERVER = "gravity_server";
+    private static final String WAITING = "warte auf den Server";
     private static final int PERCENT = 130;
     private static final double EARTH = new SimTuning().gravity();
     private static final int WAIT_TICKS = 60;
@@ -68,12 +75,9 @@ public final class GravitySelfTests {
                 return restore(ctx, StepResult.fail("Drohne der Sitzung fehlt"));
             }
             int droneId = drone.getId();
-            AtomicBoolean flagged = new AtomicBoolean();
-            state.put(FLAGGED, flagged);
-            state.put(FUTURE, ctx.onServer(server -> {
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                flagged.set(player.level().getEntity(droneId) instanceof QuadcopterEntity serverDrone && serverDrone.physicsModified());
-            }));
+            AtomicReference<String> server = new AtomicReference<>(WAITING);
+            state.put(SERVER, server);
+            state.put(FUTURE, ctx.onServer(s -> server.set(serverPhysics(s, droneId, EARTH * factor))));
             ctx.log(String.format(Locale.ROOT, "Welt-Regel Schwerkraft %d %% im Flug: %.3f m/s², Schwebegas-Schätzung %.1f %% -> %.1f %%",
                     PERCENT, sim.gravity(), 100.0 * before, 100.0 * after));
             state.put(SINCE, ctx.tick());
@@ -85,19 +89,20 @@ public final class GravitySelfTests {
             if (!future.isDone()) {
                 return StepResult.pending();
             }
-            if (!((AtomicBoolean) state.get(FLAGGED)).get()) {
+            @SuppressWarnings("unchecked")
+            AtomicReference<String> server = (AtomicReference<String>) state.get(SERVER);
+            String problem = server.get();
+            if (problem != null) {
                 if (waited < WAIT_TICKS) {
                     QuadcopterEntity drone = session.drone();
                     int droneId = drone != null ? drone.getId() : -1;
-                    AtomicBoolean flagged = (AtomicBoolean) state.get(FLAGGED);
-                    state.put(FUTURE, ctx.onServer(server -> {
-                        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                        flagged.set(player.level().getEntity(droneId) instanceof QuadcopterEntity serverDrone && serverDrone.physicsModified());
-                    }));
+                    state.put(FUTURE, ctx.onServer(s -> server.set(serverPhysics(s, droneId, EARTH * factor))));
                     return StepResult.pending();
                 }
-                return restore(ctx, StepResult.fail("Server kennt die veränderte Physik der Drohne nicht"));
+                return restore(ctx, StepResult.fail(problem));
             }
+            ctx.log(String.format(Locale.ROOT, "Server rechnet die Drohne des Piloten mit %.3f m/s², Serverregeln zählen nicht als Abweichung",
+                    EARTH * factor));
             restore(ctx, StepResult.pass());
             state.put(SINCE, ctx.tick());
             state.put(PHASE, 3);
@@ -107,6 +112,27 @@ public final class GravitySelfTests {
             return waited < WAIT_TICKS ? StepResult.pending() : StepResult.fail("Schwerkraft nach dem Zurücksetzen " + sim.gravity());
         }
         return StepResult.pass();
+    }
+
+    private static String serverPhysics(MinecraftServer server, int droneId, double expected) {
+        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+        if (!(player.level().getEntity(droneId) instanceof QuadcopterEntity drone)) {
+            return "Drohne fehlt am Server";
+        }
+        ZoneField field = new ZoneField();
+        field.update(ZoneServer.zones(drone.level()), ZoneServer.dimension(drone.level()), PersonalRulesServer.base(server, drone.pilot().orElse(null)),
+                drone.getX(), drone.getY(), drone.getZ(), 0.0);
+        double gravity = field.apply(field.rules().toSimTuning()).gravity();
+        if (Math.abs(gravity - expected) > 1e-9) {
+            return String.format(Locale.ROOT, "Server rechnet die Drohne mit %.3f statt %.3f m/s²", gravity, expected);
+        }
+        if (drone.physicsModified()) {
+            return "Server hält die Serverregeln für eine persönliche Abweichung";
+        }
+        if (!RaceServer.serverRules(drone).personalReasons(RaceStandards.server(server)).none()) {
+            return "Rennwertung am Server zählt die Serverregeln als Flughilfe";
+        }
+        return null;
     }
 
     private static StepResult restore(SelfTest.StepContext ctx, StepResult result) {

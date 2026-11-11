@@ -65,6 +65,50 @@ class TrainingProgressTest {
     }
 
     @Test
+    void unlockAllMarkOpensEveryLessonWithoutStars() {
+        TrainingProgress progress = new Gson().fromJson("{\"lessons\": {\"arm\": {\"stars\": 2}}, \"unlockAll\": true}", TrainingProgress.class);
+        progress.sanitize();
+        for (Chapter chapter : Curriculum.chapters()) {
+            assertTrue(Curriculum.chapterUnlocked(chapter, progress), chapter.id());
+            for (Lesson lesson : chapter.lessons()) {
+                assertTrue(Curriculum.unlocked(lesson, progress), lesson.id());
+            }
+        }
+        assertEquals(2, Curriculum.totalStars(progress), "Freischalten schenkt keine Sterne");
+        assertEquals(0, progress.stars("final_exam"));
+        assertFalse(Curriculum.chapterComplete(Curriculum.chapter(Curriculum.BASICS), progress));
+        assertEquals("hover", Curriculum.firstOpen(progress).id());
+        assertEquals("altitude", Curriculum.nextOpen(Curriculum.lesson("straight"), progress).id());
+        TrainingProgress saved = new Gson().fromJson(new Gson().toJson(progress), TrainingProgress.class);
+        saved.sanitize();
+        assertTrue(Curriculum.unlocked(Curriculum.lesson("final_exam"), saved), "Markierung übersteht Speichern und Laden");
+        TrainingProgress ordered = new Gson().fromJson("{\"lessons\": {\"arm\": {\"stars\": 2}}, \"unlockAll\": false}", TrainingProgress.class);
+        ordered.sanitize();
+        assertTrue(Curriculum.unlocked(Curriculum.lesson("hover"), ordered));
+        assertFalse(Curriculum.unlocked(Curriculum.lesson("land"), ordered));
+        assertFalse(Curriculum.unlocked(Curriculum.lesson("final_exam"), ordered));
+    }
+
+    @Test
+    void restoringTheOrderKeepsStarsAndLocksAgain() {
+        TrainingProgress progress = new TrainingProgress();
+        assertFalse(progress.allUnlocked());
+        progress.unlockAll = true;
+        Lesson exam = Curriculum.lesson("final_exam");
+        TrainingProgress.Outcome outcome = progress.complete(exam, TrainingScale.FULL, result(2, 25.0, false));
+        assertTrue(outcome.moreStars());
+        assertEquals(2, progress.stars(exam.id()));
+        assertEquals(2, Curriculum.totalStars(progress));
+        progress.unlockAll = false;
+        assertFalse(Curriculum.unlocked(exam, progress));
+        assertFalse(Curriculum.chapterUnlocked(Curriculum.chapter(Curriculum.ADVANCED), progress));
+        assertTrue(Curriculum.unlocked(Curriculum.lesson("arm"), progress));
+        assertEquals(2, progress.stars(exam.id()), "Sterne bleiben nach der Rücknahme");
+        assertEquals(25.0, progress.best(exam.id(), TrainingScale.FULL).time);
+        assertFalse(new Gson().fromJson("{\"lessons\": {}}", TrainingProgress.class).allUnlocked(), "alte Dateien ohne Markierung");
+    }
+
+    @Test
     void brokenFilesAreRepaired() {
         TrainingProgress progress = new Gson().fromJson("""
                 {"lessons": {"arm": {"stars": 9, "attempts": -4, "bests": {"full": {"time": -1}, "small": {"time": 4.0}}},

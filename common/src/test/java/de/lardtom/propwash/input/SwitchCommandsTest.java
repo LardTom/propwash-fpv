@@ -180,7 +180,7 @@ class SwitchCommandsTest {
         evaluator.evaluate(pad, NO_AXES, buttons);
         buttons[9] = true;
         buttons[10] = true;
-        int bits = evaluator.evaluate(pad, NO_AXES, buttons);
+        long bits = evaluator.evaluate(pad, NO_AXES, buttons);
         assertTrue(SwitchEvaluator.isSet(bits, SwitchFunction.COMMAND_4));
         assertTrue(SwitchEvaluator.isSet(bits, SwitchFunction.COMMAND_5));
         buttons[9] = false;
@@ -188,7 +188,7 @@ class SwitchCommandsTest {
         bits = evaluator.evaluate(pad, NO_AXES, buttons);
         assertFalse(SwitchEvaluator.isSet(bits, SwitchFunction.COMMAND_4));
         assertTrue(SwitchEvaluator.isSet(bits, SwitchFunction.COMMAND_5), "Umschalten hält den Zustand");
-        int readable = SwitchEvaluator.readable(pad, NO_AXES, buttons);
+        long readable = SwitchEvaluator.readable(pad, NO_AXES, buttons);
         assertTrue(SwitchEvaluator.isSet(readable, SwitchFunction.COMMAND_4));
         assertFalse(SwitchEvaluator.isSet(readable, SwitchFunction.COMMAND_1));
     }

@@ -132,4 +132,42 @@ class GateSignalTargetTest {
         assertTrue(FreeformBlocks.covers(geometry, target.emitterX(), target.emitterY(), target.emitterZ()));
         assertFalse(FreeformBlocks.covers(geometry, target.x(), target.y(), target.z()));
     }
+    @Test
+    void lyingFreeformGatesTurnTheirOutputWithTheGate() {
+        FreeformRegion hole = FreeformRegion.of(FreeformRegion.AXIS_Y, 3, 2, 1, 0, new boolean[]{
+                true, true, true,
+                true, true, true});
+        assertTarget(GateSignalTarget.freeform(hole, 64, 10, 20), 11, 64, 19, GateSignalTarget.SOUTH);
+        assertTarget(GateSignalTarget.freeform(hole, 64, 10, 20, 0.0F), 11, 64, 19, GateSignalTarget.SOUTH);
+        assertTarget(GateSignalTarget.freeform(hole, 64, 10, 20, 90.0F), 13, 64, 20, GateSignalTarget.WEST);
+        assertTarget(GateSignalTarget.freeform(hole, 64, 10, 20, 180.0F), 11, 64, 22, GateSignalTarget.NORTH);
+        assertTarget(GateSignalTarget.freeform(hole, 64, 10, 20, 270.0F), 9, 64, 21, GateSignalTarget.EAST);
+        assertTarget(GateSignalTarget.freeform(hole, 64, 10, 20, -90.0F), 9, 64, 21, GateSignalTarget.EAST);
+        FreeformFill.Probe slab = (x, y, z) -> y == 64 && x >= 10 && x <= 12 && z >= 20 && z <= 21 ? FreeformFill.Cell.OPEN
+                : y == 64 ? FreeformFill.Cell.SOLID : FreeformFill.Cell.OPEN;
+        FreeformFill.Result result = FreeformFill.fill(slab, FreeformRegion.AXIS_Y, 11, 64, 20, 20);
+        assertTrue(result.ok(), result.status().name());
+        for (float yaw : new float[]{0.0F, 90.0F, 180.0F, 270.0F}) {
+            GateGeometry lying = GateGeometry.freeform(result.anchorX(), result.anchorY(), result.anchorZ(), result.region(), CourseElement.AWAY,
+                    ScoreArea.DEFAULT, yaw);
+            assertEquals(yaw, lying.yawDegrees(), "liegendes Freiform-Gate merkt sich die Ausrichtung");
+            GateSignalTarget target = GateSignalTarget.of(lying);
+            assertEquals(GateSignalTarget.freeform(hole, 64, 10, 20, yaw), target, "Ausgang bei " + yaw + "°");
+            assertTrue(FreeformBlocks.covers(lying, target.emitterX(), target.emitterY(), target.emitterZ()), "Ausgang zeigt in die Öffnung");
+            assertFalse(FreeformBlocks.covers(lying, target.x(), target.y(), target.z()), "Zielblock ist der Rand");
+            assertEquals(yaw, lying.withVariant(CourseElement.TOWARD).yawDegrees(), "Umkehren behält die Ausrichtung");
+            assertEquals(yaw, lying.withScore(ScoreArea.DEFAULT.withOpen(true)).yawDegrees(), "Rand ignorieren behält die Ausrichtung");
+            assertEquals(yaw, lying.moved(0.0, 1.0, 0.0).yawDegrees(), "Verschieben behält die Ausrichtung");
+            assertEquals(yaw, lying.withReverse(true).yawDegrees());
+        }
+        assertEquals(90.0F, GateGeometry.freeform(11.5, 64.5, 21.0, hole, CourseElement.AWAY, ScoreArea.DEFAULT, 100.0F).yawDegrees(),
+                "Ausrichtung in Vierteldrehungen");
+        assertFalse(GateGeometry.freeform(11.5, 64.5, 21.0, hole, CourseElement.AWAY, ScoreArea.DEFAULT, 90.0F)
+                .sameAs(GateGeometry.freeform(11.5, 64.5, 21.0, hole, CourseElement.AWAY, ScoreArea.DEFAULT, 0.0F)), "gedreht ist eine Änderung");
+        FreeformRegion window = FreeformRegion.of(FreeformRegion.AXIS_Z, 3, 1, 1, 0, new boolean[]{true, true, true});
+        GateGeometry standing = GateGeometry.freeform(11.5, 64.5, 7.5, window, CourseElement.AWAY, ScoreArea.DEFAULT, 90.0F);
+        assertEquals(GateGeometry.freeform(11.5, 64.5, 7.5, window, CourseElement.AWAY).yawDegrees(), standing.yawDegrees(),
+                "senkrechte Freiform-Gates richten sich nach ihrer Fläche");
+        assertEquals(GateSignalTarget.UP, GateSignalTarget.of(standing).face());
+    }
 }

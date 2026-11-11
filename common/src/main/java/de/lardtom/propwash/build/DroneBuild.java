@@ -118,6 +118,12 @@ public record DroneBuild(FrameType frame, StackType stack, MotorType motor, Prop
                 break;
             }
         }
+        for (AccessoryType accessory : this.accessories.list()) {
+            if (!accessory.fitsFrame(this.frame)) {
+                issues.add(Issue.ACCESSORY_FRAME);
+                break;
+            }
+        }
         return issues;
     }
 
@@ -190,7 +196,8 @@ public record DroneBuild(FrameType frame, StackType stack, MotorType motor, Prop
         ACCESSORY_MOUNT,
         MISSING_PART,
         PROP_TOO_SMALL,
-        PROP_MOUNT;
+        PROP_MOUNT,
+        ACCESSORY_FRAME;
 
         public String translationKey() {
             return "propwash.build.issue." + this.name().toLowerCase(java.util.Locale.ROOT);

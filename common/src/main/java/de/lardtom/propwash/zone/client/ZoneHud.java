@@ -7,6 +7,7 @@ import de.lardtom.propwash.osd.client.OsdText;
 import de.lardtom.propwash.race.MessageWrap;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.zone.Zone;
+import de.lardtom.propwash.zone.ZoneResolution;
 import de.lardtom.propwash.zone.ZoneText;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -57,7 +58,8 @@ public final class ZoneHud {
             lastName = "";
             return;
         }
-        Zone top = session.zoneResolution().top();
+        ZoneResolution resolution = session.zoneResolution();
+        Zone top = resolution.top();
         int id = top == null ? 0 : top.id();
         if (id == lastTop) {
             if (top != null) {
@@ -67,7 +69,7 @@ public final class ZoneHud {
         }
         boolean starting = lastTop == UNSET;
         if (top != null) {
-            show(entered(top));
+            show(entered(resolution));
         } else if (!starting) {
             show(new Notice(Component.translatable("propwash.zone.hud.left", lastName), Component.translatable("propwash.zone.hud.world"),
                     ZoneRenderer.NEUTRAL, 0L));
@@ -76,10 +78,13 @@ public final class ZoneHud {
         lastName = top == null ? "" : top.name();
     }
 
-    public static Notice entered(Zone zone) {
-        Component kind = ZoneText.kind(zone);
-        Component detail = zone.overrides().isEmpty() ? kind : Component.translatable("propwash.zone.hud.detail", ZoneText.overrides(zone), kind);
-        return new Notice(Component.translatable("propwash.zone.hud.entered", zone.name()), detail, ZoneRenderer.color(zone), 0L);
+    public static Notice entered(ZoneResolution resolution) {
+        Zone zone = resolution.top();
+        if (zone == null) {
+            return new Notice(Component.translatable("propwash.zone.hud.world"), ZoneText.kind(resolution), ZoneRenderer.NEUTRAL, 0L);
+        }
+        int rgb = resolution.zoneDetails().isEmpty() ? ZoneRenderer.color(zone) : ZoneRenderer.ASSISTED;
+        return new Notice(Component.translatable("propwash.zone.hud.entered", zone.name()), ZoneText.notice(resolution), rgb, 0L);
     }
 
     public static void show(Notice next) {

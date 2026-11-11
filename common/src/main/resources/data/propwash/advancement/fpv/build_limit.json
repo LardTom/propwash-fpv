@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/takeoff",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:flight",
+      "conditions": {
+        "altitude": {
+          "min": 320
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:feather"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.build_limit.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.build_limit.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

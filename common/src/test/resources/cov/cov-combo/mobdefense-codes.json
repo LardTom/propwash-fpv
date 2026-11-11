@@ -1,0 +1,15 @@
+{
+  "note": "Codes aus dem Selbsttest share: Abdeckung cov-combo – … mit dem Jar von Mob Defense, Propwash 0.6.0-dev.7",
+  "mod": "mobdefense",
+  "modName": "Propwash: Mob Defense",
+  "modVersion": "1.0.0-dev.1",
+  "droneName": "Cov Mob Defense",
+  "withInfo": "PW3-1eW6NrLpVW1ztNX6yprQQEmT0cG6PA8GwWsGwtoONSp09IwvuszxQsemkWsTaqjPZpw5TrU6Tgku5008YVc1yqhJbS3O8y2f",
+  "withoutInfo": "PW3-68lUP0fARw6q7jNBE3zhDYmvJPDRxeYhUxL2g9vPDUzg8KVstZ",
+  "accessories": {
+    "top": "mobdefense:rocket_booster",
+    "bottom": "mobdefense:spear_mount",
+    "front": "mobdefense:dispenser_mount"
+  },
+  "frame": "propwash:freestyle_5"
+}

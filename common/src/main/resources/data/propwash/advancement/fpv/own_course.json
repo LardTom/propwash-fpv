@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/first_lap",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "own_course"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:course_tool"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.own_course.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.own_course.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

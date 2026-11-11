@@ -2,12 +2,12 @@ package de.lardtom.propwash.guide.training;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -23,13 +23,7 @@ class MouseTipDirectionTest {
             "de_de", List.of("vorn", "hinten", "zurück"));
 
     private static JsonObject lang(String language) throws IOException {
-        for (Path dir : List.of(Path.of("common/src/lang/guide"), Path.of("src/lang/guide"))) {
-            Path file = dir.resolve(language + ".json");
-            if (Files.isRegularFile(file)) {
-                return JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
-            }
-        }
-        throw new IOException("Sprachdatei der Flugschule fehlt: " + language);
+        return JsonParser.parseString(Files.readString(TestPaths.lang("guide").resolve(language + ".json"), StandardCharsets.UTF_8)).getAsJsonObject();
     }
 
     private static boolean namesPitchDirection(String language, String text) {

@@ -40,7 +40,8 @@ class SurvivalRecipeBookTest {
     private static final Set<String> MISC_ITEMS = Set.of("drone_workbench", "battery_charger");
     private static final Set<String> BUILDING_ITEMS = Set.of("gate_small", "gate_medium", "gate_large", "race_flag", "slalom_pole", "dive_cube",
             "freeform_gate", "gate_pole", "signal_repeater");
-    private static final Set<String> NOT_CRAFTABLE = Set.of("goggles_creative", "creative_fc", "drone", "bando_map");
+    private static final Set<String> NOT_CRAFTABLE = Set.of("goggles_creative", "creative_fc", "drone", "bando_map", "drone_pass_barrier",
+            "drone_block_barrier", "creative_rx_block");
 
     private static Path root() {
         for (Path candidate : List.of(Path.of("."), Path.of(".."))) {

@@ -1,0 +1,8 @@
+{
+  "propwash.content.mount.prop.universal": "Universal (fits every shaft)",
+  "propwash.webexport.command.crash": "Web export aborted: %s",
+  "propwash.webexport.command.fail": "Web export finished with %s errors – details in problems.json in %s",
+  "propwash.webexport.command.pass": "Web export done: %s parts (%s), %s warnings – %s",
+  "propwash.webexport.command.start": "Web export (%s) running – the server pauses for a few seconds …",
+  "propwash.webexport.command.unknown": "Unknown namespace %s – available: all, %s"
+}

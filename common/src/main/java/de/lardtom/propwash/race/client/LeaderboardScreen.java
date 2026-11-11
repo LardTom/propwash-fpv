@@ -1,12 +1,21 @@
 package de.lardtom.propwash.race.client;
 
+import de.lardtom.propwash.api.race.CourseMode;
 import de.lardtom.propwash.build.FrameType;
 import de.lardtom.propwash.build.PartNames;
+import de.lardtom.propwash.race.CourseArgument;
 import de.lardtom.propwash.race.CourseData;
+import de.lardtom.propwash.drone.client.FpvView;
+import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.race.BoardIndex;
 import de.lardtom.propwash.race.CourseLaps;
+import de.lardtom.propwash.race.GhostChoice;
+import de.lardtom.propwash.race.GhostKey;
 import de.lardtom.propwash.race.LapTracker;
 import de.lardtom.propwash.race.RaceFormat;
 import de.lardtom.propwash.race.RacePayloads;
+import de.lardtom.propwash.race.ServerRulesBadge;
+import de.lardtom.propwash.share.client.chat.ShareChat;
 import de.lardtom.propwash.ui.ChipFlow;
 import de.lardtom.propwash.ui.TextFit;
 import de.lardtom.propwash.ui.client.theme.Metrics;
@@ -22,10 +31,15 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
+import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
@@ -34,6 +48,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class LeaderboardScreen extends Screen implements ThemedScreen {
     private static final int MAX_WIDTH = 460;
@@ -62,6 +77,26 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
     private static final int CHIP_LINES = 2;
     private static final int NAME_GAP = 6;
     private static final String INFO_SEPARATOR = " · ";
+    private static final int ACTIONS = ROW + Metrics.CONTROL_HEIGHT + 8;
+    private static final int CONFIRM_TICKS = 60;
+    private static final int CHOSEN_GAP = 4;
+    private static final int NAME_KEEP = 48;
+    private static final int NAME_MIN = 20;
+    private static final int MIN_ROWS = 12;
+    private static final int ARROW = 7;
+    private static final int MINE_GAP = 8;
+
+    public record Selection(GhostKey key, boolean assisted) {
+        public boolean matches(RacePayloads.BoardRow row) {
+            return row.assisted() == this.assisted && row.key().equals(this.key);
+        }
+    }
+
+    private record RowHit(int y, RacePayloads.BoardRow row) {
+    }
+
+    private record HeaderHit(int y, boolean assisted, int mineLeft, int mineRight, int rank) {
+    }
 
     private record Columns(int nameX, int nameRight, int timeRight, int gapRight, int classX, int dateX, boolean gap, boolean frame, boolean date) {
     }
@@ -89,6 +124,39 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
     private int chipStart;
     private boolean revealFilter = true;
     private int subHeight = SUBHEADER;
+    private boolean stacked;
+    private @Nullable Selection selected;
+    private final List<RowHit> rowHits = new ArrayList<>();
+    private final List<HeaderHit> headerHits = new ArrayList<>();
+    private @Nullable BoardIndex needClean;
+    private @Nullable BoardIndex needAssisted;
+    private int need;
+    private int rowsDrawn;
+    private int placeholdersDrawn;
+    private int revealHeader = BoardLayout.NONE;
+    private int jumpRank;
+    private boolean jumpAssisted;
+    private int tableTop;
+    private int tableBottom;
+    private int tableRight;
+    private int confirmRemove;
+    private @Nullable FlatButton copyButton;
+    private @Nullable FlatButton importButton;
+    private @Nullable FlatButton replayButton;
+    private @Nullable FlatButton opponentButton;
+    private @Nullable FlatButton removeButton;
+    private int codeLeft;
+    private int codeRight;
+    private int codeTop;
+    private boolean codeHovered;
+    private int codeTooltips;
+    private int rulesBadgeLeft = -1;
+    private int rulesBadgeRight;
+    private int rulesBadgesDrawn;
+    private int creativeBadgeLeft = -1;
+    private int creativeBadgeRight;
+    private int rulesTooltips;
+    private int creativeTooltips;
 
     public LeaderboardScreen(@Nullable Screen parent, int courseId) {
         super(Component.translatable("propwash.race.board.title"));
@@ -154,21 +222,63 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
     }
 
     public List<RacePayloads.BoardRow> shownRows() {
-        RacePayloads.LeaderboardS2C board = ClientLeaderboards.get(this.courseId);
-        if (board == null) {
-            return List.of();
-        }
-        List<RacePayloads.BoardRow> ranking = ClientLeaderboards.ranking(board, this.filter);
-        return ranking.subList(0, Math.min(ClientLeaderboards.TOP, ranking.size()));
+        return this.index(false).rows();
     }
 
     public List<RacePayloads.BoardRow> shownAssistedRows() {
-        RacePayloads.LeaderboardS2C board = ClientLeaderboards.get(this.courseId);
-        if (board == null) {
-            return List.of();
+        return this.index(true).rows();
+    }
+
+    public BoardIndex index(boolean assisted) {
+        return ClientLeaderboards.index(this.courseId, this.filter, assisted);
+    }
+
+    public BoardLayout layout() {
+        return new BoardLayout(this.index(false).total(), this.index(true).total(), BoardSections.collapsed(false), BoardSections.collapsed(true), ROW,
+                ASSIST_GAP);
+    }
+
+    public boolean toggleSection(boolean assisted) {
+        boolean collapsed = BoardSections.toggle(assisted);
+        this.revealHeader = assisted ? BoardLayout.ASSISTED : BoardLayout.CLEAN;
+        return collapsed;
+    }
+
+    public boolean jumpToMine(boolean assisted) {
+        int rank = this.index(assisted).selfRank();
+        if (rank <= 0) {
+            return false;
         }
-        List<RacePayloads.BoardRow> ranking = ClientLeaderboards.assistedRanking(board, this.filter);
-        return ranking.subList(0, Math.min(ClientLeaderboards.ASSISTED_TOP, ranking.size()));
+        BoardSections.set(assisted, false);
+        this.jumpRank = rank;
+        this.jumpAssisted = assisted;
+        return true;
+    }
+
+    public int headerY(boolean assisted) {
+        for (HeaderHit hit : this.headerHits) {
+            if (hit.assisted() == assisted) {
+                return hit.y();
+            }
+        }
+        return Integer.MIN_VALUE;
+    }
+
+    public int mineX(boolean assisted) {
+        for (HeaderHit hit : this.headerHits) {
+            if (hit.assisted() == assisted && hit.rank() > 0) {
+                return (hit.mineLeft() + hit.mineRight()) / 2;
+            }
+        }
+        return Integer.MIN_VALUE;
+    }
+
+    public int rowsDrawn() {
+        return this.rowsDrawn;
+    }
+
+    public int placeholdersDrawn() {
+        return this.placeholdersDrawn;
     }
 
     public int assistedRowsDrawn() {
@@ -199,13 +309,125 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
         return this.moreButton;
     }
 
-    private int assistedExtraHeight() {
+    public @Nullable Selection selected() {
+        return this.selected;
+    }
+
+    public RacePayloads.@Nullable BoardRow selectedRow() {
+        Selection selection = this.selected;
         RacePayloads.LeaderboardS2C board = ClientLeaderboards.get(this.courseId);
-        if (board == null) {
-            return 0;
+        if (selection == null || board == null) {
+            return null;
         }
-        int count = Math.min(ClientLeaderboards.ASSISTED_TOP, ClientLeaderboards.assistedRanking(board, null).size());
-        return count == 0 ? 0 : ASSIST_GAP + ROW * (count + 1);
+        for (RacePayloads.BoardRow row : board.rows()) {
+            if (selection.matches(row)) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    public void select(RacePayloads.@Nullable BoardRow row) {
+        Selection next = row == null ? null : new Selection(row.key(), row.assisted());
+        if (!Objects.equals(next, this.selected)) {
+            this.selected = next;
+            this.confirmRemove = 0;
+            if (this.minecraft != null) {
+                this.rebuildWidgets();
+            }
+        }
+    }
+
+    public @Nullable FlatButton copyButton() {
+        return this.copyButton;
+    }
+
+    public @Nullable FlatButton importButton() {
+        return this.importButton;
+    }
+
+    public @Nullable FlatButton replayButton() {
+        return this.replayButton;
+    }
+
+    public @Nullable FlatButton opponentButton() {
+        return this.opponentButton;
+    }
+
+    public @Nullable FlatButton removeButton() {
+        return this.removeButton;
+    }
+
+    public boolean removeArmed() {
+        return this.confirmRemove > 0;
+    }
+
+    public int codeTooltips() {
+        return this.codeTooltips;
+    }
+
+    public int codeCenterX() {
+        return (this.codeLeft + this.codeRight) / 2;
+    }
+
+    public int codeCenterY() {
+        return this.codeTop + ROW / 2;
+    }
+
+    public int rulesBadgeLeft() {
+        return this.rulesBadgeLeft;
+    }
+
+    public int rulesBadgeRight() {
+        return this.rulesBadgeRight;
+    }
+
+    public int rulesBadgeCenterX() {
+        return (this.rulesBadgeLeft + this.rulesBadgeRight) / 2;
+    }
+
+    public int rulesTooltips() {
+        return this.rulesTooltips;
+    }
+
+    public int rulesBadgeCenterY() {
+        return this.windowTop + HEADER / 2;
+    }
+
+    public int rulesBadgesDrawn() {
+        return this.rulesBadgesDrawn;
+    }
+
+    public int creativeBadgeLeft() {
+        return this.creativeBadgeLeft;
+    }
+
+    public int creativeBadgeCenterX() {
+        return (this.creativeBadgeLeft + this.creativeBadgeRight) / 2;
+    }
+
+    public int creativeBadgeRight() {
+        return this.creativeBadgeRight;
+    }
+
+    public int creativeTooltips() {
+        return this.creativeTooltips;
+    }
+
+    public int headerRight() {
+        return this.windowRight - 8;
+    }
+
+    public boolean codeHovered() {
+        return this.codeHovered;
+    }
+
+    public static boolean mayReplay(RacePayloads.LeaderboardS2C board, RacePayloads.BoardRow row) {
+        return row.ghost() && (row.self() || board.mayReplayOthers());
+    }
+
+    public static boolean mayRace(RacePayloads.LeaderboardS2C board, RacePayloads.BoardRow row) {
+        return row.ghost() && (row.self() || board.mayRaceOthers());
     }
 
     public void selectFilter(@Nullable String frame) {
@@ -217,6 +439,8 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
 
     public void selectCourse(int courseId) {
         this.courseId = courseId;
+        this.selected = null;
+        this.confirmRemove = 0;
         this.filter = null;
         this.chipStart = 0;
         this.table.reset();
@@ -300,8 +524,8 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
                 CHIP_LINES, moreWidth);
         this.chipStart = page.first();
         this.subHeight = SUBHEADER + (page.lines() - 1) * CHIP_LINE;
-        int h = Math.min(this.height - 12, HEADER + this.subHeight + TABLE_HEAD + ROW * (ClientLeaderboards.TOP + 2) + 2 * PAD + FOOTER
-                + this.assistedExtraHeight());
+        int h = Math.min(this.height - 12, HEADER + this.subHeight + TABLE_HEAD + Math.max(ROW * MIN_ROWS, this.layout().height()) + 2 * PAD + FOOTER
+                + ACTIONS);
         this.windowTop = (this.height - h) / 2;
         this.windowBottom = this.windowTop + h;
         int subY = this.windowTop + HEADER + (SUBHEADER - Metrics.CONTROL_HEIGHT) / 2;
@@ -353,6 +577,123 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
         } else {
             this.editButton = null;
         }
+        this.stacked = this.footerTextRight - this.windowLeft - 8 < FOOTER_TEXT_MIN;
+        this.initActions();
+    }
+
+    private int actionTop() {
+        int footerTop = this.windowBottom - FOOTER - (this.stacked ? 2 * Metrics.LINE_HEIGHT : 0);
+        return footerTop - ACTIONS;
+    }
+
+    private void initActions() {
+        this.copyButton = null;
+        this.importButton = null;
+        this.replayButton = null;
+        this.opponentButton = null;
+        this.removeButton = null;
+        RacePayloads.LeaderboardS2C board = ClientLeaderboards.get(this.courseId);
+        RacePayloads.BoardRow row = this.selectedRow();
+        if (board == null || row == null) {
+            if (this.selected != null && board != null) {
+                this.selected = null;
+            }
+            return;
+        }
+        boolean remove = board.mayRemove();
+        int count = remove ? 5 : 4;
+        int left = this.windowLeft + PAD;
+        int width = this.windowRight - PAD - left;
+        int buttonWidth = Math.max(20, (width - (count - 1) * Metrics.GAP) / count);
+        int y = this.actionTop() + ROW + 2;
+        String code = row.code();
+        boolean hasCode = !code.isEmpty();
+        int x = left;
+        FlatButton copy = new FlatButton(x, y, buttonWidth, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.race.ghosts.copy"),
+                FlatButton.Style.NORMAL, () -> ShareChat.copy(code));
+        copy.active = hasCode;
+        copy.setTooltip(Tooltip.create(Component.translatable(hasCode ? "propwash.race.ghosts.copy.tooltip" : "propwash.race.ghosts.no_code")));
+        this.copyButton = this.addRenderableWidget(copy);
+        x += buttonWidth + Metrics.GAP;
+        FlatButton paste = new FlatButton(x, y, buttonWidth, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.race.ghosts.import"),
+                FlatButton.Style.NORMAL, () -> ShareChat.open(code, this));
+        paste.active = hasCode;
+        paste.setTooltip(Tooltip.create(Component.translatable(hasCode ? "propwash.race.ghosts.import.tooltip" : "propwash.race.ghosts.no_code")));
+        this.importButton = this.addRenderableWidget(paste);
+        x += buttonWidth + Metrics.GAP;
+        FlatButton replay = new FlatButton(x, y, buttonWidth, Metrics.CONTROL_HEIGHT, Component.translatable("propwash.race.ghosts.replay"),
+                FlatButton.Style.PRIMARY, () -> this.openReplay(row));
+        String replayReason = this.replayBlocked(board, row);
+        replay.active = replayReason == null;
+        replay.setTooltip(Tooltip.create(Component.translatable(replayReason == null ? "propwash.race.ghosts.replay.tooltip" : replayReason)));
+        this.replayButton = this.addRenderableWidget(replay);
+        x += buttonWidth + Metrics.GAP;
+        boolean chosen = GhostChoices.INSTANCE.chosen(this.minecraft, this.courseId, row.key());
+        FlatButton opponent = new FlatButton(x, y, buttonWidth, Metrics.CONTROL_HEIGHT,
+                Component.translatable(chosen ? "propwash.race.ghosts.own" : "propwash.race.ghosts.opponent"), FlatButton.Style.NORMAL,
+                () -> this.toggleOpponent(row));
+        String raceReason = chosen ? null : !row.ghost() ? "propwash.race.ghosts.no_ghost" : mayRace(board, row) ? null : "propwash.race.ghosts.denied_opponent";
+        opponent.active = raceReason == null;
+        opponent.setTooltip(Tooltip.create(Component.translatable(raceReason != null ? raceReason
+                : chosen ? "propwash.race.ghosts.own.tooltip" : "propwash.race.ghosts.opponent.tooltip")));
+        this.opponentButton = this.addRenderableWidget(opponent);
+        if (remove) {
+            x += buttonWidth + Metrics.GAP;
+            FlatButton delete = new FlatButton(x, y, buttonWidth, Metrics.CONTROL_HEIGHT,
+                    Component.translatable(this.confirmRemove > 0 ? "propwash.race.ghosts.remove.confirm" : "propwash.race.ghosts.remove"),
+                    FlatButton.Style.DANGER, () -> this.removeTime(row));
+            delete.setTooltip(Tooltip.create(Component.translatable("propwash.race.ghosts.remove.tooltip", row.name())));
+            this.removeButton = this.addRenderableWidget(delete);
+        }
+    }
+
+    private @Nullable String replayBlocked(RacePayloads.LeaderboardS2C board, RacePayloads.BoardRow row) {
+        if (!row.ghost()) {
+            return "propwash.race.ghosts.no_ghost";
+        }
+        if (!mayReplay(board, row)) {
+            return "propwash.race.ghosts.denied_replay";
+        }
+        if (FpvView.active()) {
+            return "propwash.race.ghosts.replay.flying";
+        }
+        if (!GhostDownloads.INSTANCE.available() && GhostDownloads.INSTANCE.cached(this.courseId, row.key()) == null) {
+            return "propwash.race.ghosts.replay.offline";
+        }
+        return null;
+    }
+
+    public void openReplay(RacePayloads.BoardRow row) {
+        this.minecraft.gui.setScreen(new ReplayScreen(this, this.courseId, row));
+    }
+
+    public void toggleOpponent(RacePayloads.BoardRow row) {
+        boolean chosen = GhostChoices.INSTANCE.chosen(this.minecraft, this.courseId, row.key());
+        GhostChoices.INSTANCE.choose(this.minecraft, this.courseId, chosen ? GhostChoice.OWN : GhostChoice.entry(row.key(), row.name()));
+        Component message = chosen ? Component.translatable("propwash.race.ghosts.own.chosen", this.courseLabel())
+                : Component.translatable("propwash.race.ghosts.opponent.chosen", row.name(), RaceFormat.time(row.nanos()), this.courseLabel());
+        this.minecraft.gui.hud.setOverlayMessage(ThemeText.colored(message, Palette.SUCCESS), false);
+        this.rebuildWidgets();
+    }
+
+    public void removeTime(RacePayloads.BoardRow row) {
+        if (this.confirmRemove <= 0) {
+            this.confirmRemove = CONFIRM_TICKS;
+            this.rebuildWidgets();
+            return;
+        }
+        this.confirmRemove = 0;
+        sendRemove(this.courseId, row);
+        this.selected = null;
+        this.rebuildWidgets();
+    }
+
+    static boolean sendRemove(int courseId, RacePayloads.BoardRow row) {
+        if (!ClientNet.canSend(RacePayloads.TimeRemoveC2S.TYPE)) {
+            return false;
+        }
+        GhostDownloads.INSTANCE.forget(courseId, row.key());
+        return ClientNet.sendToServer(new RacePayloads.TimeRemoveC2S(courseId, row.player(), row.frame(), row.assisted()));
     }
 
     private void showClasses(int start) {
@@ -380,6 +721,13 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
 
     @Override
     public void tick() {
+        if (this.confirmRemove > 0) {
+            this.confirmRemove--;
+            if (this.confirmRemove == 0) {
+                this.rebuildWidgets();
+                return;
+            }
+        }
         if (this.seenVersion != ClientLeaderboards.version() || this.seenCourses != ClientCourses.version()) {
             this.rebuildWidgets();
         }
@@ -414,7 +762,66 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        return super.mouseClicked(event, doubleClick) || this.table.mouseClicked(event.x(), event.y());
+        if (super.mouseClicked(event, doubleClick) || this.table.mouseClicked(event.x(), event.y())) {
+            return true;
+        }
+        RacePayloads.BoardRow picked = this.selectedRow();
+        if (picked != null && !picked.code().isEmpty() && event.x() >= this.codeLeft && event.x() < this.codeRight && event.y() >= this.codeTop
+                && event.y() < this.codeTop + ROW) {
+            ShareChat.copy(picked.code());
+            return true;
+        }
+        HeaderHit header = this.headerAt(event.x(), event.y());
+        if (header != null) {
+            if (header.rank() > 0 && event.x() >= header.mineLeft() && event.x() < header.mineRight()) {
+                this.jumpToMine(header.assisted());
+            } else {
+                this.toggleSection(header.assisted());
+            }
+            return true;
+        }
+        RacePayloads.BoardRow row = this.rowAt(event.x(), event.y());
+        if (row == null) {
+            return false;
+        }
+        Selection selection = this.selected;
+        this.select(selection != null && selection.matches(row) ? null : row);
+        return true;
+    }
+
+    private @Nullable HeaderHit headerAt(double mouseX, double mouseY) {
+        if (mouseX < this.windowLeft + PAD || mouseX >= this.tableRight || mouseY < this.tableTop || mouseY >= this.tableBottom) {
+            return null;
+        }
+        for (int i = this.headerHits.size() - 1; i >= 0; i--) {
+            HeaderHit hit = this.headerHits.get(i);
+            if (mouseY >= hit.y() && mouseY < hit.y() + ROW) {
+                return hit;
+            }
+        }
+        return null;
+    }
+
+    public RacePayloads.@Nullable BoardRow rowAt(double mouseX, double mouseY) {
+        if (mouseX < this.windowLeft + PAD || mouseX >= this.tableRight || mouseY < this.tableTop || mouseY >= this.tableBottom
+                || this.headerAt(mouseX, mouseY) != null) {
+            return null;
+        }
+        for (RowHit hit : this.rowHits) {
+            if (mouseY >= hit.y() && mouseY < hit.y() + ROW) {
+                return hit.row();
+            }
+        }
+        return null;
+    }
+
+    public int rowY(RacePayloads.BoardRow row) {
+        for (RowHit hit : this.rowHits) {
+            if (hit.row().assisted() == row.assisted() && hit.row().key().equals(row.key())) {
+                return hit.y();
+            }
+        }
+        return Integer.MIN_VALUE;
     }
 
     @Override
@@ -443,6 +850,26 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
         int titleX = ThemeDraw.brand(g, this.font, this.windowLeft + 8, textY) + 10;
         ThemeDraw.verticalSeparator(g, titleX - 5, this.windowTop + 5, this.windowTop + HEADER - 6);
         ThemeText.text(g, this.font, this.title, titleX, textY, Palette.TEXT);
+        int titleRight = titleX + this.font.width(this.title);
+        List<ServerRulesBadge.Line> serverRules = ServerRulesText.board();
+        HeaderBadges.Layout badges = HeaderBadges.place(titleRight, this.windowRight - 8, !serverRules.isEmpty(), ServerRulesText.width(this.font),
+                ServerRulesText.shortWidth(this.font), ClientCreativeFc.legal(this.courseId), ClientCreativeFc.width(this.font));
+        this.rulesBadgeLeft = -1;
+        this.rulesBadgesDrawn = 0;
+        if (badges.rules() != HeaderBadges.Form.NONE) {
+            this.rulesBadgeLeft = titleRight + HeaderBadges.GAP;
+            Component label = badges.rules() == HeaderBadges.Form.FULL ? ServerRulesText.label() : ServerRulesText.shortLabel();
+            this.rulesBadgeRight = this.rulesBadgeLeft + ServerRulesText.draw(g, this.font, label, this.rulesBadgeLeft, this.windowTop + 6,
+                    this.windowTop + HEADER - 6);
+            titleRight = this.rulesBadgeRight;
+        }
+        this.creativeBadgeLeft = -1;
+        if (badges.creative()) {
+            this.creativeBadgeLeft = titleRight + HeaderBadges.GAP;
+            this.creativeBadgeRight = this.creativeBadgeLeft + ClientCreativeFc.draw(g, this.font, this.creativeBadgeLeft, this.windowTop + 6,
+                    this.windowTop + HEADER - 6);
+            titleRight = this.creativeBadgeRight;
+        }
         RacePayloads.LeaderboardS2C board = ClientLeaderboards.get(this.courseId);
         if (board != null && board.gates() > 0) {
             Component brief = Component.translatable("propwash.race.board.info", board.gates(), board.layout());
@@ -450,28 +877,36 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
             CourseData shown = ClientCourses.get(this.courseId);
             if (shown != null) {
                 int laps = CourseLaps.resolve(shown.laps(), RaceConfig.CONFIG.get().laps);
-                info = Component.translatable("propwash.race.board.info_laps", CourseEditScreen.lapsLabel(laps), brief);
+                Component format = shown.mode() == CourseMode.POINT_TO_POINT ? Component.translatable("propwash.race.p2p.mode")
+                        : CourseEditScreen.lapsLabel(laps);
+                info = Component.translatable("propwash.race.board.info_laps", format, brief);
             }
-            int room = this.windowRight - 8 - (titleX + this.font.width(this.title) + 8);
+            int room = this.windowRight - 8 - (titleRight + 8);
             if (TextFit.mode(this.font.width(info), room) == TextFit.Mode.CUT) {
                 info = brief;
             }
-            ThemeText.fittedRight(g, this.font, info, this.windowRight - 8, textY, Math.max(1, room), Palette.TEXT_FAINT);
+            if (TextFit.mode(this.font.width(info), room) != TextFit.Mode.CUT) {
+                ThemeText.fittedRight(g, this.font, info, this.windowRight - 8, textY, room, Palette.TEXT_FAINT);
+            }
         }
         int subTop = this.windowTop + HEADER;
         ThemeDraw.subHeaderBar(g, this.windowLeft, subTop, this.windowRight, this.subHeight);
         int labelWidth = this.courseLabelWidth();
         ThemeText.textCentered(g, this.font, ThemeText.fit(this.font, this.courseLabel(), labelWidth - 6),
                 this.windowLeft + PAD + 14 + labelWidth / 2, Metrics.textY(subTop, SUBHEADER), Palette.TEXT);
-        boolean stacked = this.footerTextRight - this.windowLeft - 8 < FOOTER_TEXT_MIN;
+        boolean stacked = this.stacked;
         int footerTop = this.windowBottom - FOOTER - (stacked ? 2 * Metrics.LINE_HEIGHT : 0);
         this.assistedDrawn = 0;
         this.assistedRowY = -1;
         this.lastAssistedRowY = -1;
-        this.extractTable(g, board, subTop + this.subHeight + PAD / 2, footerTop - PAD / 2, mouseX, mouseY);
+        int actionTop = footerTop - ACTIONS;
+        this.extractTable(g, board, subTop + this.subHeight + PAD / 2, actionTop - PAD / 2, mouseX, mouseY);
+        this.extractActions(g, board, actionTop, mouseX, mouseY);
         ThemeDraw.footerBar(g, this.windowLeft, footerTop, this.windowRight, this.windowBottom);
         if (board != null) {
-            Component laps = Component.translatable("propwash.race.board.laps", board.laps());
+            CourseData shown = ClientCourses.get(this.courseId);
+            boolean point = shown != null && shown.mode() == CourseMode.POINT_TO_POINT;
+            Component laps = Component.translatable(point ? "propwash.race.p2p.board.runs" : "propwash.race.board.laps", board.laps());
             int footerRight = stacked ? this.windowRight - PAD : this.footerTextRight;
             int footerWidth = Math.max(20, footerRight - this.windowLeft - 8);
             if (board.hasRaceBest()) {
@@ -486,27 +921,82 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
         }
         super.extractRenderState(g, mouseX, mouseY, a);
         ThemeDraw.windowBorder(g, this.windowLeft, this.windowTop, this.windowRight, this.windowBottom);
+        if (this.codeHovered) {
+            this.extractCodeTooltip(g, mouseX, mouseY);
+        }
+        if (this.rulesBadgeLeft >= 0 && mouseX >= this.rulesBadgeLeft && mouseX < this.rulesBadgeRight && mouseY >= this.windowTop
+                && mouseY < this.windowTop + HEADER) {
+            ThemeText.tooltipWrapped(g, this.font, ServerRulesText.boardTooltip(serverRules), TOOLTIP_WIDTH, mouseX, mouseY);
+            this.rulesTooltips++;
+        }
+        if (this.creativeBadgeLeft >= 0 && mouseX >= this.creativeBadgeLeft && mouseX < this.creativeBadgeRight && mouseY >= this.windowTop
+                && mouseY < this.windowTop + HEADER) {
+            ThemeText.tooltipWrapped(g, this.font, ClientCreativeFc.tooltip(this.courseId), TOOLTIP_WIDTH, mouseX, mouseY);
+            this.creativeTooltips++;
+        }
+    }
+
+    private void extractActions(GuiGraphicsExtractor g, RacePayloads.@Nullable LeaderboardS2C board, int top, int mouseX, int mouseY) {
+        int left = this.windowLeft + PAD;
+        int right = this.windowRight - PAD;
+        ThemeDraw.separator(g, left, right, top);
+        this.codeHovered = false;
+        RacePayloads.BoardRow row = board == null ? null : this.selectedRow();
+        int textY = Metrics.textY(top + 1, ROW);
+        if (row == null) {
+            Component hint = Component.translatable(board == null || board.rows().isEmpty() ? "propwash.race.ghosts.hint_empty" : "propwash.race.ghosts.hint");
+            ThemeText.fittedCentered(g, this.font, hint, (left + right) / 2, Metrics.textY(top, ACTIONS), right - left, Palette.TEXT_FAINT);
+            return;
+        }
+        Component label = Component.translatable("propwash.race.ghosts.code", row.name());
+        int labelWidth = Math.min(this.font.width(label), (right - left) / 2);
+        ThemeText.fitted(g, this.font, label, left, textY, labelWidth, Palette.TEXT_MUTED);
+        this.codeLeft = left + labelWidth + 6;
+        this.codeRight = right;
+        this.codeTop = top + 1;
+        if (row.code().isEmpty()) {
+            ThemeText.fitted(g, this.font, Component.translatable("propwash.race.ghosts.no_code"), this.codeLeft, textY, this.codeRight - this.codeLeft,
+                    Palette.TEXT_FAINT);
+            return;
+        }
+        boolean hovered = mouseX >= this.codeLeft && mouseX < this.codeRight && mouseY >= this.codeTop && mouseY < this.codeTop + ROW;
+        ThemeText.fitted(g, this.font, row.code(), this.codeLeft, textY, this.codeRight - this.codeLeft, hovered ? Palette.ACCENT_HOVER : ShareChat.COLOR);
+        this.codeHovered = hovered;
+    }
+
+    private void extractCodeTooltip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        RacePayloads.BoardRow row = this.selectedRow();
+        if (row == null || row.code().isEmpty()) {
+            return;
+        }
+        Style style = Style.EMPTY.withClickEvent(new ClickEvent.Custom(ShareChat.COPY, Optional.of(StringTag.valueOf(row.code()))));
+        List<ClientTooltipComponent> lines = ShareChat.tooltip(style, this.font, this.width);
+        if (lines == null) {
+            ThemeText.tooltip(g, this.font, ShareChat.invalidText(), mouseX, mouseY);
+            return;
+        }
+        g.nextStratum();
+        g.tooltip(this.font, lines, mouseX, mouseY, DefaultTooltipPositioner.INSTANCE, null, false);
+        this.codeTooltips++;
     }
 
     private void extractTable(GuiGraphicsExtractor g, RacePayloads.@Nullable LeaderboardS2C board, int top, int bottom, int mouseX, int mouseY) {
         int left = this.windowLeft + PAD;
         int edge = this.windowRight - PAD;
         int bodyTop = top + TABLE_HEAD;
-        List<RacePayloads.BoardRow> ranking = board == null ? List.of() : ClientLeaderboards.ranking(board, this.filter);
-        List<RacePayloads.BoardRow> assisted = board == null ? List.of() : ClientLeaderboards.assistedRanking(board, this.filter);
-        int shown = Math.min(ClientLeaderboards.TOP, ranking.size());
-        int assistedShown = Math.min(ClientLeaderboards.ASSISTED_TOP, assisted.size());
-        RacePayloads.BoardRow self = null;
-        for (int i = shown; i < ranking.size(); i++) {
-            if (ranking.get(i).self()) {
-                self = ranking.get(i);
-                break;
-            }
-        }
-        int content = shown * ROW + (self == null ? 0 : ROW + 4) + (assistedShown == 0 ? 0 : ASSIST_GAP + ROW * (assistedShown + 1))
-                + (shown == 0 && assistedShown > 0 ? ROW : 0);
-        int right = content > bottom - bodyTop ? edge - ScrollArea.GUTTER : edge;
-        Columns columns = this.columns(left, right, this.nameNeed(ranking.subList(0, shown), self, assisted.subList(0, assistedShown)));
+        BoardIndex clean = this.index(false);
+        BoardIndex assisted = this.index(true);
+        BoardLayout layout = this.layout();
+        boolean empty = board == null || clean.total() == 0 && assisted.total() == 0;
+        int right = !empty && layout.height() > bottom - bodyTop ? edge - ScrollArea.GUTTER : edge;
+        this.rowHits.clear();
+        this.headerHits.clear();
+        this.rowsDrawn = 0;
+        this.placeholdersDrawn = 0;
+        this.tableTop = bodyTop;
+        this.tableBottom = bottom;
+        this.tableRight = right;
+        Columns columns = this.columns(left, right, this.nameNeed(clean, assisted));
         int headY = top + 2;
         ThemeText.text(g, this.font, "#", left + 4, headY, Palette.TEXT_FAINT);
         ThemeText.text(g, this.font, Component.translatable("propwash.race.board.col.pilot"), columns.nameX(), headY, Palette.TEXT_FAINT);
@@ -522,90 +1012,200 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
         }
         ThemeDraw.separator(g, left, edge, top + TABLE_HEAD - 2);
         this.table.view(left, bodyTop, edge, bottom);
-        if (board == null || shown == 0 && assistedShown == 0) {
+        if (empty) {
             this.table.begin(g);
             this.table.end(g, bodyTop);
             boolean archived = board != null && board.gates() != 0 && board.archived() > 0;
-            Component empty = board == null ? Component.translatable("propwash.race.board.loading")
+            Component message = board == null ? Component.translatable("propwash.race.board.loading")
                     : board.gates() == 0 ? Component.translatable("propwash.race.board.no_course")
                     : archived ? Component.translatable("propwash.race.board.empty_archived", board.layout())
                     : Component.translatable("propwash.race.board.empty");
             int center = (left + edge) / 2;
             int room = edge - left - 2 * EMPTY_MARGIN;
             int emptyY = bodyTop + 8;
-            emptyY += ThemeText.wrappedCentered(g, this.font, empty, center, emptyY, room, Palette.TEXT_MUTED);
+            emptyY += ThemeText.wrappedCentered(g, this.font, message, center, emptyY, room, Palette.TEXT_MUTED);
             if (archived) {
-                ThemeText.wrappedCentered(g, this.font, Component.translatable("propwash.race.board.empty_archived.command", board.courseId()), center,
+                CourseData course = ClientCourses.get(board.courseId());
+                String reference = CourseArgument.reference(board.courseId(), course == null ? null : course.key());
+                ThemeText.wrappedCentered(g, this.font, Component.translatable("propwash.race.board.empty_archived.command", reference), center,
                         emptyY + EMPTY_GAP, room, Palette.TEXT_MUTED);
             }
             return;
         }
+        this.applyScrollRequests(layout, bodyTop);
         DateTimeFormatter date = DateTimeFormatter.ofPattern(Component.translatable("propwash.race.board.date_pattern").getString())
                 .withZone(ZoneId.systemDefault());
+        int offset = this.table.offset();
+        int viewTop = offset - ROW;
+        int viewBottom = offset + (bottom - bodyTop) + ROW;
         int hoverY = mouseX >= left && mouseX < right ? this.table.hoverY(mouseX, mouseY) : Integer.MIN_VALUE;
         RacePayloads.BoardRow hovered = null;
         int hoveredY = 0;
         long hoveredBest = 0L;
+        int sticky = layout.sticky(offset);
         this.table.begin(g);
-        int y = bodyTop;
-        long record = shown == 0 ? 0L : ranking.getFirst().nanos();
-        for (int i = 0; i < shown; i++) {
-            RacePayloads.BoardRow row = ranking.get(i);
-            this.extractRow(g, row, ClientLeaderboards.rank(row, this.filter), record, date, left, right, columns, y, i, false);
-            if (hoverY >= y && hoverY < y + ROW) {
-                hovered = row;
-                hoveredY = y;
-                hoveredBest = record;
-            }
-            y += ROW;
+        if (sticky != BoardLayout.NONE) {
+            g.enableScissor(left, bodyTop + ROW + offset, edge, bottom + offset);
         }
-        if (self != null) {
-            ThemeDraw.separator(g, left, right, y + 1);
-            y += 4;
-            this.extractRow(g, self, ClientLeaderboards.rank(self, this.filter), record, date, left, right, columns, y, -1, false);
-            if (hoverY >= y && hoverY < y + ROW) {
-                hovered = self;
-                hoveredY = y;
-                hoveredBest = record;
-            }
-            y += ROW;
+        if (sticky != BoardLayout.CLEAN) {
+            this.extractHeader(g, layout, false, clean, left, right, bodyTop, offset, mouseX, mouseY);
         }
-        if (assistedShown > 0) {
-            if (shown == 0) {
-                ThemeText.fittedCentered(g, this.font, Component.translatable("propwash.race.board.assisted_only"), (left + right) / 2,
-                        Metrics.textY(y, ROW), right - left - 2 * EMPTY_MARGIN, Palette.TEXT_MUTED);
-                y += ROW;
+        if (layout.message() && layout.messageY() < viewBottom && layout.messageY() + ROW > viewTop) {
+            ThemeText.fittedCentered(g, this.font, Component.translatable("propwash.race.board.assisted_only"), (left + right) / 2,
+                    Metrics.textY(bodyTop + layout.messageY(), ROW), right - left - 2 * EMPTY_MARGIN, Palette.TEXT_MUTED);
+        }
+        for (boolean flagged : new boolean[]{false, true}) {
+            if (!layout.has(flagged)) {
+                continue;
             }
-            y += ASSIST_GAP / 2;
-            ThemeDraw.separator(g, left, right, y);
-            y += ASSIST_GAP / 2;
-            ThemeText.text(g, this.font, Component.translatable("propwash.race.board.assisted_section"), left + 4, Metrics.textY(y, ROW), Palette.WARNING);
-            y += ROW;
-            long best = assisted.getFirst().nanos();
-            for (int i = 0; i < assistedShown; i++) {
-                RacePayloads.BoardRow row = assisted.get(i);
-                this.extractRow(g, row, ClientLeaderboards.rank(row, this.filter), best, date, left, right, columns, y, i, true);
+            BoardIndex index = flagged ? assisted : clean;
+            if (flagged) {
+                int separator = bodyTop + layout.headerY(true) - ASSIST_GAP / 2;
+                if (separator >= bodyTop + viewTop && separator < bodyTop + viewBottom) {
+                    ThemeDraw.separator(g, left, right, separator);
+                }
+                if (sticky != BoardLayout.ASSISTED) {
+                    this.extractHeader(g, layout, true, assisted, left, right, bodyTop, offset, mouseX, mouseY);
+                }
+            }
+            int[] visible = layout.visible(flagged, viewTop, viewBottom);
+            if (visible.length == 0) {
+                continue;
+            }
+            long best = index.best();
+            for (int rank = visible[0]; rank <= visible[1]; rank++) {
+                int y = bodyTop + layout.rowY(flagged, rank);
+                RacePayloads.BoardRow row = index.row(rank);
+                if (row == null) {
+                    this.extractPlaceholder(g, rank, left, right, columns, y);
+                    continue;
+                }
+                this.extractRow(g, row, rank, best, date, left, right, columns, y, rank - 1, flagged);
                 if (hoverY >= y && hoverY < y + ROW) {
                     hovered = row;
                     hoveredY = y;
                     hoveredBest = best;
                 }
-                if (i == 0) {
-                    this.assistedRowY = y - this.table.offset();
+                if (flagged) {
+                    if (this.assistedDrawn == 0) {
+                        this.assistedRowY = y - offset;
+                    }
+                    this.lastAssistedRowY = y - offset;
+                    this.assistedDrawn++;
                 }
-                this.lastAssistedRowY = y - this.table.offset();
-                this.assistedDrawn++;
-                y += ROW;
             }
+            ClientLeaderboards.ensure(this.courseId, this.filter, flagged, visible[0], visible[1]);
         }
-        this.table.end(g, y);
+        if (sticky != BoardLayout.NONE) {
+            g.disableScissor();
+        }
+        this.table.end(g, bodyTop + layout.height());
+        if (sticky != BoardLayout.NONE) {
+            boolean flagged = sticky == BoardLayout.ASSISTED;
+            this.extractHeaderAt(g, flagged, flagged ? assisted : clean, left, right, bodyTop, mouseX, mouseY, true);
+        }
+        if (this.headerAt(mouseX, mouseY) != null) {
+            hovered = null;
+        }
         if (hovered != null) {
             Component tip = this.rowTooltip(hovered, hoveredBest, columns, date);
             if (tip != null) {
                 ThemeText.tooltipBelow(g, this.font, tip, TOOLTIP_WIDTH,
                         new ScreenRectangle(columns.nameX(), hoveredY - this.table.offset(), right - columns.nameX(), ROW));
             }
+        } else {
+            this.extractHeaderTooltip(g, mouseX, mouseY);
         }
+    }
+
+    private void applyScrollRequests(BoardLayout layout, int bodyTop) {
+        if (this.jumpRank > 0) {
+            int y = layout.rowY(this.jumpAssisted, this.jumpRank);
+            this.jumpRank = 0;
+            this.revealHeader = BoardLayout.NONE;
+            if (y != Integer.MIN_VALUE) {
+                this.table.reveal(bodyTop + y - 2 * ROW, 5 * ROW);
+            }
+            return;
+        }
+        if (this.revealHeader != BoardLayout.NONE) {
+            boolean flagged = this.revealHeader == BoardLayout.ASSISTED;
+            this.revealHeader = BoardLayout.NONE;
+            if (layout.has(flagged) && this.table.offset() > layout.headerY(flagged)) {
+                this.table.reveal(bodyTop + layout.headerY(flagged), ROW);
+            }
+        }
+    }
+
+    private void extractHeader(GuiGraphicsExtractor g, BoardLayout layout, boolean assisted, BoardIndex index, int left, int right, int bodyTop, int offset,
+                               int mouseX, int mouseY) {
+        int y = bodyTop + layout.headerY(assisted);
+        if (y + ROW <= bodyTop + offset || y >= bodyTop + offset + (this.tableBottom - this.tableTop)) {
+            return;
+        }
+        this.extractHeaderAt(g, assisted, index, left, right, y, mouseX, mouseY + offset, false);
+        HeaderHit hit = this.headerHits.getLast();
+        this.headerHits.set(this.headerHits.size() - 1, new HeaderHit(y - offset, hit.assisted(), hit.mineLeft(), hit.mineRight(), hit.rank()));
+    }
+
+    private void extractHeaderAt(GuiGraphicsExtractor g, boolean assisted, BoardIndex index, int left, int right, int y, int mouseX, int mouseY,
+                                 boolean pinned) {
+        g.fill(left, y, right, y + ROW, Palette.PANEL_HEADER);
+        if (pinned) {
+            g.fill(left, y + ROW - 1, right, y + ROW, Palette.BORDER);
+        }
+        boolean collapsed = BoardSections.collapsed(assisted);
+        int color = assisted ? Palette.WARNING : Palette.TEXT;
+        this.arrow(g, left + 4, y + (ROW - ARROW) / 2, collapsed, color);
+        int textY = Metrics.textY(y, ROW);
+        int rank = index.selfRank();
+        int mineLeft = right;
+        int mineRight = right;
+        if (rank > 0) {
+            Component mine = Component.translatable("propwash.race.board.mine", rank);
+            int width = this.font.width(mine);
+            mineRight = right - 4;
+            mineLeft = Math.max(left + ARROW + 40, mineRight - width);
+            boolean hovered = mouseX >= mineLeft && mouseX < mineRight && mouseY >= y && mouseY < y + ROW;
+            ThemeText.fitted(g, this.font, mine, mineLeft, textY, mineRight - mineLeft, hovered ? Palette.ACCENT_HOVER : Palette.ACCENT);
+        }
+        Component label = Component.translatable("propwash.race.board.section_count",
+                Component.translatable(assisted ? "propwash.race.board.assisted_section" : "propwash.race.board.records_section"), index.total());
+        int labelX = left + 4 + ARROW + 5;
+        ThemeText.fitted(g, this.font, label, labelX, textY, Math.max(10, mineLeft - MINE_GAP - labelX), color);
+        this.headerHits.add(new HeaderHit(y, assisted, mineLeft, mineRight, rank));
+    }
+
+    private void arrow(GuiGraphicsExtractor g, int x, int y, boolean collapsed, int color) {
+        for (int i = 0; i < ARROW / 2 + 1; i++) {
+            if (collapsed) {
+                g.fill(x + i, y + i, x + i + 1, y + ARROW - i, color);
+            } else {
+                g.fill(x + i, y + i + 1, x + ARROW - i, y + i + 2, color);
+            }
+        }
+    }
+
+    private void extractHeaderTooltip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        HeaderHit hit = this.headerAt(mouseX, mouseY);
+        if (hit == null) {
+            return;
+        }
+        boolean mine = hit.rank() > 0 && mouseX >= hit.mineLeft() && mouseX < hit.mineRight();
+        Component tip = mine ? Component.translatable("propwash.race.board.mine.tooltip", hit.rank())
+                : Component.translatable(BoardSections.collapsed(hit.assisted()) ? "propwash.race.board.section.expand" : "propwash.race.board.section.collapse");
+        ThemeText.tooltipBelow(g, this.font, tip, TOOLTIP_WIDTH, new ScreenRectangle(this.windowLeft + PAD, hit.y(), this.tableRight - this.windowLeft - PAD,
+                ROW));
+    }
+
+    private void extractPlaceholder(GuiGraphicsExtractor g, int rank, int left, int right, Columns columns, int y) {
+        if (rank % 2 == 0) {
+            g.fill(left, y, right, y + ROW, Palette.ROW_STRIPE);
+        }
+        int textY = Metrics.textY(y, ROW);
+        ThemeText.textRight(g, this.font, Integer.toString(rank), columns.nameX() - 6, textY, Palette.TEXT_DISABLED);
+        ThemeText.text(g, this.font, "…", columns.nameX(), textY, Palette.TEXT_DISABLED);
+        this.placeholdersDrawn++;
     }
 
     private Columns columns(int left, int right, int need) {
@@ -643,19 +1243,25 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
         return right - left - COL_RANK - COL_TIME - NAME_GAP - (gap ? COL_GAP : 0) - (frame ? COL_CLASS : 0) - (date ? COL_DATE : 0);
     }
 
-    private int nameNeed(List<RacePayloads.BoardRow> ranked, RacePayloads.@Nullable BoardRow self, List<RacePayloads.BoardRow> assisted) {
-        int plain = self == null ? 0 : this.font.width(self.name());
-        for (RacePayloads.BoardRow row : ranked) {
+    private int nameNeed(BoardIndex clean, BoardIndex assisted) {
+        if (clean == this.needClean && assisted == this.needAssisted) {
+            return this.need;
+        }
+        int plain = 0;
+        for (RacePayloads.BoardRow row : clean.rows()) {
             plain = Math.max(plain, this.font.width(row.name()));
         }
         int need = squeezed(plain);
-        if (!assisted.isEmpty()) {
+        if (assisted.loaded() > 0) {
             int widest = 0;
-            for (RacePayloads.BoardRow row : assisted) {
+            for (RacePayloads.BoardRow row : assisted.rows()) {
                 widest = Math.max(widest, this.font.width(row.name()));
             }
             need = Math.max(need, this.badgeWidth() + 4 + squeezed(widest));
         }
+        this.needClean = clean;
+        this.needAssisted = assisted;
+        this.need = need;
         return need;
     }
 
@@ -682,6 +1288,11 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
             hidden.append(any ? INFO_SEPARATOR : "").append(date.format(Instant.ofEpochMilli(row.dateMillis())));
             any = true;
         }
+        List<ServerRulesBadge.Line> rules = ServerRulesText.entry(row.server());
+        if (!rules.isEmpty()) {
+            hidden = any ? hidden.append("\n").append(ServerRulesText.entryTooltip(rules)) : Component.empty().append(ServerRulesText.entryTooltip(rules));
+            any = true;
+        }
         if (!row.assisted()) {
             return any ? hidden : null;
         }
@@ -691,10 +1302,20 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
 
     private void extractRow(GuiGraphicsExtractor g, RacePayloads.BoardRow row, int rank, long best, DateTimeFormatter date, int left, int right,
                             Columns columns, int y, int index, boolean assisted) {
+        this.rowHits.add(new RowHit(y - this.table.offset(), row));
+        this.rowsDrawn++;
+        Selection selection = this.selected;
+        boolean picked = selection != null && selection.matches(row);
         if (row.self()) {
             ThemeDraw.selection(g, left, y, right, y + ROW, true, false);
         } else if (index % 2 == 1) {
             g.fill(left, y, right, y + ROW, Palette.ROW_STRIPE);
+        }
+        if (picked) {
+            g.fill(left, y, right, y + 1, Palette.ACCENT);
+            g.fill(left, y + ROW - 1, right, y + ROW, Palette.ACCENT);
+            g.fill(left, y, left + 1, y + ROW, Palette.ACCENT);
+            g.fill(right - 1, y, right, y + ROW, Palette.ACCENT);
         }
         int textY = Metrics.textY(y, ROW);
         int rankColor = assisted ? Palette.TEXT_MUTED : rank == 1 ? GOLD : rank == 2 ? SILVER : rank == 3 ? BRONZE : Palette.TEXT_MUTED;
@@ -704,7 +1325,29 @@ public final class LeaderboardScreen extends Screen implements ThemedScreen {
             nameStart += ThemeDraw.badge(g, this.font, Component.translatable("propwash.race.board.assisted_badge"), nameStart, y + 1, y + ROW - 1,
                     Palette.WARNING, Palette.BACKGROUND) + 4;
         }
-        ThemeText.fitted(g, this.font, row.name(), nameStart, textY, columns.nameRight() - nameStart, row.self() ? Palette.TEXT : Palette.TEXT_MUTED);
+        int nameRight = columns.nameRight();
+        if (this.minecraft != null && row.ghost() && GhostChoices.INSTANCE.chosen(this.minecraft, this.courseId, row.key())) {
+            Component mark = Component.translatable("propwash.race.ghosts.chosen_badge");
+            int markWidth = this.font.width(mark) + 8;
+            if (nameRight - nameStart > markWidth + 20) {
+                nameRight -= markWidth + CHOSEN_GAP;
+                ThemeDraw.badge(g, this.font, mark, nameRight + CHOSEN_GAP, y + 2, y + ROW - 2, Palette.ACCENT, Palette.BACKGROUND);
+            }
+        }
+        if (!ServerRulesText.entry(row.server()).isEmpty()) {
+            int nameNeed = Math.min(this.font.width(row.name()), NAME_KEEP);
+            Component mark = ServerRulesText.label();
+            if (nameRight - nameStart - this.font.width(mark) - 8 - CHOSEN_GAP < nameNeed) {
+                mark = ServerRulesText.shortLabel();
+            }
+            int markWidth = this.font.width(mark) + 8;
+            if (nameRight - nameStart - markWidth - CHOSEN_GAP >= Math.min(nameNeed, NAME_MIN)) {
+                nameRight -= markWidth + CHOSEN_GAP;
+                ServerRulesText.draw(g, this.font, mark, nameRight + CHOSEN_GAP, y + 2, y + ROW - 2);
+                this.rulesBadgesDrawn++;
+            }
+        }
+        ThemeText.fitted(g, this.font, row.name(), nameStart, textY, nameRight - nameStart, row.self() ? Palette.TEXT : Palette.TEXT_MUTED);
         ThemeText.textRight(g, this.font, RaceFormat.time(row.nanos()), columns.timeRight(), textY, !assisted && rank == 1 ? GOLD : Palette.TEXT);
         if (columns.gap()) {
             String gap = row.nanos() == best ? "" : RaceFormat.delta(row.nanos() - best);

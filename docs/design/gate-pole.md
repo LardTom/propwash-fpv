@@ -89,7 +89,8 @@ kein Durchflug-Element: Sie gehört zu keinem Kurs und zählt in keiner Runde.
 - `race.client.GatePoleRenderer` setzt die Stange aus Gate-Teilen zusammen (`GateRenderer.Piece`): Pfosten und
   LED-Leisten (`post_left`, `led_post_left`, je ganz und halb) und drei neue Teile `pole_end` (quadratischer Verbinder
   0,625 × 0,5 × 0,625), `pole_tee` (3-Wege-Verbinder, umschließt den Verbinder darunter) und `pole_foot` (Kreuzfuß aus
-  zwei Platten, die quere etwas niedriger gegen Z-Fighting). Die LED-Leisten tragen die Farbe der Stange, leuchten voll.
+  vier gleichen Armen, je um 90° gedreht, die Streifen der Oberseite zeigen nach außen; Nachtrag 0.6.0, Befund PATTY-3:
+  die frühere Form aus zwei Platten, die quere niedriger, sah bei 0° und 90° verschieden aus). Die LED-Leisten tragen die Farbe der Stange, leuchten voll.
 - Licht: Die Gate-Entity misst die Helligkeit in der Mitte ihrer Geometrie (`GateEntity#getLightProbePosition`), wie
   der Einstell-Modus. Vanilla nimmt die Augenhöhe des Entity-Typs (0,85 × 4 = 3,4 Blöcke über der Position); bei Stangen
   an Nord- und Westwänden (Position genau auf der Wandfläche), bei hängenden Stangen ab 2,5 Blöcken Länge und in

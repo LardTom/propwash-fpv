@@ -1,0 +1,7 @@
+{
+  "propwash.video.camera_angle": "Camera angle (uptilt)",
+  "propwash.video.camera_angle.also": "Also in the drone's maintenance menu (sneak + right-click).",
+  "propwash.video.camera_angle.none": "Fly or hold a drone to change its camera angle.",
+  "propwash.video.camera_section": "Camera of this drone",
+  "propwash.video.camera_section.footer": "Camera angle: saved in the drone · rest: all drones"
+}

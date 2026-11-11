@@ -11,6 +11,7 @@ import de.lardtom.propwash.api.part.AccessorySlot;
 import de.lardtom.propwash.api.part.ActionCamDefinition;
 import de.lardtom.propwash.api.part.AirframeGeometry;
 import de.lardtom.propwash.api.part.AnchorSpec;
+import de.lardtom.propwash.api.part.AntennaCap;
 import de.lardtom.propwash.api.part.BatteryDefinition;
 import de.lardtom.propwash.api.part.BatteryFitRule;
 import de.lardtom.propwash.api.part.CellChemistry;
@@ -34,6 +35,7 @@ import de.lardtom.propwash.api.part.PropMaterial;
 import de.lardtom.propwash.api.part.RecycleYield;
 import de.lardtom.propwash.api.part.StackDefinition;
 import de.lardtom.propwash.api.part.Vec3Mm;
+import de.lardtom.propwash.api.part.VideoAntenna;
 import de.lardtom.propwash.api.part.VideoDefinition;
 import de.lardtom.propwash.api.part.VideoLink;
 import net.minecraft.resources.Identifier;
@@ -44,6 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
@@ -51,6 +54,7 @@ import java.util.OptionalInt;
 public final class PartJson {
     public static final int FORMAT = 1;
     public static final String CHEMISTRY = "chemistry";
+    public static final String NO_ANTENNA = "none";
     public static final List<String> ARM_KEYS = List.of("front_left", "front_right", "rear_left", "rear_right");
 
     private static final List<String> ROLES = JsonFields.keysOf(FrameRole.values(), FrameRole::key);
@@ -58,6 +62,7 @@ public final class PartJson {
     private static final List<String> SLOTS = JsonFields.keysOf(AccessorySlot.values(), AccessorySlot::key);
     private static final List<String> MATERIALS = JsonFields.keysOf(PropMaterial.values(), PropMaterial::key);
     private static final List<String> LINKS = JsonFields.keysOf(VideoLink.values(), VideoLink::key);
+    private static final List<String> CAPS = JsonFields.keysOf(AntennaCap.values(), AntennaCap::key);
     private static final List<String> SPINS = JsonFields.keysOf(MotorArm.Spin.values(), MotorArm.Spin::key);
     private static final List<String> RARITIES = JsonFields.keysOf(Rarity.values(), Rarity::getSerializedName);
 
@@ -341,6 +346,14 @@ public final class PartJson {
             }
             anchors.finish();
         });
+        f.optObject("antenna_anchor").ifPresent(anchor -> {
+            double[] pos = anchor.requireVector("pos", 3);
+            double tilt = anchor.doubleOr("tilt_deg", AirframeGeometry.DEFAULT_ANTENNA_TILT);
+            anchor.finish();
+            if (pos != null) {
+                b.antennaAnchor(new AnchorSpec(pos[0], pos[1], pos[2], tilt, 0.0));
+            }
+        });
         JsonFields aero = f.requireObject("aero");
         if (aero != null) {
             double frontal = aero.requireDouble("frontal_area_m2");
@@ -488,6 +501,12 @@ public final class PartJson {
             }
             json.add("accessory_anchors", anchors);
         }
+        geometry.antennaAnchor().ifPresent(anchor -> {
+            JsonObject object = new JsonObject();
+            object.add("pos", doubles(anchor.x(), anchor.y(), anchor.z()));
+            object.addProperty("tilt_deg", anchor.tiltDeg());
+            json.add("antenna_anchor", object);
+        });
         FrameAero aero = frame.aero();
         JsonObject aeroJson = new JsonObject();
         aeroJson.addProperty("frontal_area_m2", aero.frontalAreaM2());
@@ -676,6 +695,7 @@ public final class PartJson {
         int power = f.intOr("vtx_power_mw", 0);
         OptionalDouble watts = f.optDouble("power_w");
         int[] levels = f.optIntList("vtx_levels_mw").orElse(new int[0]);
+        Optional<VideoAntenna> antenna = videoAntenna(f);
         if (f.problems().hasErrors()) {
             return null;
         }
@@ -684,7 +704,31 @@ public final class PartJson {
         width.ifPresent(b::cameraWidth);
         fov.ifPresent(b::cameraFov);
         watts.ifPresent(b::powerWatts);
+        antenna.ifPresent(b::antenna);
         return b.build();
+    }
+
+    private static Optional<VideoAntenna> videoAntenna(JsonFields f) {
+        Optional<JsonElement> raw = f.raw("antenna");
+        if (raw.isPresent() && raw.get().isJsonPrimitive() && raw.get().getAsJsonPrimitive().isString()) {
+            if (NO_ANTENNA.equals(raw.get().getAsString())) {
+                return Optional.of(VideoAntenna.none());
+            }
+            f.error("antenna", "\"" + NO_ANTENNA + "\" oder Objekt erwartet, gefunden: " + raw.get());
+            return Optional.empty();
+        }
+        return f.optObject("antenna").map(PartJson::antenna).filter(Objects::nonNull);
+    }
+
+    private static @Nullable VideoAntenna antenna(JsonFields a) {
+        int count = a.intOr("count", 1);
+        double length = a.requireDouble("length_mm");
+        AntennaCap cap = a.requireEnum("cap", AntennaCap::byKey, CAPS);
+        a.finish();
+        if (cap == null || a.problems().hasErrors()) {
+            return null;
+        }
+        return new VideoAntenna(count, length, cap);
     }
 
     private static void encodeVideo(VideoDefinition video, JsonObject json) {
@@ -703,6 +747,17 @@ public final class PartJson {
             video.vtxLevelsMw().forEach(levels::add);
             json.add("vtx_levels_mw", levels);
         }
+        video.antenna().ifPresent(antenna -> {
+            if (antenna.isNone()) {
+                json.addProperty("antenna", NO_ANTENNA);
+                return;
+            }
+            JsonObject object = new JsonObject();
+            object.addProperty("count", antenna.count());
+            object.addProperty("length_mm", antenna.lengthMm());
+            object.addProperty("cap", antenna.cap().key());
+            json.add("antenna", object);
+        });
     }
 
     private static AccessoryDefinition accessory(Identifier id, Basics basics, JsonFields f) {
@@ -718,13 +773,45 @@ public final class PartJson {
             object.finish();
         });
         Optional<ActionCamDefinition> camera = f.optObject("action_cam").flatMap(PartJson::actionCam);
+        List<Vec3Mm> ledPath = f.raw("led_path").map(element -> ledPath(f, element)).orElse(List.of());
+        boolean hangsStraight = f.boolOr("hangs_straight", false);
+        Optional<double[]> muzzle = f.optVector("muzzle_mm", 3);
+        List<Identifier> frames = f.optIdList("frames");
+        double recess = f.doubleOr("recess_mm", 0.0);
+        double drop = f.doubleOr("drop_mm", 0.0);
         if (f.problems().hasErrors()) {
             return null;
         }
         AccessoryDefinition.Builder b = AccessoryDefinition.builder(id).basics(basics.resolve(1.0)).slot(slot).size(size[0], size[1], size[2])
-                .flightBatteryWatts(watts).frontalArea(frontal).leds(leds).lens(lens[0], lens[1]);
+                .flightBatteryWatts(watts).frontalArea(frontal).leds(leds).lens(lens[0], lens[1]).ledPath(ledPath).hangsStraight(hangsStraight)
+                .recess(recess).drop(drop);
         camera.ifPresent(b::actionCam);
+        muzzle.ifPresent(point -> b.muzzle(point[0], point[1], point[2]));
+        b.frames(frames.toArray(new Identifier[0]));
         return b.build();
+    }
+
+    private static List<Vec3Mm> ledPath(JsonFields f, JsonElement element) {
+        int min = AccessoryDefinition.MIN_LED_PATH_POINTS;
+        int max = AccessoryDefinition.MAX_LED_PATH_POINTS;
+        if (!element.isJsonArray() || element.getAsJsonArray().size() < min || element.getAsJsonArray().size() > max) {
+            int size = element.isJsonArray() ? element.getAsJsonArray().size() : -1;
+            String found = size < 0 ? element.toString() : size + (size == 1 ? " Punkt" : " Punkte");
+            f.error("led_path", "Liste mit " + min + " bis " + max + " Punkten [x, y, z] in mm erwartet, gefunden: " + found);
+            return List.of();
+        }
+        List<Vec3Mm> out = new ArrayList<>();
+        int index = 0;
+        for (JsonElement point : element.getAsJsonArray()) {
+            index++;
+            double[] values = JsonFields.numbers(point, 3);
+            if (values == null) {
+                f.error("led_path", "Punkt " + index + ": [x, y, z] mit 3 endlichen Zahlen erwartet, gefunden: " + point);
+                return List.of();
+            }
+            out.add(new Vec3Mm(values[0], values[1], values[2]));
+        }
+        return out;
     }
 
     private static Optional<ActionCamDefinition> actionCam(JsonFields f) {
@@ -786,6 +873,26 @@ public final class PartJson {
         json.addProperty("frontal_area_m2", accessory.frontalAreaM2());
         if (accessory.ledCount() != 0) {
             json.addProperty("leds", accessory.ledCount());
+        }
+        if (!accessory.ledPathMm().isEmpty()) {
+            JsonArray path = new JsonArray();
+            accessory.ledPathMm().forEach(point -> path.add(vector(point)));
+            json.add("led_path", path);
+        }
+        if (accessory.hangsStraight()) {
+            json.addProperty("hangs_straight", true);
+        }
+        accessory.muzzleMm().ifPresent(point -> json.add("muzzle_mm", vector(point)));
+        if (accessory.recessMm() != 0.0) {
+            json.addProperty("recess_mm", accessory.recessMm());
+        }
+        if (accessory.dropMm() != 0.0) {
+            json.addProperty("drop_mm", accessory.dropMm());
+        }
+        if (!accessory.frames().isEmpty()) {
+            JsonArray frames = new JsonArray();
+            accessory.frames().forEach(frame -> frames.add(frame.toString()));
+            json.add("frames", frames);
         }
         if (accessory.lensXMm() != 0.0 || accessory.lensLengthMm() != 0.0) {
             JsonObject lens = new JsonObject();

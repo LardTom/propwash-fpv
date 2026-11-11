@@ -65,7 +65,7 @@ public final class GripperScene {
                 .camera(OVERVIEW, OVERVIEW_YAW, 24.0F, 1.0F)
                 .step("mount", 120.0F, s -> {
                     SceneKit.ground(s.at(0.0F), -3, -3, 3, 3, GRASS, GRASS, 1.0F, 10.0F);
-                    s.at(12.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), DRONE_POS, 200.0F, Cue.Appear.POP, 10.0F);
+                    s.at(12.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), DRONE_POS, 20.0F, Cue.Appear.POP, 10.0F);
                     s.at(16.0F).camera(DRONE_POS.add(-0.3F, 0.5F, 0.2F), OVERVIEW_YAW, 12.0F, 1.6F, 22.0F);
                     s.at(22.0F).spawn(GRIPPER, new ActorSpec.Item(SceneKit.part(AccessoryType.GRIPPER), 1.5F, true), ITEM_POS, 0.0F,
                             Cue.Appear.POP, 8.0F);
@@ -110,7 +110,7 @@ public final class GripperScene {
                             Cue.Appear.POP, 8.0F);
                     s.at(10.0F).move(DRONE, 40.0F, Ease.IN_OUT, LANDING.add(0.0F, 0.6F, 0.0F), LANDING);
                     s.at(10.0F).move(CARGO_LAST, 40.0F, Ease.IN_OUT, LANDING.add(0.0F, 0.6F, 0.0F).add(HANG), LANDING.add(BESIDE));
-                    s.at(10.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 20.0F);
+                    s.at(10.0F).turn(DRONE, 180.0F, 0.0F, 0.0F, 20.0F);
                     s.at(10.0F).camera(LANDING.add(0.0F, 0.4F, 0.0F), OVERVIEW_YAW, 22.0F, CLOSE_ZOOM, 30.0F);
                     s.at(36.0F).throttle(DRONE, 0.08F, 12.0F);
                     s.at(52.0F).arm(DRONE, false);

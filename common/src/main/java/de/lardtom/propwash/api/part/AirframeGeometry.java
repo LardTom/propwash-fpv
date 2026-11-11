@@ -9,10 +9,17 @@ import java.util.Optional;
 
 public record AirframeGeometry(List<MotorArm> arms, boolean batteryOnTop, double batteryPlateMm, double electronicsMm,
                                Optional<Vec3Mm> cameraMm, double cameraTiltDeg, Vec3Mm frameCenterOfMassMm, MassSplit massSplit,
-                               Map<AccessorySlot, AnchorSpec> accessoryAnchors) {
+                               Map<AccessorySlot, AnchorSpec> accessoryAnchors, Optional<AnchorSpec> antennaAnchor) {
     public static final double MIN_CAMERA_TILT = 0.0;
     public static final double MAX_CAMERA_TILT = 80.0;
     public static final double DEFAULT_CAMERA_TILT = 20.0;
+    public static final double DEFAULT_ANTENNA_TILT = 45.0;
+
+    public AirframeGeometry(List<MotorArm> arms, boolean batteryOnTop, double batteryPlateMm, double electronicsMm, Optional<Vec3Mm> cameraMm,
+                            double cameraTiltDeg, Vec3Mm frameCenterOfMassMm, MassSplit massSplit, Map<AccessorySlot, AnchorSpec> accessoryAnchors) {
+        this(arms, batteryOnTop, batteryPlateMm, electronicsMm, cameraMm, cameraTiltDeg, frameCenterOfMassMm, massSplit, accessoryAnchors,
+                Optional.empty());
+    }
 
     public AirframeGeometry {
         arms = List.copyOf(Objects.requireNonNullElse(arms, List.of()));
@@ -33,6 +40,7 @@ public record AirframeGeometry(List<MotorArm> arms, boolean batteryOnTop, double
         EnumMap<AccessorySlot, AnchorSpec> anchors = new EnumMap<>(AccessorySlot.class);
         anchors.putAll(Objects.requireNonNullElse(accessoryAnchors, Map.of()));
         accessoryAnchors = Collections.unmodifiableMap(anchors);
+        antennaAnchor = Objects.requireNonNullElse(antennaAnchor, Optional.empty());
     }
 
     public boolean hasExplicitArms() {

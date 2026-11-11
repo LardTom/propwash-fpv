@@ -103,10 +103,61 @@ antiker Stadt und Endstadt (`SurvivalDataTest#injectedLootIsRareAndWellFormed`).
 ## Verschleiß und Recycling
 
 Props sind billig (4 Stück aus getrocknetem Seetang und einem Eisennugget bzw. einer Carbonplatte beim 7-Zoll-Prop),
-weil sie nach Abstürzen regelmäßig getauscht werden (Schleichen + Rechtsklick mit Props auf die Drohne). Kaputte Teile
-(Zustand 0) wandern ins Zerlegen-Feld der Werkbank und kommen als Zwischenteil zurück: Rahmen → Carbonplatte (nicht
-der Whoop-Rahmen aus Seetang), Motor → Kupferspule, Stack und Videoeinheit → Platine, Akku → LiPo-Zelle. Props sind
-nicht recycelbar. Das Rezept bleibt unverändert; die Regeln stehen in `content.Recycling`.
+weil sie nach Abstürzen regelmäßig getauscht werden (Schleichen + Rechtsklick mit Props auf die Drohne).
+
+### Recyceln in der Werkbank (ab 0.6.0)
+
+Die Werkbank hat zwei Tabs über dem Fenster: **Bauen** und **Recyceln**. Jeder Tab ist ein eigener Modus des Menüs
+(`content.WorkbenchTab`, Daten-Slot im `DroneWorkbenchMenu`); der Wechsel geht als Vanilla-Knopfpaket
+(`clickMenuButton`, Knopf 0 = Bauen, 1 = Recyceln) an den Server. Die Plätze des anderen Tabs sind auf Server und Client
+inaktiv (`isActive`, `mayPlace`, `mayPickup` sind falsch), auch für gefälschte Klicks und Doppelklick-Einsammeln.
+
+- **Zerlegen-Feld (Tab Bauen):** nimmt nur Drohnen und zerlegt sie in ihre Teile, wie bis 0.5.2. Teile nimmt es nicht,
+  auch nicht per Umschalt-Klick; der Hinweis am Feld verweist auf den Tab Recyceln. (Die Zwischenstufe aus der
+  Entwicklung von 0.6.0, in der das Feld beschädigte Teile recycelte, ist damit zurückgenommen.)
+- **Tab Recyceln:** links ein Eingang für jedes Propwash- oder Add-on-Teil (auch Props und Zubehör, jeder Zustand,
+  ganze Stapel), der Knopf „Recyceln“ und eine Ausgabe mit 3×3 Feldern, aus der man nur entnimmt. Rechts die Vorschau:
+  Name und Anzahl, Zustand, Stufe in Prozent, die erwarteten Materialien mit Symbol und Menge („≈“, wenn ein Teil der
+  Menge gewürfelt wird) und unten die drei Stufen, die gerade gültige hervorgehoben.
+- **Nur per Knopf:** Einlegen recycelt nichts. Erst der Knopf schickt Knopf 2 an den Server, der mit seinem Zufall
+  würfelt. Passt die Ausbeute nicht ganz in die Ausgabe, recycelt er nur so viele Teile, wie sicher passen (mit der
+  größtmöglichen Menge je Material gerechnet); der Rest bleibt im Eingang. Beim Schließen der Werkbank kommen Eingang
+  und Ausgabe ins Inventar zurück.
+- **Umschalt-Klick:** im Tab Bauen Teile auf ihre Bauplätze und Drohnen ins Zerlegen-Feld, nie in den Recycle-Eingang;
+  im Tab Recyceln Teile in den Eingang. Eine Drohne bleibt im Tab Recyceln liegen; die Statuszeile zeigt dann vier
+  Sekunden lang „Drohnen zerlegst du im Tab „Bauen“.“ Denselben Satz zeigt der Tooltip des Eingangs, wenn man eine
+  Drohne an der Maus hat.
+
+**Stufen** (Zustand über `PartCondition.percent`, also quantisiert und so gerundet wie im Tooltip):
+
+| Zustand | Ausbeute |
+|---|---|
+| 100 % (unbeschädigt) | 100 % der Materialien |
+| 60–99 % | 50 % |
+| unter 60 %, auch kaputt | 25 % |
+
+60 % zählt zur mittleren Stufe. Add-ons können die Stufen nicht ändern.
+
+**Materialien:** die Zutaten des Crafting-Rezepts mit dem Teil als Ergebnis (`RecipeManager` des Servers; bei mehreren
+Rezepten das erste nach Rezept-ID), geteilt durch die Ergebnisanzahl (Motoren 2, Props 4 …). Für jede Zutat gilt:
+Zutaten je Stück × Stapelgröße × Stufe; der ganzzahlige Teil kommt fest, der Rest als Zufallschance. Im Schnitt gibt es
+damit genau den Anteil der Stufe von **jeder** Zutat, und kein Würfeln zwischen Zutaten erlaubt einen Umtausch.
+Tag-Zutaten zählen als ihr erstes Item. Zutaten mit Crafting-Rest (etwa ein Eimer) gibt das Recycling nicht zurück.
+Zerlegt wird nur eine Stufe tief: eine Kupferspule bleibt eine Kupferspule. Beispiel 2207-Motor (2 Stück aus 3
+Kupferspulen, 2 Eisenbarren, 1 Redstone): ein neuer Motor gibt 1 Eisenbarren fest, 1 Kupferspule fest plus 50 % Chance
+auf eine zweite und 50 % Chance auf 1 Redstone.
+
+**Ohne Rezept:** `PartBasics.recycle` (`RecycleYield`) des Teils als Menge bei 100 %, sonst der Kategorie-Standard
+(Rahmen → Carbonplatte, Stack und Videoeinheit → Platine, Motor → Kupferspule, Akku → LiPo-Zelle, Props und Zubehör →
+nichts); danach dieselben Stufen. `"none"` oder kein Standard heißt: nicht recycelbar, der Tab sagt das. Hat ein Teil ein
+Rezept, gilt das Rezept. Teile fehlender Add-ons lassen sich nicht recyceln.
+
+**Props** lassen sich weiter reparieren (unten) und zusätzlich recyceln.
+
+Die Regeln stehen in `content.Recycling` (Stufen, Mengen, Würfeln, Platz in der Ausgabe), die Rezeptsuche in
+`content.RecycleRecipes`, die Anzeige in `content.client.RecycleView`. Prüfung: JUnit `content.RecyclingTest` (alle
+Kern-Rezepte: Craften und Recyceln vermehrt keine Zutat, unbeschädigt genau die Zutaten je Stück, alle Stufen),
+Selbsttests `zerlegen:` und `recyceln:`.
 
 ### Props reparieren (ab 0.5.0)
 
@@ -130,5 +181,5 @@ Beschädigte Props lassen sich wie Vanilla-Werkzeuge zusammenlegen:
 - **Addons:** Props von Addons laufen über dieselben `PartItem`s und `propwash:part`, sie lassen sich ohne eigene API
   ebenso reparieren; Props verschiedener Sorten (auch eingebaut mit Addon) nie.
 - **Hinweise im Spiel:** Shift-Tooltip aller Props („Zwei beschädigte Props zusammen craften: repariert (+5 %), auch im
-  Schleifstein“), kaputte Props mit einer eigenen Statuszeile, das Zerlegen-Feld der Werkbank verweist Props aufs
+  Schleifstein“), kaputte Props mit einer eigenen Statuszeile, der Tab Recyceln der Werkbank nennt bei Props das
   Reparieren, die Flugschul-Lektion „Props wechseln und Schäden“ zeigt es im Schritt „Alte Props reparieren“.

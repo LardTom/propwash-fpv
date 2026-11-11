@@ -1,0 +1,7 @@
+{
+  "propwash.video.camera_angle": "Kamerawinkel (Uptilt)",
+  "propwash.video.camera_angle.also": "Auch im Wartungsmenü der Drohne (Schleichen + Rechtsklick).",
+  "propwash.video.camera_angle.none": "Fliege oder halte eine Drohne, um ihren Kamerawinkel zu ändern.",
+  "propwash.video.camera_section": "Kamera dieser Drohne",
+  "propwash.video.camera_section.footer": "Kamerawinkel: in der Drohne · Rest: für alle Drohnen"
+}

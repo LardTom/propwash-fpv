@@ -23,6 +23,18 @@ dependencies {
     compileOnly("com.terraformersmc:modmenu:${modmenu_version}") {
         transitive = false
     }
+    testImplementation('org.junit.jupiter:junit-jupiter:5.11.3')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+}
+
+// Prüft Fabric-Interna gegen die echte Fabric API (Registerabgleich für NeoForge-Clients, docs/design/cross-loader-join.md):
+// ändert ein Update der Fabric API das Format, wird dieser Test beim Bauen rot.
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'failed'
+        exceptionFormat = 'full'
+    }
 }
 
 // Mixins des Quell-Sets devtest (common/src/devtest/…/mixin/dev) brauchen eine Mod, die ihre Mixin-Config beim Start
@@ -77,6 +89,9 @@ loom {
                 property('propwash.screenshots', rootProject.file('docs/screenshots').absolutePath)
             }
             rootProject.propwashSelftestProperties.each { key, value -> property(key, value) }
+            if (project.hasProperty('propwashFixtureWorld')) {
+                property('propwash.selftest.fixtureWorld', rootProject.file(project.property('propwashFixtureWorld').toString()).absolutePath)
+            }
             rootProject.propwashTestWindowEnv.each { key, value -> environmentVariable(key, value) }
         }
         // Start-Rauchtest: normaler Client ohne Selbsttest-Modus; Welt anlegen, betreten, verlassen, beenden (:fabric:runClientSmoke).
@@ -180,5 +195,163 @@ sourceSets.configureEach {
                 attribute(loaderAttribute, 'fabric')
             }
         }
+    }
+}
+
+// Probe-Mod nsprobe (docs/namespace-guard.md): eigene Mod-Id, verletzt den Namensraum propwash absichtlich. Nur mit
+// -PpropwashNsProbe=true liegt sie in den Läufen mit dem Quell-Set devtest (Selbsttest, Rauchtests); nie im Release-Jar.
+sourceSets {
+    nsprobe {
+        java.srcDirs(project(':common').file('src/nsprobe/java'), project(':common').file('src/nsprobe/fabric/java'))
+        resources.srcDirs(project(':common').file('src/nsprobe/resources'), project(':common').file('src/nsprobe/fabric/resources'))
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+if (findProperty('propwashNsProbe')?.toString() == 'true') {
+    sourceSets.devtest.runtimeClasspath += sourceSets.nsprobe.output
+    loom.mods.register('nsprobe') {
+        sourceSet sourceSets.nsprobe
+    }
+}
+
+// Web-Export (docs/web-export.md): dedizierter Server ohne devtest, ruft über die Konsole „propwash webexport <auswahl>“
+// und danach „stop“ auf. Ergebnis in runs/web-export/propwash/web-export, Kopie in build/web-export der Wurzel.
+// -PpropwashWebExportMods=<jar oder ordner>,… legt weitere Mods (etwa ein Add-on-Jar) in mods/ des Lauf-Ordners,
+// sonst bleibt mods/ leer; -PpropwashWebExportSelection=<namensraum> exportiert nur einen Namensraum (Standard all).
+// Die Konsole liest sofort ab dem Start; ein Befehl vor „Done“ liefe ohne Welt und schlüge fehl. Deshalb gibt diese
+// Eingabe die Befehle erst frei, wenn das Log des Laufs „Done (“ zeigt (höchstens 10 Minuten).
+class WebExportConsole extends InputStream {
+    private final File log
+    private final byte[] data
+    private int position
+    private boolean ready
+
+    WebExportConsole(File log, byte[] data) {
+        this.log = log
+        this.data = data
+    }
+
+    private void waitForServer() {
+        long deadline = System.currentTimeMillis() + 600_000L
+        while (!ready && System.currentTimeMillis() < deadline) {
+            if (log.isFile() && log.getText('UTF-8').contains('Done (')) {
+                break
+            }
+            Thread.sleep(500)
+        }
+        ready = true
+    }
+
+    @Override
+    int read() {
+        waitForServer()
+        return position < data.length ? (data[position++] & 0xff) : -1
+    }
+
+    @Override
+    int read(byte[] buffer, int offset, int length) {
+        waitForServer()
+        if (position >= data.length) {
+            return -1
+        }
+        int count = Math.min(length, data.length - position)
+        System.arraycopy(data, position, buffer, offset, count)
+        position += count
+        return count
+    }
+}
+
+def webExportRunDir = rootProject.propwashRunTag ? "runs/web-export-${rootProject.propwashRunTag}".toString() : 'runs/web-export'
+loom {
+    runs {
+        webExport {
+            server()
+            setConfigName('Fabric Web Export')
+            ideConfigGenerated(false)
+            runDir(webExportRunDir)
+        }
+    }
+}
+
+tasks.matching { it.name == 'runWebExport' }.configureEach { task ->
+    def dir = file(webExportRunDir)
+    def port = rootProject.propwashServerPorts.fabric
+    def selection = findProperty('propwashWebExportSelection')?.toString()?.trim() ?: 'all'
+    def extraMods = (findProperty('propwashWebExportMods')?.toString() ?: '').split(',')*.trim().findAll { !it.isEmpty() }
+    def exportDir = new File(dir, 'propwash/web-export')
+    def copyDir = rootProject.layout.buildDirectory.dir('web-export').get().asFile
+    task.group = 'propwash'
+    task.description = 'Schreibt den Web-Export (Format 2) mit /propwash webexport auf einem dedizierten Server und beendet ihn.'
+    if (!(selection ==~ /[a-z0-9_.-]+/)) {
+        throw new GradleException("-PpropwashWebExportSelection=${selection}: nur all oder ein Namensraum aus [a-z0-9_.-]")
+    }
+    task.timeout = java.time.Duration.ofMinutes(20)
+    task.standardInput = new WebExportConsole(new File(dir, 'logs/latest.log'), "propwash webexport ${selection}\nstop\n".getBytes('UTF-8'))
+    task.doFirst {
+        try {
+            new ServerSocket(port).close()
+        } catch (IOException e) {
+            throw new GradleException("Web-Export: Port ${port} ist belegt (${e.message}); anderen Port mit -PpropwashServerPort=<n> wählen")
+        }
+        dir.mkdirs()
+        new File(dir, 'eula.txt').setText('eula=true\n', 'UTF-8')
+        new File(dir, 'server.properties').setText([
+                'online-mode=false',
+                "server-port=${port}".toString(),
+                'level-type=minecraft\\:flat',
+                'generator-settings={"layers"\\:[{"block"\\:"minecraft\\:bedrock","height"\\:1},{"block"\\:"minecraft\\:grass_block","height"\\:1}],"biome"\\:"minecraft\\:plains"}',
+                'generate-structures=false',
+                'view-distance=4',
+                'simulation-distance=4',
+                'sync-chunk-writes=false',
+        ].join('\n') + '\n', 'UTF-8')
+        new File(dir, 'world').deleteDir()
+        new File(dir, 'logs/latest.log').delete()
+        File mods = new File(dir, 'mods')
+        mods.deleteDir()
+        mods.mkdirs()
+        extraMods.each { String entry ->
+            File source = new File(entry)
+            List<File> jars = source.isDirectory() ? (source.listFiles()?.findAll { it.name.endsWith('.jar') } ?: []) : [source]
+            jars.each { File jar ->
+                if (!jar.isFile()) {
+                    throw new GradleException("Web-Export: ${jar} gibt es nicht")
+                }
+                java.nio.file.Files.copy(jar.toPath(), new File(mods, jar.name).toPath())
+                logger.lifecycle("Web-Export: ${jar.name} in ${project.relativePath(mods)}")
+            }
+        }
+        sourceSets.devtest.output.resourcesDir.mkdirs()
+        sourceSets.devtestMod.output.classesDirs.each { it.mkdirs() }
+    }
+    task.doLast {
+        def logFile = new File(dir, 'logs/latest.log')
+        if (!logFile.exists()) {
+            throw new GradleException('Web-Export: kein logs/latest.log – Server abgestürzt oder nicht gestartet?')
+        }
+        def lines = logFile.readLines('UTF-8')
+        def result = lines.findAll { it.contains('Propwash-Web-Export: ') }
+        if (result.isEmpty()) {
+            throw new GradleException('Web-Export: keine Ergebniszeile im Log – Befehl nicht ausgeführt?')
+        }
+        def summary = result.last().substring(result.last().indexOf('Propwash-Web-Export: ') + 'Propwash-Web-Export: '.length())
+        if (!summary.startsWith('PASS')) {
+            throw new GradleException("Web-Export fehlgeschlagen: ${summary}")
+        }
+        def bad = lines.findAll { line ->
+            line =~ /\/(ERROR|FATAL)\]/ || line.contains('MixinApplyError') || line.contains('InvalidMixinException') ||
+                    line.contains('InvalidInjectionException') || line.contains('Mixin apply failed')
+        }
+        if (!bad.isEmpty()) {
+            throw new GradleException("Web-Export: ${bad.size()} Fehlerzeilen im Log, erste: ${bad.first()}")
+        }
+        copyDir.deleteDir()
+        project.copy {
+            from exportDir
+            into copyDir
+        }
+        logger.lifecycle("Web-Export: ${summary}")
+        logger.lifecycle("Web-Export: ${project.relativePath(exportDir)}, Kopie in ${rootProject.relativePath(copyDir)}")
     }
 }

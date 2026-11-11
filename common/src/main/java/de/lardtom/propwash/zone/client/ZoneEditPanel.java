@@ -11,6 +11,7 @@ import de.lardtom.propwash.ui.client.theme.ThemeText;
 import de.lardtom.propwash.zone.Zone;
 import de.lardtom.propwash.zone.ZoneBox;
 import de.lardtom.propwash.zone.ZoneDraft;
+import de.lardtom.propwash.zone.ZoneRuleMode;
 import de.lardtom.propwash.zone.ZoneShape;
 import de.lardtom.propwash.zone.ZoneText;
 import net.minecraft.client.Minecraft;
@@ -35,6 +36,7 @@ public final class ZoneEditPanel {
     public static final int BUTTON = 16;
     public static final int ARROW = 9;
     public static final String KEY = "propwash.zone.edit.";
+    public static final String LOCKED_TOOLTIP = "propwash.zones_open.edit.tooltip.locked";
     private static final int HUD_BACK = 0xD0161616;
 
     private final ZoneEditor editor;
@@ -46,6 +48,10 @@ public final class ZoneEditPanel {
     private int bodyTop;
     private int bodyBottom;
     private int offset;
+    private int content;
+    private int room;
+    private ZoneDraft.@Nullable Row followed;
+    private boolean dragging;
     private final List<Slot> slots = new ArrayList<>();
     private List<FormattedCharSequence> footer = List.of();
     private int footerTop;
@@ -97,23 +103,94 @@ public final class ZoneEditPanel {
             this.slots.add(new Slot(row, y, section));
             y += ROW;
         }
-        int content = y;
-        int room = Math.max(ROW, this.bodyBottom - this.bodyTop);
-        Slot selected = this.slot(this.editor.model().selected());
-        if (selected != null) {
+        this.content = y;
+        this.room = Math.max(ROW, this.bodyBottom - this.bodyTop);
+        ZoneDraft.Row current = this.editor.model().selected();
+        Slot selected = this.slot(current);
+        if (selected != null && !current.equals(this.followed)) {
+            this.followed = current;
             int top = selected.y - (selected.section != null ? SECTION : 0);
             if (top < this.offset) {
                 this.offset = top;
-            } else if (selected.y + ROW > this.offset + room) {
-                this.offset = selected.y + ROW - room;
+            } else if (selected.y + ROW > this.offset + this.room) {
+                this.offset = selected.y + ROW - this.room;
             }
         }
-        this.offset = Math.max(0, Math.min(this.offset, Math.max(0, content - room)));
+        this.offset = Math.max(0, Math.min(this.offset, this.maxOffset()));
+    }
+
+    public int maxOffset() {
+        return Math.max(0, this.content - this.room);
+    }
+
+    public boolean scrollable() {
+        return this.maxOffset() > 0;
+    }
+
+    public int offset() {
+        return this.offset;
+    }
+
+    public boolean scroll(double notches) {
+        if (!this.scrollable() || notches == 0.0) {
+            return false;
+        }
+        int before = this.offset;
+        this.offset = Math.max(0, Math.min(this.maxOffset(), this.offset - (int) Math.round(notches * ROW)));
+        return this.offset != before;
+    }
+
+    public boolean over(double mx, double my) {
+        return mx >= this.x0 && mx < this.x0 + this.width && my >= this.y0 && my < this.y0 + this.height;
+    }
+
+    private int scrollbarLeft() {
+        return this.x0 + this.width - Metrics.SCROLLBAR_WIDTH - 2;
+    }
+
+    public boolean overScrollbar(double mx, double my) {
+        return this.scrollable() && mx >= this.scrollbarLeft() - 1 && mx < this.x0 + this.width && my >= this.bodyTop && my < this.bodyBottom;
+    }
+
+    public boolean startDrag(double mx, double my) {
+        if (!this.overScrollbar(mx, my)) {
+            return false;
+        }
+        this.dragging = true;
+        this.dragTo(my);
+        return true;
+    }
+
+    public boolean drag(double my) {
+        if (!this.dragging) {
+            return false;
+        }
+        this.dragTo(my);
+        return true;
+    }
+
+    public void endDrag() {
+        this.dragging = false;
+    }
+
+    private void dragTo(double my) {
+        int height = this.bodyBottom - this.bodyTop;
+        int thumb = Math.max(12, (int) ((long) height * height / Math.max(1, this.content)));
+        double t = (my - this.bodyTop - thumb / 2.0) / Math.max(1.0, height - thumb);
+        this.offset = (int) Math.round(Math.max(0.0, Math.min(1.0, t)) * this.maxOffset());
+    }
+
+    public boolean rowVisible(ZoneDraft.Row row) {
+        Slot slot = this.slot(row);
+        return slot != null && this.visible(this.rowY(slot), ROW);
     }
 
     private static String group(ZoneDraft.Kind kind) {
         if (kind.geometry()) {
             return "shape";
+        }
+        if (kind == ZoneDraft.Kind.LOCKED) {
+            return "locked";
         }
         return kind == ZoneDraft.Kind.RULE ? "physics" : "zone";
     }
@@ -226,6 +303,7 @@ public final class ZoneEditPanel {
                 continue;
             }
             boolean isSelected = slot.row.equals(selected);
+            boolean locked = slot.row.kind() == ZoneDraft.Kind.LOCKED;
             boolean hovered = this.cursor && mouseX >= this.x0 && mouseX < x1 && mouseY >= y && mouseY < y + ROW;
             if (isSelected) {
                 g.fill(this.x0 + 2, y, x1 - 2, y + ROW, Palette.ACCENT_DIM);
@@ -234,17 +312,18 @@ public final class ZoneEditPanel {
             }
             int textY = y + (ROW - Metrics.TEXT_HEIGHT) / 2;
             ThemeText.fitted(g, font, this.label(slot.row, zone), this.x0 + Metrics.PADDING, textY, labelWidth,
-                    isSelected ? Palette.TEXT : Palette.TEXT_MUTED);
-            boolean inherited = slot.row.kind() == ZoneDraft.Kind.RULE && slot.row.spec() != null && !zone.overrides(slot.row.spec());
+                    locked ? Palette.TEXT_FAINT : isSelected ? Palette.TEXT : Palette.TEXT_MUTED);
+            boolean inherited = slot.row.kind() == ZoneDraft.Kind.RULE && slot.row.spec() != null && zone.mode(slot.row.spec()) == ZoneRuleMode.BELOW;
             Component value = this.value(slot.row, zone);
             int valueLeft = this.valueLeft();
-            if (isSelected || hovered) {
+            if ((isSelected || hovered) && !locked) {
                 ThemeText.text(g, font, "‹", valueLeft + 1, textY, Palette.ACCENT);
                 ThemeText.textRight(g, font, "›", right, textY, Palette.ACCENT);
             }
             ThemeText.fittedRight(g, font, value, right - ARROW, textY, right - ARROW - valueLeft - ARROW,
-                    inherited ? Palette.TEXT_FAINT : Palette.TEXT);
+                    inherited || locked ? Palette.TEXT_FAINT : Palette.TEXT);
         }
+        ThemeDraw.scrollbar(g, this.scrollbarLeft(), this.bodyTop, this.bodyBottom - this.bodyTop, this.content, this.offset, this.dragging);
         g.fill(this.x0 + 2, this.footerTop - 2, x1 - 2, this.footerTop - 1, Palette.BORDER);
         int y = this.footerTop;
         for (FormattedCharSequence line : this.footer) {
@@ -254,7 +333,7 @@ public final class ZoneEditPanel {
     }
 
     Component label(ZoneDraft.Row row, Zone zone) {
-        if (row.kind() == ZoneDraft.Kind.RULE && row.spec() != null) {
+        if (row.kind().rule() && row.spec() != null) {
             return Component.translatable(row.spec().translationKey());
         }
         if (row.kind() == ZoneDraft.Kind.WIDTH && zone.shape() == ZoneShape.CYLINDER) {
@@ -276,20 +355,24 @@ public final class ZoneEditPanel {
             case PRIORITY -> Component.literal(Integer.toString(zone.priority()));
             case RACE_LEGAL -> WorldRuleText.onOff(zone.raceLegal());
             case TRANSITION -> ZoneText.transition(zone.transitionTenths());
-            case RULE -> {
+            case LOCKED, RULE -> {
                 RuleSpec spec = row.spec();
                 if (spec == null) {
                     yield Component.empty();
                 }
-                if (zone.overrides(spec)) {
-                    yield WorldRuleText.value(spec, zone.value(spec, spec.defaultValue()));
-                }
-                yield Component.translatable(KEY + "inherit", WorldRuleText.value(spec, ClientWorldRules.INSTANCE.get(spec)));
+                yield switch (zone.mode(spec)) {
+                    case OWN -> WorldRuleText.value(spec, zone.value(spec, spec.defaultValue()));
+                    case WORLD -> Component.translatable(ZoneText.OPEN_KEY + "edit.world", WorldRuleText.value(spec, ClientWorldRules.INSTANCE.get(spec)));
+                    case BELOW -> Component.translatable(KEY + "inherit", WorldRuleText.value(spec, this.editor.below().value(spec)));
+                };
             }
         };
     }
 
     public @Nullable Component tooltip(ZoneDraft.Row row) {
+        if (row.kind() == ZoneDraft.Kind.LOCKED && row.spec() != null) {
+            return Component.translatable(LOCKED_TOOLTIP, Component.translatable(row.spec().translationKey()));
+        }
         if (row.kind() == ZoneDraft.Kind.RULE && row.spec() != null) {
             return Component.translatable(KEY + "tooltip.rule", Component.translatable(row.spec().descriptionKey()));
         }

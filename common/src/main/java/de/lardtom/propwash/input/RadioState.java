@@ -1,11 +1,14 @@
 package de.lardtom.propwash.input;
 
+import java.util.function.UnaryOperator;
+
 public final class RadioState {
     public static final RadioState INSTANCE = new RadioState();
 
     private volatile RadioFrame frame = RadioFrame.NONE;
     private long frameCount;
     private final ArmSourceWatch armWatch = new ArmSourceWatch();
+    private volatile UnaryOperator<RadioFrame> addonStage = UnaryOperator.identity();
 
     private RadioState() {
     }
@@ -46,12 +49,24 @@ public final class RadioState {
         return this.frame.deviceGuid();
     }
 
-    public int activeSwitches() {
+    public long activeSwitches() {
         return this.frame.activeSwitches();
     }
 
-    public int readableSwitches() {
+    public long readableSwitches() {
         return this.frame.readableSwitches();
+    }
+
+    public long addonSwitches() {
+        return this.frame.addonSwitches();
+    }
+
+    public float[] addonAxes() {
+        return this.frame.addonAxes().clone();
+    }
+
+    public void addonStage(UnaryOperator<RadioFrame> stage) {
+        this.addonStage = stage == null ? UnaryOperator.identity() : stage;
     }
 
     public long frameCount() {
@@ -68,6 +83,8 @@ public final class RadioState {
 
     public void publish(RadioFrame next, SwitchAssignment arm) {
         RadioFrame published = next == null ? RadioFrame.NONE : next;
+        RadioFrame staged = this.addonStage.apply(published);
+        published = staged == null ? published : staged;
         this.armWatch.observe(published.source(), published.deviceGuid(), arm);
         this.frame = published;
         this.frameCount++;

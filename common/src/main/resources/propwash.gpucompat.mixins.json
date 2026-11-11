@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "de.lardtom.propwash.mixin.gpucompat",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "client": [
+    "client.BufferStorageMixin",
+    "client.DirectStateAccessMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

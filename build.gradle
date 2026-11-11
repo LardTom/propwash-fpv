@@ -6,18 +6,34 @@ plugins {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Stumme Test-Instanzen: prepareRuns schreibt/patcht options.txt in allen Client-Run-Verzeichnissen beider Loader
+// Stumme Test-Instanzen: prepareRuns schreibt/patcht options.txt in den Client-Run-Verzeichnissen der Runs im Aufruf
 // (Master 0.001, alle anderen Kategorien 0, kein Pausieren bei Fokusverlust, kein Barrierefreiheits-Onboarding).
 // Die run*-Tasks beider Loader hängen davon ab (siehe fabric/build.gradle, neoforge/build.gradle).
 // Die Run-Verzeichnisse sind hier zentral definiert und werden von den Loader-Builds benutzt.
 // ---------------------------------------------------------------------------------------------------------------
-ext.propwashRunDirs = [
+ext.propwashBaseRunDirs = [
         client  : 'runs/client',
         selftest: 'runs/selftest-client',
         smoke   : 'runs/smoke-client',
         server  : 'runs/server',
         serverSmoke: 'runs/smoke-server',
 ]
+
+// ---------------------------------------------------------------------------------------------------------------
+// Run-Kennung (docs/testing.md, „Selbsttest in Teilen“): -PpropwashRunTag=<kennung> hängt „-<kennung>“ an alle
+// Run-Verzeichnisse (runs/selftest-client-<kennung>, …), damit mehrere Läufe desselben Tasks gleichzeitig in einem
+// Arbeitsbaum laufen. prepareRunTag legt ein solches Verzeichnis beim ersten Mal aus dem Basis-Verzeichnis an
+// (options.txt, servers.dat und config/, keine Welten und Logs) und spiegelt vor jedem Start dessen mods/ mit harten
+// Links (Flashback- und Add-on-Jars werden nicht kopiert). Ohne die Property ändert sich nichts.
+// ---------------------------------------------------------------------------------------------------------------
+def runTag = findProperty('propwashRunTag')?.toString()?.trim()
+if (runTag && !(runTag ==~ /[A-Za-z0-9][A-Za-z0-9._-]{0,39}/)) {
+    throw new GradleException("-PpropwashRunTag=${runTag}: nur Buchstaben, Ziffern, Punkt, Unter- und Bindestrich (höchstens 40 Zeichen, am Anfang Buchstabe oder Ziffer)")
+}
+ext.propwashRunTag = runTag ?: null
+ext.propwashRunDirs = propwashBaseRunDirs.collectEntries { kind, dir ->
+    [kind, propwashRunTag ? "${dir}-${propwashRunTag}".toString() : dir]
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Selbsttest-Auswahl (docs/testing.md): -PpropwashSelftestOnly=<Namensanfänge, durch Komma getrennt> lässt nur passende
@@ -153,27 +169,101 @@ def mutedOptions = [
         'onboardAccessibility'  : 'false',
 ]
 // Nur für die Selbsttest-Instanzen: kleinere Sichtweite, schnellerer Weltstart, GUI-Skala automatisch (ein abgebrochener
-// Lauf hinterließ sonst die Skala seines letzten Bildschirmfotos).
+// Lauf hinterließ sonst die Skala seines letzten Bildschirmfotos), Sprache Englisch (eine in options.txt liegengebliebene
+// Sprache deutscher Bildschirmfotos ließ sonst den nächsten Lauf auf Deutsch starten).
 def selftestOptions = [
         'renderDistance'    : '6',
         'simulationDistance': '5',
         'guiScale'          : '0',
+        'graphicsPreset'    : '"custom"',
+        'lang'              : 'en_us',
 ]
 // Datenversion von 26.3 (version.json "world_version"), nur für neu angelegte options.txt.
 def optionsDataVersion = '5023'
 
+def mirrorFiles = { File from, File to ->
+    from.eachFileRecurse(groovy.io.FileType.FILES) { File source ->
+        File target = new File(to, from.toPath().relativize(source.toPath()).toString())
+        target.parentFile.mkdirs()
+        try {
+            java.nio.file.Files.createLink(target.toPath(), source.toPath())
+        } catch (IOException | UnsupportedOperationException ignored) {
+            java.nio.file.Files.copy(source.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+}
+
+def copyFiles = { File from, File to ->
+    from.eachFileRecurse(groovy.io.FileType.FILES) { File source ->
+        File target = new File(to, from.toPath().relativize(source.toPath()).toString())
+        target.parentFile.mkdirs()
+        java.nio.file.Files.copy(source.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+}
+
+tasks.register('prepareRunTag') {
+    group = 'propwash'
+    description = 'Legt die Run-Verzeichnisse einer Run-Kennung (-PpropwashRunTag) aus den Basis-Verzeichnissen an und spiegelt mods/.'
+    def tag = propwashRunTag
+    def runTasks = [client: 'runClient', selftest: 'runClientSelftest', smoke: 'runClientSmoke', server: 'runServer', serverSmoke: 'runServerSmoke']
+    def targets = tag == null ? [] : ['fabric', 'neoforge'].collectMany { loader ->
+        propwashBaseRunDirs.keySet().collect { kind ->
+            [base: file("${loader}/${propwashBaseRunDirs[kind]}"), dir: file("${loader}/${propwashRunDirs[kind]}"),
+             task: ":${loader}:${runTasks[kind]}".toString()]
+        }
+    }
+    onlyIf { tag != null }
+    outputs.upToDateWhen { false }
+    doLast {
+        // Nur die Verzeichnisse der Runs in diesem Aufruf; direkt aufgerufen (ohne run*-Task) alle
+        def planned = gradle.taskGraph.allTasks*.path as Set
+        def used = targets.findAll { planned.contains(it.task) }
+        (used ?: targets).each { Map target ->
+            File base = target.base
+            File dir = target.dir
+            dir.mkdirs()
+            File marker = new File(dir, 'propwash-run-tag.txt')
+            if (!marker.exists()) {
+                ['options.txt', 'servers.dat'].each { name ->
+                    File source = new File(base, name)
+                    if (source.isFile()) {
+                        java.nio.file.Files.copy(source.toPath(), new File(dir, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    }
+                }
+                File config = new File(base, 'config')
+                if (config.isDirectory()) {
+                    copyFiles(config, new File(dir, 'config'))
+                }
+                marker.setText("Run-Kennung ${tag}, angelegt aus ${project.relativePath(base)}\n", 'UTF-8')
+                logger.lifecycle("prepareRunTag: ${project.relativePath(dir)} aus ${project.relativePath(base)} angelegt")
+            }
+            File mods = new File(dir, 'mods')
+            mods.deleteDir()
+            File baseMods = new File(base, 'mods')
+            if (baseMods.isDirectory()) {
+                mirrorFiles(baseMods, mods)
+            }
+        }
+    }
+}
+
 tasks.register('prepareRuns') {
     group = 'propwash'
-    description = 'Schreibt stumme options.txt in die Client-Run-Verzeichnisse von Fabric und NeoForge.'
+    description = 'Schreibt stumme options.txt in die Client-Run-Verzeichnisse der Runs im Aufruf (direkt aufgerufen: alle).'
+    dependsOn('prepareRunTag')
     def targets = []
     ['fabric', 'neoforge'].each { loader ->
-        targets << [dir: file("${loader}/${propwashRunDirs.client}"), options: mutedOptions]
-        targets << [dir: file("${loader}/${propwashRunDirs.selftest}"), options: mutedOptions + selftestOptions]
-        targets << [dir: file("${loader}/${propwashRunDirs.smoke}"), options: mutedOptions + selftestOptions]
+        targets << [dir: file("${loader}/${propwashRunDirs.client}"), options: mutedOptions, task: ":${loader}:runClient".toString()]
+        targets << [dir: file("${loader}/${propwashRunDirs.selftest}"), options: mutedOptions + selftestOptions, task: ":${loader}:runClientSelftest".toString()]
+        targets << [dir: file("${loader}/${propwashRunDirs.smoke}"), options: mutedOptions + selftestOptions, task: ":${loader}:runClientSmoke".toString()]
     }
     outputs.upToDateWhen { false }
     doLast {
-        targets.each { target ->
+        // Nur die Clients in diesem Aufruf (ohne Client-Task alle): options.txt eines Clients, der gerade startet, schreibt
+        // so kein zweiter Gradle-Lauf daneben neu.
+        def planned = gradle.taskGraph.allTasks*.path as Set
+        def used = targets.findAll { planned.contains(it.task) }
+        (used ?: targets).each { target ->
             File dir = target.dir
             Map<String, String> options = target.options
             dir.mkdirs()
@@ -202,16 +292,21 @@ tasks.register('prepareRuns') {
 
 tasks.register('prepareServerSmoke') {
     group = 'propwash'
-    description = 'Legt eula.txt und server.properties für den Server-Rauchtest beider Loader an.'
+    description = 'Legt eula.txt und server.properties für den Server-Rauchtest der Loader im Aufruf an (direkt aufgerufen: beide).'
+    dependsOn('prepareRunTag')
     def dirs = ['fabric', 'neoforge'].collect { loader ->
         [dir: file("${loader}/${propwashRunDirs.serverSmoke}"), port: propwashServerPorts[loader], task: ":${loader}:runServerSmoke".toString()]
     }
     outputs.upToDateWhen { false }
     doLast {
-        dirs.each { Map target ->
+        // Nur die Loader, deren runServerSmoke in diesem Aufruf läuft; direkt aufgerufen beide. Sonst überschriebe ein
+        // Rauchtest im Server-Slot daneben Port und Welt des anderen Loaders, während dessen Server läuft.
+        def planned = gradle.taskGraph.allTasks*.path as Set
+        def used = dirs.findAll { planned.contains(it.task) }
+        (used ?: dirs).each { Map target ->
             File dir = target.dir
             int port = target.port
-            if (gradle.taskGraph.allTasks.any { it.path == target.task }) {
+            if (planned.contains(target.task)) {
                 try {
                     new ServerSocket(port).close()
                 } catch (IOException e) {
@@ -257,3 +352,20 @@ subprojects {
         }
     }
 }
+
+// Vorschau-Build für Spieltester (docs/preview-build.md): -Ppropwash_preview=true landet beim Bauen als Konstante
+// PreviewSwitch.ENABLED im Code (common/build.gradle, generatePreviewSwitch); Propwash zeigt dann immer
+// „Propwash Preview <Version> · not final“ über Spiel und Menüs, in Action-Cam-Aufnahmen und Fotos. Das Kennzeichen
+// preview=true in META-INF/propwash-build.properties und das Manifest-Attribut Propwash-Preview dienen nur der
+// Kennzeichnung, das Spiel liest sie nicht. Standard aus; nur mit Vorab-Nummer (0.6.0-rc.N), Jar-Namen mit Zusatz
+// -preview, keine Maven-Veröffentlichung. Selbsttest (propwash.selftest.preview) und JUnit (propwash.preview.expected)
+// prüfen die Konstante gegen diesen Schalter.
+def previewSwitch = findProperty('propwash_preview')?.toString()?.trim() ?: 'false'
+if (!(previewSwitch in ['true', 'false'])) {
+    throw new GradleException("-Ppropwash_preview=${previewSwitch}: nur true oder false")
+}
+ext.propwashPreview = previewSwitch == 'true'
+if (propwashPreview && !version.toString().contains('-')) {
+    throw new GradleException("-Ppropwash_preview=true mit der Release-Nummer ${version}: ein Vorschau-Build trägt die Vorab-Nummer seines Release-Kandidaten (0.6.0-rc.N, docs/RELEASING.md)")
+}
+propwashSelftestProperties['propwash.selftest.preview'] = previewSwitch

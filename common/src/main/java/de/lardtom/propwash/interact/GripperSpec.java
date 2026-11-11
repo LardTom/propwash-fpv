@@ -19,6 +19,7 @@ public final class GripperSpec {
     public static final int RELEASED_IGNORE_TICKS = 1200;
     public static final double REGRAB_DISTANCE = 1.5;
     public static final int MAX_NESTING = 4;
+    public static final int GRAB_TICKS = 100;
 
     private GripperSpec() {
     }
@@ -37,8 +38,16 @@ public final class GripperSpec {
         return Math.max(0.0, Math.min(MAX_PAYLOAD_GRAMS, Math.floor(Math.min(share, loaded))));
     }
 
+    public static boolean picksUp(boolean gripper, boolean armed, boolean piloted, boolean grabbing) {
+        return gripper && armed && (piloted || grabbing);
+    }
+
     public static boolean mayTake(@Nullable UUID target, @Nullable UUID pilot) {
         return target == null || target.equals(pilot);
+    }
+
+    public static boolean mayTake(@Nullable UUID target, @Nullable UUID pilot, @Nullable UUID actor) {
+        return mayTake(target, pilot) || target != null && target.equals(actor);
     }
 
     public static boolean awayFromDrop(double dx, double dy, double dz) {

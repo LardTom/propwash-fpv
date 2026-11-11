@@ -47,7 +47,7 @@ oder landen statt endlos zu suchen. Eine Welt-Regel schaltet das Weiterfliegen a
 | Lokaler Wegplaner `RoutePlanner`: A* auf dem Blockraster um die Drohne (±20 Blöcke waagerecht, −6/+12 senkrecht, 8 Nachbarn + hoch/runter, Ecken nicht schneiden), höchstens 2500 Knoten, Belegung je Zelle einmal geprüft, Weg mit Sichtlinien geglättet; zuerst mit halbem Sicherheitsabstand, dann eng (für Türen) | findet Wege aus Hallen durch Türen und um Mauern unter Decken, die gerades Ausweichen nicht findet; begrenzte Kosten, nur bei Bedarf und höchstens einmal je Sekunde und Ziel | vollständige 3D-Karte, Planung über den ganzen Weg |
 | Ziele: „freier Himmel“ (Ausweichen unter Dach) und „Richtung Homepoint mit 10 m freier Sicht“ (Ausweichen im Flug) | eine Suche für beide Fälle; Teilwege, wenn das Ziel außerhalb liegt (mindestens 2 m näher), danach neu planen | nur ein festes Zielfeld |
 | Wegfolge mit Querabweichungs-Regler (bleibt auf der freien Linie), 3 m/s, in engen Durchlässen 1,5 m/s | Wegpunkte mit großem Radius schnitten Türrahmen an | Wegpunkt für Wegpunkt mit Positionsregler (stockend) |
-| Landeplatz-Prüfung: unter dem Fußabdruck nur feste, ebene Blöcke; Wasser, Laub (`#leaves`) und uneben gelten als schlecht, Lava, Feuer, Lagerfeuer, Magma, Kaktus, Beerenstrauch, Pulverschnee, Wither-Rose und Tropfstein als gefährlich (`RescueBlocks`, `Ground`); Suche bis 12 m um den Homepoint, zuerst ±2 Blöcke um seine Höhe, dann bis 24 Blöcke tiefer (Homepoint auf einer Baumkrone → Boden darunter) | ein Homepoint im Teich, auf der Baumkrone oder neben Lava endet nicht mehr im Wasser oder Feuer | nur überdachte Homepoints verlegen (bisher) |
+| Landeplatz-Prüfung: unter dem Fußabdruck nur feste, ebene Blöcke; Wasser, Laub (`#leaves`) und uneben gelten als schlecht, Lava, Feuer, Lagerfeuer, Magma, Kaktus, Beerenstrauch, Pulverschnee, Wither-Rose und Tropfstein als gefährlich (`RescueBlocks`, `Ground`); Suche bis 12 m um den Homepoint, zuerst ±2 Blöcke um seine Höhe, dann bis 24 Blöcke tiefer (Homepoint auf einer Baumkrone → Boden darunter); gesuchte Plätze brauchen 0,4 Blöcke Rand um den Fußabdruck, der Homepoint selbst bleibt Landeplatz, wenn die Drohne dort mit 0,2 Blöcken Rand fest und eben steht, nichts über ihr liegt und im weiten Rand keine Gefahr ist | ein Homepoint im Teich, auf der Baumkrone oder neben Lava endet nicht mehr im Wasser oder Feuer; ein Homepoint auf einer Druckplatte vor einer Tür oder in einer Mauerecke wird nicht um einen Block verlegt (Befund cov-flight-5) | nur überdachte Homepoints verlegen (bisher); Homepoint nur mit dem weiten Rand prüfen (Tür oder Mauer daneben galt als uneben oder Dach) |
 | Festgefahren: nach drei Versuchen ohne mindestens 3 m Fortschritt gibt der Autopilot auf – mit Pilot schwebt er (Meldung „GPS Rescue findet keinen Weg – die Drohne schwebt, übernimm die Steuerung“), ohne Pilot landet er an Ort und Stelle (fester Boden in bis zu 8 m, sonst darunter) | kein endloses Hin und Her; der Pilot kann übernehmen, ohne Pilot endet der Flug am Boden | endlos neu versuchen (bisher) |
 
 ## 4. Technik
@@ -85,7 +85,9 @@ bitgleich).
 
 ## 6. Tests
 
-- JUnit `RescueRoutingTest`: Homepoint im Teich, auf Lava, auf der Baumkrone, Halle mit Tür, Mauer unter breiter Decke,
+- JUnit `RescueRoutingTest`: Homepoint im Teich, auf Lava, auf der Baumkrone, vor einer Tür (alle Presets höchstens
+  0,3 Blöcke daneben), in einer Mauerecke, direkt an der Tür (weicht aus), neben Lava (weicht aus), Halle mit Tür, Mauer
+  unter breiter Decke,
   Bergrücken weit hinten, Höhle mit Pilot (schwebt) und ohne (landet), sofort landen, ohne „Automatisch landen“,
   A* um ein U (Budget, Weg frei, Laufzeit), Landeplatz-Einordnung.
 - JUnit `AutonomousHandoverTest`: Pilot steigt im Heimflug aus → Server-Flug landet am Homepoint, Lage und Tempo

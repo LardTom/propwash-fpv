@@ -135,6 +135,7 @@ public final class DroneLayoutParser {
         Vector3fc stack = optionalVector(obj.get("stack"), fallback.stack(), where + "stack", problems);
         Vector3fc battery = optionalVector(obj.get("battery"), fallback.battery(), where + "battery", problems);
         Vector3fc video = optionalVector(obj.get("video"), fallback.video(), where + "video", problems);
+        Vector3fc antenna = optionalVector(obj.get("antenna"), fallback.antenna().orElse(null), where + "antenna", problems);
         float tilt = number(obj.get("camera_tilt_default"), fallback.cameraTiltDegrees(), where + "camera_tilt_default", problems);
         if (tilt < -30.0F || tilt > 80.0F) {
             problems.add(where + "camera_tilt_default außerhalb -30..80°");
@@ -149,7 +150,7 @@ public final class DroneLayoutParser {
             accessories = merged;
         }
         return new DroneLayout(motors, ccw, propHeight, stack, battery, video, tilt, true, accessories,
-                !frame.definition().geometry().batteryOnTop());
+                !frame.definition().geometry().batteryOnTop(), antenna);
     }
 
     static Map<AccessoryMount, AccessoryAnchor> accessories(JsonElement element, DroneLayout fallback, String where, List<String> problems) {

@@ -239,6 +239,7 @@ public final class DroneRenderSelfTests {
         PartsRenderSelfTests.register();
         RaceBatterySelfTests.register();
         RacePresetSelfTests.register();
+        BatteryPlugSelfTests.register();
     }
 
     private static StepResult afterWaterStep() {
@@ -329,7 +330,7 @@ public final class DroneRenderSelfTests {
             if (!layout.accessories().keySet().equals(preset.frame().accessoryMounts)) {
                 return StepResult.fail(preset.frame().key() + ": Halterungen " + layout.accessories().keySet());
             }
-            float bareTop = res.assembly(preset).hull().max().y();
+            float bareTop = bodyTop(res.assembly(preset).hull());
             for (AccessoryType type : AccessoryType.values()) {
                 if (!type.builtin() || !preset.frame().accessoryMounts.contains(type.mount)) {
                     continue;
@@ -350,7 +351,7 @@ public final class DroneRenderSelfTests {
                 if (type.mount.hasBase() != state.accessoryBases[i].useItem) {
                     return StepResult.fail(where + ": Halterungssockel falsch");
                 }
-                if (type == AccessoryType.ACTION_CAM_HEAVY && res.assembly(build).hull().max().y() < bareTop + 10.0F) {
+                if (type == AccessoryType.ACTION_CAM_HEAVY && bodyTop(res.assembly(build).hull()) < bareTop + 10.0F) {
                     return StepResult.fail(where + ": Kamera ragt nicht über die Drohne");
                 }
                 String problem = checkState(build, state);
@@ -586,5 +587,9 @@ public final class DroneRenderSelfTests {
                 }
             }
         });
+    }
+
+    static float bodyTop(VisualHull hull) {
+        return -hull.lowestPoint(new Quaternionf().rotationX((float) Math.PI), DroneAssembly.ORIGIN);
     }
 }

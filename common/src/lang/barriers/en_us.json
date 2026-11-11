@@ -1,0 +1,20 @@
+{
+  "block.propwash.drone_block_barrier": "Drone Barrier",
+  "block.propwash.drone_pass_barrier": "Drone-Passable Barrier",
+  "propwash.help.drone_block_barrier.fits": "Every kind of drone, also from add-ons",
+  "propwash.help.drone_block_barrier.summary": "Invisible wall that stops only drones",
+  "propwash.help.drone_block_barrier.use.1": "Drones crash or bounce off as on a block.",
+  "propwash.help.drone_block_barrier.use.2": "Players, mobs, items and arrows pass.",
+  "propwash.help.drone_block_barrier.use.3": "Creative: outline on aim, icons when held.",
+  "propwash.help.drone_block_barrier.use.4": "Lets light, redstone and video through.",
+  "propwash.help.drone_block_barrier.what.1": "Creative only: no recipe, not minable.",
+  "propwash.help.drone_block_barrier.what.2": "No effect on race timing or scoring.",
+  "propwash.help.drone_pass_barrier.fits": "Every kind of drone, also from add-ons",
+  "propwash.help.drone_pass_barrier.summary": "Invisible wall that only drones pass",
+  "propwash.help.drone_pass_barrier.use.1": "Players, mobs, items and arrows stop here.",
+  "propwash.help.drone_pass_barrier.use.2": "Drones of every kind fly through freely.",
+  "propwash.help.drone_pass_barrier.use.3": "Creative: outline on aim, icons when held.",
+  "propwash.help.drone_pass_barrier.use.4": "Lets light, redstone and video through.",
+  "propwash.help.drone_pass_barrier.what.1": "Creative only: no recipe, not minable.",
+  "propwash.help.drone_pass_barrier.what.2": "No effect on race timing or scoring."
+}

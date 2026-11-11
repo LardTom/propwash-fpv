@@ -2,6 +2,7 @@ package de.lardtom.propwash.accessory.client;
 
 import de.lardtom.propwash.accessory.AccessoryBehaviors;
 import de.lardtom.propwash.accessory.AccessoryMenu;
+import de.lardtom.propwash.accessory.AccessoryPayload;
 import de.lardtom.propwash.build.AccessoryMount;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.content.ContentItems;
@@ -20,6 +21,8 @@ import net.minecraft.world.item.ItemStack;
 import java.util.List;
 
 public class AccessoryScreen extends AbstractContainerScreen<AccessoryMenu> implements ThemedScreen {
+    public static final String OVERLOADED_KEY = "propwash.accessory.menu.overloaded";
+    public static final String OVERLOADED_HINT_KEY = "propwash.accessory.menu.overloaded.hint";
     private static final int HEADER_HEIGHT = 14;
     private static final int LABEL_OFFSET = 11;
 
@@ -75,10 +78,11 @@ public class AccessoryScreen extends AbstractContainerScreen<AccessoryMenu> impl
                 List<ItemStack> contents = drone.accessoryContents().at(mount);
                 grams = AccessoryBehaviors.INSTANCE.payloadGrams(type, contents);
             }
-            Component load = Component.translatable("propwash.accessory.menu.load", Math.round(grams));
+            boolean overloaded = type != null && AccessoryPayload.overloaded(type, grams);
+            Component load = Component.translatable(overloaded ? OVERLOADED_KEY : "propwash.accessory.menu.load", Math.round(grams));
             int loadWidth = this.font.width(load);
             ThemeText.fitted(graphics, this.font, label, AccessoryMenu.LEFT + 2, labelY, right - loadWidth - 6 - AccessoryMenu.LEFT, ThemedPanel.TEXT);
-            graphics.text(this.font, load, right - loadWidth, labelY, ThemedPanel.MUTED, false);
+            graphics.text(this.font, load, right - loadWidth, labelY, overloaded ? ThemedPanel.BAD : ThemedPanel.MUTED, false);
         }
     }
 
@@ -93,9 +97,24 @@ public class AccessoryScreen extends AbstractContainerScreen<AccessoryMenu> impl
             int rowY = AccessoryMenu.FIRST_ROW_Y + row * AccessoryMenu.ROW_HEIGHT;
             if (rx >= AccessoryMenu.LEFT && rx < AccessoryMenu.SLOT_X - 2 && ry >= rowY && ry < rowY + 18) {
                 AccessoryMount mount = rows.get(row);
-                ThemeText.tooltipLines(graphics, this.font, List.of(Component.translatable("propwash.content.workbench.slot.accessory_" + mount.key()),
-                        Component.translatable("propwash.accessory.menu.hint")), mouseX, mouseY);
+                ThemeText.tooltipLines(graphics, this.font, this.rowHint(mount), mouseX, mouseY);
             }
         }
+    }
+
+    private List<Component> rowHint(AccessoryMount mount) {
+        Component slot = Component.translatable("propwash.content.workbench.slot.accessory_" + mount.key());
+        Component hint = Component.translatable("propwash.accessory.menu.hint");
+        AccessoryType type = this.menu.accessory(mount);
+        QuadcopterEntity drone = this.menu.drone();
+        if (type == null || drone == null) {
+            return List.of(slot, hint);
+        }
+        double grams = AccessoryBehaviors.INSTANCE.payloadGrams(type, drone.accessoryContents().at(mount));
+        if (!AccessoryPayload.overloaded(type, grams)) {
+            return List.of(slot, hint);
+        }
+        return List.of(slot, Component.translatable(OVERLOADED_HINT_KEY, Math.round(AccessoryPayload.MAX_LADEN_GRAMS),
+                Math.round(AccessoryPayload.flightGrams(type, grams))).withColor(ThemedPanel.BAD));
     }
 }

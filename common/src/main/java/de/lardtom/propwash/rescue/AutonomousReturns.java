@@ -22,7 +22,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.jspecify.annotations.Nullable;
@@ -49,7 +48,7 @@ public final class AutonomousReturns {
     private static final Map<UUID, Report> REPORTS = new HashMap<>();
     private static final Map<QuadcopterEntity, ServerReturnFlight> FLIGHTS = new IdentityHashMap<>();
     private static final Set<QuadcopterEntity> DESCENTS = Collections.newSetFromMap(new IdentityHashMap<>());
-    private static final AutonomyBudget BUDGET = new AutonomyBudget();
+    private static final AutonomyBudget BUDGET = AutonomyBudget.SERVER;
     private static final ServerRescueWorld.ChunkGate GATE = (level, x, z) ->
             level.getChunkSource().getChunkNow(x, z) != null && RangeManager.generatedAround(level, x, z);
 
@@ -62,7 +61,7 @@ public final class AutonomousReturns {
     static void init() {
         PropwashNet.registerC2S(RescueStatusC2S.TYPE, RescueStatusC2S.CODEC, AutonomousReturns::onStatus);
         QuadcopterEntity.PILOT_CHANGED.register(AutonomousReturns::onPilotChanged);
-        QuadcopterEntity.setServerAutopilot(AutonomousReturns::tick);
+        QuadcopterEntity.setServerAutopilot(drone -> AddonAutonomy.tick(drone) || tick(drone));
         ServerBus.TICK_END.register(AutonomousReturns::onTickEnd);
         ServerBus.STOPPED.register(server -> clear());
     }
@@ -77,11 +76,11 @@ public final class AutonomousReturns {
 
     public static @Nullable DroneSim sim(QuadcopterEntity drone) {
         ServerReturnFlight flight = FLIGHTS.get(drone);
-        return flight == null ? null : flight.sim();
+        return flight == null ? AddonAutonomy.sim(drone) : flight.sim();
     }
 
     public static boolean flying(QuadcopterEntity drone) {
-        return FLIGHTS.containsKey(drone);
+        return FLIGHTS.containsKey(drone) || AddonAutonomy.flying(drone);
     }
 
     public static @Nullable RescuePhase phase(QuadcopterEntity drone) {
@@ -142,6 +141,9 @@ public final class AutonomousReturns {
             return;
         }
         Report report = REPORTS.remove(drone.getUUID());
+        if (AddonAutonomy.onPilotExit(drone, previous.get(), report != null && report.pilot().equals(previous.get()) ? report.plan() : null)) {
+            return;
+        }
         if (report == null || !report.pilot().equals(previous.get()) || drone.isRemoved() || !drone.hasBattery()
                 || !(drone.level() instanceof ServerLevel level)) {
             return;
@@ -183,7 +185,7 @@ public final class AutonomousReturns {
         }
         ServerReturnFlight flight = FLIGHTS.get(drone);
         if (flight == null) {
-            AutonomyBudget.Admission admission = BUDGET.admit(drone, plan.owner());
+            AutonomyBudget.Admission admission = AddonAutonomy.budget(server).admit(drone, plan.owner());
             if (admission != AutonomyBudget.Admission.ADMITTED) {
                 DESCENTS.add(drone);
                 tell(server, plan.owner(), Component.translatable("propwash.rescue.autonomous.busy", DroneInteractions.droneName(drone))
@@ -198,7 +200,7 @@ public final class AutonomousReturns {
                         : "propwash.rescue.autonomous.started", name).withStyle(ChatFormatting.AQUA));
             }
         }
-        keepLoaded(drone, level);
+        flight.chunks.keep(drone);
         int ticks = plan.ticks() + 1;
         if (ticks >= MAX_TICKS && !plan.landNow()) {
             plan = plan.withLandNow();
@@ -212,7 +214,7 @@ public final class AutonomousReturns {
         }
         ServerPlayer owner = server.getPlayerList().getPlayer(plan.owner());
         ServerReturnFlight.Outcome outcome = flight.tick(drone, level, plan, owner);
-        keepLoaded(drone, level);
+        flight.chunks.keep(drone);
         if (flight.autopilot.gaveUp() && !flight.announcedStuck) {
             flight.announcedStuck = true;
             tell(server, plan.owner(), Component.translatable("propwash.rescue.autonomous.stuck", DroneInteractions.droneName(drone))
@@ -230,13 +232,6 @@ public final class AutonomousReturns {
         return true;
     }
 
-    private static void keepLoaded(QuadcopterEntity drone, ServerLevel level) {
-        ChunkPos chunk = drone.chunkPosition();
-        if (RangeManager.generatedAround(level, chunk.x(), chunk.z())) {
-            RangeManager.keepSimulated(level, chunk);
-        }
-    }
-
     private static boolean descend(QuadcopterEntity drone, ServerLevel level, ReturnPlan plan) {
         if (plan.ticks() >= MAX_TICKS) {
             DESCENTS.remove(drone);
@@ -250,6 +245,7 @@ public final class AutonomousReturns {
         drone.setMotorOutputsPacked(StateValidation.packMotors(DESCENT_MOTORS, DESCENT_MOTORS, DESCENT_MOTORS, DESCENT_MOTORS));
         double before = drone.getY();
         drone.move(MoverType.SELF, new Vec3(0.0, -DESCENT_PER_TICK, 0.0));
+        drone.resetFallDistance();
         drone.setDeltaMovement(Vec3.ZERO);
         boolean down = drone.onGround() || drone.isInWater() || drone.isInLava() || before - drone.getY() < 1e-4
                 || drone.getY() <= level.getMinY();
@@ -318,6 +314,12 @@ public final class AutonomousReturns {
         }
         for (QuadcopterEntity drone : gone) {
             stopFlight(drone);
+        }
+        for (Map.Entry<QuadcopterEntity, ServerReturnFlight> entry : FLIGHTS.entrySet()) {
+            entry.getValue().chunks.keep(entry.getKey());
+        }
+        for (QuadcopterEntity drone : DESCENTS) {
+            new FlightChunks().keep(drone);
         }
     }
 }

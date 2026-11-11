@@ -31,6 +31,22 @@ public final class PresetPanel {
     public record Choice(String id, Component name, boolean own, Map<String, Float> values, @Nullable RateTemplate template) {
     }
 
+    record Row(int labelWidth, int applyWidth, boolean applyBelow, int choiceWidth, int valueRoom) {
+    }
+
+    static Row row(int width, int alignedLabel, int labelText, int applyText, int valueNeed) {
+        int own = Math.min(width / 2, labelText + 8);
+        Row aligned = layout(width, Math.max(own, alignedLabel), applyText + 16, valueNeed);
+        return aligned.valueRoom() >= valueNeed || aligned.labelWidth() <= own ? aligned : layout(width, own, applyText + 16, valueNeed);
+    }
+
+    private static Row layout(int width, int labelWidth, int applyWidth, int valueNeed) {
+        boolean applyBelow = labelWidth + valueNeed + 2 * Metrics.ARROW_WIDTH + 8 + applyWidth + Metrics.GAP > width;
+        int choiceWidth = applyBelow ? width : width - applyWidth - Metrics.GAP;
+        int valueRoom = choiceWidth - Math.max(0, Math.min(labelWidth, choiceWidth - 24)) - 2 * (Metrics.ARROW_WIDTH + 3);
+        return new Row(labelWidth, applyWidth, applyBelow, choiceWidth, valueRoom);
+    }
+
     private final UiTab tab;
     private final TunePresets.Section section;
     private String selectedId = "";
@@ -140,20 +156,21 @@ public final class PresetPanel {
         }
         int cy = contentY;
         Component apply = Component.translatable("propwash.ui.rates.apply");
-        int applyWidth = this.tab.font().width(apply) + 16;
+        Component label = Component.translatable("propwash.ui.rates.preset");
         List<Choice> values = this.choices;
         int valueNeed = 0;
         for (Choice choice : values) {
             valueNeed = Math.max(valueNeed, this.tab.font().width(choice.name()));
         }
-        boolean applyBelow = labelWidth + valueNeed + 2 * Metrics.ARROW_WIDTH + 8 + applyWidth + Metrics.GAP > width;
-        ChoiceButton<Choice> presets = this.tab.add(new ChoiceButton<>(left, this.tab.top() + cy, applyBelow ? width : width - applyWidth - Metrics.GAP, UiTab.FIELD,
-                Component.translatable("propwash.ui.rates.preset"), labelWidth, values, () -> {
+        Row row = row(width, labelWidth, this.tab.font().width(label), this.tab.font().width(apply), valueNeed);
+        int applyWidth = row.applyWidth();
+        ChoiceButton<Choice> presets = this.tab.add(new ChoiceButton<>(left, this.tab.top() + cy, row.choiceWidth(), UiTab.FIELD,
+                label, row.labelWidth(), values, () -> {
                     Choice current = this.selected();
                     return current != null ? current : values.getFirst();
                 }, this::choose, Choice::name, null));
         presets.setTooltip(Tooltip.create(Component.translatable(this.section == TunePresets.Section.RATES ? "propwash.ui.rates.preset.tip" : KEY + "pid.choice.tip")));
-        if (applyBelow) {
+        if (row.applyBelow()) {
             cy += UiTab.ROW;
         }
         this.tab.add(new FlatButton(left + width - applyWidth, this.tab.top() + cy, applyWidth, UiTab.FIELD, apply, FlatButton.Style.PRIMARY,

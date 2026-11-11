@@ -1,0 +1,5 @@
+{
+  "gamerule.propwash.camera_chunks": "Chunks around camera drones",
+  "gamerule.propwash.camera_chunks.description": "Largest radius in chunks that the server loads and sends around a player's own camera drone while an add-on records it, for example for Flashback replays far away from the player. The player's own view does not change. At most 2 areas per player and 16 on the server. 0 = off.",
+  "gamerule.propwash.camera_chunks.value.0": "Off"
+}

@@ -15,13 +15,13 @@ import de.lardtom.propwash.guide.scene.SceneStep;
 import de.lardtom.propwash.guide.scene.TimedCue;
 import de.lardtom.propwash.guide.scenes.BatteryScene;
 import de.lardtom.propwash.guide.scenes.SceneKit;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +32,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class BatterySceneTest {
     private static final String KEY = "propwash.guide.scene.battery.callout.";
@@ -75,15 +74,9 @@ class BatterySceneTest {
     }
 
     private static JsonObject lang(String language) throws IOException {
-        for (Path dir : List.of(Path.of("common/src/lang/guide"), Path.of("src/lang/guide"))) {
-            if (Files.isDirectory(dir)) {
-                try (Reader reader = Files.newBufferedReader(dir.resolve(language + ".json"), StandardCharsets.UTF_8)) {
-                    return JsonParser.parseReader(reader).getAsJsonObject();
-                }
-            }
+        try (Reader reader = Files.newBufferedReader(TestPaths.lang("guide").resolve(language + ".json"), StandardCharsets.UTF_8)) {
+            return JsonParser.parseReader(reader).getAsJsonObject();
         }
-        fail("Sprachquellen der Flugschule nicht gefunden");
-        return new JsonObject();
     }
 
     private static String grams(double grams) {

@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/takeoff",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:cargo_delivered",
+      "conditions": {
+        "distance": {
+          "min": 10.0
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:gripper"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.cargo.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.cargo.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

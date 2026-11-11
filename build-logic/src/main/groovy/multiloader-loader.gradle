@@ -74,3 +74,22 @@ tasks.named('sourcesJar', Jar) {
     dependsOn(configurations.commonResources)
     from(configurations.commonResources)
 }
+
+// Vorschau-Schalter als Konstante (docs/preview-build.md, Befund PREVMARK2-1): die von common erzeugte Klasse
+// preview/PreviewSwitch statt der Vorlage aus den gemeinsamen Quellen kompilieren.
+configurations {
+    commonPreviewSwitch {
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    commonPreviewSwitch(project(path: ':common', configuration: 'commonPreviewSwitch'))
+}
+
+tasks.named('compileJava', JavaCompile) {
+    def previewSwitchTemplate = project(':common').file('src/main/java/de/lardtom/propwash/preview/PreviewSwitch.java')
+    dependsOn(configurations.commonPreviewSwitch)
+    source(configurations.commonPreviewSwitch)
+    exclude { it.file == previewSwitchTemplate }
+}

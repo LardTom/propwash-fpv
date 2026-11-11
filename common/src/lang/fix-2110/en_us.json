@@ -1,0 +1,6 @@
+{
+  "propwash.help.signal_repeater.use.5": "In hand: signal to the nearest repeater.",
+  "propwash.relay.meter.none": "No repeater in range",
+  "propwash.relay.meter.off": "Signal repeaters are off (world rule)",
+  "propwash.relay.meter.signal": "Signal to repeater: %s %% · %s m"
+}

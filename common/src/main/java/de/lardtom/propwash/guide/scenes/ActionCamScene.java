@@ -96,7 +96,7 @@ public final class ActionCamScene {
                 .step("library", 150.0F, s -> {
                     s.at(0.0F).despawn(RADIO, 8.0F);
                     s.at(0.0F).move(DRONE, 30.0F, Ease.IN_OUT, landing);
-                    s.at(0.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 20.0F);
+                    s.at(0.0F).turn(DRONE, 180.0F, 0.0F, 0.0F, 20.0F);
                     s.at(0.0F).look(PILOT, SceneKit.headPitch(PILOT_POS, landing), 24.0F);
                     s.at(18.0F).throttle(DRONE, 0.08F, 12.0F);
                     s.at(32.0F).arm(DRONE, false);
@@ -106,7 +106,7 @@ public final class ActionCamScene {
                 })
                 .step("flashback", 170.0F, s -> {
                     s.at(0.0F).despawn(DRONE, 8.0F);
-                    s.at(8.0F).spawn(FLASHBACK_DRONE, new ActorSpec.Drone(FLASHBACK_BUILD, true), landing, 0.0F, Cue.Appear.POP, 10.0F);
+                    s.at(8.0F).spawn(FLASHBACK_DRONE, new ActorSpec.Drone(FLASHBACK_BUILD, true), landing, 180.0F, Cue.Appear.POP, 10.0F);
                     s.at(12.0F).spawn(CAM, new ActorSpec.Item(SceneKit.part(AccessoryType.ACTION_CAM_FLASHBACK), 1.5F, true), CAM_POS, 0.0F,
                             Cue.Appear.POP, 8.0F);
                     s.at(20.0F).callout("flashback", onItem, Cue.Side.LEFT, 0.0F);

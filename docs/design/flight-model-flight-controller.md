@@ -598,6 +598,12 @@ Referenzfälle (Tests A3), Idle 0,055:
 **Disarm-Gründe:** SWITCH, CRASH, FAILSAFE, BATTERY_DEAD, SUBMERGED, SIM_FAULT, RESET.
 
 **iTerm und Airmode-Freigabe:** Nach dem Armen ist `airmodeAktiv = false`. Es rastet ein, sobald `thr ≥ airmodeStartThrottle` (0,25). Das verhindert Hüpfen und Windup am Boden. `iTermAktiv = armed && (airmode ? airmodeAktiv : thr > 0,05)`. Beim Disarm werden I, alle Filter und Latches zurückgesetzt.
+Seit 0.6.0 kennt der Regler den Blockkontakt: Mit Gas im Leerlauf und mittigen Knüppeln steht der I-Anteil am Block
+sofort auf 0; ist die Drohne dabei mehr als 30° geneigt oder dreht sie schneller als 400 °/s, hebt Airmode das Gas nicht
+mehr an und der Regler blendet nach 0,1 s seine Korrektur aus, auch in der Luft bis Gas oder Knüppel; nach dem ersten Gas
+seit dem Armen gilt dasselbe Ausblenden ohne Airmode-Anhebung bei jeder Neigung nach 0,1 s echtem Kontakt im Leerlauf,
+solange das Kontaktgedächtnis hält; liegend am Block wickelt der I-Anteil nach 0,3 s auch mit Gas nicht auf
+(`ground-contact.md` §8).
 
 **Failsafe:** Ist `linkOk` länger als 0,3 s false, folgt Stufe 1: ANGLE, Sticks mittig, throttle = Hover-Stick − 0,05 (langsames Sinken), für 1,5 s. Danach Stufe 2: Disarm (FAILSAFE). Kommt der Link zurück, erhält der Pilot die Kontrolle erst, wenn sein Throttle-Stick den Failsafe-Wert ±0,1 kreuzt oder der Arm-Schalter neu gesetzt wird.
 

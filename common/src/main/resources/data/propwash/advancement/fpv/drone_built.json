@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/root",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "drone_built"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:drone_workbench"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.drone_built.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.drone_built.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

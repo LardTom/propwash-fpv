@@ -238,8 +238,11 @@ class WorldCourseDataTest {
     @Test
     void structuresSetAndTagsCoverEveryVariant() throws IOException {
         Set<String> templateNames = new HashSet<>();
-        for (Path file : templates()) {
-            templateNames.add("propwash:world_course/" + file.getFileName().toString().replace(".nbt", ""));
+        Path root = data().resolve("structure");
+        try (Stream<Path> files = Files.walk(root.resolve("world_course"))) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".nbt")).toList()) {
+                templateNames.add("propwash:" + root.relativize(file).toString().replace('\\', '/').replace(".nbt", ""));
+            }
         }
         Set<String> expected = new TreeSet<>();
         for (WorldCourseVariant variant : WorldCourseVariant.values()) {

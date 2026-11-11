@@ -3,7 +3,9 @@ package de.lardtom.propwash.server;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import de.lardtom.propwash.race.CourseIdCommands;
 import de.lardtom.propwash.server.rules.RulePreset;
+import de.lardtom.propwash.share.ShareCommands;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -43,6 +45,14 @@ public final class ServerCommands {
                 .then(Commands.literal("pilots")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> pilots(ctx.getSource()))));
+        dispatcher.register(Commands.literal("propwash")
+                .then(Commands.literal("clear")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .executes(ctx -> DroneClear.run(ctx.getSource(), DroneClear.loaded(ctx.getSource().getServer())))
+                        .then(Commands.argument("targets", EntityArgument.entities())
+                                .executes(ctx -> DroneClear.run(ctx.getSource(), DroneClear.among(EntityArgument.getOptionalEntities(ctx, "targets")))))));
+        ShareCommands.register(dispatcher);
+        CourseIdCommands.register(dispatcher);
     }
 
     private static int reload(CommandSourceStack source) {

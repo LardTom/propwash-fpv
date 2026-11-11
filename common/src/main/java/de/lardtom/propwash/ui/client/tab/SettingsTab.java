@@ -2,6 +2,10 @@ package de.lardtom.propwash.ui.client.tab;
 
 import de.lardtom.propwash.drone.CraftNames;
 import de.lardtom.propwash.drone.client.CraftNameAccess;
+import de.lardtom.propwash.gpucompat.GpuCompatMode;
+import de.lardtom.propwash.gpucompat.client.GpuCompatClient;
+import de.lardtom.propwash.gpucompat.client.GpuCompatSettings;
+import de.lardtom.propwash.share.client.chat.ShareChat;
 import de.lardtom.propwash.sim.FlightControllerConfig;
 import de.lardtom.propwash.ui.SpeedUnit;
 import de.lardtom.propwash.ui.TuneEdits;
@@ -47,6 +51,16 @@ public final class SettingsTab extends UiTab {
     private FlatButton applyTemplateButton;
     private FlatButton clearTemplate;
     private ChoiceButton<Boolean> applyToggle;
+    private boolean chatCodes = ShareChat.enabled();
+    private int chatTop;
+    private int chatLabelTop = -1;
+    private int chatHintTop;
+    private int chatHintWidth;
+    private GpuCompatMode gpuCompat = GpuCompatSettings.stored();
+    private int graphicsTop;
+    private int graphicsLabelTop = -1;
+    private int graphicsHintTop;
+    private int graphicsHintWidth;
 
     @Override
     public String id() {
@@ -162,6 +176,54 @@ public final class SettingsTab extends UiTab {
         this.clearTemplate = this.add(new FlatButton(bx, this.top() + cy, buttonWidth, FIELD,
                 Component.translatable("propwash.ui.settings.clear_template"), FlatButton.Style.DANGER, this::clearTemplate));
         cy += ROW + 8;
+
+        this.chatTop = cy;
+        cy += 14;
+        Component chatLabel = Component.translatable("propwash.share.chat.setting");
+        int chatWidth = Math.min(w, Metrics.COLUMN_MAX);
+        int chatLabelWidth = Math.max(labelWidth, this.font().width(chatLabel) + 8);
+        boolean chatStacked = chatLabelWidth + 60 > chatWidth;
+        this.chatLabelTop = -1;
+        if (chatStacked) {
+            this.chatLabelTop = cy;
+            cy += 12;
+        }
+        ChoiceButton<Boolean> chat = this.add(ChoiceButton.toggle(left, this.top() + cy, chatWidth, FIELD, chatLabel, chatStacked ? 0 : chatLabelWidth,
+                () -> this.chatCodes, v -> {
+                    this.chatCodes = v;
+                    this.host.changed();
+                }, v -> Component.translatable(v ? "propwash.ui.value.on" : "propwash.ui.value.off"), () -> Boolean.TRUE));
+        chat.setTooltip(Tooltip.create(Component.translatable("propwash.share.chat.setting.tip")));
+        cy += ROW + 2;
+        this.chatHintTop = cy;
+        this.chatHintWidth = w;
+        cy += ThemeText.wrappedHeight(this.font(), Component.translatable("propwash.share.chat.setting.hint"), w) + 8;
+
+        this.graphicsTop = cy;
+        cy += 14;
+        Component graphicsLabel = Component.translatable(GpuCompatClient.SETTING);
+        int graphicsWidth = Math.min(w, Metrics.COLUMN_MAX);
+        int graphicsLabelWidth = Math.max(labelWidth, this.font().width(graphicsLabel) + 8);
+        boolean graphicsStacked = graphicsLabelWidth + 60 > graphicsWidth;
+        this.graphicsLabelTop = -1;
+        if (graphicsStacked) {
+            this.graphicsLabelTop = cy;
+            cy += 12;
+        }
+        ChoiceButton<GpuCompatMode> graphics = this.add(new ChoiceButton<>(left, this.top() + cy, graphicsWidth, FIELD, graphicsLabel,
+                graphicsStacked ? 0 : graphicsLabelWidth, GpuCompatClient.CHOICES, () -> this.gpuCompat, v -> {
+                    this.gpuCompat = v;
+                    this.host.changed();
+                }, v -> Component.translatable(v.translationKey()), () -> GpuCompatMode.AUTO));
+        graphics.setTooltip(Tooltip.create(Component.translatable("propwash.gpucompat.setting.tip")));
+        cy += ROW + 2;
+        this.graphicsHintTop = cy;
+        this.graphicsHintWidth = w;
+        int graphicsHint = 0;
+        for (GpuCompatMode mode : GpuCompatClient.CHOICES) {
+            graphicsHint = Math.max(graphicsHint, ThemeText.wrappedHeight(this.font(), GpuCompatClient.state(mode), w));
+        }
+        cy += graphicsHint + 8;
         this.endScroll(cy);
     }
 
@@ -252,6 +314,18 @@ public final class SettingsTab extends UiTab {
         this.section(g, Component.translatable("propwash.ui.settings.section.display"), left, top + this.displayTop, w);
         this.section(g, Component.translatable("propwash.ui.settings.section.template"), left, top + this.templateTop, w);
         ThemeText.wrapped(g, this.font(), this.templateText(), left, top + this.templateTextTop, this.templateTextWidth, Palette.TEXT_MUTED);
+        this.section(g, Component.translatable("propwash.share.chat.section"), left, top + this.chatTop, w);
+        if (this.chatLabelTop >= 0) {
+            ThemeText.text(g, this.font(), Component.translatable("propwash.share.chat.setting"), left, top + this.chatLabelTop, Palette.TEXT);
+        }
+        ThemeText.wrapped(g, this.font(), Component.translatable("propwash.share.chat.setting.hint"), left, top + this.chatHintTop, this.chatHintWidth,
+                Palette.TEXT_FAINT);
+        this.section(g, Component.translatable(GpuCompatClient.SECTION), left, top + this.graphicsTop, w);
+        if (this.graphicsLabelTop >= 0) {
+            ThemeText.text(g, this.font(), Component.translatable(GpuCompatClient.SETTING), left, top + this.graphicsLabelTop, Palette.TEXT);
+        }
+        ThemeText.wrapped(g, this.font(), GpuCompatClient.state(this.gpuCompat), left, top + this.graphicsHintTop, this.graphicsHintWidth,
+                Palette.TEXT_FAINT);
         this.extractScrollbar(g);
     }
 
@@ -260,6 +334,8 @@ public final class SettingsTab extends UiTab {
         this.tune().reset(TuneKeys.ARM_MAX_ANGLE);
         this.speedUnit = SpeedUnit.KMH;
         this.applyTemplate = true;
+        this.chatCodes = true;
+        this.gpuCompat = GpuCompatMode.AUTO;
         this.host.changed();
     }
 
@@ -276,5 +352,9 @@ public final class SettingsTab extends UiTab {
         config.speedUnit = this.speedUnit;
         config.applyTemplateToNewDrones = this.applyTemplate;
         UiConfig.CONFIG.save();
+        ShareChat.setEnabled(this.chatCodes);
+        if (this.gpuCompat != GpuCompatSettings.stored()) {
+            GpuCompatSettings.store(this.gpuCompat);
+        }
     }
 }

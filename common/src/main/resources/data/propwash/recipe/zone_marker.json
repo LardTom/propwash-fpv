@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "G": "minecraft:glowstone_dust",
+    "P": "minecraft:paper",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    "G",
+    "P",
+    "S"
+  ],
+  "result": {
+    "id": "propwash:zone_marker"
+  }
+}

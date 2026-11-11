@@ -29,6 +29,7 @@ public final class RelayVideo {
     private static final int STATIC_RESCAN_TICKS = 100;
     private static final int FORGET_TICKS = 200;
     private static final double PILOT_MOVED_SQR = 0.25;
+    private static final int PRUNE_TICKS = 20;
 
     private final RelayCandidates selector = new RelayCandidates();
     private final RelayPaths paths = new RelayPaths(CAPACITY);
@@ -47,6 +48,7 @@ public final class RelayVideo {
     private int foundCount;
     private int nodeCount = RelayPaths.FIRST_RELAY;
     private int maxRelays;
+    private double hopReach;
     private int tick;
     private long scanNanos;
     private long scanNanosMax;
@@ -57,6 +59,9 @@ public final class RelayVideo {
     private boolean solved;
     private double marginDb = Double.NEGATIVE_INFINITY;
     private int relays;
+    private @Nullable VideoSystem lastSystem;
+    private double lastRange = Double.NaN;
+    private boolean lastObstruction = true;
 
     public void clear() {
         this.edges.clear();
@@ -77,12 +82,16 @@ public final class RelayVideo {
         this.scanTicks = 0L;
     }
 
-    public void tick(@Nullable Level level, Vec3 eye, Vec3 antenna, ObstructionTracer.World world, int relayLimit) {
+    public void tick(@Nullable Level level, Vec3 eye, Vec3 antenna, ObstructionTracer.World world, int relayLimit, double hopReach) {
         long start = System.nanoTime();
         this.tick++;
         this.maxRelays = RelayRules.clampRelays(relayLimit);
+        this.hopReach = hopReach;
         RepeaterIndex index = RepeaterIndex.existing(level);
-        if (index == null || index.size() == 0 || this.maxRelays == 0) {
+        if (index != null && level != null && this.tick % PRUNE_TICKS == 0) {
+            index.prune(level);
+        }
+        if (index == null || index.size() == 0 || this.maxRelays == 0 || !(hopReach > 0.0) || Double.isInfinite(hopReach)) {
             if (this.nodeCount > RelayPaths.FIRST_RELAY || !this.edges.isEmpty()) {
                 this.clear();
             }
@@ -102,6 +111,11 @@ public final class RelayVideo {
         this.solved = false;
         this.relays = 0;
         this.marginDb = Double.NEGATIVE_INFINITY;
+        if (!Double.isInfinite(rangeBlocks) && rangeBlocks > 0.0) {
+            this.lastSystem = system;
+            this.lastRange = rangeBlocks;
+            this.lastObstruction = obstruction;
+        }
         if (this.nodeCount <= RelayPaths.FIRST_RELAY || Double.isInfinite(rangeBlocks)) {
             return false;
         }
@@ -179,6 +193,56 @@ public final class RelayVideo {
         return this.pathKeys[relay];
     }
 
+    public int chainIndex(long pos) {
+        for (int r = 0; r < this.relays(); r++) {
+            if (this.pathKeys[r] == pos) {
+                return r;
+            }
+        }
+        return -1;
+    }
+
+    public double hopReach() {
+        return this.hopReach;
+    }
+
+    public @Nullable VideoSystem lastSystem() {
+        return this.lastSystem;
+    }
+
+    public double lastRange() {
+        return this.lastRange;
+    }
+
+    public boolean lastObstruction() {
+        return this.lastObstruction;
+    }
+
+    public int nodeCount() {
+        return this.nodeCount;
+    }
+
+    public double nodeX(int node) {
+        return this.nodeXyz[3 * node];
+    }
+
+    public double nodeY(int node) {
+        return this.nodeXyz[3 * node + 1];
+    }
+
+    public double nodeZ(int node) {
+        return this.nodeXyz[3 * node + 2];
+    }
+
+    public boolean linked(int a, int b) {
+        return a != b && this.nodeEdges[Math.min(a, b) * CAPACITY + Math.max(a, b)] != null;
+    }
+
+    public double edgeLossDb(int a, int b) {
+        Edge edge = a == b ? null : this.nodeEdges[Math.min(a, b) * CAPACITY + Math.max(a, b)];
+        return edge == null ? Double.NaN : edge.lossDb;
+    }
+
     public int candidates() {
         return this.nodeCount - RelayPaths.FIRST_RELAY;
     }
@@ -216,7 +280,7 @@ public final class RelayVideo {
     }
 
     private void collect(RepeaterIndex index, Vec3 eye, Vec3 antenna) {
-        double half = RelayRules.span(this.maxRelays) * 0.5;
+        double half = RelayRules.span(this.maxRelays, this.hopReach) * 0.5;
         double mx = (eye.x + antenna.x) * 0.5;
         double mz = (eye.z + antenna.z) * 0.5;
         this.foundCount = 0;
@@ -232,7 +296,7 @@ public final class RelayVideo {
             this.foundCount++;
         });
         int n = this.selector.select(eye.x, eye.y, eye.z, antenna.x, antenna.y, antenna.z, this.found, this.foundCount, this.maxRelays,
-                RelayRules.MAX_CANDIDATES, this.chosen);
+                this.hopReach, RelayRules.MAX_CANDIDATES, this.chosen);
         this.setNode(RelayPaths.RECEIVER, PILOT, eye.x, eye.y, eye.z);
         this.setNode(RelayPaths.TRANSMITTER, DRONE, antenna.x, antenna.y, antenna.z);
         for (int i = 0; i < n; i++) {
@@ -250,7 +314,7 @@ public final class RelayVideo {
         int count = 0;
         for (int i = 0; i < this.nodeCount; i++) {
             for (int j = Math.max(i + 1, RelayPaths.FIRST_RELAY); j < this.nodeCount; j++) {
-                if (!RelayRules.inReach(this.distance(i, j))) {
+                if (!RelayRules.inReach(this.distance(i, j), this.hopReach)) {
                     continue;
                 }
                 long a = this.nodeKey[i];

@@ -53,7 +53,7 @@ public final class HeadlightNightSelfTests {
                 HeadlightNightSelfTests::step);
     }
 
-    private static StepResult step(SelfTest.StepContext ctx) {
+    static StepResult step(SelfTest.StepContext ctx) {
         Night s = (Night) ctx.state().computeIfAbsent("night", key -> new Night());
         try {
             StepResult result = run(ctx, s);

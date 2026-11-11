@@ -29,17 +29,17 @@ class HoldSwitchTest {
         p.setBinding(SwitchFunction.POS_HOLD, pos);
         SwitchEvaluator e = new SwitchEvaluator();
         boolean[] none = new boolean[0];
-        int low = e.evaluate(p, new float[]{0, 0, 0, 0, 0, -1.0F}, none);
+        long low = e.evaluate(p, new float[]{0, 0, 0, 0, 0, -1.0F}, none);
         assertFalse(SwitchEvaluator.isSet(low, SwitchFunction.ALT_HOLD));
         assertFalse(SwitchEvaluator.isSet(low, SwitchFunction.POS_HOLD));
-        int mid = e.evaluate(p, new float[]{0, 0, 0, 0, 0, 0.0F}, none);
+        long mid = e.evaluate(p, new float[]{0, 0, 0, 0, 0, 0.0F}, none);
         assertTrue(SwitchEvaluator.isSet(mid, SwitchFunction.ALT_HOLD));
         assertFalse(SwitchEvaluator.isSet(mid, SwitchFunction.POS_HOLD));
-        int high = e.evaluate(p, new float[]{0, 0, 0, 0, 0, 1.0F}, none);
+        long high = e.evaluate(p, new float[]{0, 0, 0, 0, 0, 1.0F}, none);
         assertTrue(SwitchEvaluator.isSet(high, SwitchFunction.ALT_HOLD));
         assertTrue(SwitchEvaluator.isSet(high, SwitchFunction.POS_HOLD));
         pos.invert = true;
-        int inverted = e.evaluate(p, new float[]{0, 0, 0, 0, 0, -1.0F}, none);
+        long inverted = e.evaluate(p, new float[]{0, 0, 0, 0, 0, -1.0F}, none);
         assertTrue(SwitchEvaluator.isSet(inverted, SwitchFunction.POS_HOLD));
 
         DeviceProfile pad = new DeviceProfile();

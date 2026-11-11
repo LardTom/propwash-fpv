@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.race.CourseData;
 import de.lardtom.propwash.race.RaceLine;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -55,7 +56,11 @@ public final class RaceLineRenderer {
     }
 
     public static boolean enabled() {
-        return RaceConfig.CONFIG.get().raceLine;
+        return RaceConfig.CONFIG.get().raceLine && courseAllows(ClientRaceTracker.INSTANCE.course());
+    }
+
+    public static boolean courseAllows(@Nullable CourseData course) {
+        return course == null || course.raceLine();
     }
 
     public static boolean active() {

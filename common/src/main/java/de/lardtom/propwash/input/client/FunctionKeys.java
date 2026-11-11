@@ -5,6 +5,8 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Locale;
+
 public final class FunctionKeys {
     private FunctionKeys() {
     }
@@ -30,6 +32,7 @@ public final class FunctionKeys {
             case TURTLE -> KeyDefaults.TURTLE;
             case ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4 -> KeyDefaults.accessory(function);
             case COMMAND_1, COMMAND_2, COMMAND_3, COMMAND_4, COMMAND_5, COMMAND_6, COMMAND_7, COMMAND_8 -> KeyDefaults.command(function);
+            default -> new KeyDefaults.Entry(function.name().toLowerCase(Locale.ROOT), KeyDefaults.UNBOUND, false, false);
         };
     }
 

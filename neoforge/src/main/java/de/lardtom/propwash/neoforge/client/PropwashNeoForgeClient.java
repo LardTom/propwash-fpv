@@ -4,7 +4,10 @@ import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.client.PropwashClient;
 import de.lardtom.propwash.core.client.ClientBus;
+import de.lardtom.propwash.neoforge.fabricsync.FabricMenuBridge;
+import de.lardtom.propwash.neoforge.fabricsync.FabricRegistryBridge;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.network.fabricsync.FabricOpenScreenPayload;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
 import de.lardtom.propwash.registry.client.ConfigScreenFactory;
 import de.lardtom.propwash.registry.client.HudVisibility;
@@ -55,6 +58,7 @@ import java.util.List;
 public final class PropwashNeoForgeClient {
     public PropwashNeoForgeClient(IEventBus modBus, ModContainer container) {
         PropwashClient.init();
+        ClientBus.TICK_END.register(minecraft -> FabricRegistryBridge.clientTick());
         ConfigScreenFactory configScreen = ClientRegistrar.freezeConfigScreen();
         if (configScreen != null) {
             container.registerExtensionPoint(IConfigScreenFactory.class, (mod, parent) -> configScreen.create(parent));
@@ -215,6 +219,9 @@ public final class PropwashNeoForgeClient {
     private static void onRegisterPayloadHandlers(RegisterClientPayloadHandlersEvent event) {
         for (ClientNet.Handler<?> handler : ClientNet.freeze()) {
             registerHandler(event, handler);
+        }
+        if (FabricMenuBridge.enabled()) {
+            event.register(FabricOpenScreenPayload.TYPE, FabricMenuScreens::handle);
         }
     }
 

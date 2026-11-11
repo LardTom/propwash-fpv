@@ -10,18 +10,25 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class GateMounting {
     public static final double EXTRA_REACH = 2.0;
     public static final double EDIT_REACH = 16.0;
+    public static final double MAX_NUDGE = 8.0;
+    public static final double COLUMN_REACH = GateStacking.MAX_STACK * (GateSize.MAX_OPENING + 2.0);
     private static final Map<UUID, GatePlacement.Preference> PREFERENCES = new ConcurrentHashMap<>();
     private static volatile Function<Player, GatePlacement.Preference> client = player -> GatePlacement.Preference.DEFAULT;
     private static volatile int lastUnlinked = GateEntity.NO_COURSE;
@@ -41,7 +48,23 @@ public final class GateMounting {
         NOT_IN_COURSE,
         RESCANNED,
         RESCAN_FAILED,
-        SIGNAL_SET
+        SIGNAL_SET,
+        NUDGE_LIMIT,
+        SCORE_LOCKED,
+        STACK_TOO_WIDE,
+        STACK_TOO_HIGH,
+        STACK_TURN_LOCKED
+    }
+
+    public record ColumnTurn(List<GateEntity> gates, List<GateGeometry> next, List<GateStacking.Base> bases, float delta) {
+        public boolean halfOnly() {
+            for (GateEntity gate : this.gates) {
+                if (gate.carrying() || gate.linked()) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private GateMounting() {
@@ -102,12 +125,12 @@ public final class GateMounting {
         } else if (payload.action() == RacePayloads.GateEditAction.UNLINK) {
             result = unlink(player, gate);
         } else if (payload.action() == RacePayloads.GateEditAction.RESCAN) {
-            result = holdsTool(player) ? rescan(player, gate) : Result.NEED_TOOL;
+            result = holdsTool(player) ? rescan(player, gate, ScoreArea.unpack(payload.score()).open()) : Result.NEED_TOOL;
         } else if (!holdsTool(player)) {
             result = Result.NEED_TOOL;
         } else {
             result = edit(player, gate, payload.heading(), payload.pitch(), payload.roll(), payload.openingWidth(), payload.openingHeight(),
-                    payload.variant());
+                    payload.variant(), ScoreArea.unpack(payload.score()), payload.dx(), payload.dy(), payload.dz());
         }
         Component message = result == Result.BLOCKED ? Component.translatable("propwash.race.edit.status.blocked").withStyle(ChatFormatting.RED)
                 : result == Result.RESCAN_FAILED ? lastRescan
@@ -187,12 +210,36 @@ public final class GateMounting {
             return denied;
         }
         boolean stacked = gate.inStack();
+        if (!changeMount && turnsWithColumn(gate)) {
+            float valid = GatePlacement.validStep(step);
+            float heading = gate.geometry().heading();
+            ColumnTurn turn = columnTurn(gate, heading + valid);
+            if (turn != null && turn.halfOnly()) {
+                turn = valid >= GatePlacement.QUARTER || gate.linked() ? columnTurn(gate, heading + 2.0F * GatePlacement.QUARTER) : null;
+                if (turn == null) {
+                    return Result.STACK_TURN_LOCKED;
+                }
+            }
+            if (turn != null) {
+                return applyTurn(player, turn, Result.ROTATED);
+            }
+        }
+        if (gate.linked() && !changeMount && gate.kind() == CourseElement.GATE) {
+            return apply(player, gate, turnedInPlace(gate.geometry()), gate.base(), Result.ROTATED);
+        }
         GateGeometry next = GatePlacement.rotated(gate.geometry(), changeMount, stacked, step);
         if (next == null) {
             return Result.STACK_LOCKED;
         }
         GateStacking.Base base = stacked ? gate.base() : GateStacking.placedBase(next);
         return apply(player, gate, next, base, Result.ROTATED);
+    }
+
+    public static GateGeometry turnedInPlace(GateGeometry gate) {
+        boolean flip = gate.mount().reversible();
+        float yaw = flip ? gate.yawDegrees() : GateGeometry.snapYaw(gate.yawDegrees() + 180.0F);
+        return new GateGeometry(gate.x(), gate.y(), gate.z(), yaw, gate.width(), gate.height(), gate.frame(), gate.depth(), gate.mount(),
+                flip != gate.flipped(), gate.tilt());
     }
 
     public static Result edit(ServerPlayer player, GateEntity gate, float heading, float pitch, float roll, double openingWidth,
@@ -202,19 +249,155 @@ public final class GateMounting {
 
     public static Result edit(ServerPlayer player, GateEntity gate, float heading, float pitch, float roll, double openingWidth,
                               double openingHeight, int variant) {
+        return edit(player, gate, heading, pitch, roll, openingWidth, openingHeight, variant, gate.score(), 0.0, 0.0, 0.0);
+    }
+
+    public static boolean nudgeAllowed(double dx, double dy, double dz) {
+        return Double.isFinite(dx) && Double.isFinite(dy) && Double.isFinite(dz) && Math.abs(dx) <= MAX_NUDGE + 1.0E-6
+                && Math.abs(dy) <= MAX_NUDGE + 1.0E-6 && Math.abs(dz) <= MAX_NUDGE + 1.0E-6;
+    }
+
+    public static boolean scoreAllowed(GateEntity gate, ScoreArea score) {
+        return !(gate.kind() == CourseElement.GATE_POLE && gate.inCourse() && !score.normalized(gate.kind()).scoring());
+    }
+
+    public static Result edit(ServerPlayer player, GateEntity gate, float heading, float pitch, float roll, double openingWidth,
+                              double openingHeight, int variant, ScoreArea score, double dx, double dy, double dz) {
         Result denied = access(player, gate, EDIT_REACH);
         if (denied != null) {
             return denied;
         }
+        if (!nudgeAllowed(dx, dy, dz)) {
+            return Result.NUDGE_LIMIT;
+        }
+        if (!scoreAllowed(gate, score)) {
+            return Result.SCORE_LOCKED;
+        }
         GateGeometry current = gate.geometry();
-        GateGeometry next = preview(gate, heading, pitch, roll, openingWidth, openingHeight, variant);
+        GateGeometry next = preview(gate, heading, pitch, roll, openingWidth, openingHeight, variant, score, dx, dy, dz);
         if (next.sameAs(current)) {
             return Result.EDITED;
         }
+        if (next.withScore(current.score()).sameAs(current) && !gate.freeform()) {
+            gate.setScore(next.score());
+            CourseRegistry registry = CourseRegistry.get();
+            if (registry != null && registry.courseOf(gate.getUUID()) != GateEntity.NO_COURSE) {
+                registry.gateRotated(gate);
+            }
+            gate.gameEvent(GameEvent.ENTITY_INTERACT, player);
+            return Result.EDITED;
+        }
         if (gate.inStack() && !GatePoleLinks.keepsRiders(current, next)) {
-            return Result.STACK_LOCKED;
+            ColumnTurn turn = turnsWithColumn(gate) && headingOnly(current, next) ? columnTurn(gate, next.heading(), next.score()) : null;
+            return turn == null ? Result.STACK_LOCKED : applyTurn(player, turn, Result.EDITED);
         }
         return apply(player, gate, next, GateStacking.placedBase(next), Result.EDITED);
+    }
+
+    public static Result shortenReach(ServerPlayer player, GateEntity gate, double value) {
+        GateGeometry current = gate.geometry();
+        CourseElement kind = gate.kind();
+        boolean byScore = kind == CourseElement.GATE_POLE;
+        ScoreArea score = byScore ? gate.score().withReach(value) : gate.score();
+        double width = kind.innerWidth(byScore ? current.width() : value);
+        return edit(player, gate, current.heading(), 0.0F, 0.0F, width, kind.innerHeight(current.height()), gate.variant(), score, 0.0, 0.0, 0.0);
+    }
+
+    public static boolean turnsWithColumn(GateEntity gate) {
+        return gate.kind() == CourseElement.GATE && gate.stackable() && (gate.supported() || gate.covered()) && gate.mount().turns() == 4;
+    }
+
+    public static boolean headingOnly(GateGeometry current, GateGeometry next) {
+        return next.sameAs(GatePlacement.turnedTo(current, next.heading()).withScore(next.score()));
+    }
+
+    public static @Nullable ColumnTurn columnTurn(GateEntity gate, float heading) {
+        return columnTurn(gate, heading, gate.score());
+    }
+
+    public static @Nullable ColumnTurn columnTurn(GateEntity gate, float heading, ScoreArea score) {
+        List<GateEntity> column = gate.stack();
+        int index = column.indexOf(gate);
+        if (index < 0) {
+            return null;
+        }
+        List<GateGeometry> geometries = new ArrayList<>(column.size());
+        for (GateEntity member : column) {
+            geometries.add(member.geometry());
+        }
+        GateGeometry current = geometries.get(index);
+        List<GateGeometry> next = new ArrayList<>(GateStacking.turned(geometries, index, heading));
+        next.set(0, next.getFirst().withScore(score));
+        List<GateGeometry> after = new ArrayList<>(geometries.subList(0, index));
+        after.addAll(next);
+        List<GateStacking.Base> bases = new ArrayList<>(next.size());
+        for (int i = index; i < after.size(); i++) {
+            bases.add(GateStacking.base(after, i));
+        }
+        return new ColumnTurn(List.copyOf(column.subList(index, column.size())), List.copyOf(next), List.copyOf(bases),
+                GateTilt.wrap(next.getFirst().heading() - current.heading()));
+    }
+
+    public static @Nullable Result turnRefusal(Level level, ColumnTurn turn) {
+        if (turn.halfOnly() && !GateStacking.halfTurn(turn.delta())) {
+            return Result.STACK_TURN_LOCKED;
+        }
+        List<GateEntity> moving = turn.gates();
+        for (int i = 0; i < moving.size(); i++) {
+            GateGeometry next = turn.next().get(i);
+            if (!GateItem.insideWorld(level, next)) {
+                return Result.BLOCKED;
+            }
+            List<GateGeometry> others = new ArrayList<>(columnSkipping(level, next, moving::contains));
+            for (int j = 0; j < moving.size(); j++) {
+                if (j != i) {
+                    others.add(turn.next().get(j));
+                }
+            }
+            GateStacking.Refusal refusal = GateStacking.refusal(next, others);
+            if (refusal != GateStacking.Refusal.NONE) {
+                return refusal == GateStacking.Refusal.TOO_HIGH ? Result.STACK_TOO_HIGH : Result.STACK_TOO_WIDE;
+            }
+            GateEntity gate = moving.get(i);
+            GateGeometry placed = gate.linked() ? next.withJoints(GateStacking.placementJoints(next, GateItem.neighbourGeometries(level, next, gate)))
+                    : next;
+            if (!GateItem.freeSkipping(level, placed, turn.bases().get(i), true, moving::contains)) {
+                return Result.BLOCKED;
+            }
+        }
+        return null;
+    }
+
+    private static Result applyTurn(ServerPlayer player, ColumnTurn turn, Result done) {
+        for (GateEntity gate : turn.gates()) {
+            Result denied = access(player, gate, Double.MAX_VALUE);
+            if (denied != null) {
+                return denied;
+            }
+        }
+        ServerLevel level = player.level();
+        Result refused = turnRefusal(level, turn);
+        if (refused != null) {
+            return refused;
+        }
+        List<GateEntity> moving = turn.gates();
+        for (int i = 0; i < moving.size(); i++) {
+            moving.get(i).applyGeometry(turn.next().get(i));
+        }
+        CourseRegistry registry = CourseRegistry.get();
+        for (GateEntity gate : moving) {
+            gate.refreshColumn();
+            if (gate.linked()) {
+                GateItem.refreshAround(gate);
+            }
+            if (registry != null && registry.courseOf(gate.getUUID()) != GateEntity.NO_COURSE) {
+                registry.gateRotated(gate);
+            }
+        }
+        GateGeometry first = turn.next().getFirst();
+        level.playSound(null, first.centerX(), first.centerY(), first.centerZ(), SoundEvents.ITEM_FRAME_ROTATE_ITEM, SoundSource.BLOCKS, 1.0F, 0.8F);
+        moving.getFirst().gameEvent(GameEvent.ENTITY_INTERACT, player);
+        return done;
     }
 
     public static GateGeometry preview(GateEntity gate, float heading, float pitch, float roll, double openingWidth, double openingHeight) {
@@ -223,25 +406,89 @@ public final class GateMounting {
 
     public static GateGeometry preview(GateEntity gate, float heading, float pitch, float roll, double openingWidth, double openingHeight,
                                        int variant) {
+        return preview(gate, heading, pitch, roll, openingWidth, openingHeight, variant, gate.score(), 0.0, 0.0, 0.0);
+    }
+
+    public static GateGeometry preview(GateEntity gate, float heading, float pitch, float roll, double openingWidth, double openingHeight,
+                                       int variant, ScoreArea score, double dx, double dy, double dz) {
         CourseElement kind = gate.kind();
         if (kind == CourseElement.FREEFORM) {
-            return gate.geometry().withVariant(variant);
+            return gate.geometry().withFreeformYaw(heading).withVariant(variant).withScore(score);
         }
+        GateGeometry edited;
         if (!kind.gate()) {
-            return GatePlacement.edited(gate.geometry().withVariant(variant), heading, 0.0F, 0.0F, kind.outerWidth(openingWidth),
+            edited = GatePlacement.edited(gate.geometry().withVariant(variant), heading, 0.0F, 0.0F, kind.outerWidth(openingWidth),
                     kind.outerHeight(openingHeight));
+        } else {
+            GateSize size = gate.size();
+            edited = GatePlacement.edited(gate.geometry(), heading, pitch, roll, size.outer(openingWidth), size.outer(openingHeight));
         }
-        GateSize size = gate.size();
-        return GatePlacement.edited(gate.geometry(), heading, pitch, roll, size.outer(openingWidth), size.outer(openingHeight));
+        return edited.withScore(score).moved(dx, dy, dz);
+    }
+
+    public static MutableComponent scoreName(ScoreArea score) {
+        if (!score.scoring()) {
+            return Component.translatable("propwash.race.score.role.none");
+        }
+        return Component.translatable("propwash.race.score." + score.role().key() + "." + ScoreArea.sideKey(score.side()));
+    }
+
+    static boolean fits(ServerLevel level, GateEntity gate, GateGeometry next, GateStacking.Base base) {
+        if (!GateItem.insideWorld(level, next)) {
+            return false;
+        }
+        if (!gate.linked() || next.freeform() || !next.gate()) {
+            return GateItem.free(level, next, base, true, gate);
+        }
+        if (next.mount() == GateMount.FLOOR_FLAT) {
+            return GateItem.lidFree(level, next, gate);
+        }
+        GateGeometry joined = next.withJoints(GateStacking.placementJoints(next, GateItem.neighbourGeometries(level, next, gate)));
+        return GateItem.free(level, joined, base, true, gate);
+    }
+
+    public static List<GateGeometry> column(Level level, GateGeometry gate, @Nullable GateEntity ignore) {
+        return columnSkipping(level, gate, other -> other == ignore);
+    }
+
+    public static List<GateGeometry> columnSkipping(Level level, GateGeometry gate, Predicate<GateEntity> skip) {
+        AABB area = new AABB(gate.x() - GateStacking.EPSILON, gate.y() - COLUMN_REACH, gate.z() - GateStacking.EPSILON,
+                gate.x() + GateStacking.EPSILON, gate.y() + gate.height() + COLUMN_REACH, gate.z() + GateStacking.EPSILON);
+        List<GateGeometry> found = new ArrayList<>();
+        for (GateEntity other : level.getEntitiesOfClass(GateEntity.class, area, other -> !skip.test(other) && !other.isRemoved())) {
+            if (other.stackable()) {
+                found.add(other.geometry());
+            }
+        }
+        return found;
+    }
+
+    public static GateStacking.Refusal stackRefusal(Level level, GateGeometry gate, @Nullable GateEntity ignore) {
+        if (!GateStacking.stackable(gate)) {
+            return GateStacking.Refusal.NONE;
+        }
+        return GateStacking.refusal(gate, column(level, gate, ignore));
+    }
+
+    public static MutableComponent stackRefusalText(GateStacking.Refusal refusal) {
+        return refusal == GateStacking.Refusal.TOO_HIGH ? Component.translatable("propwash.race.gate.stack_too_high", GateStacking.MAX_STACK)
+                : Component.translatable("propwash.race.gate.stack_too_wide");
     }
 
     private static Result apply(ServerPlayer player, GateEntity gate, GateGeometry next, GateStacking.Base base, Result done) {
         ServerLevel level = player.level();
-        if (!GateItem.insideWorld(level, next) || !GateItem.free(level, next, base, true, gate)) {
+        GateStacking.Refusal refusal = stackRefusal(level, next, gate);
+        if (refusal != GateStacking.Refusal.NONE) {
+            return refusal == GateStacking.Refusal.TOO_HIGH ? Result.STACK_TOO_HIGH : Result.STACK_TOO_WIDE;
+        }
+        if (!fits(level, gate, next, base)) {
             return Result.BLOCKED;
         }
         gate.applyGeometry(next);
         gate.refreshColumn();
+        if (gate.linked()) {
+            GateItem.refreshAround(gate);
+        }
         CourseRegistry registry = CourseRegistry.get();
         if (registry != null && registry.courseOf(gate.getUUID()) != GateEntity.NO_COURSE) {
             registry.gateRotated(gate);
@@ -252,6 +499,10 @@ public final class GateMounting {
     }
 
     public static Result rescan(ServerPlayer player, GateEntity gate) {
+        return rescan(player, gate, gate.score().open());
+    }
+
+    public static Result rescan(ServerPlayer player, GateEntity gate, boolean ignoreGaps) {
         Result denied = access(player, gate, EDIT_REACH);
         if (denied != null) {
             return denied;
@@ -261,7 +512,7 @@ public final class GateMounting {
             return Result.MISSING;
         }
         ServerLevel level = player.level();
-        FreeformFill.Result result = FreeformBlocks.rescan(level, current);
+        FreeformFill.Result result = FreeformBlocks.rescan(level, current, ignoreGaps);
         GateEntity occupant = null;
         if (result.ok()) {
             int[] seed = FreeformBlocks.seed(current);
@@ -272,7 +523,8 @@ public final class GateMounting {
                     .withStyle(ChatFormatting.RED);
             return Result.RESCAN_FAILED;
         }
-        GateGeometry next = GateGeometry.freeform(result.anchorX(), result.anchorY(), result.anchorZ(), result.region(), current.variant());
+        GateGeometry next = GateGeometry.freeform(result.anchorX(), result.anchorY(), result.anchorZ(), result.region(), current.variant(),
+                current.score().withOpen(ignoreGaps), current.yawDegrees());
         if (!next.sameAs(current)) {
             gate.applyGeometry(next);
             CourseRegistry registry = CourseRegistry.get();
@@ -324,12 +576,17 @@ public final class GateMounting {
             case NOT_OWNER -> {
                 CourseRegistry registry = CourseRegistry.get();
                 CourseRegistry.Course course = registry == null || gate == null ? null : registry.course(registry.courseOf(gate.getUUID()));
-                yield course == null ? null : Component.translatable("propwash.race.tool.not_owner", course.id, CourseRegistry.ownerName(course))
+                yield course == null ? null : CourseRegistry.notOwner(course)
                         .withStyle(ChatFormatting.RED);
             }
             case STACK_LOCKED -> Component.translatable(gate != null && gate.carrying() ? "propwash.race.pole.locked"
-                    : "propwash.race.mount.stack_locked").withStyle(ChatFormatting.RED);
+                    : gate != null && gate.linked() ? "propwash.race.row.locked" : "propwash.race.mount.stack_locked").withStyle(ChatFormatting.RED);
+            case NUDGE_LIMIT -> Component.translatable("propwash.race.nudge.limit", blocks(MAX_NUDGE)).withStyle(ChatFormatting.RED);
+            case SCORE_LOCKED -> Component.translatable("propwash.race.score.pole.in_course").withStyle(ChatFormatting.RED);
             case BLOCKED -> Component.translatable("propwash.race.mount.blocked").withStyle(ChatFormatting.RED);
+            case STACK_TOO_WIDE -> stackRefusalText(GateStacking.Refusal.TOO_WIDE).withStyle(ChatFormatting.RED);
+            case STACK_TOO_HIGH -> stackRefusalText(GateStacking.Refusal.TOO_HIGH).withStyle(ChatFormatting.RED);
+            case STACK_TURN_LOCKED -> Component.translatable("propwash.race.stack.turn_locked").withStyle(ChatFormatting.RED);
         };
     }
 
@@ -407,8 +664,7 @@ public final class GateMounting {
         }
         GateTilt tilt = gate.tilt();
         if (tilt.none()) {
-            return Component.translatable("propwash.race.mount.pose", surfaceName(gate.mount().surface()), mountName(gate.mount()),
-                    Component.translatable("propwash.race.mount.dir." + directionKey(gate)));
+            return describeDirection(gate);
         }
         MutableComponent pose = Component.translatable("propwash.race.mount.pose", surfaceName(gate.mount().surface()), mountName(gate.mount()),
                 Component.translatable("propwash.race.mount.yaw", degrees(gate.heading())));
@@ -419,6 +675,11 @@ public final class GateMounting {
             pose = Component.translatable("propwash.race.mount.pose_more", pose, Component.translatable("propwash.race.mount.roll", degrees(tilt.roll())));
         }
         return pose;
+    }
+
+    public static MutableComponent describeDirection(GateGeometry gate) {
+        return Component.translatable("propwash.race.mount.pose", surfaceName(gate.mount().surface()), mountName(gate.mount()),
+                Component.translatable("propwash.race.mount.dir." + directionKey(gate)));
     }
 
     public static MutableComponent describe(GateMount mount, int turn) {
@@ -441,6 +702,23 @@ public final class GateMounting {
             return Integer.toString((int) rounded);
         }
         return String.format(Locale.ROOT, "%.1f", rounded);
+    }
+
+    public static String blocks(double value) {
+        double rounded = Math.round(value * 32.0) / 32.0;
+        if (rounded == Math.rint(rounded)) {
+            return Long.toString((long) rounded);
+        }
+        String text = String.format(Locale.ROOT, "%.5f", rounded);
+        while (text.endsWith("0")) {
+            text = text.substring(0, text.length() - 1);
+        }
+        return text;
+    }
+
+    public static String signedBlocks(double value) {
+        String text = blocks(value);
+        return value > 0.0 ? "+" + text : text;
     }
 
     public static String signedDegrees(float value) {

@@ -67,6 +67,7 @@ public final class PartsFlightSelfTests {
     private static final String PHASE_TICK = "phaseTick";
     private static final String START_Y = "startY";
     private static final double HEAT_C = 5.0;
+    private static final double ESC_HOT_C = 160.0;
     private static final int SEARCH_LIMIT = 200_000;
 
     private PartsFlightSelfTests() {
@@ -77,7 +78,8 @@ public final class PartsFlightSelfTests {
         SelfTest.clientStep("parts-flight: Analyse der Beispiel-Teile", 20, PartsFlightSelfTests::analysisStep);
         SelfTest.clientStep("parts-flight: Deadcat fliegt mit Test-Knüppeln", 900, ctx -> flightStep(ctx, DEADCAT.get(), "Deadcat"));
         SelfTest.clientStep("parts-flight: X-Class fliegt mit Test-Knüppeln", 900, ctx -> flightStep(ctx, X_CLASS.get(), "X-Class"));
-        SelfTest.clientStep("parts-flight: überhitzte Motoren drosseln, Verschleiß landet am Item", 900, PartsFlightSelfTests::heatStep);
+        SelfTest.clientStep("parts-flight: überhitzter ESC drosselt, überhitzte Motoren verschleißen, Verschleiß landet am Item", 900,
+                PartsFlightSelfTests::heatStep);
         SelfTest.clientStep("parts-flight: zu viele Zellen lassen den ESC durchbrennen", 600, PartsFlightSelfTests::escStep);
         SelfTest.clientStep("parts-flight: Aufräumen", 200, PartsFlightSelfTests::cleanupStep);
     }
@@ -332,6 +334,7 @@ public final class PartsFlightSelfTests {
         double target = sim.params().motorMaxTempC + HEAT_C;
         for (int i = 0; i < AirframeSpec.MOTORS; i++) {
             snapshot.motorTempC[i] = target;
+            snapshot.escTempC[i] = ESC_HOT_C;
         }
         sim.copyStateFrom(snapshot);
     }
@@ -357,12 +360,12 @@ public final class PartsFlightSelfTests {
                 }
                 if (inPhase(ctx) >= 15) {
                     Telemetry t = sim.telemetry();
-                    if (!t.motorDerating) {
-                        return StepResult.fail("heiße Motoren drosseln nicht");
+                    if (!t.motorHot || !t.escDerating) {
+                        return StepResult.fail("Hitze nicht gemeldet: Motoren " + t.motorHot + ", ESC " + t.escDerating);
                     }
                     for (double limit : t.motorPowerLimit) {
                         if (limit > 0.25) {
-                            return StepResult.fail("Leistungsgrenze zu hoch: " + limit);
+                            return StepResult.fail("Leistungsgrenze des ESC zu hoch: " + limit);
                         }
                     }
                     OsdData osd = new OsdData();
@@ -370,8 +373,8 @@ public final class PartsFlightSelfTests {
                     osd.applyTelemetry(t);
                     List<OsdWarnings.Warning> warnings = new ArrayList<>();
                     OsdWarnings.collect(osd, warnings);
-                    if (!warnings.contains(OsdWarnings.Warning.MOTOR_HOT)) {
-                        return StepResult.fail("OSD warnt nicht vor heißen Motoren: " + warnings);
+                    if (!warnings.contains(OsdWarnings.Warning.MOTOR_HOT) || !warnings.contains(OsdWarnings.Warning.ESC_HOT)) {
+                        return StepResult.fail("OSD warnt nicht vor heißen Motoren und heißem ESC: " + warnings);
                     }
                     next(ctx);
                 }
@@ -447,7 +450,7 @@ public final class PartsFlightSelfTests {
                 return StepResult.pending();
             }
             default -> {
-                return stopAndPass(ctx, "gedrosselt und Motorverschleiß am Item");
+                return stopAndPass(ctx, "ESC gedrosselt und Motorverschleiß am Item");
             }
         }
     }

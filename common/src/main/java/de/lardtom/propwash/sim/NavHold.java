@@ -46,6 +46,7 @@ final class NavHold {
     double targetAlt;
     double throttleRef;
     private double altI;
+    private boolean settledHold;
     double targetX;
     double targetZ;
     private double posIx;
@@ -75,6 +76,10 @@ final class NavHold {
         double interference = this.rng.nextDouble() < INTERFERENCE_CHANCE ? 20.0 + 25.0 * this.rng.nextDouble() : 0.0;
         this.headingOffsetRad = sign * (1.5 + 6.0 * u * u + interference) * SimMath.RAD;
         this.hoverBias = (2.0 * this.rng.nextDouble() - 1.0) * HOVER_BIAS;
+        double forced = CompassTestOverride.errorDeg();
+        if (!Double.isNaN(forced)) {
+            this.headingOffsetRad = -forced * SimMath.RAD;
+        }
     }
 
     void reset() {
@@ -119,6 +124,9 @@ final class NavHold {
         SimRandom r = this.rng;
         this.gps.update(r, skyView, b.px, b.py, b.pz, b.vx, b.vy, b.vz);
         double baroAlt = this.baro.update(r, b.py, airspeed, heightAboveGround, thrustRatio, propWash);
+        if (this.settledHold) {
+            baroAlt = this.baro.settle(b.py, airspeed, heightAboveGround, thrustRatio);
+        }
         this.headingErrorRad = this.headingOffsetRad + 1.5 * SimMath.RAD * this.headingWander.advance(r);
         double noise = ACCEL_NOISE * (1.0 + 2.0 * Math.max(0.0, vibration));
         double ce = SimMath.cos(this.headingErrorRad);
@@ -127,6 +135,11 @@ final class NavHold {
         double azm = -se * sfWx + ce * sfWz + ACCEL_BIAS * this.accelBiasZ.advance(r) + noise * r.gauss();
         double aym = sfWy - this.gravity + ACCEL_BIAS * this.accelBiasY.advance(r) + noise * r.gauss();
         this.estimateVertical(baroAlt, aym);
+        if (this.settledHold) {
+            this.zEst = baroAlt;
+            this.vzEst = b.vy;
+            this.vertPrimed = true;
+        }
         this.estimateHorizontal(axm, azm);
 
         this.requested = in.posHold ? HoldMode.POSHOLD : (in.altHold ? HoldMode.ALTHOLD : HoldMode.OFF);
@@ -142,7 +155,11 @@ final class NavHold {
         }
         if (next != HoldMode.OFF && this.mode == HoldMode.OFF) {
             this.engageAltitude(s, in.throttle);
+            if (this.settledHold) {
+                this.altI = this.settledIntegrator(hoverStick, pid);
+            }
         }
+        this.settledHold = false;
         if (next == HoldMode.POSHOLD && this.mode != HoldMode.POSHOLD) {
             this.engagePosition();
         }
@@ -333,6 +350,30 @@ final class NavHold {
         this.altI = 0.0;
         double band = s.throttleDeadbandPercent / 100.0;
         this.throttleRef = s.midThrottle ? 0.5 : SimMath.clamp(throttle, band + REF_MARGIN, 1.0 - band - REF_MARGIN);
+    }
+
+    void settleHold() {
+        this.settledHold = true;
+    }
+
+    void primeSettled(RigidBody b, double airspeed, double heightAboveGround, double thrustRatio) {
+        if (!this.settledHold) {
+            return;
+        }
+        this.zEst = this.baro.settle(b.py, airspeed, heightAboveGround, thrustRatio);
+        this.vzEst = b.vy;
+        this.vertPrimed = true;
+    }
+
+    double settledIntegrator(double hoverStick, PidProfile pid) {
+        double biased = ThrottleCurve.apply(pid, SimMath.clamp(hoverStick * (1.0 + this.hoverBias), 0.05, 0.95));
+        double hover = ThrottleCurve.apply(pid, SimMath.clamp(hoverStick, 0.05, 0.95));
+        if (!(biased > 0.0) || !Double.isFinite(hover)) {
+            return 0.0;
+        }
+        double ratio = hover / biased;
+        double g = SimTuning.referenceGravity(this.gravity);
+        return SimMath.clamp(g * (ratio * ratio - 1.0), -4.0, 4.0);
     }
 
     private void engagePosition() {

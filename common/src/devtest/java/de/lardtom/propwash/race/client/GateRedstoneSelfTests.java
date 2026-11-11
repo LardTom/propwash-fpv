@@ -557,7 +557,7 @@ public final class GateRedstoneSelfTests {
                 return StepResult.fail("Gate einstellen startet nicht");
             }
             GateEditModel model = editor.model();
-            if (model.pages() != 2 || model.page() != 0) {
+            if (model.pages() != 3 || model.page() != 0 || model.pageKind(1) != GateEditModel.Page.SIGNAL) {
                 GateEditor.stop();
                 return StepResult.fail("Panel mit " + model.pages() + " Seiten, Seite " + model.page());
             }
@@ -565,7 +565,7 @@ public final class GateRedstoneSelfTests {
                 GateEditor.stop();
                 return StepResult.fail("roter Rahmen beim Client auf " + editor.signalTarget() + " statt " + expectedStanding(rig));
             }
-            for (int page = 0; page < 2; page++) {
+            for (int page = 0; page < model.pages(); page++) {
                 editor.showPage(page);
                 for (boolean interactive : new boolean[]{false, true}) {
                     GateEditPanel probe = new GateEditPanel(editor, interactive);

@@ -19,13 +19,21 @@ import com.mojang.renderpearl.api.textures.GpuSampler;
 import com.mojang.renderpearl.api.textures.GpuTexture;
 import com.mojang.renderpearl.api.textures.GpuTextureView;
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.gpucompat.client.ClassicReadback;
+import de.lardtom.propwash.video.record.ImageGuard;
+import de.lardtom.propwash.video.record.ImagePath;
 import de.lardtom.propwash.video.record.RecordingFormat;
+import de.lardtom.propwash.video.record.RgbaI420;
 import net.minecraft.client.renderer.MappableRingBuffer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix3f;
+import org.joml.Vector4f;
+import org.joml.Vector4fc;
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.system.MemoryUtil;
 
+import java.nio.ByteBuffer;
 import java.util.Optional;
 
 public final class ActionCamCapture {
@@ -58,6 +66,9 @@ public final class ActionCamCapture {
     private static final int FRAME_UBO_SIZE = new Std140SizeCalculator()
             .putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().get();
     private static final int PACK_UBO_SIZE = new Std140SizeCalculator().putVec4().get();
+    private static final Vector4fc EMPTY = new Vector4f(0.0F);
+
+    static volatile Fault fault = Fault.NONE;
 
     private final Readback[] readbacks = new Readback[READBACKS];
     private @Nullable RecordingFormat format;
@@ -70,6 +81,12 @@ public final class ActionCamCapture {
     private long issued;
     private long completed;
     private boolean warmed;
+    private @Nullable ByteBuffer zeros;
+    private @Nullable ByteBuffer scratch;
+    private @Nullable ByteBuffer rgba;
+    private final ClassicReadback packedRead = new ClassicReadback();
+    private final ClassicReadback frameRead = new ClassicReadback();
+    private boolean readWarned;
 
     public @Nullable String failure() {
         return this.failure;
@@ -92,16 +109,33 @@ public final class ActionCamCapture {
     }
 
     public boolean holdsResources() {
-        return this.frame != null || this.packed != null || this.frameUbo != null || this.packUbo != null || this.readbacks[0] != null;
+        return this.frame != null || this.packed != null || this.frameUbo != null || this.packUbo != null || this.readbacks[0] != null
+                || this.packedRead.holds() || this.frameRead.holds();
+    }
+
+    @Nullable GpuTexture frameTexture() {
+        return this.frame == null ? null : this.frame.getColorTexture();
+    }
+
+    @Nullable GpuTexture packedTexture() {
+        return this.packed == null ? null : this.packed.getColorTexture();
+    }
+
+    @Nullable RecordingFormat format() {
+        return this.format;
+    }
+
+    public static boolean fallbacksAvailable(RenderTarget main) {
+        return ClassicReadback.supported(main.getColorTexture());
     }
 
     public void retry() {
         this.failure = null;
     }
 
-    public boolean capture(RenderTarget main, RecordingFormat target, Matrix3f warp, float[] tangents, float sharpness, float noise,
-                           float seed, Sink sink) {
-        if (this.failure != null) {
+    public boolean capture(RenderTarget main, RecordingFormat target, ImagePath path, Matrix3f warp, float[] tangents, float sharpness,
+                           float noise, float seed, Sink sink) {
+        if (this.failure != null || path == ImagePath.NONE) {
             return false;
         }
         CompiledRenderPipeline framePipeline = RenderSystem.getCompiledPipelineNullable(FRAME_PIPELINE);
@@ -116,8 +150,8 @@ public final class ActionCamCapture {
         }
         try {
             this.ensure(target);
-            Readback readback = this.freeReadback();
-            if (readback == null) {
+            Readback readback = path == ImagePath.GPU ? this.freeReadback() : null;
+            if (path == ImagePath.GPU && readback == null) {
                 return false;
             }
             TextureTarget frameTarget = this.frame;
@@ -150,34 +184,53 @@ public final class ActionCamCapture {
             }
             GpuSampler linear = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
             GpuSampler nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
-            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
-                    .createRenderPass(() -> "propwash action cam frame", frameView, Optional.empty())) {
-                pass.setPipeline(framePipeline);
-                RenderSystem.bindDefaultUniforms(pass);
-                pass.setUniform("InSampler", source, linear);
-                pass.setUniform(FRAME_BLOCK, frameBuffer);
-                pass.draw(3, 1, 0, 0);
+            Fault injected = fault;
+            if (injected == Fault.PASSES) {
+                RenderSystem.getDevice().createCommandEncoder().clearColorTexture(frameView.texture(), EMPTY);
+            } else {
+                try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
+                        .createRenderPass(() -> "propwash action cam frame", frameView, Optional.empty())) {
+                    pass.setPipeline(framePipeline);
+                    RenderSystem.bindDefaultUniforms(pass);
+                    pass.setUniform("InSampler", source, linear);
+                    pass.setUniform(FRAME_BLOCK, frameBuffer);
+                    pass.draw(3, 1, 0, 0);
+                }
             }
-            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
-                    .createRenderPass(() -> "propwash action cam yuv", packedView, Optional.empty())) {
-                pass.setPipeline(packPipeline);
-                RenderSystem.bindDefaultUniforms(pass);
-                pass.setUniform("FrameSampler", frameView, nearest);
-                pass.setUniform(PACK_BLOCK, packBuffer);
-                pass.draw(3, 1, 0, 0);
+            if (path == ImagePath.CPU) {
+                frameUniforms.rotate();
+                packUniforms.rotate();
+                this.deliver(this.convertOnCpu(frameView.texture(), target), ImagePath.CPU, sink);
+                return true;
+            }
+            if (injected == Fault.PACK || injected == Fault.PASSES) {
+                RenderSystem.getDevice().createCommandEncoder().clearColorTexture(packedTexture, EMPTY);
+            } else {
+                try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
+                        .createRenderPass(() -> "propwash action cam yuv", packedView, Optional.empty())) {
+                    pass.setPipeline(packPipeline);
+                    RenderSystem.bindDefaultUniforms(pass);
+                    pass.setUniform("FrameSampler", frameView, nearest);
+                    pass.setUniform(PACK_BLOCK, packBuffer);
+                    pass.draw(3, 1, 0, 0);
+                }
             }
             frameUniforms.rotate();
             packUniforms.rotate();
+            if (readback == null) {
+                this.deliver(this.readPacked(packedTexture, target), ImagePath.READ, sink);
+                return true;
+            }
             readback.busy = true;
             this.inFlight++;
             this.issued++;
             int bytes = target.frameBytes();
             GpuBuffer destination = readback.buffer;
-            RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(packedTexture, destination, 0L, () -> {
+            Runnable arrived = () -> {
                 try {
                     if (!destination.isClosed()) {
                         try (GpuBufferSlice.MappedView view = destination.map(0L, bytes, true, false)) {
-                            sink.accept(view);
+                            sink.accept(view.data(), ImagePath.GPU);
                         }
                     }
                 } catch (RuntimeException e) {
@@ -187,12 +240,79 @@ public final class ActionCamCapture {
                     this.inFlight--;
                     this.completed++;
                 }
-            }, 0);
+            };
+            if (injected == Fault.READBACK) {
+                RenderSystem.getDevice().createCommandEncoder().writeToBuffer(destination.slice(0L, bytes), this.zeros(bytes));
+                RenderSystem.queueFencedTask(arrived);
+            } else {
+                RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(packedTexture, destination, 0L, arrived, 0);
+            }
             return true;
         } catch (RuntimeException e) {
             this.fail("Fehler im Render-Pass", e);
             this.release();
             return false;
+        }
+    }
+
+    private void deliver(ByteBuffer frame, ImagePath path, Sink sink) {
+        this.issued++;
+        try {
+            sink.accept(frame, path);
+        } catch (RuntimeException e) {
+            Constants.LOG.error("Action-Cam: Bild konnte nicht übergeben werden", e);
+        } finally {
+            this.completed++;
+        }
+    }
+
+    private ByteBuffer readPacked(GpuTexture packed, RecordingFormat target) {
+        int bytes = target.frameBytes();
+        ByteBuffer out = this.scratch(bytes);
+        if (!this.packedRead.read(packed, target.width() / 4, target.height() * 3 / 2, out)) {
+            this.warnRead(ImagePath.READ, this.packedRead.problem());
+            MemoryUtil.memSet(out, 0);
+        }
+        return out;
+    }
+
+    private ByteBuffer convertOnCpu(GpuTexture frameTexture, RecordingFormat target) {
+        int width = target.width();
+        int height = target.height();
+        int rgbaBytes = width * height * 4;
+        ByteBuffer out = this.scratch(target.frameBytes());
+        ByteBuffer pixels = this.rgba;
+        if (pixels == null || pixels.capacity() < rgbaBytes) {
+            pixels = ByteBuffer.allocateDirect(rgbaBytes);
+            this.rgba = pixels;
+        }
+        pixels.clear().limit(rgbaBytes);
+        if (!this.frameRead.read(frameTexture, width, height, pixels)) {
+            this.warnRead(ImagePath.CPU, this.frameRead.problem());
+            MemoryUtil.memSet(out, 0);
+            return out;
+        }
+        if (ImageGuard.zero(pixels, rgbaBytes)) {
+            MemoryUtil.memSet(out, 0);
+            return out;
+        }
+        RgbaI420.convert(pixels, width, height, out);
+        return out;
+    }
+
+    private ByteBuffer scratch(int bytes) {
+        ByteBuffer buffer = this.scratch;
+        if (buffer == null || buffer.capacity() < bytes) {
+            buffer = ByteBuffer.allocateDirect(bytes);
+            this.scratch = buffer;
+        }
+        return buffer.clear().limit(bytes);
+    }
+
+    private void warnRead(ImagePath path, @Nullable String problem) {
+        if (!this.readWarned) {
+            this.readWarned = true;
+            Constants.LOG.warn("Action-Cam: Bildweg {} liest nicht: {}", path.key(), problem);
         }
     }
 
@@ -290,6 +410,20 @@ public final class ActionCamCapture {
             }
         }
         this.format = null;
+        this.zeros = null;
+        this.scratch = null;
+        this.rgba = null;
+        this.packedRead.close();
+        this.frameRead.close();
+    }
+
+    private ByteBuffer zeros(int bytes) {
+        ByteBuffer buffer = this.zeros;
+        if (buffer == null || buffer.capacity() < bytes) {
+            buffer = ByteBuffer.allocateDirect(bytes);
+            this.zeros = buffer;
+        }
+        return buffer.duplicate().clear().limit(bytes);
     }
 
     private void ensure(RecordingFormat target) {
@@ -332,9 +466,16 @@ public final class ActionCamCapture {
         }
     }
 
+    enum Fault {
+        NONE,
+        READBACK,
+        PACK,
+        PASSES
+    }
+
     @FunctionalInterface
     public interface Sink {
-        void accept(GpuBufferSlice.MappedView view);
+        void accept(ByteBuffer frame, ImagePath path);
     }
 
     private static final class Readback {

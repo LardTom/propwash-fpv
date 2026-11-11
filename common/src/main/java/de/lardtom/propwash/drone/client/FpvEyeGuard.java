@@ -48,7 +48,7 @@ public final class FpvEyeGuard implements EyeClearance.Solids, Shapes.DoubleLine
     boolean apply(BlockGetter level, Vector3d eye, Vector3dc anchor, Vector3fc forwards, Vector3fc up, Vector3fc left, float verticalFovDeg,
                   float aspect, double least) {
         this.requested.set(eye);
-        if (this.bypassed) {
+        if (this.bypassed || CameraClip.active()) {
             this.placed.set(eye);
             this.idle();
             return false;

@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/first_trick",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:trick",
+      "conditions": {
+        "tricks": [
+          "power_loop"
+        ]
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:firework_rocket"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.power_loop.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.power_loop.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

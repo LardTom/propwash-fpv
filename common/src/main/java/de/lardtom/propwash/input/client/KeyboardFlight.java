@@ -26,6 +26,11 @@ final class KeyboardFlight {
         this.centering.reset();
     }
 
+    void preset(float throttle) {
+        this.throttle = throttle;
+        this.pendingThrottle = 0.0F;
+    }
+
     void yawKeysSteerRoll(boolean roll) {
         this.yawKeysRoll = roll;
     }

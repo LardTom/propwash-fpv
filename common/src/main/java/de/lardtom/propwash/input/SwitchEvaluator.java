@@ -35,8 +35,8 @@ public final class SwitchEvaluator {
         this.primed = true;
     }
 
-    public int evaluate(DeviceProfile profile, float[] axes, boolean[] buttons) {
-        int bits = 0;
+    public long evaluate(DeviceProfile profile, float[] axes, boolean[] buttons) {
+        long bits = 0L;
         for (int i = 0; i < FUNCTIONS.length; i++) {
             SwitchAssignment binding = profile.binding(FUNCTIONS[i]);
             boolean raw = binding.engaged(axes, buttons);
@@ -62,8 +62,8 @@ public final class SwitchEvaluator {
         return bits;
     }
 
-    public static int readable(DeviceProfile profile, float[] axes, boolean[] buttons) {
-        int bits = 0;
+    public static long readable(DeviceProfile profile, float[] axes, boolean[] buttons) {
+        long bits = 0L;
         for (SwitchFunction function : FUNCTIONS) {
             SwitchAssignment binding = profile.binding(function);
             if (binding.bound() && binding.readable(axes, buttons)) {
@@ -73,11 +73,11 @@ public final class SwitchEvaluator {
         return bits;
     }
 
-    public static int bit(SwitchFunction function) {
-        return 1 << function.ordinal();
+    public static long bit(SwitchFunction function) {
+        return 1L << function.ordinal();
     }
 
-    public static boolean isSet(int bits, SwitchFunction function) {
+    public static boolean isSet(long bits, SwitchFunction function) {
         return (bits & bit(function)) != 0;
     }
 }

@@ -5,6 +5,7 @@ import de.lardtom.propwash.dev.network.SelfTestNet;
 import de.lardtom.propwash.join.AddonInfo;
 import de.lardtom.propwash.join.LocalJoinInfo;
 import de.lardtom.propwash.network.ProtocolVersionPayload;
+import de.lardtom.propwash.share.ShareDevTables;
 
 import java.util.List;
 
@@ -27,5 +28,6 @@ public final class DevBootstrap {
             LocalJoinInfo.declare(new AddonInfo(ExampleAddon.NAMESPACE, EXAMPLE_NAME, EXAMPLE_VERSION, EXAMPLE_HOMEPAGE,
                     List.of(ExampleAddon.NAMESPACE)));
         }
+        ShareDevTables.init();
     }
 }

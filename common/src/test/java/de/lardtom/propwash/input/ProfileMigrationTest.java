@@ -48,7 +48,7 @@ class ProfileMigrationTest {
         boolean[] released = new boolean[ProfileDefaults.PAD_BUTTONS];
         boolean[] pressed = released.clone();
         pressed[ProfileDefaults.PAD_LEFT_SHOULDER] = true;
-        int bits = evaluator.evaluate(pad, NO_AXES, released);
+        long bits = evaluator.evaluate(pad, NO_AXES, released);
         assertTrue(SwitchEvaluator.isSet(bits, SwitchFunction.ANGLE));
         assertFalse(SwitchEvaluator.isSet(bits, SwitchFunction.ARM));
         evaluator.evaluate(pad, NO_AXES, pressed);

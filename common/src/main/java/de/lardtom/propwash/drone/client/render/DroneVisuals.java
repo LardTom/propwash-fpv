@@ -10,11 +10,13 @@ import de.lardtom.propwash.build.PaintChannel;
 import de.lardtom.propwash.build.PartWear;
 import de.lardtom.propwash.drone.CameraMount;
 import de.lardtom.propwash.drone.DroneModule;
+import de.lardtom.propwash.drone.DroneScale;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.led.DroneLeds;
 import de.lardtom.propwash.drone.led.LedAnimator;
 import de.lardtom.propwash.drone.led.LedSettings;
+import de.lardtom.propwash.drone.operator.client.GimbalHead;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
@@ -50,6 +52,7 @@ public final class DroneVisuals {
     private static final Map<PreviewKey, DroneRenderState> PREVIEWS = new HashMap<>();
     private static final Map<DroneBuild, DroneRenderState> LED_PREVIEWS = new HashMap<>();
     private static final LedAnimator.Input PREVIEW_INPUT = new LedAnimator.Input(false, true, 1.0F, 0.0);
+    private static @Nullable DroneRenderState liftState;
     static final float HALO_ALPHA = 0.6F;
     private static int previewGeneration = Integer.MIN_VALUE;
     private static @Nullable DroneRenderConfig previewConfig;
@@ -92,6 +95,7 @@ public final class DroneVisuals {
         applyStripColors(s, DroneLeds.settings(entity), DroneLeds.input(entity, s.ageInTicks / 20.0));
         s.cameraTiltDegrees = CameraMount.uptilt(build, entity.tune().values());
         placeInWorld(s);
+        applyScale(s, entity.scale());
         if (!QuadcopterRenderer.isOwnFpvDrone(entity)) {
             restOnGround(s, entity, Mth.lerp(partialTick, entity.yo, entity.getY()));
         }
@@ -106,6 +110,10 @@ public final class DroneVisuals {
     }
 
     public static void fillPreview(DroneRenderState s, DroneBuild build, PartWear wear, DronePaint paint) {
+        fillPreview(s, build, wear, paint, false);
+    }
+
+    public static void fillPreview(DroneRenderState s, DroneBuild build, PartWear wear, DronePaint paint, boolean spinning) {
         s.wear = wear == null ? PartWear.PRISTINE : wear;
         s.paint = paint == null ? DronePaint.DEFAULT : paint;
         for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
@@ -115,7 +123,7 @@ public final class DroneVisuals {
         s.orientation.identity();
         s.batteryCharge = 1.0F;
         s.batteryMissing = false;
-        fill(s, build, false, true, 0.0F);
+        fill(s, build, false, true, 0.0F, spinning);
         applyStripColors(s, LedSettings.DEFAULT, PREVIEW_INPUT);
         VisualHull hull = resources().assembly(build).hull();
         hull.center(s.pivot);
@@ -233,6 +241,14 @@ public final class DroneVisuals {
     }
 
     static void fill(DroneRenderState s, DroneBuild build, boolean armed, boolean preview, float ageTicks) {
+        fill(s, build, armed, preview, ageTicks, false);
+    }
+
+    static boolean propBlur(boolean armed, float output, float threshold, boolean spinning, boolean blurModel, PropDamage damage) {
+        return damage != PropDamage.BROKEN && (armed && output > threshold || spinning && blurModel);
+    }
+
+    static void fill(DroneRenderState s, DroneBuild build, boolean armed, boolean preview, float ageTicks, boolean spinning) {
         DroneAssembly assembly = resources().assembly(build);
         DroneRenderConfig config = DroneRenderConfig.get();
         s.build = build;
@@ -242,6 +258,7 @@ public final class DroneVisuals {
         s.shadowPass = false;
         s.visualScale = config.visualScale;
         s.poseScale = DroneVisualScale.poseScale(config.visualScale);
+        s.entityScale = DroneScale.NORMAL;
         s.cameraTiltDegrees = assembly.cameraTiltDegrees();
 
         s.frame.set(assembly.frame());
@@ -249,10 +266,11 @@ public final class DroneVisuals {
         s.battery.set(assembly.battery());
         s.video.set(assembly.video());
         s.transmitter.set(assembly.transmitter());
+        s.antenna.set(assembly.antenna());
         for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
             s.motors[slot].set(assembly.motor(slot));
             PropDamage damage = propDamage(s, slot);
-            boolean blur = armed && s.motorOutput[slot] > config.propBlurThreshold && damage != PropDamage.BROKEN;
+            boolean blur = propBlur(armed, s.motorOutput[slot], config.propBlurThreshold, spinning, assembly.blur(slot).item() != null, damage);
             s.propBlur[slot] = blur;
             DroneAssembly.Part prop = blur ? assembly.blur(slot) : assembly.prop(slot, damage);
             s.props[slot].set(prop);
@@ -263,14 +281,19 @@ public final class DroneVisuals {
         }
         paint(s.frame, assembly.frame(), s.paint, 0);
         paint(s.stack, assembly.stack(), s.paint, 0);
+        s.powerLead.set(assembly.powerLead());
+        paint(s.powerLead.stack, assembly.powerLead().stack(), s.paint, 0);
         paint(s.battery, assembly.battery(), s.paint, 0);
         paint(s.video, assembly.video(), s.paint, 0);
+        paint(s.antenna, assembly.antenna(), s.paint, 0);
         paintShape(s.frame, FallbackShapes.frameBodyColor(build.frame()), s.paint, PaintChannel.FRAME, 0);
         if (build.frame().ducted && FallbackShapes.ductColor(build.frame()) != FallbackShapes.frameBodyColor(build.frame())) {
             paintShape(s.frame, FallbackShapes.ductColor(build.frame()), s.paint, PaintChannel.TPU, 0);
         }
         paintShape(s.battery, FallbackShapes.batteryColor(build.battery()), s.paint, PaintChannel.BATTERY, 0);
         paintShape(s.video, FallbackShapes.CAMERA, s.paint, PaintChannel.CAMERA, 0);
+        paintShape(s.antenna, AntennaGeometry.CAP, s.paint, PaintChannel.ANTENNA, 0);
+        paintShape(s.antenna, AntennaGeometry.CAP_LIGHT, s.paint, PaintChannel.ANTENNA, 0);
 
         for (AccessoryMount mount : AccessoryMount.values()) {
             DroneAssembly.Accessory accessory = assembly.accessory(mount);
@@ -368,11 +391,23 @@ public final class DroneVisuals {
         s.visualScale = 1.0F;
         s.poseScale = DroneVisualScale.poseScale(1.0F);
         placeInWorld(s);
+        applyScale(s, entity.scale());
         s.x = com.x;
         s.y = com.y - DronePhysique.of(s.build).comAboveFoot();
         s.z = com.z;
         restOnGround(s, entity, s.y);
         return true;
+    }
+
+    static void applyScale(DroneRenderState s, float scale) {
+        s.entityScale = scale;
+        if (!DroneScale.scaled(scale)) {
+            return;
+        }
+        s.poseScale *= scale;
+        s.originY *= scale;
+        s.lowestAboveFoot *= scale;
+        s.visualRadius *= scale;
     }
 
     static void restOnGround(DroneRenderState s, QuadcopterEntity entity, double renderY) {
@@ -395,6 +430,40 @@ public final class DroneVisuals {
             variants[slot] = s.propBlur[slot] ? VisualHull.BLUR : propDamage(s, slot).ordinal();
         }
         return variants;
+    }
+
+    public static float displayLift(QuadcopterEntity entity, Quaternionf orientation, double comY) {
+        try {
+            DroneRenderState s = liftState();
+            DroneBuild build = entity.build();
+            s.build = build;
+            s.orientation.set(orientation);
+            s.visualScale = 1.0F;
+            s.wear = entity.wear();
+            boolean armed = entity.isArmed();
+            float threshold = DroneRenderConfig.get().propBlurThreshold;
+            for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
+                float output = entity.motorOutput(DroneLayout.motorForSlot(slot));
+                s.propBlur[slot] = armed && output > threshold && propDamage(s, slot) != PropDamage.BROKEN;
+            }
+            placeInWorld(s);
+            applyScale(s, entity.scale());
+            float foot = DronePhysique.of(build).comAboveFoot();
+            restOnGround(s, entity, comY - foot);
+            float lift = s.originY - (DroneScale.scaled(s.entityScale) ? foot * s.entityScale : foot);
+            return Float.isFinite(lift) ? lift : 0.0F;
+        } catch (RuntimeException e) {
+            return 0.0F;
+        }
+    }
+
+    private static DroneRenderState liftState() {
+        DroneRenderState s = liftState;
+        if (s == null) {
+            s = new DroneRenderState();
+            liftState = s;
+        }
+        return s;
     }
 
     static void placeInWorld(DroneRenderState s) {
@@ -455,11 +524,12 @@ public final class DroneVisuals {
         ps.translate(-s.pivot.x * MM_TO_UNITS, -s.pivot.y * MM_TO_UNITS, -s.pivot.z * MM_TO_UNITS);
 
         submitSlot(s.frame, ps, collector, light, overlay, outline);
-        submitSlot(s.stack, ps, collector, light, overlay, outline);
+        submitStack(s, ps, collector, light, overlay, outline);
         if (!s.batteryMissing) {
-            submitSlot(s.battery, ps, collector, light, overlay, outline);
+            submitSlot(s.battery, ps, collector, batteryItems(s, collector), light, overlay, outline);
         }
         submitSlot(s.transmitter, ps, collector, light, overlay, outline);
+        submitSlot(s.antenna, ps, collector, light, overlay, outline);
 
         ps.pushPose();
         translate(ps, s.video.position);
@@ -519,6 +589,18 @@ public final class DroneVisuals {
         ps.popPose();
     }
 
+    static void submitStack(DroneRenderState s, PoseStack ps, SubmitNodeCollector collector, int light, int overlay, int outline) {
+        if (!s.powerLead.shown(s)) {
+            submitSlot(s.stack, ps, collector, light, overlay, outline);
+            return;
+        }
+        submitSlot(s.powerLead.stack, ps, collector, s.powerLead.stackCables.wrap(collector), light, overlay, outline);
+    }
+
+    static SubmitNodeCollector batteryItems(DroneRenderState s, SubmitNodeCollector collector) {
+        return s.powerLead.shown(s) ? s.powerLead.batteryPlug.wrap(collector) : collector;
+    }
+
     static void submitAccessories(DroneRenderState s, PoseStack ps, SubmitNodeCollector collector, int light, int overlay, int outline) {
         for (int i = 0; i < DroneAssembly.MOUNTS; i++) {
             if (s.accessoryType[i] == null) {
@@ -530,7 +612,7 @@ public final class DroneVisuals {
             translate(ps, body.position);
             ps.rotate(Axis.XP, (float) Math.toRadians(s.accessoryTilt[i]));
             ps.scale(s.accessoryStretch[i], 1.0F, 1.0F);
-            submitAtOrigin(body, ps, collector, light, overlay, outline);
+            submitAtOrigin(body, ps, collector, GimbalHead.items(s, i, ps, collector), light, overlay, outline);
             if (i == s.stripMount) {
                 submitStripGlow(s, ps, collector);
             }
@@ -584,12 +666,17 @@ public final class DroneVisuals {
     }
 
     private static void submitSlot(DroneRenderState.PartSlot slot, PoseStack ps, SubmitNodeCollector collector, int light, int overlay, int outline) {
+        submitSlot(slot, ps, collector, collector, light, overlay, outline);
+    }
+
+    private static void submitSlot(DroneRenderState.PartSlot slot, PoseStack ps, SubmitNodeCollector collector, SubmitNodeCollector items, int light,
+                                   int overlay, int outline) {
         if (!slot.useItem && slot.solid.isEmpty() && slot.translucent.isEmpty()) {
             return;
         }
         ps.pushPose();
         translate(ps, slot.position);
-        submitAtOrigin(slot, ps, collector, light, overlay, outline);
+        submitAtOrigin(slot, ps, collector, items, light, overlay, outline);
         ps.popPose();
     }
 
@@ -599,6 +686,16 @@ public final class DroneVisuals {
 
     static void submitPart(DroneRenderState.PartSlot slot, PoseStack ps, SubmitNodeCollector collector, int light, int outline) {
         submitAtOrigin(slot, ps, collector, light, OverlayTexture.NO_OVERLAY, outline);
+    }
+
+    static void submitCenter(DroneRenderState.PartSlot slot, PoseStack ps, SubmitNodeCollector collector, int light) {
+        if (slot.useItem) {
+            slot.item.submit(ps, BlurItemCollector.center(collector), light, OverlayTexture.NO_OVERLAY, 0);
+        }
+        Shape solid = slot.solid;
+        if (!solid.isEmpty()) {
+            collector.submitCustomGeometry(ps, solidType(), (pose, buffer) -> solid.emit(pose, buffer, light, OverlayTexture.NO_OVERLAY, -1));
+        }
     }
 
     private static void submitAtOrigin(DroneRenderState.PartSlot slot, PoseStack ps, SubmitNodeCollector collector, int light, int overlay, int outline) {

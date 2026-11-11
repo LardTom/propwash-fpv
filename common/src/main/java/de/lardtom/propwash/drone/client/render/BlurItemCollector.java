@@ -36,17 +36,23 @@ import java.util.function.Function;
 final class BlurItemCollector implements SubmitNodeCollector {
     private final OrderedSubmitNodeCollector target;
     private final @Nullable SubmitNodeCollector root;
+    private final boolean centerOnly;
 
-    private BlurItemCollector(OrderedSubmitNodeCollector target, @Nullable SubmitNodeCollector root) {
+    private BlurItemCollector(OrderedSubmitNodeCollector target, @Nullable SubmitNodeCollector root, boolean centerOnly) {
         this.target = target;
         this.root = root;
+        this.centerOnly = centerOnly;
     }
 
     static SubmitNodeCollector wrap(SubmitNodeCollector collector) {
         if (collector instanceof GhostCollector || collector instanceof BlurItemCollector) {
             return collector;
         }
-        return new BlurItemCollector(collector, collector);
+        return new BlurItemCollector(collector, collector, false);
+    }
+
+    static SubmitNodeCollector center(SubmitNodeCollector collector) {
+        return new BlurItemCollector(collector, collector, true);
     }
 
     static void submitQuads(OrderedSubmitNodeCollector target, PoseStack poseStack, List<BakedQuad> quads, int[] tintLayers, int lightCoords,
@@ -94,7 +100,7 @@ final class BlurItemCollector implements SubmitNodeCollector {
 
     @Override
     public OrderedSubmitNodeCollector order(int order) {
-        return new BlurItemCollector(this.root != null ? this.root.order(order) : this.target, null);
+        return new BlurItemCollector(this.root != null ? this.root.order(order) : this.target, null, this.centerOnly);
     }
 
     @Override
@@ -102,12 +108,17 @@ final class BlurItemCollector implements SubmitNodeCollector {
                            int[] tintLayers, ItemQuads quads, ItemStackRenderState.FoilType foilType) {
         List<BakedQuad> translucent = quads.translucent();
         if (translucent.isEmpty()) {
-            this.target.submitItem(poseStack, displayContext, lightCoords, overlayCoords, outlineColor, tintLayers, quads, foilType);
+            if (!this.centerOnly) {
+                this.target.submitItem(poseStack, displayContext, lightCoords, overlayCoords, outlineColor, tintLayers, quads, foilType);
+            }
             return;
         }
         if (!quads.solid().isEmpty()) {
             this.target.submitItem(poseStack, displayContext, lightCoords, overlayCoords, outlineColor, tintLayers,
                     new ItemQuads(quads.solid(), quads.solid(), List.of()), foilType);
+        }
+        if (this.centerOnly) {
+            return;
         }
         if (outlineColor != 0) {
             this.target.submitItem(poseStack, displayContext, lightCoords, overlayCoords, outlineColor, tintLayers,

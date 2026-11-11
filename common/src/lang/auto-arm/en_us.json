@@ -1,0 +1,8 @@
+{
+  "propwash.input.modes.auto_arm": "Auto-arm",
+  "propwash.input.modes.auto_arm.search": "Auto-arm after reset",
+  "propwash.input.modes.auto_arm.tooltip": "Auto-arm after reset: when you reset the drone to its home point and arm is still on (switch, held or toggled button, keyboard arm state), it arms as soon as the throttle is down – no need to flip the switch off and on again. Meanwhile the OSD shows \"AUTO-ARM: THROTTLE DOWN\". Only after a reset, not after a crash, spawn or GPS Rescue; the other arm checks (tilt, battery, world rules) still apply, and a reset never starts a countdown. Off: switch arm off and on again.",
+  "propwash.osd.warning.auto_arm": "AUTO-ARM: THROTTLE DOWN",
+  "propwash.osd.warning.auto_arm_3d": "AUTO-ARM: THROTTLE CENTER",
+  "propwash.rescue.reset.nearby": "Reset: home point blocked – drone set down at the nearest free spot"
+}

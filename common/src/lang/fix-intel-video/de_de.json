@@ -1,0 +1,18 @@
+{
+  "propwash.video.config.renderer.automatic": "Automatisch",
+  "propwash.video.config.renderer.automatic.tooltip": "Volle Bildeffekte. Beim ersten FPV-Bild (und nach dem Neuladen der Ressourcen) schickt Propwash einmal ein Testbild durch die Video-Shader. Liefert die Grafikkarte Schwarz, schaltet Propwash von selbst auf „Einfach“ und meldet das im Chat.",
+  "propwash.video.config.renderer.full": "Voll",
+  "propwash.video.config.renderer.full.tooltip": "Immer die vollen Bildeffekte mit Fischauge, auch wenn die Bildprüfung auf dieser Grafikkarte Schwarz ergab.",
+  "propwash.video.config.renderer.simple": "Einfach",
+  "propwash.video.config.renderer.simple.tooltip": "Ein einfacher Ersatz-Shader zeigt das Bild ohne Shader-Effekte und ohne Fischauge; Störungen kommen als einfache Einblendung. Schont die Grafikkarte und verträgt sich mit Shaderpacks.",
+  "propwash.video.record.hud.image.cpu": "CPU-Umrechnung: Die Grafikkarte lieferte leere Aufnahmebilder",
+  "propwash.video.record.hud.image.read": "Ersatzweg: Die Grafikkarte lieferte leere Aufnahmebilder",
+  "propwash.video.record.image.aborted": "Action-Cam: Aufnahme abgebrochen. Die Grafikkarte lieferte nur leere Bilder, auch über den Ersatzweg; es wurde kein Video gespeichert. Hat dein Rechner zwei Grafikkarten, starte Minecraft auf der stärkeren.",
+  "propwash.video.record.image.aborted.saved": "Action-Cam: Aufnahme abgebrochen. Die Grafikkarte liefert nur noch leere Bilder, auch über den Ersatzweg; gespeichert wird das Video bis dahin.",
+  "propwash.video.record.image.switched.cpu": "Action-Cam: Die Grafikkarte lieferte auch über den Ersatzweg leere Aufnahmebilder. Die Aufnahme läuft mit CPU-Umrechnung weiter (langsamer).",
+  "propwash.video.record.image.switched.read": "Action-Cam: Die Grafikkarte lieferte leere Aufnahmebilder. Die Aufnahme läuft über einen Ersatzweg weiter (etwas langsamer).",
+  "propwash.video.record.stop.blank_image": "Die Grafikkarte liefert nur leere Bilder",
+  "propwash.video.simplified.chat": "Videoeffekte auf dieser Grafikkarte vereinfacht: Die Bildprüfung ergab ein schwarzes Bild. Umstellen kannst du das im Video-Tab unter „%s“.",
+  "propwash.video.status.simplified": "Videoeffekte auf dieser Grafikkarte vereinfacht: Die Bildprüfung ergab ein schwarzes Bild. „Shader erneut versuchen“ prüft erneut.",
+  "propwash.video.status.simplified.none": "Videoeffekte auf dieser Grafikkarte ohne Shader: Die Bildprüfung ergab auch mit dem einfachen Ersatz-Shader ein schwarzes Bild. „Shader erneut versuchen“ prüft erneut."
+}

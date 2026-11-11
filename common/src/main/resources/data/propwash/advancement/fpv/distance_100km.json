@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/distance_10km",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:flight",
+      "conditions": {
+        "distance": {
+          "min": 100000
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:recovery_compass"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.distance_100km.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.distance_100km.description"
+    },
+    "frame": "challenge"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

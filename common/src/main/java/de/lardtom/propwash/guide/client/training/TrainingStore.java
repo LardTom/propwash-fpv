@@ -48,6 +48,15 @@ public final class TrainingStore {
         return file.players.computeIfAbsent(playerKey(), key -> new TrainingProgress());
     }
 
+    public static boolean allUnlocked() {
+        return progress().unlockAll;
+    }
+
+    public static void unlockAll(boolean unlocked) {
+        progress().unlockAll = unlocked;
+        CONFIG.save();
+    }
+
     public static void save() {
         if (CONFIG.isLoaded()) {
             CONFIG.save();

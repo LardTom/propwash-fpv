@@ -189,7 +189,7 @@ class ModeSwitchMatrixTest {
         rig.frame();
         assertEquals(StabMode.ACRO, rig.session.mode());
         SwitchEvaluator standalone = new SwitchEvaluator();
-        int alone = standalone.evaluate(pad, rig.axes, rig.buttons);
+        long alone = standalone.evaluate(pad, rig.axes, rig.buttons);
         assertTrue(SwitchEvaluator.isSet(alone, SwitchFunction.ANGLE), "ohne Abgleich startet der Tab mit Angle an (alter Fehler)");
         rig.openTab();
         rig.frame();
@@ -345,12 +345,12 @@ class ModeSwitchMatrixTest {
             } else {
                 axes[axis] = ChannelMath.fromRangeMicros(us);
             }
-            int bits = evaluator.evaluate(profile, axes, buttons);
+            long bits = evaluator.evaluate(profile, axes, buttons);
             if (step == WALK.length / 2) {
                 tab = new SwitchEvaluator();
             }
             tab.follow(evaluator, profile, profile);
-            int tabBits = tab.evaluate(profile, axes, buttons);
+            long tabBits = tab.evaluate(profile, axes, buttons);
             boolean wanted = model.next(us);
             assertEquals(wanted, SwitchEvaluator.isSet(bits, function), what + " bei " + us + " µs (Schritt " + step + ")");
             assertEquals(bits, tabBits, what + ": Modi-Tab bei " + us + " µs (Schritt " + step + ")");
@@ -486,10 +486,10 @@ class ModeSwitchMatrixTest {
         private final Mode3dSelector mode3d = new Mode3dSelector();
         private boolean paused;
         private boolean tabOpen;
-        private int liveBits;
-        private int liveReadable;
-        private int tabBits;
-        private int tabReadable;
+        private long liveBits;
+        private long liveReadable;
+        private long tabBits;
+        private long tabReadable;
         private @Nullable Shown pending;
         private int pausedChecks;
 
@@ -617,8 +617,8 @@ class ModeSwitchMatrixTest {
     @Test
     void previewNeverMutatesTheSelector() {
         FlightModeSelector selector = new FlightModeSelector();
-        int angle = SwitchEvaluator.bit(SwitchFunction.ANGLE);
-        int readable = angle | SwitchEvaluator.bit(SwitchFunction.HORIZON);
+        long angle = SwitchEvaluator.bit(SwitchFunction.ANGLE);
+        long readable = angle | SwitchEvaluator.bit(SwitchFunction.HORIZON);
         selector.observe(true, 0, readable);
         assertEquals(StabMode.ACRO, selector.mode());
         assertEquals(StabMode.ANGLE, selector.preview(true, angle, readable));

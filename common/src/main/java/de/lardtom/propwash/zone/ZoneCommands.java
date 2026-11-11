@@ -31,6 +31,7 @@ public final class ZoneCommands {
     private static final String NAME = "name";
     private static final String RULE = "rule";
     private static final String VALUE = "value";
+    public static final String WORLD = "world";
 
     private ZoneCommands() {
     }
@@ -81,7 +82,7 @@ public final class ZoneCommands {
 
     private static RequiredArgumentBuilder<CommandSourceStack, String> name() {
         return Commands.argument(NAME, StringArgumentType.string()).suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
-                ZoneServer.zones(ctx.getSource().getLevel()).stream().map(zone -> quoted(zone.name())), builder));
+                ZoneServer.stored(ctx.getSource().getLevel()).stream().map(zone -> quoted(zone.name())), builder));
     }
 
     static String quoted(String name) {
@@ -105,10 +106,10 @@ public final class ZoneCommands {
             }
             RuleSpec rule = spec.get();
             if (rule.kind() == RuleSpec.Kind.BOOL) {
-                return SharedSuggestionProvider.suggest(List.of("true", "false"), builder);
+                return SharedSuggestionProvider.suggest(List.of("true", "false", WORLD), builder);
             }
             return SharedSuggestionProvider.suggest(List.of(Integer.toString(rule.min()), Integer.toString(rule.defaultValue()),
-                    Integer.toString(rule.max())), builder);
+                    Integer.toString(rule.max()), WORLD), builder);
         };
     }
 
@@ -117,14 +118,15 @@ public final class ZoneCommands {
     }
 
     private static int list(CommandSourceStack source) {
-        List<Zone> zones = ZoneServer.zones(source.getLevel());
+        List<Zone> zones = ZoneServer.stored(source.getLevel());
+        ZoneRelease release = ZoneData.get(source.getServer()).release();
         if (zones.isEmpty()) {
             source.sendSuccess(() -> Component.translatable(KEY + "list.empty"), false);
             return 0;
         }
         source.sendSuccess(() -> Component.translatable(KEY + "list.header", zones.size()), false);
         for (Zone zone : zones) {
-            source.sendSuccess(() -> ZoneText.summary(zone), false);
+            source.sendSuccess(() -> ZoneText.summary(zone, release), false);
         }
         return zones.size();
     }
@@ -135,7 +137,8 @@ public final class ZoneCommands {
             return 0;
         }
         Zone found = zone.get();
-        source.sendSuccess(() -> ZoneText.summary(found), false);
+        ZoneRelease release = ZoneData.get(source.getServer()).release();
+        source.sendSuccess(() -> ZoneText.summary(found, release), false);
         source.sendSuccess(() -> Component.translatable(ZoneText.KEY + "transition.label", ZoneText.transition(found.transitionTenths())), false);
         return 1;
     }
@@ -176,6 +179,9 @@ public final class ZoneCommands {
         if (spec.isEmpty()) {
             ctx.getSource().sendFailure(Component.translatable(KEY + "unknown_rule", rule));
             return 0;
+        }
+        if (WORLD.equalsIgnoreCase(raw)) {
+            return change(ctx, zone -> zone.withWorld(spec.get()));
         }
         int value;
         try {
@@ -225,7 +231,8 @@ public final class ZoneCommands {
         }
         Zone zone = outcome.zone();
         if (zone != null) {
-            source.sendSuccess(() -> ZoneText.summary(zone), false);
+            ZoneRelease release = ZoneData.get(source.getServer()).release();
+            source.sendSuccess(() -> ZoneText.summary(zone, release), false);
         }
         return 1;
     }

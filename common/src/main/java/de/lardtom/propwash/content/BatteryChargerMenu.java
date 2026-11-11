@@ -1,7 +1,10 @@
 package de.lardtom.propwash.content;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.stats.advancement.FpvAdvancements;
+import de.lardtom.propwash.stats.advancement.Milestone;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -98,7 +101,7 @@ public class BatteryChargerMenu extends AbstractContainerMenu {
         if (stack.getCount() == original.getCount()) {
             return ItemStack.EMPTY;
         }
-        slot.onTake(player, stack);
+        slot.onTake(player, original.copyWithCount(original.getCount() - stack.getCount()));
         return original;
     }
 
@@ -120,6 +123,14 @@ public class BatteryChargerMenu extends AbstractContainerMenu {
         @Override
         public int getMaxStackSize() {
             return 1;
+        }
+
+        @Override
+        public void onTake(Player player, ItemStack carried) {
+            super.onTake(player, carried);
+            if (player instanceof ServerPlayer serverPlayer && Batteries.isBattery(carried) && Batteries.isFull(Batteries.charge(carried))) {
+                FpvAdvancements.milestone(serverPlayer, Milestone.BATTERY_CHARGED);
+            }
         }
     }
 }

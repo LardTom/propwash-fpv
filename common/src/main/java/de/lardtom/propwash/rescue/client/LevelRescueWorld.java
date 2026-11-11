@@ -1,5 +1,6 @@
 package de.lardtom.propwash.rescue.client;
 
+import de.lardtom.propwash.barrier.DroneBarriers;
 import de.lardtom.propwash.rescue.Ground;
 import de.lardtom.propwash.rescue.RescueBlocks;
 import de.lardtom.propwash.rescue.RescueWorld;
@@ -75,7 +76,7 @@ public final class LevelRescueWorld implements RescueWorld {
         if (state.isAir()) {
             return false;
         }
-        return !state.getCollisionShape(current, this.cursor).isEmpty();
+        return !DroneBarriers.droneShape(state, current, this.cursor).isEmpty();
     }
 
     @Override
@@ -105,6 +106,23 @@ public final class LevelRescueWorld implements RescueWorld {
         }
         this.cursor.set(x, y, z);
         return RescueBlocks.classify(current, this.cursor, c.getBlockState(this.cursor));
+    }
+
+    @Override
+    public double groundTop(int x, int y, int z) {
+        Level current = this.level;
+        if (current == null || y > current.getMaxY()) {
+            return Double.NaN;
+        }
+        if (y < current.getMinY()) {
+            return 1.0;
+        }
+        LevelChunk c = this.chunkAt(x, z);
+        if (c == null) {
+            return Double.NaN;
+        }
+        this.cursor.set(x, y, z);
+        return RescueBlocks.top(current, this.cursor, c.getBlockState(this.cursor));
     }
 
     @Override

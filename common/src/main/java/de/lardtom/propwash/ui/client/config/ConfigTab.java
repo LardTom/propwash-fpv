@@ -115,6 +115,10 @@ public abstract class ConfigTab {
         return false;
     }
 
+    public boolean freecam() {
+        return false;
+    }
+
     public Storage storage() {
         return Storage.GAME;
     }

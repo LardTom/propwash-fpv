@@ -5,14 +5,18 @@ import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.drone.collision.client.ClientCollision;
 import de.lardtom.propwash.race.AssistCheck;
 import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.AssistWords;
 import de.lardtom.propwash.race.LapAssist;
+import de.lardtom.propwash.race.RaceRuleSet;
+import de.lardtom.propwash.race.RaceRules;
 import de.lardtom.propwash.race.RaceServer;
 import de.lardtom.propwash.rescue.RescueSupervisor;
 import de.lardtom.propwash.rescue.client.RescueController;
 import de.lardtom.propwash.rescue.client.RescueState;
+import de.lardtom.propwash.server.client.ClientPersonalRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.PhysicsRules;
 import de.lardtom.propwash.sim.DroneSim;
@@ -20,11 +24,13 @@ import de.lardtom.propwash.sim.HoldMode;
 import de.lardtom.propwash.video.client.VideoConfig;
 import de.lardtom.propwash.video.client.VideoSettings;
 import de.lardtom.propwash.video.client.VideoState;
+import de.lardtom.propwash.zone.ZoneResolution;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public final class AssistText {
     private AssistText() {
@@ -34,23 +40,36 @@ public final class AssistText {
         VideoState video = VideoState.INSTANCE;
         VideoConfig config = VideoSettings.get();
         DroneBuild build = drone.build();
-        AssistReasons reasons = AssistCheck.evaluate(new AssistCheck.Setup(session.holdMode(), rescueTrigger(), session.appliedPhysics(),
+        AssistCheck.Setup setup = new AssistCheck.Setup(session.holdMode(), rescueTrigger(), session.appliedPhysics(),
                 session.physicsModified(), build.isCreative(), RaceServer.issues(build), video.creative(), !config.creativeLatencyFromModule,
-                config.creativeLatencyMs, build.video().latencyMs).withZones(session.zoneResolution(), session.zoneBlendDetails(), session.physicsModified()));
+                config.creativeLatencyMs, build.video().latencyMs).withScale(drone.scale());
+        Map<String, Integer> values = worldValues();
+        RaceRuleSet rules = session.sim() != null ? RaceRules.observe(values, session.zoneField().resolution(), session.zoneField())
+                : personal(values);
+        AssistReasons reasons = AssistCheck.judge(setup, rules, ClientPersonalRules.INSTANCE.standard());
         DroneSim sim = session.sim();
         String addon = AddonFlightClient.INSTANCE.engagedAssist(sim);
-        return AssistCheck.withAddon(reasons, addon, sim != null && addon != null && sim.assistOwnsHold());
+        return AssistCheck.withAddon(AssistCheck.withAddon(reasons, addon, sim != null && addon != null && sim.assistOwnsHold()),
+                ClientCollision.INSTANCE.assistRule(drone), false);
     }
 
     public static AssistReasons preflight(@Nullable DroneBuild build, @Nullable VideoSystem goggles, HoldMode requestedHold) {
         VideoConfig config = VideoSettings.get();
-        PhysicsRules physics = ClientWorldRules.INSTANCE.physics();
+        PhysicsRules physics = ClientPersonalRules.INSTANCE.physics();
         AssistCheck.Setup setup = AssistCheck.Setup.clean().withHold(requestedHold).withRescue(rescueTrigger()).withPhysics(physics, false);
         if (build != null) {
             setup = setup.withDrone(build.isCreative(), RaceServer.issues(build))
                     .withGoggles(goggles == VideoSystem.CREATIVE, !config.creativeLatencyFromModule, config.creativeLatencyMs, build.video().latencyMs);
         }
-        return AssistCheck.evaluate(setup);
+        return AssistCheck.judge(setup, personal(worldValues()), ClientPersonalRules.INSTANCE.standard());
+    }
+
+    public static RaceRuleSet personal(Map<String, Integer> values) {
+        return RaceRules.observe(values, ZoneResolution.world(ClientPersonalRules.INSTANCE.base()), null);
+    }
+
+    public static Map<String, Integer> worldValues() {
+        return RaceRules.values(ClientWorldRules.INSTANCE.values(), ClientWorldRules.INSTANCE.raw());
     }
 
     public static @Nullable String rescueTrigger() {

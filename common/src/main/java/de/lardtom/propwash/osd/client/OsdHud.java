@@ -2,18 +2,20 @@ package de.lardtom.propwash.osd.client;
 
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.drone.client.FpvView;
-import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.osd.OsdConfig;
 import de.lardtom.propwash.osd.OsdData;
 import de.lardtom.propwash.osd.OsdElement;
 import de.lardtom.propwash.osd.OsdGrid;
 import de.lardtom.propwash.osd.OsdSampler;
+import de.lardtom.propwash.ui.SpeedUnit;
+import de.lardtom.propwash.ui.client.UiConfig;
 import de.lardtom.propwash.ui.client.theme.ThemedScreen;
 import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.FovMath;
 import de.lardtom.propwash.video.ImageArea;
 import de.lardtom.propwash.video.client.FpvImage;
 import de.lardtom.propwash.video.client.FpvLens;
+import de.lardtom.propwash.video.client.WatchedPilot;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -76,6 +78,7 @@ public final class OsdHud {
                 int guiScale = minecraft.getWindow().getGuiScale();
                 float scale = OsdGrid.snapToPixels(grid.textScale(config.scale), guiScale);
                 RENDERER.setPixelScale(guiScale);
+                RENDERER.setPilotUnits(WatchedPilot.speedUnit(), WatchedPilot.stickMode());
                 FrameTiming currentTiming = timing;
                 long start = currentTiming != null ? currentTiming.clock().getAsLong() : 0L;
                 RENDERER.render(graphics, minecraft.font, data, config, grid, scale, liveView(minecraft), false);
@@ -95,6 +98,25 @@ public final class OsdHud {
             } catch (RuntimeException e) {
                 reportError("Probe", e);
             }
+        }
+    }
+
+    public static void extractInSight(GuiGraphicsExtractor graphics, OsdData data) {
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            if (!data.active || SAMPLER.data().active || !RENDERER.hasAddonElements() || minecraft.gui.screen() instanceof ThemedScreen
+                    || replacement.getAsBoolean()) {
+                return;
+            }
+            graphics.nextStratum();
+            OsdConfig config = config();
+            OsdGrid grid = OsdGrid.screen(graphics.guiWidth(), graphics.guiHeight());
+            int guiScale = minecraft.getWindow().getGuiScale();
+            RENDERER.setPixelScale(guiScale);
+            RENDERER.setPilotUnits(WatchedPilot.speedUnit(), WatchedPilot.stickMode());
+            RENDERER.renderAddons(graphics, minecraft.font, data, config, grid, OsdGrid.snapToPixels(grid.textScale(config.scale), guiScale));
+        } catch (RuntimeException e) {
+            reportError("Add-ons im Sichtflug", e);
         }
     }
 
@@ -124,12 +146,23 @@ public final class OsdHud {
     }
 
     public static boolean hideVanilla() {
-        return config().hideVanillaHud && (PilotSession.INSTANCE.isFpv() || FpvView.spectating() || SAMPLER.hasOverride());
+        OsdConfig override = configOverride;
+        OsdConfig own = override != null ? override : OsdClient.CONFIG.get();
+        return own.hideVanillaHud && (FpvView.active() || SAMPLER.hasOverride());
     }
 
     public static OsdConfig config() {
         OsdConfig override = configOverride;
-        return override != null ? override : OsdClient.CONFIG.get();
+        if (override != null) {
+            return override;
+        }
+        OsdConfig pilot = WatchedPilot.osdConfig();
+        return pilot != null ? pilot : OsdClient.CONFIG.get();
+    }
+
+    public static SpeedUnit speedUnit() {
+        SpeedUnit pilot = WatchedPilot.speedUnit();
+        return pilot != null ? pilot : UiConfig.speedUnit();
     }
 
     static void overrideConfig(@Nullable OsdConfig config) {

@@ -1,0 +1,23 @@
+{
+  "propwash.drone.autonomy.started": "%s fliegt selbstständig (%s)",
+  "propwash.drone.autonomy.not_armable": "%s lässt sich nicht scharf schalten: %s",
+  "propwash.drone.autonomy.ended.pilot": "%s: Pilot hat übernommen",
+  "propwash.drone.autonomy.ended.landed": "%s ist gelandet",
+  "propwash.drone.autonomy.ended.battery": "%s: Akku schwach",
+  "propwash.drone.autonomy.ended.owner_offline": "%s: Besitzer offline",
+  "propwash.drone.autonomy.ended.out_of_range": "%s: Außer Reichweite",
+  "propwash.drone.autonomy.ended.stopped": "%s: Vom Add-on beendet",
+  "propwash.drone.autonomy.ended.timeout": "%s: Höchstdauer erreicht",
+  "propwash.drone.autonomy.ended.error": "%s: Flughilfe des Add-ons ausgefallen",
+  "propwash.drone.autonomy.ended.replaced": "%s: neuer selbstständiger Flug",
+  "propwash.drone.autonomy.ended.terrain_limit": "%s: Weltrand erreicht – Drohnen dürfen hier kein neues Gelände erzeugen",
+  "propwash.drone.autonomy.no_budget.player": "%s: kein weiterer autonomer Flug – höchstens %s je Spieler gleichzeitig (Welt-Regel „%s“)",
+  "propwash.drone.autonomy.no_budget.server": "%s: kein weiterer autonomer Flug – höchstens %s auf dem Server gleichzeitig (Welt-Regel „%s“)",
+  "propwash.drone.autonomy.no_budget.off": "%s: autonome Flüge sind in dieser Welt aus (Welt-Regel „%s“ = 0)",
+  "gamerule.propwash.autonomous_flights_per_player": "Autonome Flüge je Spieler gleichzeitig",
+  "gamerule.propwash.autonomous_flights_per_player.description": "Wie viele Drohnen ein Spieler gleichzeitig von Add-ons ohne Pilot fliegen lassen kann, etwa für Missionen, Folgen oder Halten. Ist das Budget voll, startet kein weiterer Flug und der Spieler bekommt eine Meldung mit dem Wert. GPS Rescue ohne Pilot hat Vorrang und behält daneben immer einen Platz je Spieler. 0 = keine.",
+  "gamerule.propwash.autonomous_flights_per_player.value.0": "Keine",
+  "gamerule.propwash.autonomous_flights_total": "Autonome Flüge gesamt",
+  "gamerule.propwash.autonomous_flights_total.description": "Wie viele Drohnen auf dem ganzen Server gleichzeitig von Add-ons ohne Pilot fliegen dürfen. GPS Rescue ohne Pilot hat Vorrang und behält daneben immer zwei Plätze. 0 = keine.",
+  "gamerule.propwash.autonomous_flights_total.value.0": "Keine"
+}

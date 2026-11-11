@@ -63,8 +63,8 @@ Ergänzt `docs/ARCHITECTURE.md` (Paketplan), `docs/CONVENTIONS.md` (verbindliche
 
 | Klasse | Aufgerufen von | Module (in dieser Reihenfolge) |
 |---|---|---|
-| `PropwashCommon.init()` | Fabric `fabric.PropwashFabric#onInitialize`, NeoForge `neoforge.PropwashNeoForge` (Konstruktor) | `core.CoreModule` → `content.ContentModule` → `drone.DroneModule` → `race.RaceModule` → `bando.BandoModule` → `server.ServerModule` → `zone.ZoneModule` → `rescue.RescueModule` → `input.InputModule` → `video.VideoModule` → `audio.AudioModule` → `ui.UiModule` → `osd.OsdModule` → `guide.GuideModule` |
-| `client.PropwashClient.init()` | Fabric `fabric.client.PropwashFabricClient#onInitializeClient`, NeoForge `neoforge.client.PropwashNeoForgeClient` (`@Mod(dist = CLIENT)`) | `core.client.CoreClient` → `content.client.ContentClient` → `drone.client.DroneClient` → `race.client.RaceClient` → `bando.client.BandoClient` → `server.client.ServerClient` → `zone.client.ZoneClient` → `rescue.client.RescueClient` → `input.client.InputClient` → `video.client.VideoClient` → `audio.client.AudioClient` → `ui.client.UiClient` → `osd.client.OsdClient` → `guide.client.GuideClient` → `core.DevExtensions.client()` (lädt `dev.client.DevClientBootstrap` aus dem Quell-Set `devtest`, falls vorhanden) |
+| `PropwashCommon.init()` | Fabric `fabric.PropwashFabric#onInitialize`, NeoForge `neoforge.PropwashNeoForge` (Konstruktor) | `core.CoreModule` → `parts.PartsModule` → `content.ContentModule` → `drone.DroneModule` → `race.RaceModule` → `bando.BandoModule` → `server.ServerModule` → `zone.ZoneModule` → `rescue.RescueModule` → `input.InputModule` → `video.VideoModule` → `relay.RelayModule` → `audio.AudioModule` → `ui.UiModule` → `trick.TrickModule` → `blackbox.BlackboxModule` → `interact.InteractModule` → `accessory.AccessoryModule` → `creative.CreativeModule` → `osd.OsdModule` → `guide.GuideModule` → `apiimpl.ApiModule` → (seit 0.6.0) `share.ShareModule` → `guard.GuardModule` → `webexport.WebExportModule` → `rx.RxModule` → `input.addon.AddonSwitchModule` → `drone.data.DroneDataModule` → `server.AddonWorldRules` → `accessory.dispense.DispenseModule` → `drone.operator.OperatorModule` → `barrier.BarrierModule` → `stats.StatsModule` |
+| `client.PropwashClient.init()` | Fabric `fabric.client.PropwashFabricClient#onInitializeClient`, NeoForge `neoforge.client.PropwashNeoForgeClient` (`@Mod(dist = CLIENT)`) | `core.client.CoreClient` → `parts.client.PartsClient` → `content.client.ContentClient` → `drone.client.DroneClient` → `race.client.RaceClient` → `bando.client.BandoClient` → `server.client.ServerClient` → `zone.client.ZoneClient` → `rescue.client.RescueClient` → `input.client.InputClient` → `video.client.VideoClient` → `relay.client.RelayClient` → `audio.client.AudioClient` → `ui.client.UiClient` → `trick.client.TrickClient` → `blackbox.client.BlackboxClient` → `interact.client.InteractClient` → `accessory.client.AccessoryClient` → `creative.client.CreativeClient` → `osd.client.OsdClient` → `guide.client.GuideClient` → `apiimpl.client.ApiClient` → `join.client.JoinClient` → (seit 0.6.0) `guard.client.GuardClient` → `rx.client.RxClient` → `race.client.GatePlaceHint` → `input.addon.client.AddonSwitchClient` → `server.client.AddonRuleSections` → `share.client.ShareClient` → `freecam.client.FreecamClient` → `drone.operator.client.OperatorClient` → `barrier.client.BarrierClient` → `stats.client.StatsClient` → `core.DevExtensions.client()` (lädt `dev.client.DevClientBootstrap` aus dem Quell-Set `devtest`, falls vorhanden) |
 
 **Jedes Modul hat beide Einstiege**, auch wenn seine Logik nur auf einer Seite läuft (audio/input/video/rescue/ui
 brauchen die Common-`init()` für SoundEvents und Payloads, server die Client-`init()` für seine S2C-Handler). Was wohin
@@ -111,7 +111,7 @@ public static final RegHolder<CreativeModeTab> TAB = PropwashRegistries.creative
         .displayItems((params, out) -> out.accept(GOGGLES.get())));
 public static final RegHolder<RecipeSerializer<MyRecipe>> SERIALIZER = PropwashRegistries.recipeSerializer("my_recipe", MyRecipe.CODEC, MyRecipe.STREAM_CODEC);
 public static final EntityDataSerializer<Foo> FOO = PropwashRegistries.entityDataSerializer("foo", EntityDataSerializer.forValueType(Foo.STREAM_CODEC));
-public static final RegHolder<TicketType> DRONE_TICKET = PropwashRegistries.ticketType("drone", 40L, TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION);
+public static final RegHolder<TicketType> DRONE_TICKET = PropwashRegistries.ticketType("drone", 40L, TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
 // Jedes weitere statische Register (Rezepttypen, Recipe-Book-Kategorien, Particle-Typen, …):
 public static final RegHolder<RecipeBookCategory> BENCH_BOOK = PropwashRegistries.list(Registries.RECIPE_BOOK_CATEGORY).add("drone_parts", key -> new RecipeBookCategory());
 public static final RegHolder<RecipeType<MyRecipe>> MY_TYPE = PropwashRegistries.list(Registries.RECIPE_TYPE).add("my_recipe", key -> new RecipeType<MyRecipe>() {
@@ -169,6 +169,7 @@ public static final RegHolder<RecipeType<MyRecipe>> MY_TYPE = PropwashRegistries
 | `CoreComponents.DRONE_ID` | `propwash:drone_id` | `UUID` der Drohne (= Entity-UUID der platzierten Drohne) auf dem Drohnen-Item; `QuadcopterItem#useOn` übernimmt sie, solange keine Entity mit dieser UUID existiert |
 | `CoreComponents.BATTERY_INSTALLED` | `propwash:battery_installed` | `Boolean`, nur vorhanden (`false`), wenn das Drohnen-Item keinen Akku enthält; fehlt = Akku eingesetzt |
 | `propwash:battery_charge` auf Akku-Items | | Akku-Items haben ihn im Prototyp (1,0); Schreiben nur über `content.Batteries.storeCharge` (auf 1/1000 gerundet, ab 0,999 exakt 1,0, damit volle Akkus stapeln) |
+| `drone.data.AddonData` | `propwash:addon_data` (Komponente und Entity-Data-Serializer, seit 0.6.0) | Daten der Add-ons an der Drohne, roh je Schlüssel `<ns>:<pfad>` (NBT `AddonData`); bleiben am Item und in der Welt, auch ohne das Add-on. Grenzen und Abgleich in `drone.data.DroneDataStore` (§15 „Add-on-Daten an der Drohne“) |
 
 ## 5. Netzwerk (`network.PropwashNet`, `network.client.ClientNet`)
 
@@ -376,8 +377,9 @@ SelfTest.clientStep("race: Gate spawnen", 100, ctx -> {
   auf dem Server-Thread, Tasten & HUD, Config-Datei, Threads und Sitzung (jedes
   Server-/Client-Event auf dem richtigen Thread, genau ein `LOGIN`); nach dem Verlassen: genau ein `DISCONNECT`, ein
   `PLAYER_LEAVE`, ein `STOPPED`, alles auf dem richtigen Thread.
-- Globaler Timeout 30 min (Ticks), Watchdog 46 min (echte Zeit, beendet die JVM hart); der volle Lauf mit
-  Bildschirmfotos hat nach Welle 3 658 Schritte und braucht in der Welt gut 21 min.
+- Zeitgrenze 6 s je ausgewähltem Schritt in der Welt, mindestens 80 min (Ticks); Wächter 16 min danach (echte Zeit,
+  beendet die JVM hart). Der volle Lauf hat in 0.6.0 auf Fabric mit Bildschirmfotos rund 1 800 Schritte und läuft für
+  Prüfungen meist in Teilen (`docs/testing.md` §6 „Selbsttest in Teilen“).
 - Der Lauf endet immer von selbst, auch nach FAIL oder Absturz (`SelfTestRunner`, Thread `Propwash-Selftest-Exit`):
   Läuft das Spiel 120 s nach dem geschriebenen Ergebnis noch, beendet er den Prozess (Ergebnisdatei bleibt); steckt der
   Spiel-Thread nach einem Absturz 30 s in `Minecraft.emergencySave` oder 5 min im Anhalten des integrierten Servers
@@ -393,6 +395,34 @@ SelfTest.clientStep("race: Gate spawnen", 100, ctx -> {
   Rahmen-Schritte aus `SelfTest.baseStep`/`setupStep`/`switchStep`. `-PpropwashSelftestList=true` schreibt nur die
   Schrittliste `propwash-selftest-steps.md` ins Run-Verzeichnis. Präfixe, Regeln, Ports paralleler Läufe und Messwerte:
   `docs/testing.md`. Der Lauf vor dem Zusammenführen und vor einem Release läuft immer ohne Filter.
+- **Gruppe `drone: Landung`** braucht keine vorigen Schritte: Ohne laufende Sitzung setzt sie eine eigene Drohne und
+  fliegt im Sichtflug, im vollen Lauf nutzt sie die Sitzung der Drohnen-Schritte (JUnit `LandingSelfTestSequenceTest`).
+- **Tests nach dem Klon** (seit 0.6.0, `docs/test-paths.md`): Testpfade kommen aus `testutil.TestPaths`. Die Wurzel kommt
+  aus `propwash.rootDir` (gesetzt vom Test-Task) oder aus der Suche nach oben bis `settings.gradle`; Ressourcen werden
+  über den Klassenpfad gelesen, geschrieben wird nur mit `propwash.testResources`. Golden-Dateien haben die Zeilenform
+  `<schlüssel> <wert> [<wert für x86_64>]`: Die erste Spalte gilt für aarch64, andere Architekturen prüfen nur die
+  Schlüssel. `-Dpropwash.goldenUpdate=true` schreibt neu (aarch64 die erste Spalte, x86_64 unter Rosetta die zweite).
+- **Probe-Mod `nsprobe`** (Namensraum-Prüfung, §15): `-PpropwashNsProbe=true` lädt den Mod aus dem Quell-Set
+  `common/src/nsprobe` in die Läufe mit `devtest`; er verletzt den Namensraum `propwash` absichtlich in jeder Kategorie.
+  Die Erwartung je Kategorie steht in `guard.client.GuardSelfTests.EXPECTED`. Ohne Probe muss die Gruppe `guard:` 0 Funde
+  melden (harte Prüfung auf Fehlalarme).
+- **Prüf-Infrastruktur 0.6.0** (Abläufe in `docs/testing.md` §7):
+  - `PROPWASH_JOINTEST_MULTI` kennt `1`, `pilot`, `watcher`, `solo`, `watchsolo` und `migration`. Die Spieler heißen
+    PwPilotA und PwPilotB; das Startzeichen ist ein Papier `propwash-jointest-watched` in Platz 9. Im Modus `multi` ist der
+    Zuschauer Operator und räumt mit `/propwash clear` auf. `dev.MultiJoinCheck` (Modi `multi` und `watchsolo`): Sobald
+    der Zuschauer nicht mehr zuschaut, startet eine Gimbal-Drohne ins autonome Halten (`ExampleFollow`), und der
+    Zuschauer wird gebunden (`ExampleOperator.bind`); Ende von Flug und Bindung stehen im Log.
+  - Altwelt-Umstieg: `propwash.selftest.fixtureWorld` erwartet `world.zip` und `expected.json` im Format 1 der
+    Testwelten. `dev.MigrationValues` (ohne Client-Klassen) erfasst und vergleicht die Werte, liest Stapel aus der
+    Erwartung und meldet am Server eine Runde durch Gates auf Beinen; genutzt von `migration:` und `dev.MigrationJoinCheck`.
+    `PROPWASH_JOINTEST_MULTI=migration` mit `PROPWASH_JOINTEST_FIXTURE` wird über `ServerSmoke.init` und dann
+    `MultiJoinCheck.init` angemeldet; die Ergebnisse gehen als Papier `propwash-migration …` in Platz 9 an den Piloten.
+    `MigrationValues.freecamOff` prüft Standard und Wert von `allow_freecam`, `MigrationSelfTests.freecamClient` dasselbe
+    beim Client.
+  - Drehwelt: Die Prüfungen stehen in `dev.client.DrehweltChecks`, die Freecam auf dem Turm in `dev.client.DrehweltFreecam`.
+    Sie erkennt die Features an `propwash:rx_block`, `sim.SurfaceResponse`, `interact.DroneBlockTriggers`,
+    `drone.client.render.PowerLead`, `race.GateOpenings`, der Regel `allow_freecam` und dem OSD-Element
+    `flight_path_marker`; wer diese Namen ändert, passt `DrehweltSelfTests` an.
 - **Dev-Spieler** (`dev.client.DevPlayerCheck`, nur mit `-PpropwashDevName=<Name>` am Selbsttest, sonst nicht
   angemeldet): Schritt „dev: Skin des Dev-Spielers in der dritten Person“ wartet bis 20 s auf den heruntergeladenen Skin
   (`ClientAsset.DownloadedTexture`, sonst FAIL), fotografiert den Spieler von vorn nach
@@ -503,7 +533,9 @@ Die Gradle-Tasks nacheinander starten, nicht parallel.
     `fabric-transitive-access-wideners-v1`/`fabric-creative-tab-api-v1`).
 - Loader-Metadaten (`fabric.mod.json`, `neoforge.mods.toml`) sind kommentarfrei. Beide listen dieselben Mixin-Configs
   in derselben Reihenfolge; ein Modul ohne Mixins hat keine Config. Wer die erste Mixin-Klasse eines Moduls anlegt,
-  legt `propwash.<modul>.mixins.json` an und meldet den Eintrag in beiden Metadaten als Foundation-Wunsch.
+  legt `propwash.<modul>.mixins.json` an und meldet den Eintrag in beiden Metadaten als Foundation-Wunsch. Ausnahme:
+  Configs im Modul eines Loaders (`neoforge/src/main/resources/propwash.fabricsync.mixins.json`,
+  `docs/design/cross-loader-join.md`) stehen nur in dessen Metadaten, am Ende der Liste.
 
 ## 11. Modulübergreifende Verträge
 
@@ -602,9 +634,18 @@ Schaden/Drop und Interpolation.
   bleiben; Disarm separat mit `setArmed(false)`. Umsetzung: `snapTo` + Geschwindigkeit 0 + `setAttitude`, Zähler
   `resetEpoch()` +1 (synchronisiert; Bewegungspakete mit anderer Epoche verwirft der Server) und
   `DroneResetS2C` an den Piloten.
-- Vanilla-Hooks: `hurtServer` → Spieler zerlegen die Drohne sofort (Drop außer im Kreativmodus), anderer Schaden
+- Vanilla-Hooks: `hurtServer` → Schaden durch ein eigenes Geschoss der Drohne (`OwnShots.from`) kommt nicht an;
+  Spieler zerlegen die Drohne sofort (Drop außer im Kreativmodus), anderer Schaden
   summiert sich bis zur Bruchgrenze; `isPickable` → nicht entfernt; `onRemoval` → Pilot serverseitig zurücksetzen
   (feuert `PILOT_CHANGED`).
+- Vanilla-Drehung (`docs/drone-rotation.md`): `teleportSetPosition`, `forceSetRotation` und `lookAt` (nur Server)
+  setzen die Lage aus Vanilla-Gier und -Nick, ohne Rollen (`drone/VanillaRotation#attitude`). Ohne Rotationsangabe
+  (relative Gier und relativer Nick ohne Änderung, `#turns`) bleibt die Lage. Bei einer geflogenen Drohne: Epoche +1, und
+  `DronePiloting#sendTurn` schickt `DroneResetS2C` mit den Merkern „Tempo behalten“ und „Position behalten“ (bei
+  `/rotate` und bei einem Teleport ohne Ortswechsel). Das Merker-Byte hat Bit 0 = home, Bit 1 = Tempo, Bit 2 = Position;
+  ein normaler Reset ist byte-gleich. `PilotSession#onReset` behält das Welttempo und dreht den Drehimpuls mit
+  (`VanillaRotation#carryMotion`), `DroneClient#onReset` behält bei „Position behalten“ die Client-Position. Beim
+  Server-Flug (Heimflug, Add-on-Autonomie) führt der Server-Regler die Lage weiter selbst.
 
 ### `drone/client/PilotSession` (drone)
 Aktuelle Flugsitzung des lokalen Spielers, `PilotSession.INSTANCE`.
@@ -721,6 +762,17 @@ Server-Config (`ServerRulesConfig`) und aus Rechten (Permission-Level).
   verwirft Bewegungspakete in nicht geladene Chunks weiterhin (`DronePiloting`).
 - Den Körper des Piloten am Absinken hindern (`network-entity.md` 4.4, Mixin auf `LivingEntity#travel` für den lokalen
   Spieler) gehört drone (`mixin.drone.client`), denn es hängt an der `PilotSession`.
+- **Drohnen aufräumen** (seit 0.6.0, `server.DroneClear`, Unterbefehl `/propwash clear [<ziele>]` in
+  `server.ServerCommands`, `docs/clear-command.md`): Aufräumen ohne Drop, Rechtestufe 2. Ohne Ziele alle
+  `QuadcopterEntity` in geladenen Bereichen aller Dimensionen (`DroneClear.loaded`), mit Entity-Auswahl nur die Drohnen
+  darin (`among`). Je Drohne: Heimflug-Plan löschen, F7-Zuschauer abmelden (`SpectatorLinks.unwatch`), `discard()`.
+  `onRemoval` löst den Piloten, `PILOT_CHANGED` beendet Pilot-Verbindung, Sichtanker und `BY_PILOT`;
+  `AutonomousReturns` startet für die entfernte Drohne keinen Heimflug, die Ansicht eines Kamera-Operators endet sofort.
+  Ledger-Tickets fallen mit dem nächsten Tick. Pilot und Heimflug-Besitzer bekommen `propwash.drone.removed`, Absender
+  und Operatoren `propwash.server.command.clear.done` bzw. `.done.one` mit Anzahl je Dimension (`DroneClear.Tally`),
+  ohne Treffer `…clear.none` als Fehler mit Ergebnis 0; Log-Zeile mit Absender. Kein Netzpaket, keine API, Protokoll
+  unverändert. Prüfungen: `server.ClearServerChecks` im Server-Rauchtest, Selbsttest `server: /propwash clear`, JUnit
+  `DroneClearTest`.
 
 ### Kamera und Ansicht (drone + video, nur Mixins)
 Feste Besitzer, damit nicht zwei Module dieselbe Methode überschreiben (`camera-gui.md`):
@@ -838,7 +890,7 @@ innerhalb eines Frames konsistent.
   `keyboard.startInAngle` im Angle-Modus. „Maus + Tastatur“ (`selectedGuid = "mouse"`) ist Tastaturflug mit Maus für
   Nick/Roll (bzw. Gieren) und Mausrad-Gas; Quelle bleibt `RadioSource.KEYBOARD` mit Gerät `mouse`, Taste
   `kb_mouse_center` (mittlere Maustaste, geteilt mit Vanilla „Block auswählen“) zentriert die Maus-Knüppel
-  (`docs/design/mouse-control.md`). rescue (J Rescue, Komma Homepoint), race (Rücktaste) und
+  (`docs/design/mouse-control.md`). rescue (J Rescue, Komma Homepoint, Rücktaste Reset),
   ui (K) und guide (M) behalten ihre eigenen Tasten; `KeyDefaults` spiegelt sie nur für die Doppelungsprüfung. Alle
   Propwash-Tasten lassen sich im Konfigurator-Tab „Tasten“ (`input.client.screen.KeysTab`, Order 420) ändern; der Tab
   arbeitet auf einem Entwurf und setzt die Tasten erst in `save()` (`KeyMapping#setKey`, `KeyMapping.resetMapping()`,
@@ -862,8 +914,11 @@ innerhalb eines Frames konsistent.
   ALTHOLD ein), `CARGO_DROP` (Fracht abwerfen), `MODE_3D` (3D-Modus an; Taste `KeyDefaults.MODE_3D` = Ziffernblock 6, an Funke
   und Gamepad unbelegt), `COMMAND_1` … `COMMAND_8` (eigene Befehle, `command()`/`commandIndex()`, `flightFunctions()` ohne
   sie; Texte in `DeviceProfile.commands`, Tasten `KeyDefaults.COMMANDS` unbelegt; nicht im Empfänger-Assistenten;
-  `docs/design/switch-commands.md`); Ordinalzahlen sind die Bits von `activeSwitches()` und `readableSwitches()` (Funktionen, deren Belegung am
-  aktuellen Gerät lesbar ist; Tastatur und kein Gerät ⇒ 0, `SwitchEvaluator#readable`): nur hinten anhängen;
+  `docs/design/switch-commands.md`); Ordinalzahlen sind die Bits der `long`-Masken `activeSwitches()` und `readableSwitches()` (Funktionen, deren Belegung am
+  aktuellen Gerät lesbar ist; Tastatur und kein Gerät ⇒ 0, `SwitchEvaluator#readable`; bis 64 eingebaute Funktionen,
+  `SwitchEvaluator#bit` = `1L << ordinal`): nur hinten anhängen; Add-ons können per Mixin weitere Werte anhängen, deshalb
+  braucht jede Fallunterscheidung über `SwitchFunction`, `OsdElement` und `ModesTab$Row` einen Standardfall
+  (`ExtendedSwitchFunctionTest` prüft das im Bytecode), und `builtIn()` trennt die eingebauten Werte von angehängten;
   Sprachschlüssel `translationKey()` = `propwash.input.switch.<name>`;
   `supportsToggle()` (ARM, ANGLE, HORIZON, RESCUE, BEEPER, RECORD, LEDS_OFF, ALT_HOLD, POS_HOLD, MODE_3D, COMMAND_1…8; nicht bei den Tast-Funktionen
   FLIP_OVER, SET_HOME, RESET), `latchesOnGamepad()` (Gamepad-Tasten schalten standardmäßig um; nicht bei den eigenen Befehlen). Die Belegung wird im
@@ -1011,10 +1066,12 @@ Implementierungen: `fabric/…/fabric/platform`, `fabric/…/fabric/client`, `ne
 | `:fabric:runClientSelftest`, `:neoforge:runClientSelftest` | Selbsttest (Abschnitt 9), `runs/selftest-client`; Fabric mit `-PpropwashScreenshots=true` zusätzlich Bildschirmfotos nach `docs/screenshots/` |
 | `:fabric:runClientSmoke`, `:neoforge:runClientSmoke` | Start-Rauchtest ohne Selbsttest-Modus (Abschnitt 9), `runs/smoke-client` |
 | `:fabric:runServer`, `:neoforge:runServer` | Dev-Server, `runs/server`. Fabric: EULA muss in `fabric/runs/server/eula.txt` von Hand akzeptiert werden; NeoForge-Dev stimmt automatisch zu (`Eula` prüft `SharedConstants.IS_RUNNING_IN_IDE`) |
-| `:fabric:runServerSmoke`, `:neoforge:runServerSmoke` | Server-Rauchtest (`dev.ServerSmoke`, Property `propwash.serversmoke`): dedizierter Server ohne GUI in `runs/smoke-server`, Flachwelt, Offline-Modus, Port 25601; spawnt nach `STARTED` eine Drohne, prüft die Rechte der Welt-Regeln (`server.WorldRulesRights`: Gast ohne Recht per Tab, Voreinstellung und `/gamerule` abgelehnt, als Operator übernommen; Admin ohne Operator mit `/gamerule`-Recht aus einem simulierten Rechte-Mod – der Test ersetzt wie Vanilla Permissions die Bedingung des Befehlsknotens `gamerule` per Reflection, weil im Dev-Lauf kein Rechte-Mod installiert ist – ändert per Tab, Voreinstellung und Befehl, ohne und nach dem Entzug nur lesbar), den Blockbruch und die Drohnen-Tags (`drone.DroneTagChecks`, `docs/design/drone-tags.md`), nach 20 Ticks den Homepoint im NBT (`rescue.HomePointChecks`, `docs/design/home-point.md`), hält den Server nach 100 Ticks an und schreibt PASS/FAIL nach `propwash-selftest-result.txt`. Der Task schlägt fehl ohne PASS oder bei `/ERROR]`-, `/FATAL]`- oder Mixin-Fehlerzeilen in `logs/latest.log`. `prepareServerSmoke` legt vorher `eula.txt`, `server.properties` neu an und löscht die alte Welt. Läuft bei jeder Integration zusammen mit Selbst- und Rauchtest. |
-| `prepareRuns` | schreibt/patcht `options.txt` stumm (Master 0.001, alle anderen `soundCategory_*` 0, `pauseOnLostFocus:false`, `onboardAccessibility:false`); alle `run*`-Tasks hängen davon ab |
+| `:fabric:runServerSmoke`, `:neoforge:runServerSmoke` | Server-Rauchtest (`dev.ServerSmoke`, Property `propwash.serversmoke`): dedizierter Server ohne GUI in `runs/smoke-server`, Flachwelt, Offline-Modus, Port 25601; spawnt nach `STARTED` eine Drohne, prüft die Rechte der Welt-Regeln (`server.WorldRulesRights`: Gast ohne Recht per Tab, Voreinstellung und `/gamerule` abgelehnt, als Operator übernommen; Admin ohne Operator mit `/gamerule`-Recht aus einem simulierten Rechte-Mod – der Test ersetzt wie Vanilla Permissions die Bedingung des Befehlsknotens `gamerule` per Reflection, weil im Dev-Lauf kein Rechte-Mod installiert ist – ändert per Tab, Voreinstellung und Befehl, ohne und nach dem Entzug nur lesbar), den Blockbruch und die Drohnen-Tags (`drone.DroneTagChecks`, `docs/design/drone-tags.md`), nach 20 Ticks den Homepoint im NBT (`rescue.HomePointChecks`, `docs/design/home-point.md`), hält den Server nach 100 Ticks an und schreibt PASS/FAIL nach `propwash-selftest-result.txt`. Der Task schlägt fehl ohne PASS oder bei `/ERROR]`-, `/FATAL]`- oder Mixin-Fehlerzeilen in `logs/latest.log`. `prepareServerSmoke` legt vorher `eula.txt`, `server.properties` neu an und löscht die alte Welt, nur für die Loader, deren `runServerSmoke` im Aufruf läuft (direkt aufgerufen beide). Läuft bei jeder Integration zusammen mit Selbst- und Rauchtest. |
+| `prepareRuns` | schreibt/patcht `options.txt` stumm (Master 0.001, alle anderen `soundCategory_*` 0, `pauseOnLostFocus:false`, `onboardAccessibility:false`) in den Run-Verzeichnissen der Clients im Aufruf (ohne Client-Task alle), in Selbsttest- und Rauchtest-Instanzen zusätzlich `renderDistance:6`, `simulationDistance:5`, `guiScale:0`, `graphicsPreset:"custom"` (sonst setzt die Voreinstellung „fancy“ bei jedem Start 16/12) und `lang:en_us` (deutsche Bildschirmfotos hinterlassen ihre Sprache nicht); alle `run*`-Tasks außer `runServerSmoke` hängen davon ab |
 | `-PpropwashTestWindowFront=true` | Selbsttest- und Rauchtest-Clients öffnen ihr Fenster sonst im Hintergrund, ohne Fokus, Dock-Symbol und Mausgriff (`docs/testing.md`, „Testfenster ohne Mausgriff und Fokus“); mit der Property startet das Fenster wie ein normaler Client, der Zeiger des Systems bleibt trotzdem frei |
 | `:common:mergeLang` | Sprachdateien zusammenführen |
+| `:fabric:runWebExport` | Web-Export (seit 0.6.0, §15 „Sharecodes PW3 und Web-Export“): dedizierter Server, Befehl `/propwash webexport` über die Konsole, Auswahl mit `-PpropwashWebExportMods`, Kopie nach `build/web-export/` |
+| `-PpropwashNsProbe=true` | lädt den Probe-Mod `nsprobe` in Selbsttest, Rauch- und Beitrittstest (§9, Namensraum-Prüfung); nie im Release-Jar |
 | `publishToMavenLocal` | veröffentlicht `de.lardtom:propwash-common-26.3`, `propwash-fabric-26.3` und `propwash-neoforge-26.3` (Version aus `gradle.properties`, samt Quellen- und Javadoc-Jar) nach `~/.m2` für die Addon-Entwicklung (`docs/api/addon-guide.md` §1.1); Gruppe `maven_group` |
 | `python3 tools/strip_comments.py` | entfernt Kommentare aus `common/src`, `fabric/src`, `neoforge/src` (kein Gradle-Task) |
 | `python3 tools/data/survival.py [--check]` | erzeugt bzw. prüft Rezepte, Rezept-Fortschritte, Truhen-Beute und NeoForge-Loot-Modifier (§15 „Überlebensmodus“; kein Gradle-Task) |
@@ -1090,9 +1147,10 @@ Immer mit `JAVA_HOME=/opt/homebrew/opt/openjdk@25`.
 ### Neue Verträge
 | Datei | Besitzer | Vertrag |
 |---|---|---|
-| `ui/client/config/ConfigTab`, `ConfigTabHost`, `ConfigTabs` | ui (Rahmen, Screen) | Tabs des Konfigurators. Jedes Modul, das Einstellungen hat, registriert in seiner Client-`init()` `ConfigTabs.register(MeinTab::new)`; ui baut den Screen (`ConfigTabs.setOpener`), fragt `ConfigTabs.create()` beim Öffnen ab und ruft `attach(host, x, y, w, h)` → `build()`. Widgets über `host.addWidget(...)`, Neuaufbau `host.rebuild()`, Wertänderung `host.changed()`. ui darf die Klassen erweitern, aber keine Signatur brechen. |
+| `ui/client/config/ConfigTab`, `ConfigTabHost`, `ConfigTabs` | ui (Rahmen, Screen) | Tabs des Konfigurators. Jedes Modul, das Einstellungen hat, registriert in seiner Client-`init()` `ConfigTabs.register(MeinTab::new)`; ui baut den Screen (`ConfigTabs.setOpener`), fragt `ConfigTabs.create()` beim Öffnen ab und ruft `attach(host, x, y, w, h)` → `build()`. Widgets über `host.addWidget(...)`, Neuaufbau `host.rebuild()`, Wertänderung `host.changed()`. ui darf die Klassen erweitern, aber keine Signatur brechen. Seit 0.6.0: `ConfigTabs.registerFreecamOnly(…)` meldet Tabs an, die es nur im K-Menü der Freecam gibt; `create()` und `registeredCount()` zählen sie nicht, `create(true)` liefert sie zusammen mit den Tabs, deren `freecam()` wahr ist, und `SettingsIndex` durchsucht `create(screen.freecam())`. |
 | `drone/client/PilotSession#sim()` | drone | laufendes Flugmodell (`sim.DroneSim`, null wenn inaktiv); Telemetrie über `sim().telemetry()`. `physicsFrameNanos()` = Zeitstempel des letzten Physik-Frames. |
 | `drone/QuadcopterEntity#renderAttitude(partialTick, dest)`, `rotorAngle(motor, partialTick)`, `motorOutput(motor)` | drone (implementiert), drone-render (nutzt) | interpolierte Lage fürs Rendern, Prop-Winkel je Motor (Radiant), Motorleistung je Motor 0..1 |
+| `drone/RemoteMotion`, `drone/RemoteInterpolation` (`QuadcopterEntity#createInterpolationHandler` auf dem Client, `lerpMotion`) | drone (JUnit `drone.RemoteMotionTest`, Selbsttest „drone: Fremde Drohne bei schlechter Verbindung …“ in `drone.client.RemoteMotionSelfTests`) | Fremde Drohnen (ohne lokalen Zustand) laufen durch einen Jitter-Puffer statt der Interpolation über zwei Ticks (Befund OT4-3, `docs/remote-motion.md`): Positionen aus `interpolateTo`, Tempo aus `lerpMotion` (Server-Tempo, `trackDeltas`), Lage aus `DATA_ORIENTATION`; Zeitstempel = vorheriger + Weg ÷ Tempo (ohne Tempo: Ankunftsabstand bzw. geschätztes Tempo), ein Achtel der Abweichung zur Ankunft wird nachgeführt, über 400 ms neu gesetzt; Verzögerung 75 ms + 2,5 × Jitter in 100–200 ms, höchstens 5 % je Zeit nachgeführt; Position linear, Lage per Slerp, ab dem letzten Stempel bis 250 ms extrapoliert (Server-Tempo, sonst Weg über ≥ 120 ms aus fortlaufenden Paketen, Lücke höchstens 500 ms; Drehrate ebenso, nur bei fliegender Drohne ab 1,5 Blöcken/s), neue Daten setzen den Fehler zum Gezeigten, der in 120 ms abklingt. Steht die Drohne (Server-Tempo unter 1,5 Blöcken/s) und kommt nach über 250 ms eine neue Pose (`/tp`, `/rotate`), hält eine Halteprobe die alte Pose bis 50 ms davor – die Drohne dreht und versetzt sich dann in zwei Ticks wie bisher; Halteproben geben kein Tempo. Je Tick (Tick-Uhr 50 ms, ein Achtel nachgeführt, über 250 ms neu) setzt `RemoteInterpolation#interpolate` die Position, `tickClientVisuals` übernimmt die Lage; ein Sprung über `snapDistance` (größtes aus Server-, vorigem und geschätztem Tempo × (Zeit seit der letzten Position + Verspätung der letzten Position, höchstens 1 s, + 250 ms) × 1,5, mindestens 16 Blöcke; Befund AUTO68-1; meldete der Server vor der neuen Position Tempo unter 1,5 Blöcken/s und seitdem keins, steht die Drohne und es gelten 16 Blöcke, auch nach den Positionsmeldungen ohne Bewegung alle 60 Ticks; Tempo höchstens 10 ms vor der Position zählt als Start; Befunde G-OT4-2-1, AUTO70-1), `cancel` (z. B. `snapClientPose`) oder eine von außen gesetzte Position leeren den Puffer; lokaler Zustand (eigene Drohne) bleibt unberührt. Befund OT8-1: Die Startposition des Clients (`seed`) ist eine Halteprobe und bringt das Tempo der Drohne aus dem Spawn-Paket mit (Vanilla setzt es ohne `lerpMotion`; nach einem Teleport-Schnitt ebenso das zuletzt gemeldete), aus Positionen geschätzt wird nur bei fliegender Drohne (ab 1,5 Blöcken/s); sinkt das Bild unter die letzte Position des Servers (beim Weiterrechnen) bzw. unter die Spur (beim Zurückführen), kappt `RemoteMotion` am Boden, den `RemoteInterpolation` senkrecht mit der Hitbox samt Zubehör-Tiefe (`AirframeSpec#accessoryDepth`) misst, nicht wenn die Hitbox dort schon im Block steckt; `QuadcopterItem` setzt eine Drohne mit Zubehör unter dem Rahmen gleich darauf (`QuadcopterEntity#accessoryLift`, dieselbe Messung `accessoryRoom` wie `standOnAccessories`); Selbsttest „drone: Gesetzte Drohne …“ in `drone.client.PlacedDroneSelfTests` |
 
 ### Verträge aus dem Gameplay-Loop v2 (`docs/design/gameplay-loop-v2.md`)
 | Datei | Besitzer | Vertrag |
@@ -1106,7 +1164,7 @@ Immer mit `JAVA_HOME=/opt/homebrew/opt/openjdk@25`.
 ### Überlebensmodus: Rezepte, Zwischenteile, Truhen-Beute (content, `docs/design/survival.md`)
 | Datei | Besitzer | Vertrag |
 |---|---|---|
-| `tools/data/survival.py` | content | **einzige Quelle** für alle Rezepte (`data/propwash/recipe`), deren Freischalt-Fortschritte (`advancement/recipes/<ordner>`), die Beutetabellen `data/propwash/loot_table/inject/*` und die NeoForge-Loot-Modifier (`neoforge/src/main/resources/data/propwash/loot_modifiers/chests/...`). Nie von Hand ändern: Skript anpassen, `python3 tools/data/survival.py` ausführen; `--check` prüft Stand, Vanilla-Ids/Tags und Rezeptkonflikte gegen `.ref/vanilla`. Race behält seine Gate-/Kurs-Werkzeug-Rezepte (reine Vanilla-Zutaten, Reiter `building`/`equipment`), sie stehen nur mit im Skript. Freischaltung: jede Zutat **oder** jedes Propwash-Item (`has_propwash_item`) schaltet ein Rezept frei; Reiter: Zwischenteile, Werkbank, Ladegerät `misc`, Gates `building`, alles andere `equipment`; der Fortschritts-Ordner folgt dem Reiter (`misc`, `tools`, `building_blocks`). `--check` vergleicht die Item-Liste mit `assets/propwash/items`, neue Items also dort und im Skript eintragen (JUnit `SurvivalRecipeBookTest`, Begründung in `docs/design/survival.md` „Rezeptbuch“) |
+| `tools/data/survival.py` | content | **einzige Quelle** für alle Rezepte (`data/propwash/recipe`), deren Freischalt-Fortschritte (`advancement/recipes/<ordner>`), die Beutetabellen `data/propwash/loot_table/inject/*` und die NeoForge-Loot-Modifier (`neoforge/src/main/resources/data/propwash/loot_modifiers/chests/...`). Nie von Hand ändern: Skript anpassen, `python3 tools/data/survival.py` ausführen; `--check` prüft Stand, Vanilla-Ids/Tags und Rezeptkonflikte gegen `.ref/vanilla`. Race behält seine Gate-/Kurs-Werkzeug-Rezepte (reine Vanilla-Zutaten, Reiter `building`/`equipment`), sie stehen nur mit im Skript. Freischaltung: jede Zutat **oder** jedes Propwash-Item (`has_propwash_item`) schaltet ein Rezept frei; Reiter: Zwischenteile, Werkbank, Ladegerät `misc`, Gates `building`, alles andere `equipment`; der Fortschritts-Ordner folgt dem Reiter (`misc`, `tools`, `building_blocks`). `--check` vergleicht die Item-Liste mit `assets/propwash/items`, neue Items also dort und im Skript eintragen (JUnit `SurvivalRecipeBookTest`, Begründung in `docs/design/survival.md` „Rezeptbuch“). Neue Rezepte zusätzlich in `SurvivalSelfTests.OTHER_CRAFTABLE` eintragen, als Kennung (`ContentIds`, `Constants.id(…)`), nicht über Klassen, die beim Laden registrieren; der JUnit-Test `content.client.SurvivalSelfTestsRecipeListTest` gleicht die Rezeptdateien mit `craftableIds()` ab |
 | `mixin.ui.client.FullTextSearchTreeMixin`, `ui.client.ModSearch` | ui | Rezeptbuch- und Kreativ-Suche: ein Präfix von „propwash“ ab vier Zeichen ohne `:` findet zusätzlich alle Einträge im Namensraum `propwash` (Vanilla sucht ohne `:` nur in Namen/Tooltips) |
 | `content/CraftingMaterial`, `content/ContentMaterials`, `content/MaterialItem` | content | Zwischenteile `carbon_plate`, `copper_coil`, `circuit_board`, `lipo_cell`, `hd_chip` (Item-Ids = `key()`, nie umbenennen). Rezepte dürfen nur Vanilla-Zutaten und diese Zwischenteile nutzen (JUnit `SurvivalDataTest`, `ContentDataTest`). Shift-Tooltip: `propwash.help.<id>.summary/what.N`, gemeinsame Zeile `propwash.help.material.use.1`, Fundorte `…<id>.use.N`, Abschnitt „Zutat für“ (`propwash.help.section.ingredient_for`) aus `…<id>.fits.N` |
 | `content/ItemHelp.Builder#fitsHeader(key)` | content | ersetzt die Überschrift des „Passt zu“-Abschnitts (Standard `propwash.help.section.fits`) |
@@ -1138,6 +1196,21 @@ Inventar schaltet alle Propwash-Rezepte frei; der Client zeigt sie im erwarteten
   Abschnitte = Luft). `VideoState` startet je Tick eine Runde vom Kopf des Spielers zur Antenne (Abstand bis zur
   1,05-fachen Grenzreichweite + 16), höchstens 24 000 Zellen je Tick, und reicht `obstructionDb` an `LinkBudget`; Zeiten je
   Tick (Durchschnitt, Spitze), Strahlen und Zellen der letzten Runde für den Selbsttest.
+- **Gelände-Gedächtnis** (seit 0.6.0; `video.client.TerrainMemory`, `video.link.TerrainColumns`/`TerrainCache`, Mixin
+  `mixin.video.client.ClientChunkCacheMixin`, `docs/signal-memory.md`): Ohne geladenen Chunk liest `ClientBlockLoss` die
+  gemerkte Säule (Oberkante, Laubdach, Material; ab MOTION_BLOCKING höchstens 32 Blöcke abwärts über Luft, Laub, Pflanzen
+  und dünne Blöcke unter einem halben Block; Schnee/Eis oben → Material darunter; hohes Laub → weiter ab
+  MOTION_BLOCKING_NO_LEAVES). Gemerkt wird bei `ClientChunkCache#drop` und für alle Chunks, die beim Verschieben oder
+  Verkleinern des Ausschnitts herausfallen (in 26.3 kommt der neue Mittelpunkt vor den Forget-Paketen). Höchstens 4 096
+  Chunks LRU, an die Welt gebunden, nichts auf der Platte, geladene Chunks haben Vorrang, nie Gesehenes = Luft.
+  Selbsttests „signal: …“ (`video.client.SignalMemorySelfTests`), Beitrittstest `signal` (`dev.SignalJoinCheck`).
+
+  | Klasse | Modul | Zweck |
+  |---|---|---|
+  | `video/client/TerrainMemory` | video | Gelände-Gedächtnis je Welt; `remember`, `columns` |
+  | `video/link/TerrainColumns` | video | Säulen eines Chunks und Suchregel |
+  | `video/link/TerrainCache` | video | LRU, 4 096 Chunks |
+  | `mixin/video/client/ClientChunkCacheMixin` | video | Merken bei `drop`, `updateViewCenter`, `updateViewRadius` |
 - **Selbsttests**: „video: Funk-Material der Blöcke“ (Einordnung von 36 Blöcken, Formen, alte Reflexionswerte) und
   „video: Abschattung hinter Baum, Haus und Wald, Vorbeiflug und Runde ums Haus“ (Anlage 400 Blöcke vom Spieler mit
   denselben Szenen wie JUnit `ShadowScenariosTest`: Eiche, Haus aus Bruchstein mit Fenstern, Wald; 26 Stellungen –
@@ -1392,6 +1465,9 @@ Inventar schaltet alle Propwash-Rezepte frei; der Client zeigt sie im erwarteten
   - Flugschule: `SceneFraming` verkleinert Übersichtseinstellungen (Zoom ≤ 1) so weit, dass die Bühne (gesetzte Blöcke) mit 10 %
     Rand ins Bild passt (höchstens auf 70 %); der Bedienhinweis steht in normaler Schrift auf einer festen Fläche.
   - Assistent: Fußleiste links „Zurück/Zurücksetzen“, rechts gruppiert „Abbrechen“ + „Weiter“.
+- **Toasts** (`ui.client.theme.ThemedToast`, seit 0.6.0): Titel und Text werden nicht im Konstruktor zerlegt, sondern über
+  `ToastText` beim Messen und Zeichnen; gespeichert wird je `Language`-Instanz und Breite, während des Ladens nichts.
+  Toasts dürfen also vor dem Laden der Sprache entstehen.
 
 ### Flugschule (guide, `de.lardtom.propwash.guide`)
 - **Szenen** sind reines Java (`guide.scene`, ohne Minecraft-Klassen) und werden per DSL gebaut:
@@ -1409,8 +1485,10 @@ Inventar schaltet alle Propwash-Rezepte frei; der Client zeigt sie im erwarteten
   Schlüssel von `GateMount`, Standard `standing`; Position = Ursprung von `GateGeometry`), `Item(id, scale, spin)`,
   `Block(BlockSpec)`. Blöcke als `BlockSpec(id, eigenschaften)`, Tasten als `KeyToken.mapping("key.sneak")`/`mouse("right")`
   (zeigt die echte Belegung).
-- **Richtungen:** Drohnen-`yaw` ist der Kompasskurs der Nase (0 = Norden/−Z, 90 = Osten/+X), `pitch` positiv = Nase hoch,
-  `roll` positiv = rechte Seite runter. Pilot und Gate nutzen den Minecraft-Yaw (0 = Blick bzw. Durchflug nach Süden/+Z,
+- **Richtungen:** Drohnen-`yaw` ist der Minecraft-Yaw der Nase (Kamera vorn; 0 = Süden/+Z, 90 = Westen/−X, wie
+  `SceneKit.pilotYaw`), `pitch` positiv = Nase runter (Vorneigung im Vorwärtsflug), `roll` positiv = rechte Seite hoch
+  (Rechtskurve = negativer Roll); so zeichnet `SceneDroneVisual` das Modell mit der Kamera nach −Z, geprüft von
+  `FlightSchoolDirectionTest`. Pilot und Gate nutzen denselben Minecraft-Yaw (0 = Blick bzw. Durchflug nach Süden/+Z,
   90 = Westen). `Item`- und `Block`-Akteure kippen um `pitch` (positiv = Oberseite nach vorn/−Z bei Yaw 0) und
   `roll` (positiv = Oberseite nach +X), Drehpunkt ist der Fußpunkt (so werden `minecraft:end_rod`-Knüppel zu Gimbals).
   Kamera-`yaw` ist der Umlaufwinkel (0 = Kamera auf +Z, Blick nach Norden, +X rechts).
@@ -1419,7 +1497,9 @@ Inventar schaltet alle Propwash-Rezepte frei; der Client zeigt sie im erwarteten
   Eine `turn`-Dauer 0 setzt den Winkel sofort (z. B. Roll 360 → 0 nach einem Flip).
 - **Szenen-Baukasten** `guide.scenes.SceneKit`: Item-/Tasten-/Block-Konstanten, `ground(…)` (Plattform mit Welle),
   `pilotYaw`/`headPitch`/`heading` (Blickrichtungen), `follow(…)` (Pilot blickt einer Flugbahn nach, Sichtflug) und
-  `fly(…)` (Bahn samt Kurs, Vorneigung und Schräglage in Kurven, abgetastet mit `SceneEvaluator.path`).
+  `fly(…)` (Bahn samt Kurs, Vorneigung und Schräglage in Kurven, abgetastet mit `SceneEvaluator.path`). `heading(a, b)`
+  ist der Drohnen-Yaw von a nach b (`atan2(−dx, dz)`, gleich `pilotYaw`); eine Drohne vor `fly` startet mit diesem
+  Kurs, sonst dreht sie sich beim Abflug auf der Stelle um.
 - **Szenen (Reihenfolge der Übersicht):** `drone_build` (Werkbank, Werte und Warnungen), `bind` (Funke binden, Brille aufsetzen),
   `fpv_los` (FPV und Sichtflug), `battery` (Akkutausch, Kompatibilität, Ladegerät), `race` (Gates, Kurs-Werkzeug, Runde),
   `video` (analog/digital/Kreativ, passende Brille), `action_cam` (Action-Cam anbauen, aufnehmen, Schalter oder Taster, Aufnahmen-Liste), `gripper` (Greifer anbauen, Items aufnehmen, abwerfen, Landen und Abstürze), `configurator` (Knüppel, Rates, PID, Flugmodi, Schalter), `rescue`
@@ -1430,7 +1510,11 @@ Inventar schaltet alle Propwash-Rezepte frei; der Client zeigt sie im erwarteten
 - **Prüfungen:** `FlightSchoolScenesTest` (Reihenfolge, Item-Zuordnung, Textlängen: Titel ≤ 38, Beschreibung ≤ 64,
   Schritttext ≤ 150, Hinweis ≤ 90, Tastenhinweis ≤ 28 Zeichen; jeder Hinweis-Anker und jede Drohne bleibt in drei
   Ansichtsgrößen im Bild), `FlightSchoolStoriesTest` (Handlung je Szene, z. B. Durchflug jedes Gates in Flugrichtung und
-  wanderndes Grün); Selbsttest „guide: alle Szenen Schritt für Schritt abspielen“ (je Schritt drei Stellen: gezeichnet,
+  wanderndes Grün), `FlightSchoolDirectionTest` (in jedem geneigten Vorwärtsflug, Nick ab 6°, aller Szenen samt
+  `gate_menu` und `bandos` zeigt die Kamera in Flugrichtung, die Drohne neigt sich in Flugrichtung und legt sich in die
+  Kurve; Aufprall mit der Nase, Flip und Power Loop wie im Text, Knüppel im Konfigurator), `FlightSchoolHeadingTest`
+  (jeden Tick auch ohne Neigung, beim Steigen und Sinken bis 75°: Kamera höchstens 105° neben der Flugrichtung, ab drei
+  Ticks am Stück; begründete Ausnahmen mit Zeitfenster, siehe `docs/flight-school-heading.md`); Selbsttest „guide: alle Szenen Schritt für Schritt abspielen“ (je Schritt drei Stellen: gezeichnet,
   Hinweise vollständig, Anker und Drohnen in der Ansicht, Ende erreicht). Hinweis-Layout: `CalloutLayoutTest` (stehen
   bleiben, gleiten statt springen, kein Seiten-Pendeln, keine Überlappung, Rand, Tastenhinweise, Wiederholbarkeit),
   `CalloutRulesTest` (Ablösen am selben Anker, ruhiges Schlussbild mit mindestens einem Hinweis in jeder Lektion, nie zwei
@@ -1596,6 +1680,11 @@ keine API-Änderung.
 | `input/client/screen/ModesTab` | input | Zeilen = Arm, **Acro**, Angle, Horizon, Höhe halten, Position halten, Rescue, Aufrichten, Homepoint, Suchpiepser, Reset, Aufnahme, LEDs aus. Ist der Tab zu niedrig (z. B. GUI-Skala 4 bei 1080p), entfallen Hinweis und Legende unter der Liste und die Zeilen schrumpfen auf 11 px, damit der Detailbereich mit Quelle, Bereich und Tasten sichtbar bleibt. Acro ist keine eigene Schalterfunktion (an, solange Angle und Horizon aus sind), hat aber die Taste `drone_mode_acro`. Während einer Pilot-Sitzung leuchten die Lampen von Acro, Angle und Horizon nach dem geflogenen Modus (`PilotSession#flightMode`, wie das OSD; `ModesTab#modeLit`), außerhalb nach den Schaltern; hat eine Taste gegen den Modusschalter gewählt, ersetzt `propwash.input.modes.key_override` die Hinweiszeile. Ohne Funke zeigt die Spalte „Wirkung“ je Zeile eine Kurzbeschreibung (`propwash.input.modes.effect.<zeile>`) und der Bereich unten die ausgewählte Zeile mit Taste und Beschreibung (`…desc.<zeile>`); mit Funke bleibt dort die Schalterbelegung. Mit Funke hat jede belegte Zeile rechts in der Spalte „Inv.“ einen Theme-Schalter „Invertiert“ (`InputGui.invertToggle`, Tooltip je Art über `InputGui.invertTooltip`, bei Arm mit Sicherheitshinweis); Lampe, Bereichsbalken und Min/Max zeigen sofort den wirksamen Zustand bzw. Bereich. Der Empfänger-Assistent hat denselben Schalter (mit „Inv.“ daneben) in jeder belegten Zeile der Seite „Schalter“ |
 | `drone/client/RemoteFirstPerson#HOLD_SCALE` | drone | skaliert Funke und beide Hände gemeinsam um die Griffe (0,5, vorher 0,6), damit die beidhändige Funke im Sichtflug unter der Drohne bleibt (etwa 16 % der Bildbreite bei 16:9) |
 | `drone/client/RemoteHoldPose`, `drone/client/RemoteHoldAccess`, `mixin/drone/client/HumanoidModelMixin`, `ItemInHandLayerMixin`, `AvatarRenderStateMixin` | drone | Funke in der dritten Person: `holdingArm(state)` = Arm mit der Funke, wenn ein Spieler (`AvatarRenderState`, nicht Zuschauer, aufrecht, kein Item in Benutzung) sie in einer Hand hält und die andere leer ist, sonst `null` (Rüstungsständer, Mobs, belegte zweite Hand → Vanilla mit Display `thirdperson_*`). Dann beide Arme nach vorn (−40°, ∓23° nach innen, Hände vor unterer Brust/Bauch) und die Funke im Raum zwischen beiden Armenden, im Kontext `NONE` mittig zwischen beiden Händen statt an einer Hand (`transform(model, poseStack)` im Modellraum nach `root`, Werte in `docs/ASSETS.md`). Der Render-State der Funke hängt als `RemoteHoldAccess#propwash$remoteHold()` an jedem `AvatarRenderState` (gefüllt in `AvatarRenderer#extractRenderState` TAIL); eigene States ohne Extract (Flugschule) löst `submit` aus der Stack-Kopie auf. `frames()` zählt gezeichnete Funken (Selbsttest) |
+| `ui/client/tab/PresetPanel#row` | ui (Fix F-COMBO5-1; JUnit `ui.client.tab.PidPresetRowTest`, ui-scale-Fall „Konfigurator mit langem Add-on-Tab“) | Aufteilung der Preset-Zeile in PID-Tuning und Rates als reine Rechnung (`Row`: Beschriftung, Breite „Übernehmen“, Knopf darunter, Breite der Auswahl, Platz für den Namen); „Preset“ steht in der Spalte der Regler (`UiTab.labelColumn`, `PidTab.columnWidth`) und rückt auf seine eigene Breite (Text + 8, höchstens halbe Breite), wenn der längste Preset-Name dort nicht ungestaucht passt |
+| `osd/client/OsdConfigTab#listWidth`, `#nameRoom`, `#moreRoom` | osd, addon-osd (Fix F-cov-combo-3; JUnit `osd.client.OsdListWidthTest`, Selbsttest „addon-api-17: A2 – OSD-Editor in der schmalsten Tab-Breite bei GUI 320×240 …“) | Breite der Elementliste im OSD-Editor: 32 % des Tabs (112–180 px), wächst bis 45 % für ungekürzte Namen und für gestauchte Namen, solange die Vorschau 80 px behält; eingebaute Namen und Scroll-Hinweis immer mindestens gestaucht, dafür notfalls bis 60 px Vorschau (Befund cov-combo-3) |
+| `osd/client/OsdHud#extractInSight`, `osd/client/OsdRenderer#renderAddons`, `#hasAddonElements`, `osd/addon/client/AddonOsdLayer#collectElements`, `#context` | osd, addon-osd (Fix F-MDA-2; JUnit `osd.AddonOsdTest#lineOfSightCollectsOnlyElementsWithTheContextOfTheFlight`, Selbsttest „addon-api-17: A2 – im Sichtflug ohne Brille …“) | Add-on-OSD-Elemente im Sichtflug ohne Brille: Aufruf am Ende von `RadioHud#extract`; nur die Add-on-Elemente im Raster `OsdGrid.screen` über dem ganzen Bild, ohne Bildrauschen und ohne Warnungen; Kontext `fpv=false`, `lineOfSight=true`; `AddonOsdLayer#context` ist der letzte Kontext außerhalb des Editors (Befund MDA-2) |
+| `guide/SimulatedHold`, `guide/client/HoldToOpen#simulate`, `#stopSimulation`, `api/client/PropwashClientApi#simulateFlightSchoolHold(int)`, `#stopSimulatedFlightSchoolHold()` | guide, api (Fix F-MDA-10; JUnit `guide.SimulatedHoldTest`, Selbsttest „guide: Taste halten über einem Slot nur über die API (Testweg für Add-ons)“) | Testweg der API für das Halten der Flugschul-Taste über einem Slot: Slot-Index in `getMenu().slots` des offenen Container-Screens statt `hoveredSlot`, die Taste gilt als gehalten, bis `stopSimulatedFlightSchoolHold()`; Item am Zeiger und Textfeld-Fokus verhindern das Öffnen wie bei der echten Taste; jeder Aufruf setzt den `HoldTracker` zurück (neues Halten); Hinweis als Pille unter dem Slot, als Tooltip-Zeile nur, wenn die Maus darüber steht; nur bei `isDevelopmentEnvironment()`, sonst `false`; ohne Simulation unverändert (Befund MDA-10) |
+| `race/client/RaceStandardSection#buttons`, `#labelFits` | race-rules (Fix F-GCC4-1; JUnit `race.client.RaceStandardButtonsTest`, ui-scale-Fall „Konfigurator mit langem Add-on-Tab“, Seite `world_rules race_standard`) | Aufteilung der Knöpfe „Aktuelle Regeln übernehmen“ und „Propwash-Standard“ als reine Rechnung (`Buttons`: Breiten, Lage des zweiten Knopfs, Höhe). Nebeneinander in halber Breite, untereinander in voller Breite, sobald ein Text trotz Stauchung bis 0,7 gekürzt würde. |
 
 ### Neue Funke: einmal erkennen, einmal einrichten (input)
 | Datei | Besitzer | Vertrag |
@@ -1622,7 +1711,7 @@ abstellte, aus der Mitte (Gamepad) „ganz nach unten“ zog oder von oben nach 
 | `input/ThrottleDetector` (JUnit `ThrottleDetectionTest`) | input | Gas-Achse und -Richtung nur aus echten Hüben: je Achse Umkehrpunkte mit 0,3 Hysterese (Rauschen zählt nicht); Kandidat ist die Achse mit dem größten Weg, mindestens 1,2 (60 % des Rohbereichs) und deutlich vor jeder anderen (zweitgrößter Weg höchstens 60 % davon, sonst `AMBIGUOUS`). Erkannt, wenn erst ein Hub bis an ein Ende und danach ein voller Hub zum anderen Ende (mindestens 80 %) vorliegt und das Gas dort 1,5 s bleibt (±15 % des Wegs): dieses Ende ist UNTEN, `invert` heißt UNTEN liegt bei hohen Rohwerten. Der Hub davor muss selbst voll sein (80 %); nur der erste Hub ab der Startlage darf kürzer sein (mindestens 40 %, Gas aus der Mitte, Gamepad). Kurzes Antippen vor dem Weg nach oben zählt so nie als „oben“. „Erst runter, dann rauf und oben halten“ liefert dieselben Rohwerte wie eine invertierte Funke, die richtig bedient wird; seit 0.5.0 entscheidet das nie die Bewegung allein: Widerspricht das gehaltene Ende der Startlage (das Gas stand beim Start des Schritts an einem Ende, ±15 % des Wegs, und wird am anderen gehalten) oder der bisherigen Richtung der gleichen Achse im Profil (auch bei Start an einem Ende: oben gestartet und oben gehalten gleicht einer invertierten Funke, die Vorbelegung sagt nicht invertiert), speichert der Detektor nichts, sondern geht nach der Haltezeit auf `CONFIRM`; `confirm(gehaltenesEndeIstUnten)` liefert dann die `Detection`, Verlassen des Endes beendet die Rückfrage und die Erkennung läuft weiter (zieht der Spieler jetzt nach unten und hält, passt es zur Startlage und wird ohne Frage erkannt). `startedAtEnd(achse)` für Rückmeldungen. JUnit: Prüfer-Fälle (Antippen 60–100 %, hoch-runter-hoch, Störspitze), 400 Zufallsfolgen ohne Profil: nie gegen die Ruhelage gespeichert, und 400 mit Profil-Richtung und beliebiger Startlage: oben gehalten nie gespeichert. Die Lage beim Start ist nie ein Ende: Gas, das unten steht und nur nach oben geschoben wird, wird nicht erkannt, auch nicht nach langer Pause oben. `stuck()` nach 1,5 s Ruhe an einem Ende ohne gültige Bewegung (Hinweis „schon unten? erst noch einmal ganz nach oben“). Ein Ausschlag über 0,3 beim Halten verlangt eine neue Bewegung (Hinweis „noch einmal ganz nach oben und gleich wieder nach unten“) |
 | `input/ChannelDetector` | input | Roll/Nick/Gier: Ausschlag ab 0,5 gegen den Ruhewert, 0,12 s gehalten, Dominanz 60 %. Ruhewert = Startwert nur, wenn die Achse dabei in der Mitte steht (Betrag ≤ 0,5), sonst erst, wenn sie 0,15 s in der Mitte war: ein beim Start gehaltener Knüppel wird beim Loslassen nicht als Gegenrichtung erkannt, ein unten geparktes Gas stört die Knüppel-Schritte nicht |
 | `input/client/screen/ReceiverWizardScreen` (Seite „Kanäle“) | input | Gas-Schritt: „zuerst ganz nach OBEN, dann ganz nach UNTEN und dort halten“, Live-Balken der Achse mit erreichtem Weg (gelb, solange zu wenig, dann grün), Rückmeldung je `DetectionStage` in fester Höhe; zu wenig Weg und der Hinweis „schon unten?“ wiederholen die Reihenfolge OBEN, dann UNTEN. Beim Halten bestätigt der Assistent nichts, sondern fragt: „UNTEN?“/„OBEN?“ an den Enden (Akzentfarbe statt Grün), Text „Steht das Gas ganz UNTEN (aus)? Dann weiter halten … Steht es noch OBEN? Dann jetzt nach UNTEN ziehen!“, darunter der Haltefortschritt. Knüppel-Schritte melden „Weiter – ganz bis zum Anschlag“ und „Mehrere Achsen bewegt“. Nach dem vierten Kanal (erkannt oder beibehalten) folgt die Prüfansicht: Live-Balken je Kanal (µs, noch ohne Kalibrierung) mit „Inv.“-Schalter, Belegung aus dem Profil, Fußleiste „Zurück | Neu erkennen | Zur Kalibrierung“; vorher ging es direkt zur Kalibrierung. Bei `CONFIRM` ersetzt „Kurze Frage, damit die Richtung sicher stimmt: Wo steht dein Gas gerade?“ die Rückmeldung, darunter die Knöpfe „Ganz UNTEN (aus)“/„Ganz OBEN (voll)“ (`ThrottleDetector#confirm`, Statuszeile „von dir bestätigt“). Für Selbsttests: `currentChannel()`, `detectionStage()`, `previewSticks()`, `confirmingThrottle()`, `answerThrottle(unten)`, `calibrationStep()`, `listening()`, `switchDemoRoom()`, `clearStatus()`, `demo()` |
-| `input/client/SimulatedRadio#raw()`, `TransmitterInput#raw()` | input | Mit simulierter Funke (`simulate`) liefert `raw()` deren Rohwerte als Gerät (ohne Gamepad-Belegung), damit Selbsttests den Assistenten bedienen können; ohne Simulation unverändert |
+| `input/client/SimulatedRadio#raw()`, `TransmitterInput#raw()` | input | Mit simulierter Funke (`simulate`) liefert `raw()` deren Rohwerte, damit Selbsttests den Assistenten bedienen können; nach `SimulatedRadio#asGamepad()` meldet das Gerät `DeviceInfo.gamepad` und liefert Gamepad-Achsen und -Knöpfe mit denselben Nummern wie die Joystick-Werte (mindestens 6 und 15), sodass `RawInput#usesGamepadLayout` mit einem Gamepad-Profil gilt; ohne `asGamepad()` ohne Gamepad-Belegung; ohne Simulation unverändert |
 
 Selbsttest `input: Assistent erkennt Gas aus der Bewegung (Gas steht unten, kurz angetippt, Funke invertiert, simuliert)`
 (`input.client.ThrottleWizardSelfTests`): simulierte EdgeTX-Funke mit invertierter Gas-Achse (Rohwert +1 = unten), Gas
@@ -1639,7 +1728,7 @@ verstanden hatte.
 | Datei | Besitzer | Vertrag |
 |---|---|---|
 | `input/RemoteDemo` (reines Java, JUnit `RemoteDemoTest`) | input | Vorführ-Abläufe als Schleifen (`Motion`: Gas, Roll, Nick, Gier, Prüfansicht, Mitte, 3D-Mitte, große Kreise, Kalibrierung prüfen, Schalter an/Mitte, Taste, Gamepad-Taste, Arm-und-Modus, Gamepad-Arm-und-Modus); `frame(target, sekunden)` → `Frame` mit Knüppeln (−1…1, links Y = Gas), vier Schaltern (−1 weg = aus, 0 Mitte, +1 zum Piloten = an), drei Tasten (0…1 gedrückt), Fokus, Pfeil, Text (`Cue`, Schlüssel `propwash.input.demo.<cue>`), Kanal und Haltefortschritt. `forSwitch(funktion, gamepad)`: Arm → Schalter 0, Angle → Schalter 1 oben, Horizon/Position halten → Schalter 1 Mitte (wie die Radio-Vorbelegung AUX1/AUX2), Taster-Funktionen und Gamepads → Tasten. Die Tests füttern die Vorführung in `ThrottleDetector`, `ChannelDetector` und `SwitchDetector`: wer sie nachmacht, wird richtig erkannt; „✔ erkannt“ erscheint, wenn der Detektor auslöst |
-| `drone/client/render/RemoteGimbalModel`, `RemoteGimbalRenderer.Pose/Controls` | drone-render | Das bewegte Modell zeichnet Knüppel, die vier Schalter (40° je Seite) und die drei Tasten unter dem Display (0,22 px Hub); `Pose(…, Controls)`, `Controls.NEUTRAL` = Schalter senkrecht wie im Item-Modell, Tasten oben. `remote_body.json` enthält die Schalter nicht mehr (`tools/assets/world/remote.py`), `remote.json` (GUI, Boden, Rahmen) unverändert |
+| `drone/client/render/RemoteGimbalModel`, `RemoteGimbalRenderer.Pose/Controls` | drone-render | Das bewegte Modell zeichnet Knüppel, die vier Schalter (40° je Seite) und die drei Tasten unter dem Display (0,22 px Hub); `Pose(…, Controls)`, `Controls.NEUTRAL` = Schalter senkrecht wie im Item-Modell, Tasten oben. `remote_body.json` enthält die Schalter nicht mehr (`tools/assets/world/remote.py`), `remote.json` (GUI, Boden, Rahmen) unverändert. Tasten bei x 6.5, 8 und 9.5 (`BUTTON_X`, seit 0.6.0 mittig mit 0,25 px Abstand zu den Tellern; JUnit `RemoteFacesTest` prüft auf deckungsgleiche Flächen gleicher Richtung) |
 | `input/client/screen/remote/RemoteDemoView`, `RemoteDemoRenderer`, `RemoteDemoRenderState`, `RemoteProjection` | input | Bild-im-Bild der Funke (Item `propwash:remote`, Kontext `NONE`, `RemoteGimbalRenderer.extractPosed`), angemeldet in `InputClient` über `ClientRegistrar.pictureInPictureRenderer`. Theme-Bühne `ThemeDraw.previewStage`, Titel „So geht's“, Blick 15° von oben vorn auf die ganze Funke (so liegt die Knüppelspitze bei Gas ganz oben sichtbar über der Knüppelmitte, JUnit `RemoteProjectionTest`), Nahansicht für Schalter und Tasten mit 30° (`Region` trägt den Winkel), Überlagerung aus derselben Projektion: Ring in der Kanalfarbe, Pfeil, Punkt an der Knüppelspitze, kleiner Schieber für die Schalterstellung, Haltebalken, Text bis zwei Zeilen. Mindestens 64×56 GUI-Pixel, sonst nichts |
 | `input/client/screen/ReceiverWizardScreen` (Vorführung) | input | Kanäle: rechts oben die Vorführung (bis 170, bei viel Platz bis 240 hoch), darunter die Rohachsen (bei wenig Platz vier Zeilen in zwei Spalten). Kalibrieren: rechts daneben, auf schmalen Fenstern darunter; mit freigeschaltetem 3D zeigt „Mitte“ das Einpendeln auf die genaue Gasmitte. Schalter: Zeile „Scharf schalten“ hervorgehoben (kräftiger, solange unbelegt), Namensspalte nach dem längsten Namen, Belegung kurz (`AUX 1 1700–2100 µs`), wenn die lange nicht passt; ist unter den Zeilen Platz (≥ 76 px), unten links die Vorführung „Scharf: Schalter umlegen“ und „Modus: Acro · Horizon · Angle“ mit Arm-Hinweis daneben, beim Zuweisen die Vorführung der Funktion; sonst (z. B. GUI-Skala 4 bei 1080p) eine Karte neben dem Knopf beim Zuweisen und beim Zeigen auf „Zuweisen“. Passt der Arm-Hinweis nicht ganz unter die Zeilen, steht seine Kurzfassung da (`switches_arm_short`/`switches_arm_ok_short`); ist dort gar kein Platz (240 px GUI-Höhe), steht die Kurzfassung in der Statuszeile über den Knöpfen, solange keine Meldung läuft (Selbsttest prüft GUI-Skala 1–4, Bild `receiver_wizard_remote_switches_gui240.png`); der Zusatz-Hinweis zu „Inv.“ und „Modi“ erscheint nur vollständig; angeschnittene Zeilen enden mit „…“. „Fertig“ ohne Arm-Schalter fragt einmal nach („Ohne Arm-Schalter?“, Statuszeile nennt die Taste). Geräteseite ohne Vorführung (dort wird nichts bewegt) |
 | `drone/TuneMapping.ARM_MAX_ANGLE` = `pid.armMaxAngleDeg`, `ui/TuneKeys.ARM_MAX_ANGLE`, `sim/FlightControllerConfig.ARM_ANGLE_*` | drone, ui, sim | Scharf-Winkel wie `small_angle` in Betaflight: 0–180°, Schritt 1, Standard 25° (bisheriger fester Wert, Flugmodell unverändert); 180° = scharf in jeder Lage, auch in der Luft und kopfüber, 0° = nur genau waagerecht. Gehört zum Tuning der Drohne (Gruppe `PID` ⇒ in `TuneGroup.FLIGHT`, Sharecodes und Standard-Importe tragen ihn, Just More Parts schreibt ihn als Schlüssel mit Namen), der Flugcontroller begrenzt auf 0–180° (vorher 5–180°). Tab „Konfiguration“, Abschnitt „Scharf schalten“ mit Erklärung je Wert; PID-Tab setzt ihn beim Zurücksetzen nicht mit zurück; Meldung „Scharf schalten nicht möglich: mehr als N° gekippt (Scharf-Winkel im Konfigurator, Tab „Konfiguration“)“. JUnit `ArmAngleTest` (Lagen, in der Luft, 3D-Modus), `ArmAngleTuneTest` |
@@ -1665,8 +1754,8 @@ englisch/deutsch, Zuweisen, GUI-Skala 2 und 4, Karte bei GUI-Skala 4), `configur
 | `drone/DroneInteraction` (`HeldKind.PROP`, `HINT_PROPS`, `OPEN_SERVICE_MENU`), `drone/DroneServiceMenu`, `drone/DroneServiceContainer`, `drone/PropService`, `drone/client/DroneServiceScreen` | drone | Wartung: Schleichen + Rechtsklick auf die Drohne öffnet **immer** das Wartungsmenü (Menütyp `DroneModule.DRONE_SERVICE_MENU`, Id `propwash:drone_service`, Titel `container.propwash.drone_service`), auch mit Props in der Hand; nur ein passender Akku in der Hand tauscht wie bisher sofort (`QUICK_SWAP`). Ohne Schleichen mit Props → Hinweis. Menü-Slots: 0 = Akku (Verhalten unverändert), 1–4 = Props vorne links, vorne rechts, hinten links, hinten rechts (`PartWear`-Positionen), dann Inventar. Die Prop-Slots zeigen `build.prop()` mit `part_condition` = Zustand der Position; herausnehmen geht nicht, nur tauschen. Der Server entscheidet alles (`clicked` für Prop-Slots läuft nur serverseitig, der Client sagt nichts voraus): Klick mit Props bzw. Zifferntaste tauscht diesen Platz, Shift-Klick auf Props im Inventar tauscht alle beschädigten (< 0,9 und schlechter als die neuen), schlechteste zuerst. Regel `PropService.fit(frame, installed, offered, count)`: Durchmesser ≤ `frame.maxPropMm` (wie `DroneBuild.Issue.PROP_TOO_LARGE` in der Werkbank), sonst `TOO_LARGE`; gleiche Sorte → `SWAP_ONE`; andere passende Sorte nur mit mindestens vier Stück (Kreativ: immer) → `SWAP_ALL` tauscht alle vier auf einmal und setzt `build.withProp`, sonst `NEED_FOUR` (alle vier Props einer Drohne sind gleich). Neue Props werden verbraucht (Kreativ nicht), die alten, auch kaputte, kommen mit ihrem Zustand ins Inventar (`placeItemBackInInventory`, voll → fallen lassen). Gesperrt wie der Akkutausch: `stillValid` = `usable` (nicht armed, nicht gesteuert, ≤ 8 Blöcke). Der Screen zeigt je Prop Balken und Prozent in der Zustandsfarbe, eine Hinweiszeile für das getragene Item (bündig mit dem Inventar, Luft zur Inventar-Beschriftung), im Rumpf das Rahmen-Item mit „Rahmen“ und beim Rumpf einen Tooltip mit Rahmen und passenden Prop-Sorten |
 | `content/PartCondition`, `content/Recycling`, `content/DroneAssembly` (`conditions`, `wearOf`, `wear`, `storeWear`), `DroneWorkbenchMenu#conditions()`, `client/WorkbenchReport.of(check, wear)` | content | Tooltips (Balken ■□ + Prozent/„kaputt“, Farbe je Zustand; Teile zusätzlich Haltbarkeitsbalken, Akkus behalten den Ladebalken), Drohnen-Tooltip mit Zusammenfassung („Zustand: … · schlechtestes Teil“) und (Shift) unter „Technische Daten“ eine Zeile je
 weiterem beschädigten Teil (`PartCondition.detailLines`, ohne das schon oben genannte). Passende Akkus stehen beim Drohnen-Item als
-Zeilen in „Technische Daten“ statt in einem eigenen Abschnitt „Passt zu“, damit der Tooltip bei GUI-Skala 3 und 1080p ganz ins Bild passt. Zerlegen legt `part_condition` auf jedes Teil, Zusammenbauen baut daraus `part_wear`. Werkbank: Verschleißzeilen je Kategorie (gelb < 0,9, rot < 0,4) samt Slot-Markierung, Vorschau mit beschädigten Props. Das Zerlegen-Feld nimmt auch kaputte Teile (Zustand 0) und gibt Zwischenteile zurück (Rahmen → Carbonplatte außer Whoop, Motor → Kupferspule, Stack/Video → Platine, Akku → LiPo-Zelle; Props sind Schrott). Das Ladegerät nimmt kaputte Akkus nicht an |
-| `build/PropRepair`, `content/PropRepairs`, `content/PropRepairRecipe` (`propwash:prop_repair`, Rezept `propwash:special/prop_repair`), `mixin/content/GrindstoneMenuMixin` | content | Props reparieren (ab 0.5.0): zwei beschädigte Props derselben Sorte (gleiches Item und `propwash:part`, beide < 1, auch 0) ergeben einen mit `a + b + 0,05`, höchstens 1, in 1/1000-Schritten (`PropRepair.combine`, reines Java). Crafting als Sonderrezept (genau zwei belegte Felder, 2×2 oder 3×3, Stapel erlaubt, nicht im Rezeptbuch), Schleifstein per Mixin (Eingabeplätze nehmen beschädigte Props einzeln, `computeResult` entscheidet bei Props allein, keine Erfahrung, keine Reparaturkosten). Ergebnis = Kopie des ersten Props mit allen Komponenten und neuem `part_condition` (ab 1 entfernt). Gilt für Addon-Props ohne eigene API. Hinweise: Statuszeile bei kaputten Props, Shift-Zeilen `propwash.help.category.prop.use.4/5`, Zerlegen-Feld der Werkbank, Flugschul-Schritt `repair/combine`; Doku `docs/design/survival.md` „Props reparieren“ |
+Zeilen in „Technische Daten“ statt in einem eigenen Abschnitt „Passt zu“, damit der Tooltip bei GUI-Skala 3 und 1080p ganz ins Bild passt. Zerlegen legt `part_condition` auf jedes Teil, Zusammenbauen baut daraus `part_wear`. Werkbank: Verschleißzeilen je Kategorie (gelb < 0,9, rot < 0,4) samt Slot-Markierung, Vorschau mit beschädigten Props. Das Zerlegen-Feld nimmt nur Drohnen; Teile recycelt der Tab „Recyceln“ der Werkbank (ab 0.6.0, Befund RECYCLE-1, nimmt die Regel aus Befund SALVAGE-1 zurück; Abschnitt „Recyceln in der Werkbank“ am Ende). `content/client/SalvageHint.lines(carried, partsEmpty)` liefert den Hinweis am Feld (Drohne zerlegen, Teile im Tab Recyceln; ein Teil an der Maus: nur Drohnen); Selbsttest `zerlegen:`. Das Ladegerät nimmt kaputte Akkus nicht an |
+| `build/PropRepair`, `content/PropRepairs`, `content/PropRepairRecipe` (`propwash:prop_repair`, Rezept `propwash:special/prop_repair`), `mixin/content/GrindstoneMenuMixin` | content | Props reparieren (ab 0.5.0): zwei beschädigte Props derselben Sorte (gleiches Item und `propwash:part`, beide < 1, auch 0) ergeben einen mit `a + b + 0,05`, höchstens 1, in 1/1000-Schritten (`PropRepair.combine`, reines Java). Crafting als Sonderrezept (genau zwei belegte Felder, 2×2 oder 3×3, Stapel erlaubt, nicht im Rezeptbuch), Schleifstein per Mixin (Eingabeplätze nehmen beschädigte Props einzeln, `computeResult` entscheidet bei Props allein, keine Erfahrung, keine Reparaturkosten). Ergebnis = Kopie des ersten Props mit allen Komponenten und neuem `part_condition` (ab 1 entfernt). Gilt für Addon-Props ohne eigene API. Hinweise: Statuszeile bei kaputten Props, Shift-Zeilen `propwash.help.category.prop.use.4/5`, Tab „Recyceln“ der Werkbank, Flugschul-Schritt `repair/combine`; Doku `docs/design/survival.md` „Props reparieren“ |
 | `drone/client/render/PropDamage`, `PartModel.prop(prop, ccw, damage)`, `DroneAssembly#prop(slot, damage)`, `DroneRenderState#wear`, `DroneVisuals.previewState(build, wear)`, `client/render/DronePreview.render(g, build, wear, …)` | drone | Schaden in Stufen (`PropDamage.of`): ab < 0,9 (`damaged`) `WORN` = Modell `…_worn` (Spitzen abgesplittert, Kerben), ab < 0,4 (`critical`) `DAMAGED` = `…_damaged` (ein Blatt verliert ein großes Stück), 0 `BROKEN` = `…_broken` (Blatt an der Nabe abgebrochen, eines verbogen, keine Blur-Scheibe). `representative()` = Stellvertreter-Zustand je Stufe (Vorschau-Cache), `suffix()`. Welt, Werkbank-/Wartungs-Vorschau, Flugschule und Item-Symbol zeigen dieselbe Stufe. Die alte `DronePreview.render`-Signatur bleibt (zeigt neue Teile) |
 | `drone/client/render/PropDamageProperty` (`propwash:prop_damage`), `registry/client/ClientRegistrar#rangeSelectItemProperty(id, codec)` | drone (Eigenschaft), Foundation (Registrierung) | Item-Modell-Eigenschaft für `minecraft:range_dispatch`: Stufe 0–3 aus `propwash:part_condition` (`stage(stack)`); die Prop-Items wählen damit ihr Symbol (`items/<prop>.json`). `rangeSelectItemProperty` wie `specialModelRenderer` (nur Namespace `propwash`, einmalig, in der Client-`init()`), Fabric trägt in `RangeSelectItemModelProperties.ID_MAPPER` ein, NeoForge über `RegisterRangeSelectItemModelPropertyEvent` |
 | `osd/OsdData#wear`, `OsdWarnings.wear`, `OsdCondition`, `FlightStats#crashes` | osd | Warnungen `PROP_BROKEN`, `ARM_BROKEN`, `FC_DAMAGE` (kritisch, blinken), `PROP_DAMAGE`, `MOTOR_DAMAGE`, `CAMERA_DAMAGE` (< 0,4), `BATTERY_PUFFED`, Sperrgrund `ARM_HARDWARE`; Flugstatistik mit Abstürzen dieses Flugs und dem schlechtesten Teil |
@@ -1693,10 +1782,10 @@ Build, alte Speicherstände und Items laden unverändert.
 | Datei | Vertrag |
 |---|---|
 | `build/AccessoryMount` | Halterungen `TOP` (Key `top`, Action-Cam, hat einen festen Sockel am Rahmen: `hasBase()`) und `BOTTOM` (`bottom`, LED-Streifen unter der Nase, ohne Sockel). `byKey`, `anchor(frame)`. Je Halterung höchstens ein Zubehör |
-| `build/AccessoryType` (implementiert `PartInfo`, Item-Id = `key()`) | `LED_STRIP` (`led_strip`, unten, 6 g, 32 × 3 × 8 mm, 8 LEDs, 1,5 W am Flugakku), `ACTION_CAM_LIGHT` (`action_cam_light`, oben, 42 g, 46 × 30 × 26 mm, 4 W am Flugakku, kein eigener Akku), `ACTION_CAM_HEAVY` (`action_cam_heavy`, oben, 150 g, 60 × 45 × 35 mm, Stirnfläche 0,0027 m², eigener Akku, 0 W am Flugakku); seit 0.5.0 dazu `ACTION_CAM_FLASHBACK` (Abschnitt „Action-Cam (Flashback)“ unten). Felder `mount`, `widthMm` (X), `heightMm` (Y), `depthMm` (Z), `flightBatteryWatts`, `frontalAreaM2`, `ledCount`, `lensLengthMm`; `camera()` → `Optional<ActionCamSpec>`, `isCamera()`, `isLight()`, `fits(mount)`. Lokale Geometrie relativ zum Anbaupunkt (vor der Neigung): `boxMinMm()/boxMaxMm()/centerMm()` (oben: Körper ab `HINGE_CLEARANCE_MM` = 5 mm über dem Gelenk, mittig über dem Gelenk; unten: Leiste hängt unter dem Anbaupunkt), `lensMm()` (Linsenmitte vorn, −Z), `ledMm(i, streifenlänge)` (LED-Mitten gleichmäßig entlang X, Unterseite) |
+| `build/AccessoryType` (implementiert `PartInfo`, Item-Id = `key()`) | `LED_STRIP` (`led_strip`, unten, 6 g, 32 × 3 × 8 mm, 8 LEDs, 1,5 W am Flugakku), `ACTION_CAM_LIGHT` (`action_cam_light`, oben, 42 g, 46 × 30 × 26 mm, 4 W am Flugakku, kein eigener Akku), `ACTION_CAM_HEAVY` (`action_cam_heavy`, oben, 150 g, 60 × 45 × 35 mm, Stirnfläche 0,0027 m², eigener Akku, 0 W am Flugakku); seit 0.5.0 dazu `ACTION_CAM_FLASHBACK` (Abschnitt „Action-Cam (Flashback)“ unten). Felder `mount`, `widthMm` (X), `heightMm` (Y), `depthMm` (Z), `flightBatteryWatts`, `frontalAreaM2`, `ledCount`, `lensLengthMm`; `camera()` → `Optional<ActionCamSpec>`, `isCamera()`, `isLight()`, `fits(mount)`. Lokale Geometrie relativ zum Anbaupunkt (vor der Neigung): `boxMinMm()/boxMaxMm()/centerMm()` (oben: Körper ab `HINGE_CLEARANCE_MM` = 5 mm über dem Gelenk, mittig über dem Gelenk; unten: Leiste hängt unter dem Anbaupunkt), `lensMm()` (Linsenmitte vorn, −Z), `ledMm(i, streifenlänge)` (LED-Mitten gleichmäßig entlang X, Unterseite; seit 0.6.0 mit LED-Pfad nach Länge entlang `ledPath()`, `hasLedPath()`, `docs/design/led-strip.md` „LED-Pfad“) |
 | `build/ActionCamSpec` | aus echten Kameras abgeleitet. `LIGHT` (nackte FPV-Action-Cam): 1080p60, keine Stabilisierung, Sensor 1/2,8″, Sichtfeld 150°, Bildqualität 0,80, Rauschen bei wenig Licht 0,55, 4 W vom Flugakku. `HEAVY` (große Action-Cam mit Gehäuse): bis 1440p60 (mehr schafft der Java-Encoder nicht in Echtzeit), elektronische Stabilisierung + Horizont halten, Sensor 1/1,9″, 155°, 0,95, 0,30, eigener Akku 6,6 Wh bei 4,4 W (1080p) bis 6,6 W (1440p) → ca. 90 bzw. 60 min. `supportedHeights()` (720/1080/1440/2160 bis `maxHeight`), `recordWatts(height)`, `recordMinutes(height)` (∞ ohne eigenen Akku), `ownBattery()` |
 | `build/Accessories` (Record über `Map<AccessoryMount, AccessoryType>`, unveränderlich, `EnumMap`-Reihenfolge) | `NONE`, `of(…)`, `with(type)` (ersetzt dieselbe Halterung), `without(mount)`, `at(mount)`, `has`, `list()`, `mounts()`, `camera()` (erstes Kamera-Zubehör), `massGrams()`, `flightBatteryWatts()`, `frontalAreaM2()`, `key()` (`top=action_cam_heavy+bottom=led_strip`). Der Konstruktor wirft bei Typ an falscher Halterung |
-| `build/AccessoryAnchor` (Record `x, y, z, tiltDegrees, lengthMm`, mm im Rahmensystem wie `drone_layout.json`: X rechts, Y oben, Z hinten) | Anbaupunkt je Rahmen und Halterung. `of(frame, mount)` (Tabelle, sonst Rückfall aus dem Radstand), `table(frame, mount)`, `rotate`/`toFrame(local)` (Drehung um X um `tiltDegrees`, positiv = Vorderkante hoch), `centerOf(type)`, `corners(type)`, `stretch(type)` (unten: `lengthMm / widthMm`, das Modell wird entlang X auf die Streifenlänge gestreckt), `ledMm(type, i)`, `ledDirection()` (lokal −Y gedreht), `lensMm(type)`, `viewDirection()` (lokal −Z gedreht). Oben = **Drehachse des Kameragelenks** (9–15 mm über dem Kamerakäfig vor dem Akku), unten = Mitte der Oberseite des Streifens. Die Tabelle ist die Quelle der Physik; `drone_layout.json` muss dieselben Werte haben (JUnit `DroneLayoutParserTest#shippedLayoutMatchesTheAccessoryTableOfTheFlightModel`) |
+| `build/AccessoryAnchor` (Record `x, y, z, tiltDegrees, lengthMm`, mm im Rahmensystem wie `drone_layout.json`: X rechts, Y oben, Z hinten) | Anbaupunkt je Rahmen und Halterung. `of(frame, mount)` (Tabelle, sonst Rückfall aus dem Radstand), `table(frame, mount)`, `rotate`/`toFrame(local)` (Drehung um X um `tiltDegrees`, positiv = Vorderkante hoch), `centerOf(type)`, `corners(type)`, `stretch(type)` (unten: `lengthMm / widthMm`, das Modell wird entlang X auf die Streifenlänge gestreckt; Zubehör mit LED-Pfad nie), `ledMm(type, i)`, `ledDirection()` (lokal −Y gedreht), `lensMm(type)`, `viewDirection()` (lokal −Z gedreht). Oben = **Drehachse des Kameragelenks** (9–15 mm über dem Kamerakäfig vor dem Akku), unten = Mitte der Oberseite des Streifens. Die Tabelle ist die Quelle der Physik; `drone_layout.json` muss dieselben Werte haben (JUnit `DroneLayoutParserTest#shippedLayoutMatchesTheAccessoryTableOfTheFlightModel`) |
 | `build/FrameType#accessoryMounts` | Whoop 65: nur `BOTTOM` (keine Action-Cam), alle anderen `TOP` + `BOTTOM`, seit 0.5.2 zusätzlich `FRONT` (Abschnitt „Add-on-API 1.6“ unten) |
 | `build/DroneBuild` | Record-Feld `accessories` (null → `NONE`), alter 6-Parameter-Konstruktor bleibt (ohne Zubehör). `withAccessory`, `withAccessories`, `withoutAccessories`, `withBattery` (behält das Zubehör – immer statt `new DroneBuild(…)` benutzen, wenn ein Teil getauscht wird). `totalMassGrams()` zählt das Zubehör. Problem `Issue.ACCESSORY_MOUNT` (Zubehör an einer Halterung, die der Rahmen nicht hat → nicht baubar). `DronePresets.key` ignoriert Zubehör (Freestyle mit Kamera bleibt „Freestyle-Drohne“) |
 
@@ -2025,6 +2114,7 @@ Umlackieren kommt an; alle Lack-Modelle lösen auf. Bildschirmfotos `paint_scree
 | `race/world/WorldCourseMarker` (NBT `WorldCourse` an `GateEntity`) | race | `Variant`, `Slot` (Platz im Kurs), `Local`/`LocalYaw` (Lage in der Vorlage), `Board` (Tafel in der Vorlage). `GateEntity#worldCourse()`, `setWorldCourse`, `clearWorldCourse`; nicht synchronisiert |
 | `race/world/WorldCourseSite` (reines Java) | race | Rechnet aus Weltlage und Vorlagenlage eines Gates Ursprung und Vierteldrehungen der Vorlage zurück (Formeln wie `StructureTemplate.transform` mit Drehpunkt 0, JUnit gegen Vanilla); `key()` = Ursprung `x,y,z` ist der Fundort-Schlüssel |
 | `race/world/WorldCourses#adopt`, `CourseRegistry#worldCourse/createWorldCourse/insertGate/refreshBoard` | race | Ein Gate mit Marker, das noch zu keinem Kurs gehört, übernimmt beim Reconcile-Takt seinen Fundort: erstes Gate legt einen besitzerlosen Kurs an (`Course.worldCourse` = Variante, `site`, `board`), jedes weitere reiht sich nach `GateRecord.slot` ein (Chunks laden in beliebiger Reihenfolge); danach wird der Marker gelöscht. `GateEntity#ignoreExplosion` = true |
+| `race/world/WorldCourseMarker` `Passes`/`Mode`, `CourseRegistry#insertPasses`, `createWorldCourse(…, CourseMode)` (Befund WCOURSE-1) | race | Der Marker trägt optional `Passes` (alle Plätze des Elements im Format von `CourseOrder`, rückwärts mit `r`, etwa `1,3r`) und `Mode` (`point_to_point`); ohne die Felder gilt `Slot` vorwärts und der Modus Runden, alte Marker lesen und speichern sich unverändert. `WorldCourses.adopt` reiht alle Durchgänge über `insertPasses` ein (`insertGate` ruft es mit einem Durchgang auf); das erste übernommene Element legt den Kurs im Modus des Markers an. Neue Strukturen nutzen `world_course/v2/*`; die bisherigen Vorlagen (Stand 0.5.2) bleiben unter ihren Namen byte-gleich für Strukturstarts alter Welten (SHA-256 in `WorldCourseMechanicsTest`). Vorlagen tragen keine Kurs-Nummer und keine UUID, jeder Fundort bekommt einen eigenen Kurs mit eigener Bestenliste. Die Fluglinien der Vorlagen schreibt `tools/data/world_courses.py` nach `common/src/devtest/resources/worldcourse/lines.json` (JUnit und Selbsttest fliegen sie nach) |
 | `race/world/WorldCourseBoard` | race | Text der gewachsten Tafel: Name, `Kurs #id`, Rekord (bester Eintrag aller Klassen, `Leaderboard#record(null)`, `RaceFormat.time`) bzw. „Noch kein Rekord“, Rekordhalter. Aktualisiert bei Übernahme, Kursrekord, Zurücksetzen und Archivieren der Bestenliste; ist der Chunk nicht geladen, holt der nächste Reconcile eines Kurs-Gates es nach (`Course.boardDirty`, transient, nach dem Laden gesetzt) |
 | `server/ServerRulesConfig#worldCourses`, `ServerRules.worldCourses()` | server (von race benutzt) | Server-Regel `worldCourses` (Standard `true`), nur in `server.json` und `/propwash rules`, nicht im S2C (Clients brauchen sie nicht, Protokoll unverändert) |
 
@@ -2072,6 +2162,19 @@ auf den Digital-Kanal lehnt der Server ab; zweimal F7 bei einem Kanal beendet; e
 den Anker; Kanal-Tab zeigt zwei Kanäle, einer wählbar; Server-Regel aus sperrt Taste und Anfrage). Nach dem Verlassen: kein
 Zuschauen, leere Liste. Bildschirmfotos: `configurator_video_channel_live.png` (Tab mit zwei aktiven Kanälen) und
 `spectate_view.png` (Zuschauen am Gate-Kurs mit OSD des Piloten und Einblendung).
+Nachtrag 0.6.0 (Befund G-OT4C-1-1): Das Banner steht nicht mehr fest in Zeile 3. `video.client.SpectateBannerPlacement`
+(reines Java) wählt die erste freie Zeile aus 3, 2, 1, 4, 5, 0 (Unterkante über Zeile 6, Zeile 0 nur als letzte):
+`occupants(config, addonSpecs)` sammelt jedes eingeschaltete verschiebbare Element und jedes eingeschaltete
+Add-on-Element des gezeigten Layouts (`OsdHud.config()`, also auch des beobachteten Piloten; Add-on-Platz über
+`AddonOsdKeys#peek`, das nichts anlegt), `row(grid, occupants, links, rechts, höhe)` prüft senkrecht die Zeile mit
+Elementgröße (`TEXT_ROW_FILL × Größe`, mindestens die ganze Zeile) und waagerecht den Anker (Mitte ± 1 Spalte, links-
+bzw. rechtsbündig 3 Spalten in Leserichtung). Ohne freie Zeile zählt erst nur der Anker im Banner, dann nur das
+Warnfeld, sonst bleibt Zeile 3. `SpectateHud` misst immer mit Tastenzeile und deren Breite (das Banner springt nach 6 s
+nicht) und merkt sich die gezeichnete Fläche: `lastBox()`, `lastRow()`, `bannerTop()` (ersetzt
+`bannerTop(guiWidth, guiHeight)`). Ergebnis: MINIMAL Zeile 1 bzw. ab GUI-Höhe 448 Zeile 2, STANDARD und FULL Zeile 3,
+RACE bei kleiner GUI Zeile 2 (Split in Zeile 4). Gilt auch für Kameramann und Gimbal allein (`SpectateSession#operate`).
+Netzprotokoll unverändert. JUnit `SpectateBannerPlacementTest`, Selbsttest `addon-api-17: A2 – Zuschauer-Banner …`
+(`docs/testing.md`), Bildschirmfotos `{spectate,operator,solo}_banner_warning_{en,de}.png`.
 
 ### Geister-Rennen, Bestenliste und Startaufstellung (race)
 - **Geisterspur** `race.GhostTrack` (reines Java): feste Rate `INTERVAL_NANOS` = 50 ms, höchstens `MAX_SAMPLES` (10 min),
@@ -2119,12 +2222,14 @@ Zuschauen, leere Liste. Bildschirmfotos: `configurator_video_channel_live.png` (
   (`SERVER_MOVED`) und speichert sie in `race.RecordGhosts` (SavedData `propwash:race_ghosts`, je Kurs und Klasse,
   Revision). Layout-Änderung archiviert die Liste und löscht die Rekord-Geister des Kurses.
 - **Payloads** (Protokoll 6): `RaceReportC2S` + `flags`, `penaltyNanos`; `LeaderboardRequestC2S` → `LeaderboardS2C`
-  (Kurs, Layout, Gates, `open` öffnet das Fenster, gewertete Runden, Zeilen = Top 10 je Klasse + eigene Zeiten mit
+  (Kurs, Layout, Gates, `open` öffnet das Fenster, gewertete Runden, Zeilen = seit 0.6.0 Platz 1–50 + Klassenrekorde + eigene Zeiten mit
   Klassen- und Gesamtplatz, seit 0.5.0 mit `assist` je Zeile; Zeilen mit Flughilfe nur bei Regel an, mit eigenen Plätzen); `GhostRequestC2S(kurs, klasse, bekannte Revision)` → `GhostS2C` (Revision 0 = kein
   Geist, leere Daten = unverändert); `LobbyC2S(JOIN|LEAVE, kurs, Sekunden)`, `LobbyS2C`, `RaceStartS2C(kurs, Countdown,
   Piloten)`. Anfragen je Spieler höchstens 4/s.
-- **Startaufstellung** `race.RaceLobby` (JUnit `RaceLobbyTest`): Scharfschalten nahe am Start, wenn `RaceConfig.countdown`
-  an ist, beim ersten Scharfschalten nach einem Reset oder während dort eine Aufstellung offen ist → `LobbyC2S JOIN` (ohne Server-Kanal: lokaler Countdown). Aufstellen nur mit
+- **Startaufstellung** `race.RaceLobby` (JUnit `RaceLobbyTest`): selbst Scharfschalten nahe am Start, wenn `RaceConfig.countdown`
+  an ist, oder während dort eine Aufstellung offen ist → `LobbyC2S JOIN` (ohne Server-Kanal: lokaler Countdown). Seit 0.6.0
+  startet ein Reset oder GPS-Rescue keine Aufstellung mehr (`race.ArmEdge`, `race.StandingStart`; eine Scharf-Flanke
+  durch Auto-Arm zählt nicht, §15 „Auto-Arm nach Reset“). Aufstellen nur mit
   gesteuerter Drohne höchstens `RaceServer.LOBBY_RANGE` (32 Blöcke) vom Start-Gate; der Start folgt, sobald alle Piloten
   am Start aufgestellt sind (frühestens 0,5 s nach dem Öffnen) oder spätestens nach 10 s; Countdown = Wunsch des Ersten,
   3–10 s. Alle bekommen `RaceStartS2C` gleichzeitig. Mehrere Piloten → „Lauf“: Zielreihenfolge im Chat.
@@ -2134,8 +2239,8 @@ Zuschauen, leere Liste. Bildschirmfotos: `configurator_video_channel_live.png` (
   Bewegung ohne Durchflug ist kein Frühstart mehr. Der Server prüft die Strafe (nur 0 oder 3 s in Runde 1) und die Runde
   ohne sie, Runde 1 darf bis 10 s vor der Startmeldung beginnen.
 - **Bestenlisten-Fenster** `race.client.LeaderboardScreen` (`ThemedScreen`): Kurs wechseln (‹ ›), Filter „Alle“ und je
-  Klasse, Spalten Platz (Gold/Silber/Bronze), Pilot, Zeit, Abstand, Klasse, Datum, eigene Zeile markiert (unter der Liste,
-  wenn nicht in den Top 10). Öffnen: Kurs-Werkzeug Rechtsklick in die Luft (Server schickt `open`), Tab „Rennen“ →
+  Klasse, Spalten Platz (Gold/Silber/Bronze), Pilot, Zeit, Abstand, Klasse, Datum, eigene Zeile markiert (seit 0.6.0 alle
+  Plätze, einklappbare Abschnitte und „Meine Zeit“, siehe „Bestenliste ohne Grenzen“). Öffnen: Kurs-Werkzeug Rechtsklick in die Luft (Server schickt `open`), Tab „Rennen“ →
   „Bestenliste öffnen“, `/propwash race leaderboard` bleibt als Chat-Ausgabe (mit Klasse und Datum).
 - Selbsttest (`race.client.RaceSelfTests`): „Geist der Bestrunde spielt ab“ (Geist aus der Testrunde, Start am
   Start-Gate, Splits an Gate 2/3, Kodieren und Platte), „Bestenliste und Plausibilität“ (zusätzlich Klasse, Datum,
@@ -2170,6 +2275,15 @@ Texte: `propwash.trick.*` (Modul `trick`), `propwash.osd.element.tricks`, `propw
 einer echten `DroneSim` über eine OSD-Testquelle mit gezeichnetem Popup und Trick-Punkten in der Flugstatistik, Kette aus Flip
 und Rolle mit gemeinsamer Meldung, Repertoire-Tab (Spalten, Erklärungen, Scrollen), Zustand nach dem Verlassen.
 Flugschul-Lektion `guide.scenes.TricksScene` (`tricks`, nach „Gates und Rennen“).
+Trick-Tutorials (seit 0.6.0, `docs/trick-tutorials.md`): `trick.tutorial.TrickChoreographies#of(TrickType)` liefert je Trick
+eine `TrickChoreography` aus Phasen (`TrickMove`: Drehraten, Gas, Winkel oder Dauer, Steuerflug, Hindernisse), Varianten
+teilen die ihres Grundtricks (`sharedWith`, `as`, `backwards`); `TrickFlight#fly` fliegt sie in `DroneSim` und zeichnet Lage,
+Weg und Knüppel je Bild auf, `TrickTutorial#create` baut daraus die Szene `trick_<trick>` (Schritt je Phase, Texte
+`propwash.trick.tutorial.*`). Tab „Freestyle“: Hover-Vorschau `trick.client.TrickPreview`, Klick öffnet über
+`trick.client.TrickTutorials#open` den `SceneScreen` mit `SceneScreen.Options` (Titel, Kopfzeile, Schritt-Texte,
+Stick-Cam `guide.client.screen.StickCamView` im Stick-Modus des Spielers); Zeitlupe 0,5× (Taste S) gilt für alle Szenen.
+JUnit `trick.tutorial.TrickChoreographyTest` (die Erkennung erkennt jede Choreografie als genau ihren Trick) und
+`TrickTutorialTest`; Selbsttest `trick.client.TrickTutorialSelfTests`.
 
 ### Ideallinie und Gate-Markierungen (race, assets-world; Entwurf `docs/design/race-line.md`)
 | Datei | Besitzer | Vertrag |
@@ -2196,10 +2310,14 @@ Balken, Füße bleiben). Einzelne Gates sehen aus wie bisher.
 
 | Datei | Besitzer | Vertrag |
 |---|---|---|
-| `race/GateStacking` | race (reines Java, JUnit `GateStackingTest`) | `seat(unten)` = `y + height − frame` (Unterkante des Gates darauf), `sameColumn(a, b)` (gleiche Mitte x/z ± 0,001, gleiche Achse, also gleiche oder entgegengesetzte Richtung), `restsOn(oben, unten)` (zusätzlich `oben.y = seat(unten)`), `fits(breiteOben, breiteUnten)` (oben nie breiter), `stackYaw(yawUnten, blickSpieler)` (Blick zurück ⇒ um 180° gedreht, sonst wie das Gate darunter), `stackOn(oberstes, größe, yaw)`, `check(oberstes, stapelhöhe, größe)` → `NONE`/`TOO_WIDE`/`TOO_HIGH` (`MAX_STACK` = 4), `column`/`top`/`above`/`below`/`base` auf einer Liste von `GateGeometry`, `afterRemoval(gates, index)` → `Drop(index, y)` für alle Gates darüber. `Base`: `BAR` (einzeln, mit unterem Balken), `LEGS` (unterstes Gate eines Stapels), `STACKED` (steht auf einem Gate); `Base.of(getragen, belegt)` |
-| `race/GateGeometry#boxes(sink, base)` | race | Kollisionsboxen je Rolle: `BAR` wie bisher (4 Boxen), `LEGS` ohne unteren Balken, `STACKED` ohne unteren Balken und mit Pfosten ab `frame` (der Bereich darunter ist der Balken des Gates darunter). `boxes(sink)` = `BAR`. Der Durchflug-Test (`insideOpening`, `up > frame`) ist für alle Rollen gleich |
-| `race/GateEntity#base()`, `covered()`, `supported()`, `refreshStack()`, `refreshColumn()`, `gateAbove()`, `gateBelow()`, `stack()` | race | `stack()` = ganze Säule von unten nach oben (Weltabfrage). `covered`/`supported`/`base` sind nicht synchronisiert: Server **und** Client rechnen sie beim ersten Tick und danach alle 5 Ticks aus den (synchronisierten) Positionen nach; Stapeln und Nachrutschen aktualisieren die Säule auf dem Server sofort. `colliders()` folgt `base()` (Kollision wie gezeichnet). Wird ein Gate zerstört (`RemovalReason#shouldDestroy`, also Abbauen, `/kill`, `discard`), rutschen alle Gates darüber auf dem Server um seine Höhe minus Rahmenstärke nach (`setPos` + `needsSync`, Kurs-Eintrag sofort über `CourseRegistry#reconcile`); Kursplatz, Nummer und Richtung bleiben. Bewusst Nachrutschen statt Zerfallen: der Kurs bleibt vollständig und niemand verliert Items |
-| `race/GateItem#stackOn(ziel, spieler, stack)`, `GateItem.free(level, geometrie, base, körper)` | race | Rechtsklick mit einem Gate-Item auf ein beliebiges Gate der Säule (`GateEntity#interact`, beide Seiten) setzt es auf das oberste Gate. Abgelehnt mit Meldung: breiter als das Gate darunter (`propwash.race.gate.stack_too_wide`), Säule voll (`…stack_too_high`), Blöcke, Weltgrenze, Rahmen anderer Gates oder Spieler/Drohnen im neuen Rahmen (`…blocked`). `free` prüft beim normalen Aufstellen auch Rahmen anderer Gates (kein Gate ineinander) |
+| `race/GateStacking` | race (reines Java, JUnit `GateStackingTest`, `GateStackTurnTest`, `GateStackPreviewTest`) | `seat(unten)` = `y + height − frame` (Unterkante eines gleich ausgerichteten Gates darauf), `aligned(a, b)` (Kurs gleich oder um 180°, Toleranz 1°), `crossed(oben, unten)` = nicht `aligned`, `seat(oben, unten)` (`aligned` ⇒ `seat(unten)`, sonst `unten.y + height`: quer mit eigenem Balken obenauf), `seatOn(oben, unten)`, `sameColumn(a, b)` (beide stehend und ungeneigt, gleiche Mitte x/z ± 0,001; die Ausrichtung entscheidet nur die Sitzhöhe), `seatedOn(oben, unten)` (gleiche Säule, `oben.y = seat(oben, unten)`), `restsOn(oben, unten)` (`seatedOn` und `fits`), `fits(breiteOben, breiteUnten)` (oben nie breiter, unabhängig von der Drehung), `stackYaw(yawUnten, blickSpieler)` (Blick zurück ⇒ um 180° gedreht, sonst wie das Gate darunter), `stackOn(oberstes, größe, yaw[, drehung])` (Drehung um die Mitte der Auflage), `placementTurn(vorliebe)` (Boden-Drehung der Platzier-Vorliebe in Viertel- plus Feindrehung, nur bei stehender Lage, sonst 0), `stackFor(oberstes, yawOberstes, größe, blickSpieler, vorliebe)` (Lage des neuen Gates für Klick und Vorschau-Geist), `stackBase(oben, unten)` (`STACKED` oder `MOUNTED`), `halfTurn(grad)`, `turned(säule, index, kurs)` (Gate und alle darüber um denselben Winkel, Sitz neu), `check(oberstes, stapelhöhe, größe)` → `NONE`/`TOO_WIDE`/`TOO_HIGH` (`MAX_STACK` = 4), `refusal(gate, andere)`, `Stack(geometrie, fuß, StackRefusal)` mit `NONE`/`STANDING_ONLY`/`OCCUPIED`/`TOO_WIDE`/`TOO_HIGH`/`BLOCKED`, `column`/`top`/`above`/`below`/`base` auf einer Liste von `GateGeometry`, `afterRemoval(gates, index)` → `Drop(index, y)` für alle Gates darüber (`dropDelta`: das erste fällt auf seinen Sitz, die Drehung bleibt). `Base`: `BAR` (einzeln, mit unterem Balken), `LEGS` (unterstes Gate eines Stapels), `STACKED` (steht gleich oder um 180° ausgerichtet auf einem Gate, gemeinsamer Balken), `MOUNTED` (liegt gedreht quer auf dem Querbalken darunter, eigener unterer Balken, keine Füße); `Base.of(getragen, belegt[, quer])` |
+| `race/GateGeometry#boxes(sink, base)` | race | Kollisionsboxen je Rolle: `BAR` wie bisher (4 Boxen), `LEGS` ohne unteren Balken, `STACKED` ohne unteren Balken und mit Pfosten ab `frame` (der Bereich darunter ist der Balken des Gates darunter). `boxes(sink)` = `BAR`. Die Kollision kennt das Flag `legs` nicht; die Unterkante der zählenden Öffnung regelt `legs` (Zeile unten) |
+| `race/GateEntity#base()`, `covered()`, `supported()`, `refreshStack()`, `refreshColumn()`, `gateAbove()`, `gateBelow()`, `stack()` | race | `stack()` = ganze Säule von unten nach oben (Weltabfrage). `covered`/`supported`/`base` sind nicht synchronisiert: Server **und** Client rechnen sie beim ersten Tick eines Gates für die ganze Säule (`refreshColumn`, so sieht der Client ein frisch gestapeltes Gate und die Beine darunter im selben Tick) und danach alle 5 Ticks je Gate aus den (synchronisierten) Positionen nach; Stapeln und Nachrutschen aktualisieren die Säule auf dem Server sofort. `colliders()` folgt `base()` (Kollision wie gezeichnet). Wird ein Gate zerstört (`RemovalReason#shouldDestroy`, also Abbauen, `/kill`, `discard`), rutschen alle Gates darüber auf dem Server um seine Höhe minus Rahmenstärke nach (`setPos` + `needsSync`, Kurs-Eintrag sofort über `CourseRegistry#reconcile`); Kursplatz, Nummer und Richtung bleiben. Bewusst Nachrutschen statt Zerfallen: der Kurs bleibt vollständig und niemand verliert Items |
+| `race/GateGeometry#withLegs(flag)`, `legs()`, `openingFloor()`, `crossing(…, forward, legs)` | race (reines Java, JUnit `GateLegsOpeningTest`) | Flag `legs` (Standard `false`, nur Gate-Art Gate; Elemente und Freiform-Gates bleiben unverändert): `openingFloor()` = `legs ? 0 : frame`, `insideOpening`, `crossing` und `stageCrossing` zählen ab `openingFloor()` (Pfosten und oberer Balken bleiben Rahmen). Die Überladung `crossing(…, forward, legs)` rechnet mit vorgegebenem Flag ohne neue Objekte. `equals`/`hashCode` unterscheiden das Flag (Hash ohne Flag unverändert), `sameAs` nicht; `at`, `withTilt`, `withVariant` liefern Geometrie ohne Flag. Kursdaten (`CourseData.Gate#geometry`) setzen es nie: `layoutHash`, `LapTracker#sameLayout`, Bestenlisten und Ghosts bleiben unverändert |
+| `race/GateEntity#geometry()` | race | Gate-Art Gate mit `base() == LEGS` → `withLegs(true)`. Damit zählen am Server Rundenprüfung (`RaceServer`, Treffer aus der Entity-Geometrie) und Redstone-Puls (`GateSignals`) unten bis zum Boden; `geometryAt` (Kollision, Begrenzungsquader) bleibt ohne Flag |
+| `race/GateOpenings`, `LapTracker#setOpenings(anbieter)`, `openings()`, `GhostTrack#splits(gates, anbieter)` | race (reines Java, JUnit `LapTrackerTest`, `GateLegsOpeningTest`) | Anbieter `legs(gateIndex)`, `NONE` = immer `false` (Standard). Der Tracker prüft jeden Durchflug erst wie bisher; nur wenn das Segment die Gate-Ebene im Streifen `0 < up ≤ frame` zwischen den Pfosten schneidet, fragt er den Anbieter und zählt bei `true` (vorwärts als Durchflug, rückwärts als falsche Richtung). Durchflüge weiter oben fragen ihn nie. Die Geister-Splits rechnen genauso |
+| `race/client/ClientGateOpenings#of(kurs, gates)`, `following(tracker)`, `find(kurs, platz, geometrie)` | race (Client) | Sucht zum Kurs-Gate das geladene `GateEntity` im Quader ±0,25 Block um dessen Ursprung mit gleichem Kurs und Platz und meldet `base() == LEGS` (nur stapelbare Gates); nicht geladen → `false` (Verhalten 0.5.2). `ClientRaceTracker` setzt `following(tracker)` einmal im Konstruktor (folgt jedem Kurswechsel), `GhostLibrary` gibt `of(kurs, gates)` an alle drei Geister-Splits |
+| `race/GateItem#stackOn(ziel, spieler, stack)`, `stackFor(ziel, spieler)`, `lidPath(ziel, spieler)`, `GateItem.free(level, geometrie, base, körper)` | race | Rechtsklick mit einem Gate-Item auf ein beliebiges Gate der Säule (`GateEntity#interact`, beide Seiten) setzt es auf das oberste Gate, in der Boden-Drehung der Platzier-Vorliebe relativ zum Gate darunter (`GateStacking#stackFor`). `stackFor` liefert Lage, Fuß und Ablehnung (`GateStacking.Stack`) für Klick und Vorschau-Geist gleich; `lidPath` (Lage liegend auf einem stehenden Gate) wählt stattdessen den Deckel. Abgelehnt mit Meldung: nicht stehend (`…stack_standing_only`), etwas sitzt oben (`propwash.race.stack.occupied`), breiter als das Gate darunter (`propwash.race.gate.stack_too_wide`), Säule voll (`…stack_too_high`), Blöcke, Weltgrenze, Rahmen anderer Gates oder Spieler/Drohnen im neuen Rahmen (`…blocked`). `free` prüft beim normalen Aufstellen auch Rahmen anderer Gates (kein Gate ineinander) |
 | `race/RaceLine#needsDetour(a, b)`, `detourPoint(a, b)` | race | Zwei aufeinanderfolgende Kurs-Gates mit gleicher Richtung, deren Mitten fast in derselben Ebene und seitlich überlappend liegen (Doppel-Gate, Leiter ohne Zickzack): die Linie läuft über einen Zwischenpunkt `max(Breite)/2 + 2` Blöcke neben der Säule (Ebene wird außerhalb der Pfosten gekreuzt), mit Kehren vor und hinter der Säule. Gegenläufige Leitern (Zickzack) brauchen keinen Umweg |
 | `race/client/GateRenderer#frameModelId/lightsModelId/startFrameModelId(size, base)`, `variantSuffix(base)`, `chevronFloor(size, base)`, `plateCenterX(size, covered)`, `plateBottom(size, covered)`, `GateRenderState#covered`, `#base` | race | Modell je Rolle (`items/race/gate_<size>_{frame,lights,start_frame}[_legs|_stacked]`, `docs/ASSETS.md` „Gates“); Maßstab und Versatz kommen immer vom `BAR`-Rahmen. Steht ein Gate auf diesem (`covered`), sitzt die Nummern-Tafel seitlich außen am Pfosten (1/16 Block Luft, Oberkante = Oberkante des Gates), das Start-Gate zeigt statt des Banners eine solche Tafel mit „START“ (`propwash.race.gate.start_short`), die roten Eckmarken der Rückseite entfallen (die Ecken sind dann T-Stücke des Gates darüber, die rote Leiste unter der Tafel bleibt), das Namensschild beim Kurs-Werkzeug rückt unter den oberen Balken. Die Bodenpfeile eines getragenen Gates schweben auf Höhe der Balken-Oberkante vor seiner Einflugseite |
 | `guide/client/render/SceneView`, `SceneGateVisual#prepare(gate, actor, base, covered)` | guide | Flugschul-Gates bestimmen ihre Rolle aus den Positionen aller voll sichtbaren Gate-Akteure (`GateStacking.base`) und zeichnen über `GateRenderer#fill` dieselben Modelle, Drehung und Halterungen wie die Welt |
@@ -2207,12 +2325,44 @@ Balken, Füße bleiben). Einzelne Gates sehen aus wie bisher.
 Stapeln ist rein geometrisch: es gibt keine gespeicherte Verbindung, jedes Gate bleibt ein eigenes Entity und eigenes
 Kurs-Gate (Kurs-Werkzeug nummeriert es wie jedes andere, eigene Pfeile, eigenes grün/weiß). Rundenzählung und
 Serverprüfung zählen wie bisher nur Durchflüge durch die Öffnung des erwarteten Gates in seiner Richtung; der gemeinsame
-Balken zwischen zwei Öffnungen ist Rahmen. Bei einem Gate auf Beinen zählt die Öffnung weiterhin erst ab Rahmenstärke
-über dem Boden. Weltkurs-Gates lassen sich genauso stapeln; die Drohnen-Arena hat eine Leiter aus drei Gates
+Balken zwischen zwei Öffnungen ist Rahmen. Bei einem Gate auf Beinen zählt die Öffnung seit 0.6.0 bis zum Boden, wo sein
+unterer Balken fehlt (`docs/gate-legs.md`); einzelne Gates und Gates darüber zählen ab Rahmenstärke. Weltkurs-Gates lassen sich genauso stapeln; die Drohnen-Arena hat eine Leiter aus drei Gates
 (`tools/data/world_courses.py`, `Course.stack`). Selbsttests `race.client.GateStackSelfTests` (Grenzen und Nachrutschen,
 Leiter + Doppel-Gate als Kurs mit Nummern, Rolle und drei Kollisionsboxen je gestapeltem Gate beim Client, alle
-Leiter-Modelle auflösbar, Runde durch alle fünf Öffnungen, Aufräumen), Bildschirmfoto `gate_stacks.png` (Leiter aus
+Leiter-Modelle auflösbar, Runde durch alle fünf Öffnungen, Aufräumen; „race: Gate-Stapel: …“ Durchflug in halber
+Rahmenhöhe unten am Gate auf Beinen auf Client und Server mit Redstone-Puls, einzelnes Gate erst ab Rahmen, nach Abbau
+des oberen Gates wieder Rahmen, frisch gestapelt in allen fünf Phasen des Nachrechnens Beine beim Client spätestens einen
+Tick nach dem neuen Gate; „race: Weltkurs-Leiter: …“ Rekord, Geist und Layout-Hash der Drohnen-Arena unverändert),
+Beitrittstest `PROPWASH_JOINTEST_STACKGATE` mit `dev.StackGateJoinCheck`, Bildschirmfoto `gate_stacks.png` (Leiter aus
 drei Gates und Doppel-Gate), Flugschul-Schritt `race/stack`.
+
+Nachtrag 0.6.0 (Befund PTP-1): `GateStacking#restsOn(oben, unten)` verlangt zusätzlich `fits` – ein breiteres Gate in
+Sitzhöhe (`seatedOn`) gehört nicht zum Stapel und steht auf eigenen Beinen (`BAR`), auch in Welten aus 0.6.0-rc.1. Neue
+Lagen prüft `GateStacking#refusal(gate, andere)` (`TOO_WIDE`: säße auf einem schmaleren oder trüge ein breiteres,
+`TOO_HIGH`: mehr als `MAX_STACK`), mit der Säule aus der Welt über `GateMounting#stackRefusal(level, gate, ohne)`; das
+nutzen `GateMounting#apply` (Ergebnisse `STACK_TOO_WIDE`, `STACK_TOO_HIGH`), das Gate-Menü (`GateEditor.Status.TOO_WIDE`,
+`TOO_HIGH`), `GateItem#useOn` und `GatePreview`. Mit „Kurs-Elemente frei platzieren“ bleibt Überlappung erlaubt, ein
+ungültiger Stapel entsteht nicht. JUnit `GateStackRulesTest`, Selbsttest `race-topo: Stapelregeln`.
+
+Nachtrag 0.6.0 (Befunde RC3P-3 und RC3P3-1): Gestapelte Gates drehen in den Schritten am Boden; gleich oder um 180°
+ausgerichtet teilen sie sich den Balken (`STACKED`), jede andere Drehung liegt mit eigenem Balken quer obenauf
+(`MOUNTED`, `seat(oben, unten)`). Beim Stapeln gilt die Boden-Drehung der Platzier-Vorliebe relativ zum Gate darunter;
+mit einem Gate-Item zeigt der Blick auf ein stehendes Gate denselben Vorschau-Geist wie am Boden (aus
+`GateItem#stackFor`, also genau das Gate des Rechtsklicks) samt Hinweisfeld, und die Dreh-Taste dreht dabei die Vorliebe
+statt des Gates im Blick (`GateKeyRoute` `TURN_STACK`/`NEXT_MOUNT_STACK`). JUnit `GateStackTurnTest`,
+`GateStackPreviewTest`, `GateKeyRouteTest`; Selbsttests `race-topo: Stapel drehen` und `race-topo: Stapel-Vorschau`.
+Nachtrag 0.6.0 (Befund AUTO56-1): Am Deckel (Lage liegend, `GateItem#lidPath`) ändert `TURN_STACK` die Vorliebe nicht
+(`GateKeyRoute#stackPreference` dreht nur stapelbare Boden-Lagen), denn der Deckel liegt immer abwärts; das Hinweisfeld
+nimmt dort die Richtung aus der Deckel-Geometrie (`GatePreview.Target#lid`, `GateMounting#describeDirection`) und nennt
+als Taste nur den Lagewechsel (`propwash.race.lid.hint`). Selbsttest `race-topo: Stapel-Vorschau – Deckel: …`.
+Nachtrag 0.6.0 (Befund OT4-4): Stapel stehen direkt nebeneinander, auch ohne „Kurs-Elemente frei platzieren“.
+`GateStacking#joined(gestapelt, Nachbarn)` gibt dem gestapelten Gate die Bits `JOINT_LEFT`/`JOINT_RIGHT` der Seiten, deren
+Pfostenmitte genau auf der eines verträglichen Nachbarn liegt (`placementJoints`, ohne Einrasten, die Säule bestimmt die
+Lage); `GateItem#stackFor` prüft Platz mit diesem Rahmen (Vorschau und Klick), danach `refreshAround` und Meldung
+`propwash.race.row.joined`. Echte Kollisionen bleiben `BLOCKED`. `GatePreview.Target#refusal` trägt die
+`StackRefusal`, das Hinweisfeld nennt `TOO_HIGH`, `TOO_WIDE` und `OCCUPIED` mit eigenem Text
+(`propwash.race.stack.preview_too_high`, `…_too_wide`, `…_occupied`). JUnit `GateStackRowTest`,
+`GateStackLimitPreviewTest`; Selbsttest `race-topo: Stapel nebeneinander`.
 
 ### Gates an Wand und Decke, Tauchtore und Drehen (race)
 Jedes Gate (alle Größen, auch Start/Ziel) steht am Boden, hängt an Wänden oder unter Decken und lässt sich in
@@ -2224,11 +2374,11 @@ der Rahmen: `docs/design/gate-mounting.md`.
 | `race/GateMount` | race | Lagen `STANDING`, `FLOOR_FLAT` (Boden), `WALL_DIVE`, `WALL_SIDE`, `WALL_WINDOW` (Wand), `HANGING`, `CEILING_FLAT` (Decke); `surface()`, `turns()` (4 = Richtung in Vierteldrehungen, 2 = Flugrichtung umkehrbar), `next()` (nächste Lage derselben Fläche), `stackable()` (nur `STANDING`), `base()` (`MOUNTED` = Rahmen ohne Füße), `CODEC` (stabile Schlüssel), `pack/unpackMount/unpackFlipped` (ein Byte) |
 | `race/GateGeometry` | race (reines Java, JUnit `GateMountTest`) | Orthonormaler, rechtshändiger Rahmen `side`/`up`/`normal` je Lage aus `yawDegrees` und `flipped`; Ursprung = Mitte der Unterkante. `crossing`, `insideOpening`, `boxes`, `bounds`, `centerX/Y/Z`, `pathLength` gelten für jede Lage, Boxen bleiben achsparallel. `STANDING` rechnet bitgleich wie vor den Lagen (Goldens, Geister, Bestenlisten unverändert) |
 | `race/GatePlacement` | race (reines Java, JUnit `GatePlacementTest`) | `surface(faceY)`, `resolve(click, lage, stellung, größe)` (Raster: Öffnung ungerader Breite mittig im Block, gerader Breite auf der nächsten Blockkante), `mountPoint(gate)` und `rotated(gate, lageWechseln, gestapelt)` drehen um den Befestigungspunkt; `Preference` = Lage und Stellung je Fläche |
-| `race/GateMounting` | race | Server: Wahl je Spieler (`GatePreferenceC2S`, beim Abmelden vergessen), `rotate(spieler, gate, lageWechseln)` → `Result` (Reichweite +2, `mayBuild`, Kursbesitz, Platz ohne das Gate selbst, gestapelt nur 180°), Meldungen `propwash.race.mount.*` |
+| `race/GateMounting` | race | Server: Wahl je Spieler (`GatePreferenceC2S`, beim Abmelden vergessen), `rotate(spieler, gate, lageWechseln[, schritt])` → `Result` (Reichweite +2, `mayBuild`, Kursbesitz, Platz ohne die bewegten Gates). Gestapelt: Drehen in den Schritten am Boden über `columnTurn`/`applyTurn` (das Gate und alle darüber, Sitz und Fuß neu: gleich oder 180° `STACKED`, sonst quer `MOUNTED`), mit Aufsatz oder geteiltem Pfosten nur 180° (`STACK_TURN_LOCKED`), Lagewechsel `STACK_LOCKED`; im Gate-Menü `edit` nur Gieren (`headingOnly`). Meldungen `propwash.race.mount.*`, `propwash.race.stack.turn_locked` |
 | `race/RacePayloads.GatePreferenceC2S`, `GateRotateC2S` | race | C2S, Protokoll 8 (seit 11 mit Feinwinkeln bzw. Schritt) |
-| `race/client/GateMountKeys`, `race/client/GateKeyRoute` | race | Taste `key.propwash.gate_rotate` (Standard `KEY_R`, geteilt mit `key.propwash.drone_flight_mode`): Stellung drehen, mit Schleichen Lage wechseln; Blick auf ein Gate mit Gate-Item oder Kurs-Werkzeug in der Hand dreht dieses Gate. `GateKeyRoute#route` entscheidet nach Fenster, Pilot-Sitzung (dann gehört die geteilte Taste dem Flugmodus), Hand (Gate, Kurs-Werkzeug, Funke), Gate im Blick, Schleichen und geteilter Belegung (`GateMountKeys#sharedWithFlightMode`) |
+| `race/client/GateMountKeys`, `race/client/GateKeyRoute` | race | Taste `key.propwash.gate_rotate` (Standard `KEY_R`, geteilt mit `key.propwash.drone_flight_mode`): Stellung drehen, mit Schleichen Lage wechseln; Blick auf ein Gate mit Gate-Item oder Kurs-Werkzeug in der Hand dreht dieses Gate. Ausnahme Stapeln: Gate-Item (kein Kurs-Element, kein Freiform-Gate) und Blick auf ein stehendes Gate (`GateMountKeys#stacking`) drehen die Stapel-Vorschau, also die Boden-Vorliebe (`TURN_STACK`, Schleichen `NEXT_MOUNT_STACK`, `GateKeyRoute#stackPreference` = `turnedBy`/`nextMount` der Fläche Boden); das Gate im Blick dreht dann nur das Kurs-Werkzeug. `GateKeyRoute#route` entscheidet nach Fenster, Pilot-Sitzung (dann gehört die geteilte Taste dem Flugmodus), Hand (Gate, Kurs-Werkzeug, Funke), Gate im Blick, Stapel-Vorschau, Schleichen und geteilter Belegung (`GateMountKeys#sharedWithFlightMode`) |
 | `input/client/KeyDefaults#SHARED`, `sharesKey`, `mixin/input/client/KeyMappingMixin` | input | Paare, die sich eine Taste teilen dürfen (nur Flugmodus + Gate drehen): `duplicates` übergeht sie, `KeyMapping#same` meldet sie nicht als gleich (Steuerung beider Loader ohne Warnung), der Tab „Tasten“ nennt sie im Tooltip als geteilt statt als Konflikt |
-| `race/client/GatePreview` | race | Durchscheinende Vorschau (gleicher Renderer, `DroneGhost.tinted`), Pfeil in Flugrichtung, rot bei fehlendem Platz, Hinweisfeld im Propwash-Theme |
+| `race/client/GatePreview` | race | Durchscheinende Vorschau (gleicher Renderer, `DroneGhost.tinted`), Pfeil in Flugrichtung, rot bei fehlendem Platz, Hinweisfeld im Propwash-Theme (`status(ziel, vorliebe)`, `keys(ziel)`). Mit Gate-Item auf ein Gate: Deckel (`GateItem#lidPath`) oder Geist des gestapelten Gates aus `GateItem#stackFor` mit dessen Fuß (`Target#base`), rot bei jeder Ablehnung außer „nicht stehend“ (dann kein Geist); Hinweisfeld wie am Boden mit Lage und Drehung der Fläche Boden |
 | `race/client/GateRenderer#rotation(out, gate)`, `fill(...)`, `submitBody(...)` | race | Modelle mit dem Rahmen gedreht; `_mount`-Varianten ohne Füße, Montageplatten (`gate/mount_plate`) am seitlichen Wandgate, Gurte (`gate/hanger`) am hängenden Gate |
 
 Kurs-Daten (`CourseRegistry.GateRecord.mount`/`flipped`, `CourseData.Gate`) tragen die Lage; alte Dateien, Welt-Kurse und
@@ -2328,7 +2478,7 @@ Selbsttests `race.client.FreeformGateSelfTests` (Präfixe `race: Freiform`, `bil
 ### Drohnen-Item und Geist mit dem eigenen Bauplan (drone-render, race)
 | Datei | Besitzer | Vertrag |
 |---|---|---|
-| `drone/client/render/DroneItemRenderer` | drone-render | Sonder-Renderer `propwash:drone_build` (registriert in `DroneClient`) für `items/drone.json`. `extractArgument` → `Look(build, wear, paint, battery)` aus `drone_build` (fehlt → FREESTYLE), `part_wear` (nur die sichtbaren Prop-Stufen), `drone_paint`, `battery_installed`; der Record ist zugleich der Schlüssel des GUI-Item-Atlas (gleicher Bauplan = ein gezeichnetes Symbol). Gezeichnet wird dieselbe Baugruppe wie an der Entity (`DroneVisuals.submit`), je `Look` zwischengespeichert (höchstens 96, neu nach Resource-Reload oder Render-Config). Größe: FREESTYLE liegt exakt wie das bisherige Icon-Modell (Skalierung 1), andere Baupläne werden um die Mitte ihrer Hülle auf `fitFactor` = (r / r₅)^0,3 geklemmt auf 0,72…1,0 des FREESTYLE-Radius gebracht (Whoop gut lesbar, 7" nicht größer als 5"), Unterkante auf der FREESTYLE-Unterkante. `getExtents` = Kasten der FREESTYLE-Hülle. Anzeige-Transformationen kommen aus dem Basis-Modell `propwash:item/drone` |
+| `drone/client/render/DroneItemRenderer` | drone-render | Sonder-Renderer `propwash:drone_build` (registriert in `DroneClient`) für `items/drone.json`. `extractArgument` → `Look(build, wear, paint, battery)` aus `drone_build` (fehlt → FREESTYLE), `part_wear` (nur die sichtbaren Prop-Stufen), `drone_paint`, `battery_installed`; der Record ist zugleich der Schlüssel des GUI-Item-Atlas (gleicher Bauplan = ein gezeichnetes Symbol). Gezeichnet wird dieselbe Baugruppe wie an der Entity (`DroneVisuals.submit`), je `Look` zwischengespeichert (höchstens 96, neu nach Resource-Reload oder Render-Config). Größe: FREESTYLE liegt exakt wie das bisherige Icon-Modell (Skalierung 1), andere Baupläne werden um die Mitte ihrer Hülle auf `fitFactor` = (r / r₅)^0,3 geklemmt auf 0,72…1,0 des FREESTYLE-Radius gebracht (Whoop gut lesbar, 7" nicht größer als 5"), Unterkante auf der FREESTYLE-Unterkante. `getExtents` = Kasten der FREESTYLE-Hülle. Anzeige-Transformationen kommen aus dem Basis-Modell `propwash:item/drone` Symbolform (`readableShapes`: Props als `propWide`, Rahmen ohne Modell als `frameIcon`) nur mit `"icon": true` (Fall `gui` in `items/drone.json`, eigener Zwischenspeicher `iconFitted`); Rahmen mit Modell bleiben auch im Slot Modell. Hand, Kopf und Regal (`fitted`) zeichnen die Baugruppe wie in der Welt (Befund OWNP-1). |
 | `drone/client/render/DroneGhost` | drone-render | `submit(build, paint, orientation, argb, poseStack, collector)`: zeichnet die Drohne an der aktuellen Pose (Ursprung = Füße der Entity, wie `QuadcopterRenderer`) durchscheinend. Alle Item-Quads laufen über `GhostCollector` als `AfterWaterRenderTypes.ghost` des jeweiligen Atlas, Formen als `ghost` der weißen Textur (nach dem Wasser, siehe „Durchscheinende Drohnen-Optik nach dem Wasser“), Farbe × `argb`; LED-Glühen und LED-Schein, Schatten, Umrisse und Texte fallen weg. Zustand je Bauplan und Lackierung zwischengespeichert (höchstens 8). Gibt `false` zurück, wenn nichts gezeichnet werden konnte (race zeichnet dann die alten Kästen) |
 | `race/GhostLook` | race | siehe „Geister-Rennen“ |
 
@@ -2383,7 +2533,7 @@ Implementierer) steht in `docs/design/parts-api.md` und geht für diese Themen a
 | `apiimpl/BuildAccessImpl` (`PropwashApi.builds()`) | D | `read` = gespeicherte Daten des Drohnen-Items (Tuning nur Abweichungen vom Standard, Name über `CraftNames.of`); `createDrone` = `DroneAssembly.preset` + bereinigtes Tuning (`DronePiloting.sanitize`) + `PaintItems.store` + Name (≤ 24 Zeichen), wirft `IllegalArgumentException` bei unbekannten Teilen, Zubehör im falschen Platz (`Conversions.build` leer) oder Problemen; `withTune` ersetzt das Tuning ganz (bereinigt), `withPaint` nur den Lack, beides auf einer Kopie; `check` meldet unbekannte Ids, sonst `DroneBuild.problems(rule)/warnings()` klein geschrieben (mit der Welt-Regel `propwash:part_compatibility` aus stehen die aufgehobenen Probleme unter den Warnungen; `createDrone` folgt derselben Regel, `partCompatibility()` meldet sie), falscher Zubehör-Platz = `accessory_mount`; `analyze` = `BuildAnalysis` → `BuildStats` (Warnungen = `sim.BuildWarning` klein, Texte `propwash.content.workbench.warning.<w>`); `defaultTune` = `TuneMapping.defaults` + `camera.uptiltDeg` aus `FrameDefinition.geometry().cameraTiltDeg()` + LED-Standards; `applyImport`: Zuschauer → `NOT_ALLOWED`, unbekannte Teile → `UNKNOWN_PARTS` (vor `content.ImportService`), sonst `ImportService.apply` (Ausnahmen → `INVALID`), danach immer `BUILD_IMPORTED` (Listener-Ausnahmen geloggt und isoliert). `requireBuild(spec)`, `stats(analysis)`, `imported(player, request, result)` für andere Nahtstellen |
 | `apiimpl/ImportPayloads`, `ImportWire`, `ImportNet`, `ImportRateLimit` | D | C2S `propwash:api_import` (`ImportC2S`: Anfrage-Id, Container-Id oder −1, `ImportWire`) und S2C `propwash:api_import_result` (`ImportResultS2C`: Anfrage-Id, Status-Ordinal, Ebenen-Bitmaske, fehlende Teile ≤ 64, fehlende Farbstoffe ≤ 64), angemeldet in `ApiModule`. `ImportWire` transportiert den Bauplan als Strings (Ids ≤ 256 Zeichen, Zubehör ≤ 8, Lack ≤ 32, Tuning ≤ 256, Name ≤ 96), Ziel als Ordinal, Ebenen/Tuning-Gruppen als Bitmaske nach Ordinal; `toRequest()` wirft `IllegalArgumentException` statt die Verbindung zu trennen. Server (`ImportNet.handle`): erst Rate (`ImportRateLimit`: höchstens 2 Anfragen je 20 Server-Ticks und Spieler, gleitendes Fenster, beim Verlassen vergessen) → kaputte Anfrage `INVALID` → `BUSY` → Ziel `WORKBENCH` nur mit offenem `DroneWorkbenchMenu` gleicher Container-Id und `stillValid`, sonst `NO_TARGET` → `BuildAccessImpl.applyImport`; jede dekodierbare Anfrage feuert `BUILD_IMPORTED` |
 | `apiimpl/client/ClientApiImpl`, `PendingImports`, `ApiClient` | D | `sendImport` (Ziel Werkbank: Container-Id des offenen `DroneWorkbenchMenu`, sonst −1) und `sendWorkbenchImport(containerId, request)` (für A: `WorkbenchContext#importIntoWorkbench`), nur Render-Thread; Antworten erfüllen das Future auf dem Render-Thread; nicht gesendet, getrennt (`ClientBus.DISCONNECT`) oder 200 Client-Ticks ohne Antwort → `NO_TARGET`. `OSD` = `OsdLayoutCodec` über `OsdClient.CONFIG`, `TUNE` = `TuneAccess` (`apply` erwartet das ganze Tuning), `heldDrone` = Haupthand, `renderPreview` = `DronePreview.render(…, PartWear.PRISTINE, Lack, …)`, zeichnet nichts bei unbekannten Teilen |
-| `osd/OsdLayoutCodec` | D | OSD-Layout Version 1 (Schema in `docs/api/addon-guide.md` §12): `encode(config)` (Kopie, Farben klein, `col`/`row` nur bei verschiebbaren Elementen, `color`/`scale` nur bei eigenen Werten), `decode(json, basis)`: Basis liefert `hideVanillaHud`/`analogBreakup`, Preset (unbekannt → Standard) legt alle Elemente fest, Stil fehlend → Standardwert, unbekannte Elemente/Felder übersprungen, danach `OsdConfig.sanitize`; wirft `IllegalArgumentException` bei leerem, kaputtem, zu langem (> 8192) JSON oder fehlendem `"v"` (JUnit `OsdLayoutCodecTest`: Rundreise bitgleich) |
+| `osd/OsdLayoutCodec` | D | OSD-Layout Version 1 (Schema in `docs/api/addon-guide.md` §12): `encode(config)` (Kopie, Farben klein, `col`/`row` nur bei verschiebbaren Elementen, `color`/`scale` nur bei eigenen Werten), `decode(json, basis)`: Basis liefert `hideVanillaHud`/`analogBreakup`, Preset (unbekannt → Standard) legt alle Elemente fest, Stil fehlend → Standardwert, unbekannte Elemente/Felder übersprungen, danach `OsdConfig.sanitize`; wirft `IllegalArgumentException` bei leerem, kaputtem, zu langem (> 8192) JSON oder fehlendem `"v"` (JUnit `OsdLayoutCodecTest`: Rundreise bitgleich). Seit 0.6.0 schreibt `encode` nach den eingebauten Elementen die Add-on-Schlüssel `<ns>:<pfad>` aus `OsdConfig.elements` (`on`, `col`, `row`, ggf. `color` und `scale`; eingeschaltete zuerst, sonst nach Schlüssel), solange das Layout höchstens 8192 Zeichen hat; `decode` übernimmt gültige Add-on-Schlüssel (`AddonOsdKeys#isAddonKey`) auch ohne installiertes Add-on, Add-on-Elemente, die im Layout fehlen, behalten ihre Einstellungen; Layouts ohne Add-on-Einträge bleiben bytegleich (JUnit `AddonOsdTest`, `CovPw3ShareTest`) |
 | `guide/GuideScenes` | D | `register(factory)` / `register(factory, sichtbar)` holen erst die eingebauten Szenen nach (Addon-Szenen stehen immer dahinter); `all()` = sichtbare Szenen (Übersicht, Item-Zuordnung, Selbsttest „alle Szenen“), `registered()` = alle; `byId` nimmt `propwash:x` wie `x` und liefert `null` bei ungültigen Ids; eine werfende Sichtbarkeit gilt als unsichtbar |
 | `guide/scene/Scene`, `SceneBuilder` | D | Ids `name` (Propwash) oder `ns:name` (Addons), `propwash:name` wird zu `name`; Texte `propwash.guide.scene.<name>.…` bzw. `<ns>.guide.scene.<name>.…` (`keyPrefix`, `namespace()`, `builtin()`); Schlüssel der eingebauten Szenen unverändert (JUnit `SceneNamespaceTest`) |
 | `api/client/PropwashClientApi` (Ergänzungen) | D | `registerFlightSchoolScene(szene, sichtbar)` (Addon-Szenen brauchen einen eigenen Namensraum, sonst `IllegalArgumentException`), `flightSchoolDrone(BuildSpec, zusammengebaut, maßstab)`, `openFlightSchoolScene(id, parent)`; dazu `ImportLayer`/`TuneGroup#translationKey()` (`propwash.api.import.layer.<e>`, `propwash.api.tune_group.<g>`, Texte in `common/src/lang/api/`) und `BuildStats.warningTranslationKey` |
@@ -2394,12 +2544,13 @@ Implementierer) steht in `docs/design/parts-api.md` und geht für diese Themen a
 **Flugmodell und Rendering fremder Teile (B, C) und Integration 0.4.0:**
 | Datei | Besitzer | Vertrag |
 |---|---|---|
-| `sim/Telemetry#motorPowerLimit`, `motorDerating`, `escBurned`; `SimEventType.MOTOR_DERATE`, `MOTOR_THERMAL_WEAR`, `ESC_BURNED` | B | Hitze-Drosselung je Motor (Grenzen aus `MotorThermal` der Definition, ab `derateStartC` bis 20 % bei `maxTempC`), Hitzeverschleiß, ESC brennt beim Scharfschalten durch, wenn der Akku mehr Zellen hat als der Stack erlaubt (`AirframeSpec.escOvervoltage`; keine eingebaute Kombination, JUnit `EscVoltageTest`). `SimTuning.thermalLimits` und `escOvervoltage` schaltet die Welt-Regel `propwash:hardware_limits` ab (bis 0.4.0 Schalter „Hardware-Grenzen“ im Tab „Simulation“) |
+| `sim/Telemetry#motorPowerLimit` (Grenze des ESC), `motorHot`, `escDerating`, `escBurned`; `SimEventType.MOTOR_HOT`, `ESC_DERATE`, `MOTOR_THERMAL_WEAR`, `ESC_BURNED` | B (seit 0.6.0 Motor-Hitze Phase B) | Abgeregelt wird nur im ESC nach seiner Temperatur: ab 140 °C linear bis 25 % bei +15 K wie BLHeli_32 (`ESC_DERATE` mit 10 K Hysterese, ESC-Kühlung nach der Platinengröße der Stack-Halterung); ein heißer Motor (`MOTOR_HOT`) verliert ab `derateStartC` bis −10 % Drehmoment (`PowerSystem#torqueScale`) und verschleißt, ab `maxTempC` stark (`MOTOR_THERMAL_WEAR`; Modell und Zahlen in `docs/design/realism/motor-heat.md`); der ESC brennt beim Scharfschalten durch, wenn der Akku mehr Zellen hat als der Stack erlaubt (`AirframeSpec.escOvervoltage`; keine eingebaute Kombination, JUnit `EscVoltageTest`). `SimTuning.thermalLimits` und `escOvervoltage` schaltet die Welt-Regel `propwash:hardware_limits` ab (bis 0.4.0 Schalter „Hardware-Grenzen“ im Tab „Simulation“) |
 | `drone/net/HardwareWearC2S`, `drone/DroneWear#applyHardware` | B | C2S `propwash:drone_hardware_wear` (Entity, Reset-Epoche, ESC durchgebrannt, Hitzeverschleiß je Motor): der Server prüft Pilot, Epoche, die Welt-Regel `propwash:crash_damage` und dass der Bauplan wirklich überspannt, deckelt den Hitzeverschleiß je Paket und schreibt beides an die Drohne |
 | `sim/BuildAnalysis#sustainedMotorTempC`, `propsInViewPercent`; `BuildWarning.MOTOR_THERMAL`, `PROPS_IN_VIEW` (ab 30 %, seit 0.4.1 aus dem FPV-Aufbau des Renderers: `sim.FpvRig`), `ESC_OVERVOLTAGE` | B | Werkbank-Bericht und `BuildStats`; `NaN` wird nicht angezeigt. Texte `propwash.content.workbench.warning.<w>` stehen in `common/src/lang/content/` (JUnit `ContentDataTest`) |
-| `osd/OsdWarnings.Warning.MOTOR_HOT`, `OsdData#motorDerating` | osd (Integration) | OSD-Warnung „MOTOR ÜBERHITZT“ (Stufe Warnung, blinkt), solange ein Motor gedrosselt wird (`Telemetry.motorDerating`); Selbsttest „parts-flight: überhitzte Motoren drosseln …“ prüft sie |
+| `osd/OsdWarnings.Warning.MOTOR_HOT`, `ESC_HOT`; `OsdData#motorHot`, `#escDerating` | osd (Integration, seit 0.6.0 Phase B) | OSD-Warnungen „MOTOR ÜBERHITZT“ (ein Motor ist heiß, `Telemetry.motorHot`) und „ESC ÜBERHITZT“ (der ESC regelt ab, `Telemetry.escDerating`), Stufe Warnung, blinkend; Selbsttest „parts-flight: überhitzter ESC drosselt, überhitzte Motoren verschleißen …“ und Gruppe `drone: Motor-Hitze` (`drone.client.MotorHeatSelfTests`, Bildschirmfotos `motor_heat_*`) |
 | `drone/client/render/FpvProps`, `FpvPropGeometry`, `DroneRenderConfig#fpvProps` | C | eigene Props im FPV-Bild (Schalter „Darstellung“, Standard an). Die Kamera-Entity (eigene FPV- oder Zuschauer-Drohne) wird dafür extrahiert: `mixin/drone/client/LevelExtractorMixin` hebt über `FpvProps.extractsCameraDrone` die Vanilla-Regel „Kamera-Entity nicht zeichnen“ nur für diese Drohne auf; `QuadcopterRenderer` zeichnet dann nur die sichtbaren Props. Im Iris-Schattenpass nie: `FpvProps.submit` bricht dort ab (`shadowPassCalls()`), stattdessen zeichnet `QuadcopterRenderer` die echte Drohne in Originalgröße an der angezeigten Pose (`FpvView.displayedBody`, `DroneVisuals.placeAtDisplayedPose`, `fpvShadowBodies()`), Halos und Motor-Glühen fehlen im Schattenpass (`DroneRenderState.shadowPass`); Schalter „Schatten“ aus nimmt dort alle Drohnen heraus (`docs/design/shader-packs.md`). Drehende Props als weiche Scheibe in der Prop-Farbe (`FpvProps.buildBlur`, Deckkraft 35 → 11 %, nie unter der Alpha-Schwelle), stehende als Blatt-Modell; JUnit `PartIconAndFpvBlurTest` |
 | `drone/client/render/FpvGuards`, `FpvGuardZone`, `FpvGuardMesh`, `QuadCapture` | C | Ducts im FPV-Bild (seit 0.5.0, eigener Schalter „Ducts im FPV-Bild“, `DroneRenderConfig#fpvDucts`, unabhängig von „Props im FPV-Bild“; die Kamera-Drohne wird extrahiert, wenn einer der beiden an ist): Flächen des Rahmenmodells bzw. der Lack-Variante (`QuadCapture` fängt die Item-Flächen samt Transformation ab, ohne Modell die `FallbackShapes`-Form), Auswahl Ring um jede Motorachse plus mindestens 5 rundum wiederholte Flächen (`FpvGuardZone.select`), Zeichnen an der Linse mit derselben Tiefenabbildung wie die Prop-Scheiben (`FpvPropGeometry.pushScale`), nicht im Schattenpass und nicht bei `FpvProps.maskColor`; `FpvProps.guardMaskColor` für den Selbsttest. JUnit `FpvGuardsTest`, Selbsttest `FpvGuardSelfTests`, `docs/ASSETS.md` „Ducts im FPV-Bild“ |
+| `drone/client/render/FpvArmZone`, `FpvQuadSelector`, `FpvGuards#arms`, `FpvGuards#part`, `FpvProps#armMaskColor`, `FpvPropGeometry#armsVisible`, `#attached` | C | Arme und Motoren im FPV-Bild (seit 0.6.0, Befund FB1-1, Schalter „Props im FPV-Bild“): Auswahl der Rahmenflächen nach Lage (`FpvArmZone`: nicht über der Motorachse, nicht über die Mittelebene, mindestens halber Motorabstand, ohne die Flächen von `FpvGuardZone`), Motoren vollständig; Zeichnen wie die Ducts (`FpvProps.emitGuards`), ohne Einfluss auf `nearScale`, nicht in den Messungen `maskColor` und `guardMaskColor`; `DroneRenderState#fpvArms`, `#fpvMotors`; Motor ohne Arm (`FpvArmZone#attached`): kein Prop und kein Motor an diesem Platz. Kreativ-FC: immer der eingebaute Rahmen. JUnit `FpvArmsTest`, Selbsttest `FpvArmSelfTests`, `docs/ASSETS.md` „Arme und Motoren im FPV-Bild“ |
 | `drone/client/render/PartItemRenderer` (`propwash:part`, Basis `propwash:item/part_base`), `PartModel.known()`, `drone_layout.json`/`drone_paint.json` je Namensraum | C | Symbole und Modelle fremder Teile aus ihrem Namensraum, sonst Formen aus der Definition (`docs/ASSETS.md` „Teile aus anderen Namensräumen“). Symbole ohne Modell: GUI-Ansicht 45°/225° (`part_base`), mit `"box": true` (Regal, Kopf, Item-Rahmen) das ganze Teil in einem Block, mit `"ground": true` (Boden) ebenso und sperrige Teile höchstens wie ein Würfel mit 0,3 Block Kante, mit `"hand": true` (Hände) nach der echten Größe des Teils (Handfaktor `ItemSizeRule.handFactor`), Rahmen und Video −20° um die Hochachse gedreht, eigene Symbol-Formen mit kräftigeren Rahmen-Armen und breiteren Prop-Blättern (`FallbackShapes.frameIcon`/`propIcon`; die Formen an der Drohne bleiben unverändert) |
 | `content/DronePresets#label` | content (Integration) | Name über der Werkbank-Vorschau: eingebaute Presets wie bisher (`propwash.content.preset.<key>`), sonst ein angemeldetes Addon-Preset mit gleichem Bauplan ohne Zubehör (Name aus `DroneData`, sonst `DronePreset#translationKey`); kein Treffer → kein Name. JUnit `DronePresetLabelTest` |
 | `core/SaveFormatGoldenTest` + `save_format_032.txt` | Integration | NBT und Netz-Bytes von 9035 Bauplänen (alle eingebauten Kombinationen, Presets mit Zubehör), allen `PartRef`s, Bindungen, Tuning, Verschleiß, Lack, Geist-Aussehen und Geisterdatei sind byte-gleich zu 0.3.2 (Golden-Datei mit dem Code von 0.3.2 erzeugt) |
@@ -2477,7 +2628,8 @@ OSD, FPV-Anzeige und Grafik. Mit allen Standardwerten rechnet das Flugmodell bit
 | `server/WorldRuleText` | server | Name, Wert (an/aus, Stufenname, „120 %“, Sonderwert), Bereich – auch für `/propwash rules` (Abschnitt „Welt-Regeln (/gamerule)“) |
 | `server/rules/RulePreset`, `server/WorldRulePresetC2S` (`propwash:world_rule_preset`) | server | Voreinstellungen `REALISTIC` (= Standard), `TRAINING`, `ARCADE` als reines Java; jede legt jede Katalog-Regel fest (nicht genannt = Standard), `match(values)` findet die passende. C2S mit dem Namen (höchstens 32 Zeichen): `WorldRules#preset` prüft Recht (sonst `…denied`) und Namen, `applyPreset` setzt alle Regeln, schreibt ins Log und schickt allen **eine** Chatzeile `propwash.server.world_rules.preset_applied`, wenn sich etwas ändert. `/propwash rules preset <name>` (Rechtestufe 2). Werte und Entscheidungen in `docs/design/world-rules.md` §1a. Protokoll 11 |
 | `server/client/ClientWorldRules` | server | Client, `INSTANCE`: `known`, `editable`, `version` (steigt bei jeder Wertänderung), `values`, `physics`, `raw`, `get/on`, `crashDamage`, `crashDamageStrength`, `infiniteRange(system)`; bis zum ersten Paket und nach dem Trennen Standardwerte |
-| `server/client/WorldRulesTab` | server | Tab „Welt-Regeln“ (Id `world_rules`, Order 800, `Storage.MIXED`, Fußzeile `propwash.server.world_rules.footer`, schreibgeschützt `…footer_read_only` über `ConfigTab#readOnlyKey`), oben „Voreinstellungen“ (drei Knöpfe, gelten sofort über `WorldRulePresetC2S` und verwerfen Entwürfe der Katalog-Regeln; leuchten bei passenden angezeigten Werten, darunter „Entspricht …“ bzw. „Eigene Regeln …“; ohne Recht nur die Zeile), darunter Abschnitt „Zonen“ (`zone.client.ZoneSection`: „Neue Zone hier“ rechts in der Zeile der Überschrift, Liste mit „Bearbeiten“, Erklärung; Suche mit Stichwort „Zonen“ und je Zone „Zone „…“ bearbeiten“), dann Abschnitte je Gruppe, „Weitere Regeln“ für Gamerules ohne Katalog-Eintrag; Schalter, Stufen, Regler (Prozent/Zahl bis 1000 Schritte), sonst Zahlenfeld; Entwurf bis „Speichern“ (dann `WorldRuleEditC2S`), Rechtsklick = Standard, „Standard“ setzt alle Regeln zurück; ohne Recht eine Tabelle mit Wert und Tooltip. Tooltip: Name, Beschreibung, Standard und Bereich, Befehl |
+| `server/client/WorldRulesTab` | server | Tab „Welt-Regeln“ (Id `world_rules`, Order 800, `Storage.MIXED`, Fußzeile `propwash.server.world_rules.footer`, schreibgeschützt `…footer_read_only` über `ConfigTab#readOnlyKey`), oben „Voreinstellungen“ (drei Knöpfe, gelten sofort über `WorldRulePresetC2S` und verwerfen Entwürfe der Katalog-Regeln; leuchten bei passenden angezeigten Werten, darunter „Entspricht …“ bzw. „Eigene Regeln …“; ohne Recht nur die Zeile), dann Abschnitte je Gruppe, „Weitere Regeln“ für Gamerules ohne Katalog-Eintrag; Schalter, Stufen, Regler (Prozent/Zahl bis 1000 Schritte), sonst Zahlenfeld; Entwurf bis „Speichern“ (dann `WorldRuleEditC2S`), Rechtsklick = Standard, „Standard“ setzt alle Regeln zurück; ohne Recht eine Tabelle mit Wert und Tooltip. Tooltip: Name, Beschreibung, Standard und Bereich, Befehl. Seit 0.6.0 je Zeile ein Häkchen „Zonen“ (`zone.client.ZoneReleaseBox`, Entwurf `releaseDraft`, §15 „Zonen für alle“), keine Zonen-Liste mehr (eigener Tab „Zonen“, `zone.client.ZonesTab`, Befund OWNP-2), der Abschnitt „Rennstandard“ (§15 „Rennwertung“) und ein Abschnitt je Add-on (§15 „Welt-Regeln der Add-ons“) |
+| `server/client/RuleRowLayout` | server (Fix F-cov-combo-4; JUnit `server.client.RuleRowLayoutTest`, Selbsttest „addon-api-17: B5 – Tab Welt-Regeln bei GUI 320×240 deutsch …“) | Breiten der Zeilen im Tab „Welt-Regeln“, reine Rechnung mit ganzen Zahlen: `column` ist die gemeinsame Namensspalte (Formel wie bisher, höchstens 5/8 der Breite); `labelWidth` und `spinnerWidth` geben einer Zeile, deren Name in der Spalte selbst gestaucht noch gekürzt würde (`TextFit.Mode.CUT`), mehr Platz, das Bedienelement behält dabei mindestens seinen Bedarf (`toggleNeed`, `cycleNeed`, `sliderNeed`, `spinnerNeed`; Zahlenfeld sonst `SPINNER_WIDTH` 90); ohne Recht schieben `valueColumn` und `valueX` den Wert dieser Zeile nach rechts; passende Zeilen bleiben unverändert. Aufgerufen von `WorldRulesTab#labelWidth`, `#widget`, `#valueColumn` und `#extract` |
 | `ui/client/config/ConfigTab#readOnlyKey()` | ui | Sprachschlüssel der Fußzeile für schreibgeschützte Tabs (Standard `propwash.ui.footer.read_only`) |
 | `sim/SimTuning#batteryScale`, `PowerSystem#integrateBattery(h, unendlich, faktor)` | sim | Akkulaufzeit: der Verbrauch (`mAhUsed`, `packMah`) wird durch den Faktor geteilt (0,01–10, Standard 1 = bitgleich); `infiniteBattery` bleibt für 0 % |
 | `drone/client/PilotSession` | drone | Tuning beim Start und bei jeder neuen `ClientWorldRules#version` aus `physics().toSimTuning()`; `physicsModified` aus `physics().modified()`; Funkqualität frei bei `infiniteRange(System der Drohne)`; Aufpralle nur mit Stärke > 0, Hitzeverschleiß nur mit `crashDamage()`. `DroneClientConfig` hat nur noch `stateSendHz`, `PhysicsAccess` und `SimulationConfigTab` entfallen |
@@ -2534,6 +2686,7 @@ in `PropwashClient.init()` nach `TrickClient`, Sprachquellen `common/src/lang/in
 | Netz | interact | `DroneStrikeC2S` (`propwash:drone_strike`), `CargoReleaseC2S` (`propwash:cargo_release`, nur `COMMAND`/`CRASH`), `DroneBreakC2S` (`propwash:drone_break`), `DroneBreakDeniedS2C` (`propwash:drone_break_denied`, Grund), `DroneBreakClearC2S` (`propwash:drone_break_clear`, ≤ 32 Blöcke), `DroneBreakClearS2C` (`propwash:drone_break_clearance`, Grund je Block); `Constants.PROTOCOL_VERSION` = 10 (0.5.0, mit GPS Rescue ohne Pilot 11) |
 | Selbsttests | interact | `interact.client.InteractSelfTests` (beide Loader): Spielregel registriert und beim Client, Shift-Tooltip, Drohne prallt an einer Kuh ab (Schaden, Rückstoß in Flugrichtung, Absturz gezählt), Spielregel aus (fliegt hindurch), Greifer nimmt 8 Eisenbarren und 6 von 64 Bruchsteinen (380 g, Flugmodell schwerer), Taste wirft ab ohne sofortiges Wiedergreifen, Entschärfen setzt ab, Absturz an einer Mauer verliert die Fracht; mit `-PpropwashScreenshots=true` zusätzlich `drone_gripper_carry.png` und `tooltip_gripper.png` (Fenster wie im Rundgang), die Flugschul-Bilder `flight_school_gripper.png`/`flight_school_gripper_drop.png` kommen aus `GuideSelfTests` |
 | Daten | interact, content | `data/propwash/damage_type/drone_strike.json`, Ergänzung der Tags `minecraft:no_knockback` und `minecraft:panic_causes`, Bauteil `accessory/gripper.json`, Rezept (`tools/data/survival.py`), Modell (`tools/assets/parts/accessories.py#build_gripper`), Szene `guide.scenes.GripperScene` (`gripper`, nach `action_cam`), `FlightSchoolScenes.GRIPPER` (API 1.5.0) |
+| `interact/DroneBlockTriggers` | interact | Server, 0.6.0 (Portierung von Pull Request #1 von bluepanee): Druckplatten und Stolperdraht reagieren auf Drohnen. `tick(drone, level)` aus `QuadcopterEntity#tickServer` nach `syncFlightTags` (vor `SERVER_TICK`), nur im ersten Tick und bei Bewegung über `MOVE_THRESHOLD` = 1·10⁻⁴ Block (`moved(vorher, jetzt)`, letzte Position in einer `WeakHashMap`, nur Server-Thread); je Blockposition im Kollisionsquader + `REACH` (1·10⁻³), deren Zustand im Block-Tag `DRONE_TRIGGERS` = `propwash:drone_triggers` liegt (`#minecraft:pressure_plates`, `minecraft:tripwire`; Datenpakete erweitern oder leeren ihn) und deren `getEntityInsideCollisionShape` den Quader berührt: `state.entityInside(level, pos, drone, InsideBlockEffectApplier.NOOP, true)`. Keine übrigen Blockwirkungen (Portale, Kaktus, Feuer, Lava, Spinnweben, Blasensäulen), kein `fireImmune`, keine Welt-Regel, kein Netzpaket, keine Speicherdaten; Selbsttests `interact.client.DroneTriggerSelfTests` (`interact:`), Beitrittstest `dev.PlateJoinCheck` (`PROPWASH_JOINTEST_PLATES`), JUnit `interact.DroneBlockTriggersTest`; Spieler- und Betreiber-Doku `docs/drone-triggers.md` |
 
 ### Bandos (bando, Entwurf `docs/design/bandos.md`)
 
@@ -2552,6 +2705,13 @@ in `PropwashClient.init()` nach `TrickClient`, Sprachquellen `common/src/lang/in
   `GuideScenes.bootstrap`), ihre Texte stehen in `common/src/lang/bando/`; JUnit `BandoSceneTest` prüft sie wie
   `FlightSchoolScenesTest` die eingebauten Szenen.
 - Kein eigener Schalter, keine Server-Regel: Bandos folgen „Bauwerke generieren“ und Datenpaketen wie Vanilla-Strukturen.
+- Lage (0.6.0, `docs/bando-placement.md`): `bando.plan.BandoSite.underpinned` entscheidet, welche Spalten
+  `BandoPiece#underpin` bis zum Grund auffüllt (auch Hofspalten mit eigenem Fundament ohne stehendes Teil);
+  `BandoPiece#tidy` entfernt nach den Merkmalen jedes Chunks im Bereich `BandoSite.leafArea` (Plan samt 4 Blöcken Rand)
+  Laub ohne Stamm (`LeafDistance.orphans`; Stämme des Bandos zählen nicht, künftige Bauteil-Zellen leiten nicht) und
+  schreibt nur in diesen Chunk; `settleLeaves` gibt abgeschnittenen Blättern jenseits des Chunk-Rands nur einen Block-Tick.
+  Wirkt nur in neu erzeugten Chunks; Blätter, die ein Baum aus einem später erzeugten Nachbar-Chunk in einen fertigen
+  Chunk schreibt, können weiter hängen bleiben.
 - Selbsttest: Schritte `bando: …` in der Testwelt und nach dem Verlassen in zwei eigenen Welten
   (`SelfTestRunner.WORLD_NAME + " Bandos"` bzw. `… Bandos aus`, Normal-Welt, Seed 20261003); sie stehen als letzte
   Nach-dem-Verlassen-Schritte und verlassen ihre Welten selbst wieder.
@@ -2562,16 +2722,16 @@ auf dem Server weiter.
 
 | Datei | Besitzer | Vertrag |
 |---|---|---|
-| `rescue/RescueAutopilot` | rescue | zusätzlich `setAutonomous(bool)` (ohne Pilot: immer landen, nach dem Aufgeben an Ort und Stelle landen), `landNow(world)`, `stuck()` (mit Pilot aufgegeben, schwebt), `gaveUp()`, `following()`, `landX()`/`landZ()`; Sicherheitshöhe aus dem ganzen Weg (bis 256 m), lokaler Weg über `RoutePlanner`, Landeplatz über `RescueWorld#ground` |
-| `rescue/RescueWorld#ground(x, y, z)`, `rescue/Ground` | rescue | Art des Blocks (`NONE`, `SOLID`, `FOLIAGE`, `WATER`, `LAVA`, `HAZARD`, `UNKNOWN`); Standard aus `solid`; `LevelRescueWorld` und `ServerRescueWorld` ordnen über `rescue/RescueBlocks#classify` ein |
+| `rescue/RescueAutopilot` | rescue | zusätzlich `setAutonomous(bool)` (ohne Pilot: immer landen, nach dem Aufgeben an Ort und Stelle landen), `landNow(world)`, `stuck()` (mit Pilot aufgegeben, schwebt), `gaveUp()`, `following()`, `landX()`/`landZ()`; Sicherheitshöhe aus dem ganzen Weg (bis 256 m), lokaler Weg über `RoutePlanner`, Landeplatz über `RescueWorld#ground`; Zielpunkt-Landung über `targetFits` (Drohnenbreite + 0,05 Rand, echte Oberseiten über `RescueWorld#groundTop`, ohne Höhenkarte, Oberseiten ≤ 0,25 auseinander, am Homepoint höchstens 1 Block darüber) vor der Platzsuche in `chooseLandingSpot` und `chooseLandingNear` (Fix F-GCCA12P-1) |
+| `rescue/RescueWorld#ground(x, y, z)`, `rescue/Ground` | rescue | Art des Blocks (`NONE`, `SOLID`, `FOLIAGE`, `WATER`, `LAVA`, `HAZARD`, `UNKNOWN`); Standard aus `solid`; `LevelRescueWorld` und `ServerRescueWorld` ordnen über `rescue/RescueBlocks#classify` ein; `groundTop(x, y, z)` (Standard 1.0) liefert die echte Oberseite des Blocks, beide Welten über `RescueBlocks.top` (volle ebene Oberseite aus der Drohnen-Form, auch in Teilhöhe, sonst `NaN`; Fix F-GCCA12P-1) |
 | `rescue/RoutePlanner` | rescue | reines Java: begrenztes A* (±20/−6/+12 Blöcke, 2500 Knoten) mit `Goal` (`estimate`, `reached`), Wegpunkte mit Sichtlinien geglättet |
 | `rescue/ReturnPlan` | rescue | Plan an der Drohne (`QuadcopterEntity#returnPlan`, NBT `ReturnPlan`): Besitzer, Homepoint, beim Piloten, Höhe, Tempo, Sinkrate, Hinderniserkennung, Abstand, Mindestentfernung, sofort landen, Ticks; `settings()` bereinigt und landet immer |
 | `rescue/net/RescueStatusC2S` | rescue | `propwash:rescue_status` vom Piloten: aktiv oder nicht, Homepoint, beim Piloten, Einstellungen; der Server nimmt es nur vom Piloten der Drohne, Homepoint nur innerhalb seiner Funkreichweite (+32) und außerhalb eines für ihn gesperrten Spawn-Bereichs. `rescue.client.RescueController` schickt es bei Start, Ende, Einstellungen und Homepoint-Bewegung (> 0,5 m, höchstens alle 250 ms), nie beim Ende der Sitzung |
-| `rescue/AutonomousReturns` | rescue | Server: übernimmt bei `PILOT_CHANGED` (Pilot → keiner) mit aktiver Meldung, Akku und Welt-Regel; fliegt im Tick der Drohne (`QuadcopterEntity#setServerAutopilot`), hält dabei vor und nach der Bewegung ein Ticket `propwash:drone` (Radius 2) über `RangeManager#keepSimulated`, nur wenn `RangeManager#generatedAround` stimmt; Budget 8 je Server, 2 je Spieler (`AutonomyBudget`, sonst senkrechtes Absinken ohne Ticket), 12 000 Ticks, dann Landung, nach 1200 weiteren aus; Chat-Meldungen an den Besitzer; `flights()`, `descents()`, `flying(drohne)`, `phase(drohne)`, `reported(drohne)` für Tests |
+| `rescue/AutonomousReturns` | rescue | Server: übernimmt bei `PILOT_CHANGED` (Pilot → keiner) mit aktiver Meldung, Akku und Welt-Regel; fliegt im Tick der Drohne (`QuadcopterEntity#setServerAutopilot`), hält dabei die Chunks über `rescue/FlightChunks` (Chunk der Drohne und erzeugte Nachbarn, 3×3 tickend, siehe dort); Budget 8 je Server, 2 je Spieler (`AutonomyBudget`, sonst senkrechtes Absinken ohne Ticket), 12 000 Ticks, dann Landung, nach 1200 weiteren aus; Chat-Meldungen an den Besitzer; `flights()`, `descents()`, `flying(drohne)`, `phase(drohne)`, `reported(drohne)` für Tests |
 | `drone/QuadcopterEntity` | drone | `returnPlan()`, `setReturnPlan`, `returningHome()`, `RETURN_PLAN_KEY`; `tickServer` fragt den Hook nur mit Plan und ohne Pilot und überspringt dann die lose Physik; ein neuer Pilot löscht den Plan |
 | `drone/DronePiloting` | drone | `StartResult.RETURNING`: Funke benutzen bei Plan → `ReturnPlan#withLandNow`, Meldung `propwash.rescue.autonomous.land_now`; Shift + Funke zeigt `propwash.rescue.autonomous.status` |
 | `drone/WindModel` | drone | von `drone.client` nach `drone` (öffentlich), Client und Server rechnen denselben Wind |
-| `server/RangeManager#generatedAround`, `#keepSimulated`; `server/ServerRules#forbiddenSpawnArea(spieler, level, pos)` | server | Helfer für autonome Flüge (gemeinsamer `TicketLedger`, Spawn-Schutz für eine Position) |
+| `server/RangeManager#generatedAround`, `#keepSimulated`, `#keepAhead(level, mitte, radius)`; `server/ServerRules#forbiddenSpawnArea(spieler, level, pos)` | server | Helfer für autonome Flüge (gemeinsamer `TicketLedger`, Vorausschau-Ticket `propwash:drone_lookahead` für Add-on-Flüge, die Gelände erzeugen dürfen, Spawn-Schutz für eine Position) |
 | `server/rules/WorldRuleSpecs.AUTONOMOUS_RESCUE` | server | Welt-Regel `propwash:autonomous_rescue` (Schalter, Standard an, Gruppe Spiel, keine Physik) |
 | Netz | rescue | `RescueStatusC2S`; `Constants.PROTOCOL_VERSION` = 11 (0.5.0) |
 | Selbsttests | rescue | `rescue.client.AutonomousRescueSelfTests` (Fabric, Schritte `rescue: ohne Pilot – …`), mit `-PpropwashScreenshots=true` `rescue_autonomous_landing.png` und `rescue_autonomous_door.png` |
@@ -2747,7 +2907,9 @@ Ohne Beschichtung und ohne Turtle-Modus rechnet das Flugmodell bit-gleich wie zu
 | `input/SwitchFunction.TURTLE`, `input/TurtleSelector`, `KeyDefaults.TURTLE` | input | Schalter oder Taste (Ziffernblock 8); Taste geht nach einem Turtle-Flip beim Entschärfen von selbst aus |
 | `server/rules/WorldRuleSpecs.WATERPROOF_DRONES` | server | `propwash:waterproof_drones` (Schalter, Standard aus, Gruppe Spiel, keine Physik), Arcade an |
 | `server/rules/WorldRuleSpecs.ALLOW_RESET` | server | `propwash:allow_reset` (Schalter, Standard an, Gruppe Spiel, keine Physik), in allen Voreinstellungen an |
-| `rescue/HomeResets`, `rescue/HomeResetRules` | rescue | Reset zum Homepoint: `HomeResetC2S` vom Piloten, Regeln rein in `HomeResetRules` (Ziel Homepoint → Startpunkt, nie über Dimensionen, nur in Funkreichweite, außerhalb des Spawn-Schutzes und ohne Erzeuge-Recht nur in erzeugtem Gelände, Sperrzeit 20 Ticks, Freiraum bis 4 Blöcke darüber, gerade Lage mit Kurs), Ziel-Chunk mit `DRONE_TICKET` laden und erst entity-tickend versetzen (höchstens 200 Ticks), `QuadcopterEntity.HOME_RESET` vor dem Versetzen, `resetTo(…, home = true)`; der Pilot verfolgt seine Drohne danach 100 Ticks auch ohne gesendeten Chunk (`TrackedEntityMixin`) |
+| `rescue/HomeResets`, `rescue/HomeResetRules` | rescue | Reset zum Homepoint: `HomeResetC2S` vom Piloten, Regeln rein in `HomeResetRules` (Ziel Homepoint → Startpunkt, nie über Dimensionen, nur in Funkreichweite, außerhalb des Spawn-Schutzes und ohne Erzeuge-Recht nur in erzeugtem Gelände, Sperrzeit 20 Ticks, gerade Lage mit Kurs; Stelle `spot(x, y, z, Space)`: freier Homepoint → genau dort, sonst nächste freie Stelle im Umkreis 3 (`SEARCH_RADIUS`), höchstens 1 Block höher (`RISE`) oder tiefer (`STEP_DOWN`), nie durch Boden oder Decke, `Spot#nearby` → `Outcome.NEARBY` mit Hinweis „Homepoint blockiert“, keine → zugebaut; `ground` = Homepoint auf der Oberkante unter der Drohne, `lift` hebt einen Punkt im Block bis 1 Block an), Ziel-Chunk mit `DRONE_TICKET` laden und erst entity-tickend versetzen (höchstens 200 Ticks), `QuadcopterEntity.HOME_RESET` vor dem Versetzen, `resetTo(…, home = true)`; der Pilot verfolgt seine Drohne danach 100 Ticks auch ohne gesendeten Chunk (`TrackedEntityMixin`) |
+| `rescue/HomeSpace` | rescue | intern, keine API: `HomeResetRules.Space` mit der Kollisionsbox der Drohne (`noBlockCollision`, `Shapes.collide`, Weltgrenze, optional erlaubte Positionen); bei Blöcken im Tag `propwash:drone_surface` zählt wie in der Flugphysik die sichtbare Form (`SoftGround.collect`) beim freien Platz und beim Fallen; Konstruktor nimmt `Level`; nutzen Reset am Server (`HomeResets`) und Homepoint setzen am Client (`RescueController`) |
+| `drone/client/FpvView#coverInsideBlock` | drone | aus `LevelExtractorMixin` nach `clearPilotScreenEffects`: steckt Kamera oder Drohne in einem sichtversperrenden Block, zeigt das FPV-Bild die Vanilla-Block-Überlagerung; bei `CameraClip` nicht |
 | Netz | – | `Constants.PROTOCOL_VERSION` = 16 |
 
 ### Knüppel-Mode 1–4 (input, osd, guide, ui, drone-render; Propwash 0.5.2)
@@ -2801,3 +2963,1447 @@ vier Modes, Gas-Hinweis der Flugschule. Bildschirmfotos `receiver_wizard_stick_m
 - **Netz**: `Constants.PROTOCOL_VERSION` = 16; C2S `propwash:accessory_action`, S2C `propwash:drone_push`; Menü
   `propwash:drone_accessories`.
 - **Selbsttest**: Gruppe `addon-api:` (`interact.client.AddonApiSelfTests`), Beispiel `dev.example.ExampleAccessories`.
+
+### Namensraum `propwash` und Prüfung beim Start (guard, apiimpl, platform; 0.6.0, Spieler-Baustein `docs/namespace-guard.md`, Entwurf `docs/design/0.6.0/addon-api-namespace.md`)
+- **Reserviert:** Der Namensraum `propwash` und das Paket `de.lardtom.propwash` gehören allein Propwash (NOTICE,
+  `ADDONS.md`). `ADDONS.md` ist eine Pflichtdatei des öffentlichen Exports und steht in `LICENSE-MIT`; die englische
+  Fassung dort ist maßgeblich für den Website-Abschnitt `#rules`.
+- **`apiimpl.NamespaceRules`** (rein, ohne Minecraft-Abhängigkeit): `isReserved` gilt nur für genau `propwash`;
+  `requireForeign` wirft an neuen Punkten der API 1.7 und an Punkten, die schon in 1.6 warfen; `refuse` verweigert an
+  toleranten Punkten ohne Ausnahme und schreibt einen Log-Fehler; `callerMod` nimmt den ersten Stack-Rahmen außerhalb von
+  `de.lardtom.propwash` und fragt den eingesetzten Resolver.
+- **`platform.services.ModOrigins`** (eigene Service-Dateien je Loader): Zuordnung zum Mod für Klasse, Paket,
+  Mixin-Config und aktiven Mod; Dateien eines Mods; Netzwerk-Kanäle mit dem Mod ihres Empfängers; Abschnitt im
+  Absturzbericht. Liefert „leer“ statt einer Ausnahme; Plattform-Mods wie `minecraft`, `java`, `fabric-*` und `neoforge`
+  sind keine Anmelder.
+- **Prüfung** (`guard`, beim Start und beim Neuladen der Ressourcen): Erlaubt ist ein Pfad oder Schlüssel, den Propwash
+  selbst mitbringt, also Überschreiben und Tag-Ergänzung. Neues im Namensraum `propwash` aus einem fremden Mod ist ein
+  Fund. Jede Kategorie läuft in try/catch; nie ein Absturz, eine Log-Zeile je Fund einmal je Start, ein Chat-Hinweis
+  einmal je Spielstart beim ersten Betreten einer Welt (Knopf „Details“), am dedizierten Server eine Zeile je Serverstart
+  für Operatoren.
+- **Zuordnung eigener Aufrufe:** Anmeldungen, die Propwash bei seinem eigenen Code ablehnt, sind kein Fund. Code ohne
+  bekannten Mod und Mixin-Code eines anderen Mods in einer Minecraft-Klasse zählen als „unknown mod“. Die Regel hängt an
+  der API-Struktur: Ein künftiger API-Einstieg außerhalb von `api.**` ohne Methode eines `api.`-Typs würde eigene Aufrufe
+  als Fund melden (fällt im Schritt `guard:` sofort auf). Propwash-Code, der Interna wie `NamespaceRules` direkt mit
+  `propwash`-Ids aufruft, und Ablehnungen auf Datenwegen ohne API (etwa `PartIndex.validateId`) gelten bewusst als
+  „unknown mod“.
+- **Spielerpakete:** Neue Dateien im Namensraum aus Ressourcen- und Datenpaketen (Zip oder Ordner) stehen als Info-Zeile
+  im Log, nie als Fund (`guard.FileScan#playerPacks`, Ordnerliste `guard.ResourcePaths.ASSET_FOLDERS`/`DATA_FOLDERS`;
+  neue Standard-Ordner einer späteren Minecraft-Version gehören dort hinein).
+- **Absturzbericht:** Abschnitt „Propwash add-ons“ mit Add-ons, Mixins in Interna und Funden.
+- **Pflichten für neuen Code:** Eigene Netzwerk-Pakete werden über `PropwashNet` oder einen Empfänger aus einer
+  Propwash-Klasse angemeldet, eigene Tasten über `ClientRegistrar.keyMapping`, Unterbefehle von `/propwash` in
+  Propwash-Klassen. Sonst meldet die Prüfung einen Fehlalarm, und die Gruppe `guard:` schlägt ohne Probe fehl.
+- Tests: Gruppe `guard:` (`guard.client.GuardSelfTests`), Probe-Mod `nsprobe` (§9), Beitrittstests `addon17` und
+  `addon17-noaddon` (`docs/testing.md`). Just More Parts unter 1.2.0 sperren die Loader-Metadaten (§15 „Honig und Just
+  More Parts ab 1.2.0“).
+
+### Sharecodes PW3 und Web-Export (share, webexport, content; 0.6.0, Bausteine `docs/sharecode-ui.md`, `docs/sharecode-chat.md`, `docs/web-export.md`, Formate `docs/sharecode/*.md`, Entwurf `docs/design/0.6.0/sharecodes-pw3.md`)
+- **Codec in der Basis** (`share`): `ShareFormat.decode` liest PW1, PW2 und PW3 mit den Tabellen aus
+  `ShareTables.current()`. Geladen werden sie bei `REGISTRY_FROZEN` aus `data/<mod-id>/propwash_share/table.json` der
+  Jars plus dem Verzeichnis-Abzug `data/propwash/propwash_share/directory.json`. `Pw3Codec` schreibt nur PW3;
+  `ShareConvert.toPw3` rechnet nur mit eingefrorenen Daten um und ist dadurch bytegleich zur Website. Verträge: Tabellen
+  werden nur hinten erweitert; 1 = `propwash` und 2 = `justmoreparts` sind fest; Lack, Tuning, OSD und Name sind
+  bitgleich zu PW2; die Prüfsumme sind die unteren 10 Bit der CRC-32 über die benutzten Einträge; ein Leser wirft nie
+  eine Ausnahme. API `PropwashApi.shareCodes()`, Prüfwerkzeug `api.share.ShareTableCheck`. Ein Teil aus einer neueren
+  Version behält beim Weitergeben den ursprünglichen Code (`carry`).
+- **Oberfläche** (`share.client`: `ShareClient`, `ShareScreen`, `ShareConfigTab`, `ShareImportState`, `ShareLines`,
+  `ShoppingList`, `ShareSettings`, `ShareWorkbenchExtension`, `ShareScene`; Server `share.ShareCommands`,
+  `ShareServer`): Die Oberfläche liest und schreibt nur über `ShareService`. Übernehmen läuft über die vorhandenen
+  Import-Wege, der Server entscheidet. Links sind nur zu Modrinth, CurseForge und dem Verzeichnis erlaubt, immer mit
+  Bestätigung. Tab `propwash:sharecode`, Kapitel `sharing`, `/propwash code export|import|info|give|convert` (`give` ab
+  Rechtestufe 2).
+- **`share/ShareServer#importData(content, layers, target)`, `#usable(build)`:** Ebenen ohne PARTS tragen den Bauplan des
+  Ziels, wenn der Bauplan des Codes in dieser Sitzung unbekannte oder inaktive Teile hat; sonst lehnt
+  `BuildAccessImpl.applyImport` bzw. `ClientApiImpl.send` mit `UNKNOWN_PARTS` ab. Genutzt von
+  `ShareConfigTab.sendTune/sendPaint`, `ShareScreen.apply` und `applyToHeld`.
+- **`share/Substitutes#find`** (intern, Ersatzteile beim Import mit unbekannten Teilen): Rahmen, Stack, Motor, Prop,
+  Video und Akku bekommen ihren `fallback`, sonst das erste baubare Propwash-Preset. Unbekanntes Zubehör bekommt nur
+  seinen `fallback`, wenn der an derselben Halterung baubar ist, sonst wird es entfernt; Zubehör kommt nie aus einem
+  Preset. Fehlt nur Zubehör, ist die Methode `FALLBACK`.
+- **Werkbank-Kopf** (`content/client/WorkbenchHost#addTextOrIconButton`, intern): Knopf mit Text, Kurzform und
+  Ausweich-Symbol (`Entry#widths/iconAt/textAt/titleAt`). `HeaderLayout` wählt das Symbol wie eine weitere Kurzform beim
+  breitesten Knopf, bevor etwas hinter „⋯“ wandert, und springt beim Kürzen zur nächsten echt schmaleren Form. Genutzt
+  von `ShareWorkbenchExtension` („Sharecode“ → „Code“ → </>).
+- **Sharecodes im Chat** (`share.client.chat`): Die Erkennung läuft nur beim Spieler und hängt sich mit
+  `mixin.share.client.GuiMessageMixin` in das Umbrechen der Chatzeilen (`GuiMessage#splitLines`); gespeicherte Nachricht,
+  Signatur, Kennzeichen und Meldeprotokoll bleiben unverändert. `ChatCodeFinder` erkennt PW1/PW2/PW3 nur mit gültiger
+  Prüfsumme (höchstens 3 Codes und 8 Kandidaten je Zeile, 4000 Zeichen). `ChatCodeText` löst Formatcodes auf und färbt
+  nur die Code-Abschnitte neu. `ShareChat` dekodiert jeden Code einmal über `ShareImportState` (Zwischenspeicher 32 Codes,
+  8 neue je Sekunde). Das Klick-Ereignis `propwash:share_chat/open|copy` fängt `ChatScreenMixin` ab, es geht nie an den
+  Server. Den Tooltip mit Drohnenbild (`ChatPreviewImage`, über dem Zeiger) zeichnet `GuiGraphicsExtractorMixin`; der Klick
+  öffnet den Tab `propwash:sharecode`. Option `config/propwash/share_chat.json`, geschaltet im Tab Konfiguration.
+  Keine Pakete, keine API-Änderung.
+- **Web-Export** (`webexport`): `WebExportModule` meldet über `ServerBus.REGISTER_COMMANDS`
+  `/propwash webexport [<namensraum>|all]` an (Stufe 4). `WebExportCommand` ruft `WebExport.run(ziel, auswahl,
+  ModResources.platform())` und schreibt nach `<spielordner>/propwash/web-export/` (vorher geleert). Format 2 je
+  Namensraum: `base/` mit Regeln, Lack, Tuning-Gruppen und Kennzahl-Beschriftungen; je Namensraum Manifest, Teile,
+  Halterungen, Zellchemien, Presets, Analysen, Teile-Tabelle, Sprachschlüssel und Assets. `PartData` (Felder je
+  Kategorie, `data.led_path`), `RuleCheck` (Formeln aus `BuildCheck`, 5000 Zufallsbaupläne mit Startwert 1),
+  `AssetIndex` (benutzte Modelle, Texturen und Lack-Kanäle), `LangTable` (benutzte Schlüssel), `ModResources`
+  (Plattform, im Test Ordner). `ShareExport` ergänzt über den Codec der Basis `base/sharecode/spec.json`
+  (`ShareSpecJson.spec()` mit den eingefrorenen PW1/PW2-Werten), `vectors.json` (mit `check` und `analysis`),
+  Preset-`sharecode`, `pw1_keys`, Gruppen `shared`/`never`, Lack-`bit` sowie `table_source`, `table_entries` und
+  `table_crc` je Namensraum. Gradle `:fabric:runWebExport` (§13).
+- Tests: JUnit `Pw3CodecTest`, `WebExportTest`, `Format1CompareTest` (rechnet alte Codes mit `ShareConvert.toPw3` um und
+  verlangt Byte-Gleichheit), `CovPw3ShareTest`; Selbsttest-Gruppe `share:`, `ShareUiScaleCases`; Beitrittstests
+  `PROPWASH_JOINTEST_SHARE` und `PROPWASH_JOINTEST_SHARE_CHAT`; Server-Rauchtest `ShareServerChecks`.
+
+### RX-Block: ein Kanal der Funke wird Redstone (rx, guide, content; Entwurf `docs/design/rx-block.md`, Propwash 0.6.0)
+Neues Modul `rx` (`rx.RxModule` am Ende von `PropwashCommon.init()`, `rx.client.RxClient` nach `JoinClient` in
+`PropwashClient.init()`, Sprachquellen `common/src/lang/rx/`, Mixin-Config `propwash.rx.mixins.json`, Selbsttests
+`rx.client.RxSelfTests` nach den Bando-Selbsttests, Bildschirmfotos `rx.client.RxShowcase`).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `rx/RxSource`, `RxMask` | rx (reines Java, JUnit `RxSourceTest`, `RxPayloadTest`) | `STICK` 0–3 (Roll, Nick, Gier, Gas), `AXIS` 0–31, `BUTTON` 0–31; Codec `{kind, index}`, falsche Indizes sind ein Codec-Fehler; Masken Knüppel 4 Bit, Achsen und Tasten je 32 Bit |
+| `rx/RxMapping` | rx (reines Java, `RxMappingTest`) | `strength(v, tief, hoch, bisher)` mit t = (v − tief)/(hoch − tief) in 0–1: bis zur Mitte runden(16 · t), darüber runden(8 + 14 · (t − 0,5)); die Mitte ist fest Stufe 8 (`CENTRE`, mit den Standard-Endpunkten Knüppel −0,0625 bis +0,071, das Kanal-Totband liegt darin), 0–7 und 9–15 in gleich großen Stufen, ohne Hysterese (dieselbe Stellung ergibt aus jeder Richtung dieselbe Stufe); tief > hoch umgekehrt, tief = hoch Schalter, nicht endliche Werte halten `bisher` |
+| `rx/RxLink` | rx (reines Java, `RxLinkTest`) | effektive Entfernung = Auge–Blockmitte + 0,5 je undurchsichtigem Vollblock (höchstens 64, ohne Augen- und Zielzelle), Reichweite 1–128 (Standard 64), über der Reichweite keine Verfolgung; `Cells.loaded(chunkX, chunkZ)` vor jedem `opaque`, nicht geladene Abschnitte ohne Dämpfung |
+| `rx/RxLearn` | rx (reines Java, `RxLearnTest`) | Fenster 1,5 s, Mindestweg 30 %, Knüppel vor Achse oder Taste ab 80 % von deren Weg, Abbruch nach 12 s |
+| `rx/RxSettings` | rx (`RxSettingsTest`) | NBT `Format` 1, `Bind` (`drone.bind.BindCodecs`), `Source`, `Low`, `High`, `Range`; kaputte Felder werden ersetzt; neue Quelle setzt die Standard-Endpunkte (Knüppel/Achse −1/1, Taste 0/1); Lösen behält die Reichweite |
+| `rx/RxBlock`, `RxBlockEntity`, `RxLinkState`, `RxModule` | rx | Block `propwash:rx_block` mit `power` (0–15), `link` (`none`, `linked`, `lost`), `facing` (waagrecht) und `output` (`rx/RxOutput`); Grundzustand `output=all`, `facing=north` (Blöcke aus Ständen vor 0.6.0 ohne diese Eigenschaften laden darüber und senden weiter schwach an alle Seiten), gesetzt wird immer `output=front` mit dem Ausgang in Blickrichtung (`getStateForPlacement`, für Code `RxBlock.facing(state, dir)`): schwaches und starkes Signal nur nach vorne wie beim Repeater, Block vorne und seine Nachbarn bekommen jede Änderung gemeldet, Redstone-Staub verbindet nur vorne (`shouldRedstoneWireConnectTo`), `rotate`/`mirror`; 384 Zustände; kein Ticker; Rechtsklick mit der Funke (Haupthand) bindet am Server, öffnet am Client das Fenster; leere Hand zeigt den Zustand; Update-Paket mit `OwnerName` |
+| `rx/RxOutput` | rx (`RxOutputTest`) | `FRONT` (nur zur Seite von `facing`, `signal` und `direct` gleich `power`, Staub verbindet nur dort) und `ALL` (Altbestand: schwach an alle Seiten, kein starkes Signal, Staub verbindet rundum); kein API-Typ |
+| `rx/RxIndex` | rx | je `Level`, nach Position und Besitzer; Eintrag `clearRemoved`, Austrag `setRemoved`, Besitzerwechsel über `RxBlockEntity#apply` |
+| `rx/RxServer` | rx | `active(level, pos)` = `shouldTickBlocksAt(pos)` und `isPositionTicking`; nur dort `getBlockState`/`setBlock`, nie Tickets; Auswertung alle 2 Ticks, Link alle 10, Bedarf alle 20 (Reichweite + 16); Werte gelten 100 Ticks; `input`/`config` liefern `Outcome` (für Rauchtest und Beitrittstest) |
+| `rx/RxDemandS2C`, `RxInputC2S`, `RxConfigC2S` | rx | `propwash:rx_demand`, `propwash:rx_input` (Folgenummer, Maske, `short`-Werte, Tasten-Bits; ≤ 25/s, Maske ⊆ Bedarf), `propwash:rx_config` (`BIND`, `UNBIND`, `SOURCE`, `LOW`, `HIGH`, `RANGE`; Abstand ≤ Interaktionsreichweite + 1, Besitzer oder Operator Stufe 2) |
+| `rx/client/RxClient`, `RxRadio` | rx | Senden im Client-Tick bei Bedarf, ab 1/512 Weg Änderung oder alle 40 Ticks; Gas als 2 · t − 1; Tastatur nur in einer Flug-Sitzung (`PilotSession#isActive`) |
+| `rx/client/RxScreen` | rx | Fenster im Propwash-Theme bis 320 × 240, `preview(View, confirm)` für `ui-scale:` und Bildschirmfotos |
+| `rx/RxBlockItem`, `rx/RxText` | rx (`RxTooltipTest`, Selbsttest `CovRxSelfTests#tooltipStep`) | Tooltip: `propwash.rx.tooltip` direkt unter dem Namen, umbrochen von `RxText.tooltipLines` (möglichst wenige, möglichst gleich lange Zeilen bis 48 Zeichen; erste Zeile über `propwash.rx.tooltip.line`), mit Shift Erklärung, Benutzung und Passt zu aus `propwash.help.rx_block.*` |
+| `mixin/rx/client/MultiPlayerGameModeMixin` | rx | Kopf von `useItemOn`: Schleichen + Funke auf einem RX-Block öffnet das Fenster mit Bestätigung (eigener Block), bindet per `BIND` (ungebunden) oder meldet den Besitzer (fremd); sonst Vanilla |
+| `guide/scenes/RxBlockScene` | rx | Kapitel `rx_block` (fünf Schritte), angemeldet von `RxClient` über `GuideScenes.register` |
+| Assets `rx_block` (Generator `tools/assets/world/rx_block.py`) | rx (JUnit `RxBlockModelTest`, Selbsttest `rx.client.RxModelSelfTests`, Präfix `rx: Blockmodell`; Befund OWNP-4) | Aussehen nur über Assets, kein Renderer, keine Einfärbung im Code: Blockzustand als Multipart, Gehäuse nach `link` (`rx_block`, `rx_block_linked`, `rx_block_lost`), dazu nach `power` je Stufe `block/rx_block_power_<n>` mit eigener Textur `block/rx_block_power_<n>` und `light_emission` n (Balken mit 15 Feldern oben zwischen LED und Antennen); Item über `block/rx_block_inventory` (Gehäuse plus Balken bei Stärke 0); Ressourcenpakete gestalten jede Stufe einzeln |
+| `content/ContentTab` | content | Eintrag `RxModule.ID` hinter dem Signal-Repeater |
+| Netz | – | `Constants.PROTOCOL_VERSION` = 17 (Basis-Commit 0.6.0, vom Strang nicht geändert) |
+| `rx/CreativeRxBlock`, `RxModule.CREATIVE_RX_BLOCK` (Befund PATTY-2) | rx (JUnit `CreativeRxRangeTest`, `CreativeRxDataTest`, Selbsttest `rx.client.CreativeRxSelfTests` Präfix `rx: Kreativ`, Server-Rauchtest `rx.CreativeRxServerChecks`) | Kreativ-RX-Block `propwash:creative_rx_block`: Unterklasse von `RxBlock` mit `unlimited()` = true (`RxBlock.unlimited(state)`), dieselbe Block-Entity `RX_BLOCK_BE`, Bindung, Kanalwahl und Ausgang; Härte −1, Sprengfestigkeit 3 600 000, keine Beute, kein Rezept (`tools/data/survival.py` `NOT_CRAFTABLE`), Seltenheit episch, Kreativ-Tab direkt nach `RxModule.ID`; Reichweite: `RxLink.linked(unlimited, …)` ohne Entfernung und Blockzählung, `RxLink.demands(unlimited, …)` immer Bedarf, beides nur für Besitzer in derselben Dimension (Verzeichnis je Welt, `evaluate` überspringt andere Welten) und nur in geladenen, tickenden Chunks; Status und `RxScreen` zeigen `propwash.rx.range.unlimited` statt des Reglers (`RxScreen.preview(view, confirm, unlimited)`); Assets erben von den RX-Modellen mit eigenen Gehäuse-Texturen |
+
+### Gate-Hinweis und Kapitel „Gate-Menü“ (race, guide; 0.6.0, Entwurf `docs/design/0.6.0/gameplay.md` Teil E)
+Spieler-Baustein `docs/gate-hint.md`.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `race/client/GateHintMemory` | race (reines Java, JUnit `GateHintMemoryTest`) | `check` → `SHOW`/`SEEN_HERE`/`NEVER`/`NO_PLAYER`; gesehene Welten je Spieler (höchstens 256, die älteste fällt heraus; 32 Spieler); „Nicht wieder anzeigen“ = Schlüssel `gate_menu` in `FirstUseHints` (Zähler ≥ 1), gesetzt mit Haken oder „Kapitel öffnen“; `forgetHints` leert alle Hinweise eines Spielers |
+| `race/client/GatePlaceHint` | race | nur am Client, kein Eingriff in `GateItem`, kein Paket: ein Benutzen-Klick (neuer Arm-Schwung oder gedrückte Benutzen-Taste) mit Gate- oder Freiform-Gate-Item (keine Kurs-Elemente) merkt die Gate-Ids im Umkreis 48; in den nächsten 30 Ticks zählt ein neues Gate der Art `GATE` oder `FREEFORM` bis 8 Blöcke vom Auge als gesetzt; Welt-Schlüssel `GhostStore.worldKey` (`sp_<Ordner>`, `mp_<Adresse>`, sonst `unknown`); gesehene Welten in `config/propwash/gate_hint.json`; bei offenem Bildschirm wartet das Fenster bis 200 Ticks; `resetHints()`; Test-Haken `mute`, `worldOverride`, `detected`, `lastOutcome` |
+| `race/client/GateHintScreen` | race | Fenster im Theme, höchstens 300 GUI-Pixel breit, Tasten der echten Belegung von Schleichen und Benutzen, Haken „Nicht wieder anzeigen“, „Kapitel in der Flugschule öffnen“ und „Verstanden“; Esc = „Verstanden“; pausiert nur im Einzelspieler |
+| `guide/scenes/GateMenuScene` (`gate_menu`) | guide | vier Schritte `open`, `adjust`, `redstone`, `freeform`; angemeldet von `GatePlaceHint.init` über `GuideScenes.register` (wie RX-Block, Bando und Kreativ), steht deshalb nicht in `GuideScenes.bootstrap` |
+| `guide/client/screen/GuideTab` | guide | Knopf „Hinweise zurücksetzen“ neben „Flugtraining“ (bei wenig Platz rechts unter der Einleitung) ruft `GatePlaceHint.resetHints()` und meldet das Ergebnis in der Fußzeile |
+
+Selbsttests `race.client.GateHintSelfTests` (Präfix `race: Gate-Hinweis`, Bilder `bildschirmfotos: Gate-Hinweis`,
+`ui-scale:`-Fall „Gate-Hinweis“), Beitrittstest `PROPWASH_JOINTEST_GATEHINT` (`dev.GateHintJoinCheck`,
+`race.client.GateHintJoinProbe`), Sprachschlüssel `common/src/lang/gatehint`.
+
+### Freecam-Drohne (freecam, drone, video, ui, osd, input, server; 0.6.0, Entwurf `docs/design/0.6.0/gameplay.md` Teil B)
+Neues Modul `freecam` (reines Java in `freecam`, Client in `freecam.client`; `FreecamClient.init()` am Ende von
+`PropwashClient.init()` vor `DevExtensions.client()`), Spieler-Baustein `docs/freecam.md`, Sprachquellen
+`common/src/lang/freecam/`. Kein Paket, kein Entity, keine API (E35).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `freecam/FreecamPreset` | freecam (reines Java, JUnit `FreecamPresetTest`) | `WHOOP`, `THREE_FIVE`, `FIVE`, `SEVEN` mit Schlüsseln `whoop`, `3_5`, `5`, `7` (`byKey` fällt auf `FIVE` zurück); Whoop/5″/7″ = `DroneBuild.WHOOP`/`FREESTYLE`/`LONG_RANGE`; 3,5″ = `CREATIVE_FC` mit `CreativeSpec` auf Rahmen `freestyle_5`, Stack `aio_20`, Motor `m2004_3000`, Prop `p3_3b`, Akku `b4s_650` (89 mm, 3 Blätter, 3,0″, 2450 KV, 20 g, Radstand 150 mm); Bänder Schwebegas/Spitze je Größe im Test |
+| `freecam/FreecamBounds` | freecam (reines Java, `FreecamBoundsTest`) | `step(von, nach)` achsweise X, Y, Z (Z in der Spalte nach dem X-Schritt); Spalte frei, wenn `Columns.loaded(chunkX, chunkZ)`; Höhe von Weltboden − 16 bis Bauhöhe + 64; außerhalb des geladenen Bereichs nur Schritte Richtung Anker (Spieler); nicht endliche Ziele gesperrt |
+| `freecam/FreecamRules` | freecam (reines Java, `FreecamRulesTest`) | `start` → `Denial` (`NO_WORLD`, `RULES_UNKNOWN`, `RULE_OFF`, `DEAD`, `PILOTING`, `SPECTATING`, `SCREEN_OPEN`); `check` → `End` (`DISCONNECT`, `DIED`, `DIMENSION`, `RULE_OFF`, `HURT`, `PILOTING`, `SPECTATING`; dazu `KEY`, `BUTTON` von außen); ohne synchronisierte Regeln nie erlaubt (E8) |
+| `freecam/client/FreecamSession` | freecam | `active()` (statisch, für `CameraClip`), `toggle`, `tryStart`, `end(mc, End)`, `setPreset` (Zustand inkl. Drehraten und Scharf über `SimSnapshot`), `applyTune`, `cameraPose` (ohne Latenz); `DroneSim` mit `infiniteBattery`, ohne `batterySag`, `crashDisarm`, `propStrikes`, `thermalLimits`, `thermalEffects`, `sleepEnabled`, `partCompatibility`; Umgebung `WindModel.fill`, `solidDistance` = ∞, Bodenabstand per Strahl (im Block ∞), `fluid` NONE, `ZonePhysics.update`; unscharf = Pose eingefroren (Kurs bleibt, Lage waagerecht); Frame-Haken ruht bei Pause und offenem Bildschirm; Ende bei Pilot-Sitzung, Zuschauen, Dimension, Regel aus und Trennung schon im Frame; Test-Haken `setTestInput`, `testPlace`, `testPush` |
+| `freecam/client/FreecamClient` | freecam | Taste `key.propwash.freecam` (`KeyDefaults.FREECAM`, F6, englisch „Toggle freecam drone“), `CameraClip.register(FreecamSession::active)`, `ConfigTabs.registerFreecamOnly(FreecamTab::new)` (der Tab zählt nicht zu den Tabs des normalen Konfigurators), Tick und Frame über `ClientBus`, Hinweis `FirstUseHints.FREECAM_INTRO` einmal je Spieler |
+| `freecam/client/FreecamConfig` | freecam | `JsonConfig` `freecam`: `preset`, `tunes` (je Größe, nur bekannte Tuning-Schlüssel, ohne Kamerawinkel), `uptilt` (je Größe, 0–80°), `fovDeg` (60–160, Standard 120), `osd` (Standard an) |
+| `freecam/client/FreecamTab` | freecam | Tab `freecam` (`ConfigTabs.FREECAM_TAB`, Reihenfolge 50, `Storage.MIXED`): Größe (vier Chips), Kamerawinkel, Sichtfeld, OSD, „Freecam beenden“; Größenwechsel speichert zuerst das offene Tuning |
+| `drone/client/FpvView`, `PilotView` | drone (Haken freecam) | `active()` schließt die Freecam ein; `cameraPose` liefert zuerst die Freecam (Körper der Drohne unbekannt, Anker = Freecam) |
+| `video/client/VideoState` | video (Haken freecam, ein Block in `fov`) | in der Freecam horizontales Sichtfeld aus `FreecamConfig`, Objektiv und Bildformat wie im FPV; keine Videoquelle → keine Störungen |
+| `ui/client/DroneContext`, `drone/client/TuneAccess` | ui, drone (Haken freecam) | Quelle `FREECAM` (Bauplan der Größe, Name „Freecam · 5″“, Sim der Freecam); `TuneAccess` liest und schreibt `FreecamConfig` und die laufende Sim, sendet nichts |
+| `ui/client/config/ConfigTab`, `ConfigTabs`, `ConfiguratorScreen`, `UiClient` | ui (Haken freecam) | `ConfigTab#freecam()` (Standard falsch; wahr bei Freecam, Rates, Empfänger, Modi); `ConfigTabs.create(true)` liefert die nur für die Freecam angemeldeten Tabs zusammen mit den Tabs, deren `freecam()` wahr ist, `create()` keinen davon; in der Freecam öffnet K den Tab `freecam`, sonst fehlt er; Fußzeile der Übersicht mit „Freecam starten“ (ausgegraut, Grund als Status) und „Zur Welt-Regel“ (nur wenn `ClientWorldRules#editable`), die `WorldRulesTab#focusRule` aufruft; endet die Freecam bei offenem Menü, schließt es ohne das Tuning anzuwenden. Bei schmaler GUI reserviert nur die Übersicht Platz für die Freecam-Knöpfe (`footerArea()`, `footerStacked()`). `ConfiguratorScreen.revealSearchHit` holt das Ziel eines Suchtreffers vor dem Tab-Wechsel; der Wechsel von oder zur Übersicht ordnet das Fenster neu, dabei entsteht ein neues Suchfeld ohne Index, der dann frisch gebaut wird |
+| `osd/client/LiveOsdSource` | osd (Haken freecam) | Quelle Freecam: Sim-Daten, Name, Position, Tempo ohne Latenz; `OsdData#freecam` blendet Akku- und Link-Elemente aus, `OsdData#freecamEdge` → Warnung `FREECAM_EDGE`; `OsdHud#hideVanilla` gilt bei `FpvView#active` |
+| `input/client/KeyDefaults` | input (Eintrag freecam) | `FREECAM` in `OTHER_MODULES`, F6, in `SHARED` mit `key.debug.debugOptions` (Vanilla F3 + F6) |
+| `input/client/TransmitterInput` | input (Haken freecam) | Flug-Sitzung = Pilot-Sitzung oder Freecam (Tastatur- und Mausknüppel) |
+| `server/rules/WorldRuleSpecs` | server (Zeile freecam) | `ALLOW_FREECAM` = `bool("allow_freecam", false, GAMEPLAY)` |
+| `network/client/ClientNet` | network (Testzähler) | `sentCount()` zählt jeden `sendToServer`-Aufruf |
+
+Selbsttests `freecam.client.FreecamSelfTests` (Präfix `freecam:`, `ui-scale:`-Fall „Freecam-K-Menü“), Bilder
+`freecam.client.FreecamShowcase` (`bildschirmfotos: Freecam`), Beitrittstest `PROPWASH_JOINTEST_FREECAM`
+(`dev.FreecamJoinCheck`, `freecam.client.FreecamJoinProbe`). Gate-Durchflüge der Freecam zählt die Abdeckung
+(`freecam.client.CovGatePasses`, devtest) auf dem ganzen Weg, auch auf dem Stück, das die Simulation die Freecam
+zwischen zwei Ticks vom gesetzten Punkt wegschiebt; halboffen, je Gate und Richtung einmal (JUnit `CovGatePassesTest`).
+
+### Flugbahn-Marker (osd, video; 0.6.0, Spieler-Baustein `docs/flight-path-marker.md`, Entwurf `docs/design/0.6.0/gameplay.md` Teil A)
+`osd.FlightPathMarker` ist reines Java: `compute(vx, vy, vz, OsdProjection, Rand) → State{visible, alpha, x, y, inView,
+edgeAngle}`; Einblendung 1,0–2,0 m/s, außerhalb des Bilds auf der Rand-Ellipse (`OsdProjection#screenAngle`).
+`Velocity.update(nanos, Δpos, span)` bildet die Ableitung mit PT1 40 ms; über 150 m/s oder nach mehr als 0,5 s Pause
+beginnt sie neu. Die Geschwindigkeit stammt immer aus den **gezeigten** Posen: `VideoState#sampleDisplayedAt(versatz, …)`
+relativ zu `lastSampleNanos()`, derselbe Puffer wie das Bild. `LiveOsdSource` füllt `OsdData#velocityX/Y/Z` (NaN =
+unbekannt) im FPV und beim Zuschauen; die Freecam setzt die Felder direkt aus der Sim. Element
+`OsdElement.FLIGHT_PATH_MARKER` (fest, Linien-Deckkraft, nur in FULL an), gezeichnet in `OsdRenderer#flightPathMarker`,
+bei Videoverlust aus; im OSD-Editor steht die Vorschau ruhig unter der Mitte, der Tooltip der Elementliste zeigt
+`propwash.osd.element.<schlüssel>.description`. Selbsttests lesen `OsdHud.drewLastFrame` und
+`renderer().flightPathState()`. Kein Netzwerk, kein neues Speicherformat, Layout-Codec unverändert (ein Schlüssel mehr).
+
+### Kamerawinkel im K-Menü (video, drone; 0.6.0, Spieler-Baustein `docs/camera-angle.md`, Entwurf `docs/design/0.6.0/gameplay.md` Teil D)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `video/client/CameraAngleSection` | video | Abschnitt „Kamera dieser Drohne“: bearbeitet `camera.uptiltDeg` im `TuneModel` des Konfigurators. Bereich aus `CameraMount.range(build)`, Regler `StepSlider` mit `−`/`+` (Shift 5°) und `↺` (`TuneModel#reset`). Ohne Live-Modell ausgegrautes `InfoField` „—“ mit Hinweis. `editable()`, `slider()`, `row()`, `change(grad)`, `resetUptilt()`. |
+| `video/client/VideoConfigTab` | video | Abschnitt nur bei einem Host, der `TuneHost` ist (Konfigurator, Suchindex). Mit Brille unter Sichtfeld- und Bildformat-Zeile, ohne Brille unter dem Hinweis. `storage()` = MIXED, solange bearbeitbar (`propwash.video.camera_section.footer`). `resetDefaults` setzt auch den Winkel zurück. |
+| Netz | drone | kein neues Paket: `TuneAccess.apply` → `TuneC2S` (`propwash:drone_tune`) → `DronePiloting#sanitize` begrenzt auf den Halter. Protokoll unverändert. Im Einzelspieler gilt der Winkel beim Schließen des Menüs (Pause), auf Servern sofort. |
+| Selbsttests | video | `video: Kamerawinkel im K-Menü` (vier Schritte, `video.client.CameraAngleMenuSelfTests`), ui-scale-Fälle „Konfigurator Kamerawinkel …“, Bildschirmfotos `configurator_video_camera_angle{,_none,_no_goggles}(_de)`. Pilot-Beitrittstest: `camangle=40`, `camangle_live=menu_open` (`video.client.CameraAngleJoinProbe`, `dev.CameraAngleJoinCheck`). |
+
+### Akku gesteckt (drone-render; 0.6.0, Spieler-Baustein `docs/battery-plug.md`, Entwurf `docs/design/0.6.0/fixes-polish.md` §3.B)
+Sitzt der Akku, zeichnet Propwash keine Stecker und keine Kabel. `drone.client.render.PlugAnchors` liest
+die Kästen von `connector`, `connector_grip`, `bt_connector`, `balance_plug`, jedem `wire`, das eines davon berührt,
+und den beiden `pigtail` der Stack-Variante `_mounted`. `PlugMask` und `MaskedItemCollector` lassen beim Zeichnen jede
+Fläche weg, die ganz in einem dieser Kästen liegt; gemessen wird im Modellraum vor der `transformation` des Render-Items,
+deshalb gilt das auch für skalierte Rahmen. `PowerLead` hält den `_mounted`-Stack und beide Masken, `DroneVisuals` und
+`guide.client.render.SceneDroneVisual` reichen sie weiter. Das bisherige Bild bleibt ohne `_mounted`, bei `_mounted` aus
+einem anderen Ressourcenpaket, ohne Buchse und ohne Akku. `PowerLeadRoute` und `power_lead.bend_mm` gibt es nicht mehr;
+ein vorhandener `power_lead`-Eintrag in `drone_layout.json` wird ignoriert. Rein clientseitig, keine Daten, kein
+Protokoll, keine API-Änderung. Prüfung: `PlugAnchorsTest`, Selbsttest „drone-render: Akku gesteckt – Stecker und Kabel an
+der Drohne ausgeblendet“. Regeln in `docs/ASSETS.md` „Akku gesteckt“, Tests in `docs/testing.md` „Akku gesteckt“.
+
+### Motor-Hitze (sim, osd, content; 0.6.0, Vertrag `docs/design/realism/motor-heat.md`)
+- Phase A (Prüfung): `sim.ThermalCharacterizationTest` schreibt mit `tools/calibration.sh` die Tabelle `thermal.txt` und
+  hält die Urteile der Zielbänder B1–B4 und Regel 2 fest; Selbsttest-Gruppe `drone: Motor-Hitze`
+  (`drone.client.MotorHeatSelfTests`, Bildschirmfotos `motor_heat_*`).
+- Phase B (Umbau): gedrosselt wird nur im ESC, ein heißer Motor verliert Drehmoment und verschleißt; Verträge in der
+  Parts-API-Tabelle oben (`sim/Telemetry#motorPowerLimit`, `osd/OsdWarnings.Warning.MOTOR_HOT`, `ESC_HOT`). Die Felder
+  `thermal.derate_start_c` und `max_temp_c` behalten Namen und Werte, ihre Bedeutung steht in `docs/api/changes.md`; ein
+  gesetztes `cooling_w_per_k_per_rad_s` ersetzt weiter den ganzen drehzahlabhängigen Teil. Die Welt-Regel
+  `propwash:hardware_limits` schaltet beides ab.
+
+### Drohnen-Barrieren (barrier; 0.6.0, Baustein `docs/barriers.md`)
+`barrier.DroneBarrierBlock` erweitert die Vanilla-`BarrierBlock`; Kollision, Umriss und Sichtbarkeit entscheidet der Block
+über den `CollisionContext`:
+- **Kollision:** `BarrierKind.solidFor(Collider)`; Drohne heißt `QuadcopterEntity` oder Unterklasse. Kontexte ohne Entity
+  sehen die durchlässige Barriere (`propwash:drone_pass_barrier`) als fest und die Sperre (`propwash:drone_block_barrier`)
+  als Luft.
+- **Umriss:** für jeden Spieler im Kreativmodus (`DroneBarriers.outlines(CollisionContext)`), wie die Vanilla-Barriere,
+  auch ohne Barriere in der Hand; im Überleben und ohne Entity leer; **sichtbare Form** immer leer.
+- **Drohnen-Abfragen ohne Entity** benutzen `DroneBarriers.droneShape(...)` bzw. den Kontext `DroneBarriers.DRONE_SIGHT`.
+- **Kursbau** (Befund PATTY-2): Gate-, Gate-Stangen-, Kurs-Element- und Freiform-Platzierung (`race.GateItem#click`,
+  `#soft`, `#free`, `race.FreeformBlocks#passable`) fragen mit dem Kontext `DroneBarriers.COURSE` (`Collider.COURSE`:
+  beide Barrieren fest) und `DroneBarriers.sturdyForCourse(...)` (Barriere zählt als tragende Fläche); die Kollision
+  im Flug bleibt unverändert. Selbsttest `barriers: Gates`.
+- **Symbole:** nur im Kreativmodus mit einer Barriere in Haupt- oder Nebenhand (`DroneBarriers.reveals(Player)`);
+  `barrier.client.BarrierMarkers` setzt sie im Client-Tick nach dem Vanilla-Verfahren (`BLOCK_MARKER`).
+- Offen: GPS-Himmelssicht (`SkyView`), `ClearanceProbe`, `FpvShake` und Trail-Höhe fragen ohne Entity (durchlässige
+  Barriere dort fest, Sperre Luft). Tests in `docs/testing.md` „Drohnen-Barrieren“.
+
+### Drohnen-Attribute und Skalierung (drone, race; 0.6.0, Baustein `docs/drone-scale.md`)
+`QuadcopterEntity` hat eine eigene `AttributeMap` (`drone.DroneAttributes`, nur `minecraft:scale`, 0,0625–16), die
+Vanilla-`/attribute` über `mixin.drone.AttributeCommandMixin` erreicht. Der Server spiegelt den Wert in `DATA_SCALE`.
+`drone.DroneScale` ist die einzige Rechenstelle: Hitbox mal k, Darstellung und Kamera um den Fußpunkt. Das Flugmodell
+sieht die Skalierung nie; Ankerpunkte des Zubehörs und die Wegplanung von GPS Rescue rechnen bewusst mit Größe 1.
+Ranglisten-Grund `race.LapAssist.SCALE` (Bit 8, Server-Grund). Tests in `docs/testing.md` „Drohnen skalieren“.
+
+### Zonen für alle (zone, server, ui; 0.6.0, Baustein `docs/zones-open.md`, Grundlage `docs/design/zones.md`)
+- `zone.ZoneOwner` und `Zone.owner`: `null` heißt Admin-Zone (alle Zonen aus älteren Welten, „Neue Zone hier“ eines
+  Operators, `/propwash zone create`); „Neue Zone hier“ eines Spielers gehört dem Spieler.
+- `zone.ZoneRights`: `mayCreate` (Admin oder Welt-Regel `propwash:players_create_zones`), `mayChange` und `mayDelete`
+  (Admin oder Besitzer bei Regel an), `ownerOfNew` und `ownerOfChanged`. „Admin“ heißt Recht auf die Welt-Regeln
+  (`WorldRules#mayEdit`).
+- `zone.ZoneRelease`: Freigabe je Regel-Id, Standard sind die elf `PhysicsRules.SPECS`; `effective`, `enforce`,
+  `blocked`; gespeichert in `ZoneData.release`.
+- `ZoneServer.zones(level)` und `resolve` rechnen mit den wirksamen Zonen, `stored(level)` liefert die gespeicherten.
+  `ZonesS2C` trägt `creatable` und die Freigaben; Paket `propwash:zone_release`.
+- `zone.client.ClientZones`: `zones()` liefert die wirksamen, `stored()` und `get(id)` die gespeicherten Zonen; dazu
+  `mayChange` und `mayDelete`. `zone.ZoneDraft.Kind.LOCKED` für gesperrte Werte im Editor.
+- `zone.client.ZoneMarkerClient` hängt am Haken vor den Tastenbelegungen (`mixin.zone.client.MinecraftMixin`),
+  `zone.client.ZoneRenderer` zeichnet den Vorschau-Rahmen; Item `propwash:zone_marker`.
+- `zone.client.ZonePhysics`: Zonen-Auflösung am Client, `at(Level, x, y, z)` (`ZoneResolution` ohne Übergang) und
+  `update(ZoneField, Level, x, y, z, s)` (mit Übergang, genutzt von `PilotSession` und der Freecam).
+- `WorldRulesTab`: `ZoneReleaseBox` je Zeile, `releaseDraft`. Bedienbar nur bei den elf Simulationsregeln, die am Ort
+  der Drohne gelesen werden; Add-on-Regeln bräuchten dafür etwa `WorldRule#get(Level, Vec3)`.
+- Tab „Zonen“ (Befund OWNP-2): `zone.ZoneMenu` rechnet ohne Spielzustand – `listed` (Spieler ihre eigenen Zonen,
+  Operatoren alle), `actions` (`SHOW`, `JUMP`, `EDIT`, `DELETE` je nach Recht), `jumpTarget` (erster Boden in der Mitte
+  der Zone von unten, sonst darunter bis zum Weltboden; ohne Boden `null`, Befund AUTO18-1), `arrow`
+  (Richtungspfeil zur Blickrichtung), `TELEPORT` (Pfad `teleport location` im Befehlsbaum).
+- Paket `propwash:zone_jump` (`zone.ZoneJumpC2S`); `ZoneServer#mayJump` (Recht auf `/tp` über `RuleAccess.runs`) und
+  `#jump` (prüft Recht, Sichtbarkeit und Dimension, setzt auf `jumpTarget`; ohne Boden Ablehnung mit `JUMP_NO_GROUND`).
+- `zone.client.ZonesTab` (Id `zones`, Order 790, `open(focus)` mit hervorgehobener Zone) mit `zone.client.ZoneSection`:
+  „Neue Zone hier“ rechts in der Zeile der Überschrift, Liste mit `Entry` (`height`, `owner`, Knöpfe „Zeigen“,
+  „Hinspringen“, „Bearbeiten“, „Löschen“ mit zweitem Klick in `DELETE_CONFIRM_NANOS`); bei Platzmangel kompakt (Name
+  allein in Zeile 1; `ZoneSection.compact`/`nameRoom`, Schwelle `NAME_MIN_WIDTH` 96; Prüfung „ui-scale: Zonenname
+  ganz“, Befund `TRUNCATED`, `docs/zone-row.md`); Suche je Zone „Zone „…“ bearbeiten“. `zone.client.ZoneFocus`:
+  Hervorhebung nach „Zeigen“ für 12 s, auch über 160 Blöcke hinaus, Hinweis mit Name, Entfernung und Pfeil.
+- `ClientZones`: `listed`, `actions`, `mayJump` (nicht während einer Pilot-Sitzung). Zonen-Markierer: Schleichen +
+  Rechtsklick ohne Ecken öffnet `ZonesTab.open(ZoneMarkerClient.zoneHere)`.
+- Befund PATTY-1 (`docs/zones-open.md` §9): Regel-Zustand `zone.ZoneRuleMode` (`BELOW` wie darunter, `WORLD` Weltwert
+  erzwingen, `OWN` eigener Wert); `Zone` mit Feld `world` (Codec `force_world`, nur geschrieben, wenn nicht leer; im
+  Netz nach dem Besitzer), `mode`, `sets`, `forcesWorld`, `withWorld`, `withMode`, `sameRules`. `ZoneResolver` nimmt je
+  Regel die höchste Zone, die sie setzt; ein erzwungener Weltwert liefert den Wert der Welt-Regel, `ZoneResolution#source`
+  bleibt dann `null` (Flughilfe, Rennwertung und `RaceRules` sehen die Welt), `forcedBy`/`decider` nennen die Zone;
+  `ZoneResolver#below` rechnet die Zonen unter einer Zone (Editor „Darunter: …“). `ZoneBlend` gleitet auf den Weltwert
+  und zählt ihn als Welt-Anteil. `ZoneRelease` sperrt und übernimmt auch erzwungene Weltwerte. `ZoneText#notice` baut
+  den Hinweis beim Einfliegen aus der Auflösung (Werte je Zone, „(Welt)“). `ZoneEditPanel` scrollt per Mausrad über dem
+  Menü (`scroll`, Scrollbalken `ThemeDraw.scrollbar`, ziehen mit `startDrag`/`drag`), folgt der Auswahl nur bei einem
+  Wechsel. `zone.ZoneView` (`outlines`, `styles`, `highlight`) und `zone.client.ZoneViewConfig` (`config/propwash/zones.json`,
+  `show` `TOOL`/`TOOL_OR_FLIGHT`/`ALWAYS`, Standard `ZoneView.DEFAULT_SHOW` = `TOOL_OR_FLIGHT`, `version` 2 mit einmaligem
+  Anheben von `TOOL` aus Dateien ohne `version`, Einstellung im Tab „Zonen“): `ZoneRenderer` zeichnet Umrisse mit Zonen-Markierer
+  oder Kurs-Werkzeug (`GateMountKeys.holdingCourseTool`), im Standard auch in einer Pilotensitzung (`PilotSession#isActive`,
+  FPV und Sichtflug), beim Bearbeiten und für die gezeigte Zone; überlappende Zonen nur
+  Kanten, die Zone der Kamera bzw. die gezeigte hervorgehoben. `/propwash zone set <zone> <regel> world`.
+
+### Add-on-API 1.7: Vertrag, Namensraum und Handbuch (apiimpl, api; 0.6.0, Entwurf `docs/design/0.6.0/addon-api-namespace.md`)
+Beschrieben im Handbuch `docs/api/addon-guide.md` (§21, Sharecodes §13), im Doku-Baustein `docs/addon-api-1.7.md` und in
+`docs/api/changes.md` (0.6.0). Verträge:
+- **Stand A, dann Verhalten:** `apiimpl.Api17Registries` nahm alle 1.7-Anmeldungen zuerst ohne Verhalten an; die
+  Stränge der Welle 2 haben die Platzhalter durch Verhalten ersetzt (Abschnitte unten).
+- **Additiv:** Jede neue Methode an einer Schnittstelle aus 1.6 ist `default`. `ApiContractTest` vergleicht per
+  Klassendatei und Reflection mit `api-1.6.0-signatures.txt` und prüft mit `api-1.7.0-published.txt`, dass die seit
+  0.6.0-dev.2 veröffentlichten Schnittstellen aus 1.7 nur noch `default`-Methoden dazubekommen (deshalb sind etwa
+  `WorldRules#raceNeutral`/`#raceRelevant` und `RaceData#standard` `default`). Die Liste für 1.6 wird nur bei einer neuen
+  Hauptversion neu erzeugt.
+- Records aus 1.7 entstehen nur über Builder und Fabriken. Versionsbereiche der Abhängigen: Fabric `>=0.6.0-`, NeoForge
+  `[0.6.0-alpha,)`; zur Laufzeit `PropwashApi.requireVersion(modId, "1.7")`.
+- Der Namensraum `propwash` ist reserviert: neue Punkte werfen, alte verweigern still (`apiimpl.NamespaceRules`, oben).
+- `QuadcopterEntity.PILOT_CHANGED` wird am Server aus `DronePiloting#onPilotChanged` ausgelöst.
+- Jedes per `partItems().registerItem` angemeldete Teil braucht ein Item-Modell, sonst erscheint es als Würfel ohne
+  Modell.
+
+### Add-on-Schalter und -Achsen (input, ui; 0.6.0, API 1.7 A1, Baustein `docs/addon-switches.md`)
+Add-on-Eingaben (`input.addon`):
+- `RadioFrame` trägt `addonSwitches` (`long`) und `addonAxes` (`float[]`) neben der eingebauten Maske; die 8- und
+  9-stelligen Konstruktoren bleiben. `RadioState#addonStage` füllt beide Werte je Bild.
+- `DeviceProfile` behält Schlüssel `ns:pfad` und `addonAxes`; `keepAddonsFrom` schützt sie beim Zurücksetzen der Seite
+  „Funktionen“.
+- Die einzige Abfrage für Add-on-Schalter und -Achsen ist `input.addon.AddonInputState`: am Server der zuletzt gemeldete
+  Zustand, beim Piloten der eigene, sonst `false` bzw. die Mitte. `FlightState#addonSwitch`/`#addonAxis` und
+  `GimbalContext#axis` lesen dieselben Werte (im Server-Flug der zuletzt gemeldete Zustand, nach dem Pilotenwechsel
+  `false` bzw. Mitte; Achsen gekappt auf −1…1, NaN wird 0; ohne Anbindung wie in der Freecam neutral).
+- Pakete `propwash:addon_switch`, `addon_axis` (Client → Server), `addon_features` (Server → Client); höchstens 64
+  Schalter und 16 Achsen.
+- Die Seite „Add-ons“ steht in `input.client.screen.AddonSwitchRows`; `ModesTab` ruft sie nur auf. Gekürzte Reiter
+  („Flug“ statt „Funktionen“) behalten ihren vollen Namen als Beschriftung des Knopfs (Ansage und Suche).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `input/addon/client/AddonTestRadio` | addon-switches (Fix F-cov-cam-b-9 und F-cov-md-a-9; JUnit `input.AddonSwitchesTest`, Selbsttest `input.addon.client.AddonSwitchApiRadioSelfTests`) | Testfunke der API (`PropwashClientApi.simulateRadio`, `stopSimulatedRadio`, `setSimulatedAxis`, `setSimulatedButton`, `bindSimulatedSwitch`), nur in der Entwicklungsumgebung: Gamepad `propwash-api-test-gamepad` (6 Achsen, 15 Knöpfe, `asGamepad`, `ProfileDefaults.gamepad`) bzw. Funke `propwash-api-test-radio` (12 Kanäle, 16 Knöpfe, `ProfileDefaults.radio`); Profil während des Tests in `InputConfig`, Simulation über `TransmitterInput#simulate`; Knopf über `AddonBindings.apply` mit `usesGamepadLayout`, Kanal nur auf `auxAxes` (900–2100 µs); `stop` beendet nur die eigene Simulation und entfernt beide Testprofile; Zubehör-Aktionen (Fix F-cov-md-a-9): `bindActionButton`/`bindActionChannel` für `PropwashClientApi.bindSimulatedAction`, Knopf über `SwitchSources.apply` mit `SwitchFunction.accessory(n)` (nie rastend), Kanal mit derselben Prüfung `switchRange` wie Add-on-Schalter; Selbsttest-Schritt „Zubehör-Aktion 1 mitten im Flug“ |
+
+### OSD-Elemente und Warnungen von Add-ons (osd; 0.6.0, API 1.7 A2, Baustein `docs/addon-osd.md`)
+Eingebaute Elemente bleiben Konstanten von `OsdElement`. Add-on-Elemente und -Warnungen kommen nur aus
+`Api17Registries.Client` über `PropwashClientApi.registerOsdElement` und `registerOsdWarning`. `OsdConfig.elements`
+behält Schlüssel `<ns>:<pfad>` (nicht `propwash`, höchstens 64 Zeichen) auch ohne Add-on; `OsdConfig.VERSION` bleibt 4.
+`OsdRenderer` zeichnet sie nur über die Methode `addonOsd` nach den eingebauten Elementen. Add-on-Warnungen folgen im Feld
+WARNINGS den eigenen; kritische eigene Warnungen haben Vorrang (`osd.addon.AddonOsdKeys#visibleWarning`, ohne Add-on
+gleich `OsdWarnings#visibleIndex`). Text ist druckbares ASCII, gekürzt auf `maxChars`. Wirft ein Add-on-Element eine
+Ausnahme, bleibt es bis zum Neustart aus. Im Sharecode reisen die Add-on-Einträge mit (`osd/OsdLayoutCodec`, oben).
+
+### Kollisionsregeln für Add-ons (drone; 0.6.0, API 1.7 A3, Baustein `docs/addon-collision.md`)
+`drone.collision.CollisionRules.evaluate` bildet je Flag das UND aller Regeln. Der Client wertet einmal je Tick aus
+(`drone.collision.client.ClientCollision`), der Server je Bewegungspaket (`ServerCollision.passBlocks` in
+`DronePiloting#onState`); der Server lässt Block- und Pfadprüfung nur nach eigener Auswertung aus. `blocks = false` fließt
+als `MoveReport.ghost` ins Flugmodell, `DroneSim` hat dann keinen Kontakt. Wieder fest wird die Drohne erst mit freier
+Hülle (`GhostLatch`; am Server höchstens 16 Blöcke und 20 s). Kontaktregeln hängen hinter `SurfaceMaterials`
+(`ContactResponse`, Kappung wie `BlockContact`). „Kamera darf in Blöcke“ fragt nur `drone.client.CameraClip` ab, weitere
+Quellen melden sich mit `register(BooleanSupplier)` an (erste: Freecam). Der Client wertet Kollisionsregeln nur aus, wenn
+der Server sie im Paket `propwash:addon_features` gemeldet hat (`input.addon.client.AddonServerFeatures#knowsCollisionRule`);
+unbekannte Regeln zählen beim Client als nicht vorhanden. Ohne Regel ist das Flugmodell bitgleich.
+
+### Welt-Regeln der Add-ons (server; 0.6.0, API 1.7 B5, Baustein `docs/addon-world-rules.md`)
+- `Api17Registries.Rules#add` meldet jede Regel bei `server.AddonWorldRules.register` an; daraus wird eine Gamerule in
+  `WorldRules.CATEGORY`. Fabric: `flush(…, true)` nach den eigenen Registern, danach direkt ins Register. NeoForge:
+  `RegisterEvent` für `GAME_RULE`, danach geschlossen (eine spätere Anmeldung wirft `IllegalStateException`).
+- `WorldRule#get(Level)`: auf dem Server die Gamerules der Welt, auf dem Client `ClientWorldRules.raw` (Quelle gesetzt von
+  `server.client.AddonRuleSections.init`), ohne Welt der Standard. Abgleich und Bearbeiten laufen über
+  `WorldRules.isPropwash` (die Kategorie); kein neues Netzpaket.
+- `WorldRules.applyPreset` ruft `AddonWorldRules.applyPreset` auf; gesetzt werden nur Regeln mit Eintrag.
+  `RulePreset#matches` fragt `AddonWorldRules.presetActive`: auf dem Server-Thread die Werte der Welt, sonst die Werte am
+  Client; ohne Server und Client keine Einschränkung (JUnit bleibt unabhängig); Regeln, die der Server nicht meldet,
+  zählen nicht.
+- Tab: `AddonRuleSections.split` teilt die Gruppe „Weitere“ in einen Abschnitt je Namensraum. Überschrift ist
+  `<ns>.world_rules.section`, sonst der Mod-Name über `ExtensionTabs.displayName` („%“ verdoppelt;
+  `AddonRuleSections.sectionTitle`).
+- Zonen gelten für Add-on-Regeln nicht (bleiben bei `RuleSpec`); Add-on-Regeln sind standardmäßig rennrelevant
+  (§15 „Rennwertung“). Welt-Regeln eines fehlenden Add-ons bleiben erhalten (§15 „Add-on zeitweise entfernt“).
+
+### Add-on-Daten an der Drohne und Wartungsknöpfe (drone, apiimpl; 0.6.0, API 1.7 B6 und B10, Baustein `docs/drone-data.md`)
+`drone.data.AddonData` hält die Daten aller Add-ons roh (NBT `AddonData`, Komponente und Serializer
+`propwash:addon_data`, §4). `drone.data.DroneDataStore` prüft die Grenzen (2048 Bytes je Schlüssel, 8192 je Drohne) und
+gleicht nur `TRACKING` ab; `NONE` reist am Item mit („NONE heißt nicht geheim“). Speicherstelle in `QuadcopterEntity`
+sind `addonData()` und `setAddonData`. Zerlegen in der Werkbank verliert die Add-on-Daten; 0.5.x liest ein Drohnen-Item
+mit der Komponente nicht. Wartungsknöpfe: `apiimpl.client.ServiceExtensions` im Kopf der Wartung, höchstens drei, der Rest
+unter „Mehr“ bzw. „…“.
+
+### Werfen, Inhalt sichtbar, Stöße, alle Drohnen und Kamerablick (accessory, drone, drone-render; 0.6.0, Entwurf `docs/design/0.6.0/addon-api-namespace.md` §3.4–§3.7, B1–B4)
+Verhalten zu den Signaturen aus `api17-contract`; Baustein `docs/accessory-gaps.md`. `DispenseModule.init()` in
+`PropwashCommon.init()` nach `AddonWorldRules.init()`. Keine neuen Pakete im Netz, keine neuen Texte im Kern.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `accessory/dispense/DispenseMath` | accessory-gaps (reines Java, JUnit `DispenseMathTest`) | `nearest(forward)` → nächste der sechs Richtungen; `recoil(Kind, power, speedScale)` = Masse × Mündungstempo (Tabelle `Kind`, Windkugel + 2,5 N·s); `refusesFluid`, `denied(mayInteract, actionRestricted, mayBuild)`, `remaining(count, used, consume)`, `inherit(droneVel m/s, eigene B/t)`, `itemEject(forward, speed)` (+0,2 hoch); den Schutz eigener Geschosse hält `OwnShots` (seit F-MDA-4 ohne `protects`/`OWN_SHOT_TICKS`) |
+| `accessory/dispense/AccessoryDispenser` | accessory-gaps | `dispense(level, drone, mount, actor, slot, options)` für `AccessoryContext#dispense` (aus `AccessoryHost.Ctx`): Eimer mit Flüssigkeit → `REFUSED` ohne `allowFluids`; `ProjectileItem` → Geschoss an `front()` in `forward()` mit Vanilla-`DispenseConfig` × Optionen + Drohnentempo, Besitzer Pilot oder Auslöser → `FIRED`; TNT (Regel `tnt_explodes`) → `PLACED`; Items ohne Verhalten → Auswurf in `forward()` → `FIRED`; sonst Vanilla-`DispenseItemBehavior` an `BlockSource` (Mündungsblock, Dispenser-Zustand mit `nearest`, eigene `DispenserBlockEntity` für Rückgaben) → `USED`/`BLOCKED`; Bau-Rechte (`mayInteract`, `blockActionRestricted`, `mayBuild`) vor TNT, Flüssigkeit und Block-Verhalten → `DENIED`; Mündung im festen Block → `BLOCKED`; Rückstoß über `DronePushes` an der Mündung |
+| `accessory/dispense/OwnShots` | accessory-gaps (Fix F-MDA-4) | `protect(projectile, drone)` beim Werfen merkt sich die UUID der Drohne für die ganze Lebensdauer des Geschosses (nur im Speicher, nach Neustart oder Neuladen des Chunks kein eigenes Geschoss mehr); `deflection(drone, projectile, vanilla)` → `PASS` (Durchflug ohne Treffer) für eigene Geschosse, ohne Zeit- oder Hüllengrenze; `protects(drone, Entity)`; `from(drone, DamageSource)`: direkte Quelle oder Verursacher ist ein eigenes Geschoss, `QuadcopterEntity#hurtServer` bricht dann vor `DRONE_DAMAGED` und `breakApart` ab (Geschosse aus der Hand eines Spielers zählen nicht); `tick(drone)` (über `QuadcopterEntity.SERVER_TICK`) räumt entfernte Geschosse einmal je Tick ab; `passed()` Testzähler |
+| `accessory/dispense/DispenseModule` | accessory-gaps | Anmeldung `OwnShots.tick`, Aufräumen bei Start/Stopp, `LoadedDrones.forget` bei `LEVEL_UNLOAD` |
+| `accessory/AccessoryHost`, `AccessoryBehaviors` | accessory (Haken accessory-gaps) | `Ctx#dispense` ruft `AccessoryDispenser`; `onAction` und `trigger` teilen `act(level, drone, spieler, nummer, gedrückt)` (Ratenbegrenzung, `onAction` je Zubehör, `ACCESSORY_ACTION`); `AccessoryRegistry#triggerAction` → `false` ohne Zubehör mit Verhalten, außerhalb 1–4, im falschen Thread oder bei Ratenbegrenzung |
+| `accessory/display/ItemDisplays` | accessory-gaps (reines Java, JUnit `ItemDisplayTest`) | `display(id, behavior, slot)` abgesichert (Fehler einmal je Zubehör im Log); `model(anker mm, neigung, gimbal, display, einheiten je mm, dest)` = Anker · RotX(Neigung) · Gimbal · Versatz · RotY(Gieren) · RotX(Nicken) · RotZ(Rollen) · Skalierung × 160 mm |
+| `drone/client/render/AccessoryDisplayState` | drone-render (accessory-gaps) | Feld `DroneRenderState#accessoryDisplay` (eine Zeile); `extract` in `QuadcopterRenderer#extractRenderState` (Stapel aller Zubehöre mit Verhalten und `display`, Kontext `FIXED`; bei `hidden` nur für die eigene FPV-Drohne außerhalb des Schatten-Durchgangs, dann mit der Lage aus `FpvView#displayedBody`), `submit` nach `DroneVisuals.submit`; bei verborgener eigener FPV-Drohne (`atLens()`) zeichnet `FpvPropPass` den Inhalt mit `submitAtCamera` im eigenen Durchgang der FPV-Props an der Stelle der Hand (frisch geleerte Tiefe, auch ohne Props und Ducts im FPV-Bild), sonst (Iris-Shaderpack, `forceWorld`, Fehler) `submitAtLens` im Welt-Durchgang nach den FPV-Props: Linse des Modells (`FpvProps#lens`) auf die Kamera, Maßstab 1 mal Drohnengröße (Befund SPEAR3-1), gedreht mit `CameraRenderState#orientation` zurück um den Uptilt (`FpvProps#cameraTilt`), also samt Vibration und Ruck fest im Bild wie die Props, mit Gimbal-Kamera eines Add-ons (`AddonCamera#provider`) mit der Lage aus `FpvView#displayedBody` (Befund G-SPEAR3-1-2); Nahebenen-Ausgleich wie die Props (Befund AUTO29-1): gleichmäßig um die Linse nach außen, bis der nächste sichtbare Eckpunkt des Item-Modells (`ItemStackRenderState#visitExtents`, Bild ×1,05 plus ein Texel, ab 1 mm Tiefe; `visibleDepthMm`) bei `FpvPropGeometry.NEAR_TARGET_MM` liegt, höchstens `MAX_NEAR_SCALE` (`nearScale`, `lastNearScale()` für Tests), `keepNormals` setzt danach die Normalenmatrix der Lage ohne Ausgleich ein (NeoForge normiert gebackene Normalen nicht); `shownInOwnFpv(drone)` (Verhalten angemeldet, Inhalt nicht leer) hält die eigene Drohne in `QuadcopterRenderer#shouldRender` und `FpvProps#extractsCameraDrone` auch ohne Props und Ducts im FPV-Bild; `gimbal[mount]` (Quaternion, von `extract` auf Einheit gesetzt, danach von `operator-gimbal` zu füllen) dreht alles an der Halterung; `count`, `count(mount)`, `shown(mount, slot)` für Tests |
+| `drone/Knockback` | accessory-gaps (reines Java für `impulse`, JUnit `KnockbackTest`) | Haken in `QuadcopterEntity#pushFromExplosion`, `#onExplosionHit` (Ursache aus der Quelle: `AbstractWindCharge` → `WIND_CHARGE`, sonst `EXPLOSION`) und `#push` (`OTHER`, nicht während einer Explosion); nur für geflogene Drohnen (Pilot, `AutonomousReturns.flying`) und mit Listenern: `DRONE_KNOCKBACK` mit Δv in m/s, `impulse(Δv, Masse samt Zubehör, Beladung und Fracht, Skala, Abbruch)` gekappt auf 50 N·s über `DronePushes`; Vanilla-Stoß der Entity bleibt (0.5.2) |
+| `drone/LoadedDrones` | accessory-gaps | Haken in `QuadcopterEntity#setLevelCallback`: Drohne bei Aufnahme in den Entity-Speicher eines Server-Levels geführt, bei `NULL` entfernt; `of(level)` = unveränderliche Liste (Schnappschuss bis zur nächsten Änderung) für `DroneAccess#loaded` |
+| `drone/CameraPoses` | accessory-gaps (JUnit `CameraPoseTest`) | `of(entity)` / `of(build, tune, com, lage)` für `DroneAccess#cameraPose`: Auge = Schwerpunkt + Lage · (lensRight, lensUp, −lensForward), Blick = Lage · RotX(Uptilt aus `CameraMount.uptilt`) · (0, 0, −1), senkrechtes Sichtfeld aus `FpvRig` (16:9) wie `CameraView#verticalFovDeg`; leer ohne Drohne oder mit fehlendem Video-Teil |
+| `drone/QuadcopterEntity` | drone (Haken accessory-gaps) | `deflection`, `push`, `pushFromExplosion`, `onExplosionHit`, `setLevelCallback` delegieren nur (je eine Zeile) |
+
+Selbsttests `interact.client.AccessoryGapsSelfTests` (Präfixe `addon-api-17: B1` … `B4`), Bilder
+`interact.client.AccessoryDisplayShowcase` (`accessory_display_*`), Server-Rauchtest `accessory.dispense.DispenseServerChecks`
+(devtest), Beispiel `dev/example/ExampleDispenser`.
+
+### Autonomer Flug mit Add-on-Flughilfe (rescue, drone, osd, apiimpl; 0.6.0, Entwurf `docs/design/0.6.0/addon-api-namespace.md` §3.10, Verhalten B7)
+Add-ons fliegen eine Drohne über `PropwashApi.drones().autonomy()` am Server, im selben Flugmodell wie der Heimflug.
+Baustein für Add-on-Autoren: `docs/addon-autonomy.md`. Sprachquellen `common/src/lang/addon-autonomy/`.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `rescue/ServerFlight` | rescue | Basis des Server-Flugs (bisher in `ServerReturnFlight`): `begin(drohne, level, tempo, scharf)`, `arm(drohne, level)` (Schärfen am Boden wie beim Piloten, zwei Frames mit Schalter aus/an), `fly(drohne, level)` → `Outcome` (`FLYING`, `LANDED`, `LOST`); Unterklassen liefern `steer(dt, drohne)` (füllt `input`), `wantsDisarm()`, `landed()`, optional `resynced`, `beforeSlices`; Zonen, Wind, Bodenabstand, `ServerCollision.afterSurface`, Verschleiß und Schreiben ins Entity unverändert; `gpsFix(drohne, level)` misst den GPS-Empfang am Schwerpunkt über `GpsReception` (Fix F-RTH-1) |
+| `rescue/ServerReturnFlight` | rescue | Heimflug als Fall von `ServerFlight`; `start(drohne, plan, level, welt)`, `tick(drohne, level, plan, besitzer)`, `autopilot`, `announcedStuck`, `pilotHome` wie bisher |
+| `rescue/ServerFlightAssist` | rescue (reines Java, JUnit `rescue.AutonomousAssistTest`) | Ablauf eines Add-on-Flugs: `startInFlight`, `startFromGround` (Steigen um `takeoff` über den Startpunkt), `replace`, `update(dt, sim, x, unten, z, welt, input)`, `end(grund)`, `disarmed(gelandet)`, `consumeEnded()`, `followUp(grund, heimWunsch, gpsFix)` → `NONE`/`HOME`/`LAND` (`OUT_OF_RANGE` und `TERRAIN_LIMIT` → `HOME` mit GPS-Fix, sonst `LAND`; Fix F-RTH-1, F-GCB2F-1); `needsGps(grund, heimWunsch)`: gemessen wird nur, wenn die Folge davon abhängt; `terrainLimit(gehalten, dt)` setzt `FlightState#terrainLimit()` in der Phase `ASSIST`, nach `TERRAIN_LIMIT_SECONDS` = 1 s (abklingend gezählt) Ende mit `TERRAIN_LIMIT`, Folge wie `OUT_OF_RANGE` (Fix F-GCB2-1, F-GCB2F-1); Ende bei Akku (`CRITICAL`/`EMPTY` oder < 15 %), `maxDuration`, 60 min über alle Wechsel; Landung mit `RescueAutopilot#landNow` |
+| `rescue/ServerFlightControl`, `rescue/ServerFlightState` | rescue (reines Java) | Regler des Heimflugs für Halten, Steigen, Position, Tempo, Kurs und Gierrate mit der echten Lage; `FlightState`/`AssistOutput` am Server (Schätzwerte = echte Werte, GPS immer gültig, Knüppel neutral, Gas 0,5) |
+| `rescue/AddonAutonomy` | rescue | `start`, `stop`, `active`, `label`, `phase`, `flying`, `sim`, `flights`; `tick(drohne)` im Server-Autopiloten; `onPilotExit(drohne, pilot, plan)` fragt die `ExitHandler` aus `Api17Registries.AUTONOMY` in Anmeldereihenfolge; `AUTONOMY_ENDED` nach jedem Ende, Paket und Meldung an den Besitzer; Heimflug nach `BATTERY`/`TIMEOUT`, nach `OUT_OF_RANGE` und `TERRAIN_LIMIT` nur mit GPS-Fix an der Stelle der Drohne (`ServerFlight#gpsFix`, gemessen nur, wenn `ServerFlightAssist#needsGps` es verlangt; Fix F-RTH-1, F-GCB2F-1) über `ReturnPlan` (Plan des Piloten, sonst Homepoint, sonst Startpunkt; > 1500 Blöcke sofort landen; nur mit Regel `autonomous_rescue`) |
+| `rescue/AutonomyBudget` | rescue | `Kind` `HOME`/`ADDON`; `ADDON` höchstens `SERVER_LIMIT − 2` je Server und `OWNER_LIMIT − 1` je Spieler; gemeinsamer Zähler `AutonomyBudget.SERVER` für Heimflug und Add-on-Flug |
+| `rescue/AutonomyBudget#addonLimits`, `#refusal`, `server/rules/WorldRuleSpecs.AUTONOMOUS_FLIGHTS_PER_PLAYER`, `AUTONOMOUS_FLIGHTS_TOTAL` | rescue, server (Befund OWN2810P-1) | Welt-Regeln `propwash:autonomous_flights_per_player` (0–8, Standard 1) und `propwash:autonomous_flights_total` (0–32, Standard 6), Gruppe Spiel, 0 = keine, rennneutral, nicht in Zonen; `AddonAutonomy.budget(server)` setzt sie vor jeder Prüfung (Add-on-Flug und Heimflug in `AutonomousReturns`) über `addonLimits(je Spieler, gesamt)`; insgesamt höchstens max(`OWNER_LIMIT`, je Spieler + 1) bzw. max(`SERVER_LIMIT`, gesamt + 2); bei `NO_BUDGET` Meldung `refusal(drohne, admission)` mit dem Wert in der Aktionsleiste des Besitzers |
+| `rescue/AutonomousReturns` | rescue (Haken addon-autonomy) | `onPilotChanged` fragt beim Aussteigen zuerst `AddonAutonomy.onPilotExit`; Server-Autopilot = `AddonAutonomy.tick` oder Heimflug; `flying`/`sim` auch für Add-on-Flüge |
+| `rescue/FlightChunks` | rescue (nur im Paket sichtbar, Fix F-CAMB-1) | Chunk-Tickets eines Flugs ohne Pilot (Add-on-Flug, Heimflug, Sinkflug): `keep(drohne)` setzt `propwash:drone` über `RangeManager#keepSimulated` für den Chunk der Drohne und jeden schon erzeugten Nachbarn; `keep(drohne, erzeugen)`: beim Add-on-Flug mit `ServerRules.mayGenerateChunks(besitzer)` (beim Start und in jedem Tick geprüft, Fix F-GCB2-1) alle 3×3 Nachbarn auch über nicht erzeugtem Gelände und ein Vorausschau-Ticket `propwash:drone_lookahead` (Radius `AHEAD_RADIUS` = 3, ab 3 m/s 0–`MAX_AHEAD` = 4 Chunks bzw. 4 s Flug in Flugrichtung, `aheadChunks(tempo)`, über `RangeManager#keepAhead`); Heimflug und Sinkflug erzeugen nie Gelände (`keepable(level, x, z)`: alle Chunks in Radius `AnchorRules.DRONE_TICKET_RADIUS` = 2 erzeugt, mit Gedächtnis erzeugter Chunks je Flug, höchstens `MAX_REMEMBERED` = 4096, damit Tickets und `rescue/FlightFence` dasselbe sehen und ein entladener Chunk hinter der Drohne nicht wieder als unbekannt gilt; Fix F-cov-cam-b-2; 3×3 tickend, 7×7 geladen); gepflegt beim Start, im Flug-Tick und am Tick-Ende für jeden laufenden Flug, unabhängig davon, ob die Drohne in diesem Tick tickte. Das Drohnen-Ticket hält mit `FLAG_KEEP_DIMENSION_ACTIVE` die Dimension aktiv, auch ohne Spieler; trennt der Besitzer, landet die Drohne an Ort und Stelle bzw. fliegt den Heimflug zu Ende, erst danach verfallen die Tickets. Test: Beitrittstest „Autonomie ohne Besitzer“ (`dev.AutonomyOfflineJoinCheck`, `PROPWASH_JOINTEST_AUTONOMY_OFFLINE`) |
+| `rescue/FlightFence` | rescue (nur im Paket sichtbar, Fix F-cov-cam-b-2) | Wand eines Add-on-Flugs vor Chunks, die nicht tickend gehalten werden können (nicht alle Chunks in Radius 2 erzeugt; darf der Besitzer Gelände erzeugen, wartet die Wand nur, bis das Gelände da ist): Maske über `FlightChunks#keepable` `REACH` = 3 Chunks um die Drohne (`update(level, drohne, chunks)` bei Chunk-Wechsel und alle `REFRESH_TICKS` = 5 Ticks neu), Grenzlogik `server/EdgeFence` des Piloten (Halt 4 m davor, seitlich und zurück frei), `limit(sim)` in jedem Rechenschritt von `AddonAutonomy.Flight#steer` auf das Tempo des Flugmodells, für jede Ausgabe der Flughilfe und rohe Knüppel; `atLimit()` meldet das Drücken gegen die Wand höchstens 5 m davor (`EdgeFence.STOP_DISTANCE` + `HOLD_BAND` = 1 m) → `ServerFlightAssist#terrainLimit`, nach 1 s `TERRAIN_LIMIT`, wenn der Besitzer nicht erzeugen darf (Fix F-GCB2-1); Schweben davor, entlang und Umkehren beenden nicht. Tests: `rescue.FlightFenceTest`, Beitrittstest „weiter Flug ohne Pilot“ (`dev.AutonomyFarJoinCheck`, `PROPWASH_JOINTEST_AUTONOMY_FAR`) |
+| `rescue/GpsReception` | rescue (nur im Paket sichtbar, Fix F-RTH-1) | GPS-Empfang am Server für die Folge von `OUT_OF_RANGE` und `TERRAIN_LIMIT`: Himmelssicht aus 17 Strahlen bis 96 m (90°/60°/30°, Gewichte 1,5/1/0,6 wie `drone/client/SkyView`) über einen `BlockGetter` nur auf geladenen Chunks (ungeladene zählen als Luft, nichts wird geladen), Fix ab 5 Satelliten (`18 · Sicht^1,6` wie `sim/GpsReceiver`), Dimension mit Decke ohne Fix, über der Bauhöhe immer; `ServerFlight#gpsFix(drohne, level)` misst am Schwerpunkt; Tests `rescue.GpsReceptionTest`, Beitrittstest `dev.AutonomyHomeJoinCheck` (`PROPWASH_JOINTEST_AUTONOMY_HOME`) |
+| `rescue/PilotTakeover` | rescue (Fix F-CAMP-1, G-CAMP-1-1; Haken in `drone/client/PilotSession`, `input/client/TransmitterInput`, `sim/DroneSim`, `sim/NavHold`) | Übernahme durch den Piloten nach einem Flug ohne Pilot (etwa Add-on-Flug mit Ende `PILOT`): `seamless(drohne)` = scharf und Bodenabstand mindestens `AddonAutonomy.GROUND_GAP`; `place(sim, scratch, drohne, lage)` = `Handover.place` mit dem Tempo der Entity × 20, danach `DroneSim#settleForTakeover` (Akku unter Schwebelast, Höhenschätzung ohne Rauschen der ersten Messung und mit echter Steiggeschwindigkeit, Höhen-Integrator eingeschwungen; nur von hier aufgerufen, Kalibrierung unverändert; die Höhenschätzung mit Steiggeschwindigkeit befüllt `DroneSim#navTick` über `NavHold#primeSettled` schon vor dem ersten Aufruf einer Flughilfe, mit Bodenabstand, Tempo und Schub dieses Rechenschritts, Fix G-CAMP-1-1); `throttle(assistHolds, mode3d, hoverStick, deadband3d)` = 0,5, wenn eine Flughilfe die Höhe über `holdAltitude`/`climb` hält, sonst Schwebegas (im 3D-Modus oberhalb der Totzone). Aufruf aus `PilotSession#start`; nach dem ersten Rechenschritt setzt `TransmitterInput#presetThrottle` den Gas-Ausgangswert für Tastatur, Maus und schrittweises Gamepad (`KeyboardFlight`, `StickMapper#presetThrottle`), bis dahin hält die Sitzung ihn selbst; ist der Scharf-Schalter der Funke bei der Übernahme aus, hält die Sitzung den Arm-Zustand wie die Arm-Taste, bis der Schalter eingeschaltet wird; am Boden startet die Sitzung wie bisher entschärft |
+| `drone/QuadcopterEntity` | drone (eine Zeile addon-autonomy) | `tickServer` fragt den Server-Autopiloten für jede Drohne ohne Pilot (nicht mehr nur mit Plan); ohne Flug antwortet er nein, die lose Physik läuft wie bisher |
+| `rescue/net/AutonomyStatusS2C` | rescue | `propwash:autonomy_status` (Entity, aktiv, Label ≤ 8, Grund des Endes oder −1) an den Besitzer |
+| `rescue/client/AutonomyLabels`, `osd/client/LiveOsdSource` | rescue, osd (eine Zeile) | Label je Entity; beim Zuschauen `OsdData.assistLabel` = Label des Add-on-Flugs |
+| `apiimpl/Api17Registries.Autonomy` | apiimpl | `start`, `stop`, `active` rufen `AddonAutonomy` |
+
+Beispiel `dev.example.ExampleFollow` (Übergabe `propwash_example:mission` mit den Tags `propwash_example_hold` und
+`propwash_example_follow`), Selbsttests `rescue.client.AutonomySelfTests` (Gruppe `addon-api-17: B7`).
+
+### Zweiter Operator und Gimbal in Aufnahme und Kamerapfad (drone, video, drone-render, sim, rescue, apiimpl; 0.6.0, Entwurf `docs/design/0.6.0/addon-api-namespace.md` §3.11, §3.12, §3.19, Verhalten B8 und B9)
+Ein zweiter Spieler steuert über `PropwashApi.drones().operators()` mit seiner Funke den Gimbal; Gimbal-Add-ons drehen den
+Kopf am Modell, setzen die Brennweite und nehmen mit der Gimbal-Lage auf. Baustein für Add-on-Autoren:
+`docs/operator-gimbal.md`. Sprachquellen `common/src/lang/operator-gimbal/`.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `drone/operator/OperatorChannel` | drone (reines Java, JUnit `drone.operator.OperatorChannelTest`) | Achse ↔ `short` (±32767, halber Schritt Fehler), Aktionen 1–4 im Bitfeld, Bit `LEAVE` (0x80) gibt die Kamera zurück; `Rate` höchstens 25 Pakete je 1 s (gleitend); `bind`/`keep` (Pilot, fliegt andere, Dimension, Videoreichweite, beim Halten ×1,1; besetzt) und `accepts` |
+| `drone/operator/OperatorServer` | drone | Bindungen je Drohne (UUID); `bind`, `unbind`, `operator`, `axis`, `action`, `feed(drohne, sim)` (Server-Flug); `onInput` (Rolle, Rate, Weitergabe an Pilot, Operator und Zuschauer), `onTick` (Lösen, `SpectatorLinks` des Operators), Pakete nur an Spieler aus der Spielerliste |
+| `drone/operator/AutonomousFeeds` | drone | alle 10 Ticks: Drohnen im Add-on-Flug ohne Piloten senden als `SpectateServer.simulateTransmitter(drohne, Label)`, danach wieder aus |
+| `drone/operator/net/*` | drone | `propwash:operator_input` (C2S: Entity, 4 × `short`, Byte), `operator_state` (S2C: dasselbe ohne Bit `LEAVE`), `operator_role` (S2C: Entity, UUID, `NONE`/`OPERATOR`/`PILOT`, Name ≤ 64) |
+| `drone/operator/client/OperatorClient` | drone | Lage je Entity aus `operator_state` (`axis`, `action`, `state`), Rolle aus `operator_role`; als Operator mit Bild 20 Hz Knüppel (`RadioState`) und Zubehör-Aktionen, Esc → `LEAVE`; `feed(drohne, sim)` beim Piloten; `testInput` für Tests |
+| `drone/operator/client/OperatorTestInput` | drone (JUnit `drone.operator.client.OperatorTestInputTest`) | liest bei jedem Senden des Operators (20 Hz) die System-Eigenschaft `propwash.test.operatorInput=<Roll>,<Nick>,<Gier>,<Gas>[,<Aktion>…]`; ein gültiger Wert ersetzt Knüppel und Aktionen (Achsen gekappt, Gas 0…1, Aktionen 1–4), ungültige Werte einmal als Warnung im Log, dann gilt das Gerät; das interne `OperatorClient.testInput` hat Vorrang (`docs/operator-gimbal.md` §9) |
+| `drone/operator/client/OperatorView` | drone | Operator-Rolle in der Zuschauer-Sitzung (`SpectateSession#operate`, ohne `SpectateC2S`), `spectate(drohne)` für eigene Drohnen im Add-on-Flug (`AutonomyLabels.active`), `recordingDrone()` = Pilot im FPV, Operator oder zuschauender Besitzer |
+| `drone/operator/client/GimbalHead`, `HeadCollector` | drone-render | `extract` nach `AccessoryDisplayState#extract`: `modelPose` → `AccessoryDisplayState#gimbal[halterung mit gimbal_head]`; `items(zustand, halterung, posen, sammler)` in `DroneVisuals#submitAccessories`: Quads mit Mitte im Quader von `gimbal_head` um `rotation.origin` gedreht (Rahmenachsen, Neigung der Halterung berücksichtigt), Aufteilung je `ItemQuads` gemerkt |
+| `drone/operator/client/GimbalFov` | video | `horizontal(drohne, standard)` in `VideoState#horizontalFov`: `fovDegrees` gekappt 20–150°, NaN = Standard; `path(drohne, rahmen, neigung)` in `FlashbackCam#horizontalFov`: `gimbalFovDegrees` des Add-ons für den Flashback-Pfad (Kontext wie `gimbalRotation`), gekappt 20–150°, NaN oder Ausnahme → Sichtfeld des Schirms wie bisher |
+| `drone/operator/client/GimbalRecording`, `video/record/CameraLook` | video | `stabilizesRecording` → `ActionCamRecorder`-Stabilisierung `OFF`; Flashback-Pfad (`path`) = `gimbalRotation` des Add-ons (Kontext: Rahmenlage des Pfads, `spectating` `false`, dt 0; endlich, normiert), sonst wie bisher Kamerablick bei `stabilizesRecording` und Drohne auf dem Schirm, sonst Rahmen + Kamerawinkel (`pathRotation`) |
+| `drone/operator/client/GimbalProps` | drone-render | `shown(drohne, neigung)` in `FpvProps#prepare`: `showsProps` des Add-ons (Kontext wie `GimbalFov`, `spectating` = Zuschauer oder Operator); `false` → keine FPV-Props und -Ducts (`fpvGeometry` leer, auch `FpvPropPass`), ohne Gimbal oder bei Ausnahme wie bisher; Zähler `hiddenFrames` |
+| `video/client/SpectateSession` | video (Haken operator-gimbal) | Feld `operator`, `operator()`, `operate(minecraft, uuid, id)`; `stop` schickt im Operator-Modus kein `SpectateC2S`, `onResult` übergeht Antworten, `request` beendet den Operator-Modus |
+| `video/client/record/ActionCamRecorder`, `FlashbackCam` | video (Haken operator-gimbal) | Bildquelle `OperatorView.recordingDrone()` ohne Pilotensitzung; Stabilisierung über `GimbalRecording.mode`; Flashback-Lage über `GimbalRecording.path`, Flashback-Sichtfeld zuerst über `GimbalFov.path` |
+| `accessory/client/AddonCamera`, `ClientInputImpl`, `AddonFlightClient` | accessory (Haken operator-gimbal) | `provider(drohne)`, `context(…)`, `GimbalContext#operatorAxis/#operatorAction`; `ClientInput#operating`; Operator-Achsen ins Flugmodell des Piloten |
+| `sim/DroneSim`, `sim/AssistBridge`, `rescue/ServerFlightState`, `rescue/AddonAutonomy` | sim, rescue (Haken operator-gimbal) | `DroneSim#setOperatorAxis/#operatorAxis`; `FlightState#operatorAxis` aus der Sim; `Flight#steer` füttert vom Server; ohne Operator 0, Flugmodell unverändert |
+| `apiimpl/client/RecordingControlImpl`, `apiimpl/Api17Registries` | apiimpl | `start`/`stop`/`recording` über `ActionCamRecorder`, `photo` = `CleanFrameTap` → PNG `propwash_photo_<Zeit>.png` im Aufnahme-Ordner; `operators()` und `spectate()` echt |
+
+Beispiel `dev.example.ExampleOperator` (Zubehör `propwash_example:gimbal_front`, Aktion 3 bindet), Selbsttests
+`drone.operator.client.OperatorGimbalSelfTests` (Gruppe `addon-api-17: B9`), Beitrittstest `dev.OperatorJoinCheck` und
+`drone.operator.client.OperatorJoinProbe` (`PROPWASH_JOINTEST_OPERATOR`).
+
+### Gerade hängendes Zubehör (build, drone-render, accessory; 0.6.0, API 1.7, Baustein `docs/accessory-hang.md`)
+`AccessoryDefinition#hangsStraight` (letzte Record-Komponente, JSON `hangs_straight`, Standard `false`; der Codec schreibt
+nur `true`, die Konstruktoren mit 12 und 13 Argumenten bleiben). `build.AccessoryType#hangsStraight()` gilt für den
+Greifer und für jedes Teil mit der Angabe. Jede Lage von Zubehör läuft über `build.AccessoryAnchor#tiltFor(type)` und
+`#stretch(type)`: Render, VisualHull, ParamDerivation, MountPoses, ItemDisplays sowie `ledMm` und `lensMm`. Neue Stellen
+nutzen `tiltFor(type)`, nie `tiltDegrees()` direkt. Die neue Komponente ändert `toString()` und damit den Teile-Hash im
+Handshake jedes Zubehörs (gleiche Versionen vergleichen weiter gleich). `webexport/PartData` exportiert das Feld noch nicht.
+
+### Kompass im Flug-Zustand (sim, rescue, api; 0.6.0, API 1.7, Baustein `docs/api-compass.md`)
+`api/flight/FlightState#compassHeadingDeg`, `#compassErrorDeg`, `#compassHealthy` und `COMPASS_DISTURBED_DEG` (15°) sind
+`default`-Methoden mit idealem Kompass (echter Kurs, 0, gesund). `sim.AssistBridge` überschreibt Kurs und Fehler aus
+`NavHold#headingErrorRad` (vor dem ersten Nav-Takt `headingOffsetRad`); Fehler = Kompasskurs − echter Kurs =
+−headingErrorRad, gefaltet auf −180 … 180°, NaN gilt als gestört. `rescue.ServerFlightState` nutzt die Standards, weil der
+Server mit echter Lage fliegt; Kräfte im Server-Flugmodell sehen dessen eigenen Kompassfehler. Für Tests liest
+`sim/CompassTestOverride` die System-Eigenschaft `propwash.test.compassErrorDeg` beim Bau jedes `NavHold`: Ein gültiger
+Wert ersetzt nach allen Zufallszügen nur `headingOffsetRad` (= −Grad); das Wandern und alle übrigen Zufallswerte
+bleiben, ohne Eigenschaft ändert sich nichts. Tests: `api.compass.CompassStateTest`, Selbsttest
+`addon-api-17: Kompass` (`accessory.client.CompassSelfTests`).
+
+### Neigungsgrenze im Flug-Zustand (api, sim, rescue, drone, accessory; 0.6.0, API 1.7, Befund GCCA3P-1)
+`api/flight/FlightState#angleLimitDeg()` ist eine `default`-Methode mit `DEFAULT_ANGLE_LIMIT_DEG` (60°, gleich
+`PidProfile#angleLimitDeg`). `sim.AssistBridge` liefert `fc.pid().angleLimitDeg`, also genau den Wert, mit dem
+`AttitudeController#angle` den Knüppel in Neigung umsetzt; `rescue.ServerFlightState` liest ihn aus `DroneSim#config()`
+des Server-Flugs. `api/drone/DroneView` hat die neue letzte Komponente `angleLimitDeg`; `accessory.DroneQueries#view`
+füllt sie mit `drone.TuneMapping#angleLimitDeg(tune)` (Schlüssel `TuneMapping.ANGLE_LIMIT`, nicht endliche Werte
+ignoriert, `PidProfile#sanitize` kappt auf 10–85°), gleich `toConfig(…).pid.angleLimitDeg`. Der Konstruktor mit
+11 Argumenten bleibt und setzt 60°. Flugverhalten und Kalibrierung unverändert. Tests: `rescue.FlightStateAngleLimitTest`,
+Selbsttest `addon-api-17: B7` (Schritt „Neigungsgrenze 30° aus dem PID-Tab“).
+
+### Zubehör-Befunde: echte Beladung, abgestellt feuern, Tempo zwischen den Ticks (accessory, drone, osd; 0.6.0, API 1.7, Baustein `docs/accessory-fix.md`)
+- `accessory.AccessoryPayload`: echte Beladung ohne die frühere stille Grenze von 2 kg, `MAX_LADEN_GRAMS` 20 000 =
+  Bauteilgrenze, `limitGrams`/`flightGrams`/`massStep`/`overloaded`. „Überladen“ erscheint in `AccessoryScreen`, in der
+  Statuszeile von `QuadcopterItem` und als `OsdWarnings.Warning.OVERLOADED` (`OsdData#overloaded`, gesetzt in
+  `LiveOsdSource`).
+- `AccessoryDefinition#muzzleMm` (JSON `muzzle_mm`, Versatz von der Mitte der Vorderfläche, höchstens 20 mm außerhalb der
+  Box; Builder `muzzle(x, y, z)`) → `AccessoryType#muzzleMm()` → `MountPose#front()`.
+- `accessory.dispense.DispenseOrigin`: Steht die Drohne (`onGround` oder Block bis 5 cm unter dem Hitbox-Boden), hebt sie
+  den Abgabepunkt um die Eindringtiefe der Box (`AccessoryAnchor#corners`). TNT und Items starten nicht unter der
+  Standfläche, `BLOCKED` nur im festen Block.
+- `accessory.MotionTrack` + `DroneMotion`: Pilotenpositionen über `SERVER_MOVED` mit Empfangszeit, Theil-Sen-Median über
+  300 ms, Pakete unter 2 ms Abstand zusammengefasst, nach oben begrenzt durch `StateValidation.refillRate` der
+  Tempo-Regel. Nach 500 ms ohne Positionen oder ohne Pilot gilt die Bewegung zwischen den Ticks; daraus kommt
+  `AccessoryContext#velocity()` im Pilotenflug.
+- Wie bei `hangsStraight` ändert die neue Record-Komponente den Teile-Hash im Handshake. Tests: `accessory/fix/*Test`,
+  Selbsttest `addon-api-17: Zubehör-Befunde`, Beitrittstest `PROPWASH_JOINTEST_ACCFIX`.
+
+### Add-on zeitweise entfernt: Platzhalter und Welt-Regeln (build, core, server; 0.6.0, Baustein `docs/addon-placeholders.md`)
+Platzhalter für fehlende Teile (`build.PartIndex.missing`) sitzen beim Zubehör immer an der Halterung des gespeicherten
+Eintrags. Die Werte kommen von `action_cam_light` (oben) und `led_strip` (unten und vorn, vorn an die Halterung versetzt),
+die Id ist die des fehlenden Teils. `DroneBuildCodecs` verwirft beim Laden nur kaputte Zubehör-Einträge, mit Warnung im
+Log, und nie das ganze Zubehör; im Netz gibt es keinen `DecoderException` mehr. `mixin.server.GameRuleMapMixin` und
+`server.UnknownGameRules` führen Gamerules unbekannter Namensräume außerhalb von `minecraft` beim Laden und Speichern
+unverändert mit, auch durch `GameRuleMap.copyOf` (keine Meldung „Failed to parse saved data … game_rules“ mehr). Tests in
+`docs/testing.md` „Add-on zeitweise entfernt“.
+
+### Flächen: Slime, Wolle und Heuballen (sim, drone, rescue; 0.6.0, Entwurf `docs/design/surface-blocks.md`)
+- **Antwort einer Fläche:** `sim.SurfaceResponse(restitution, grip, impactScale)`. Werte: `NORMAL`/`normal(friction)`,
+  `BOUNCY` (0,8 / 1,0 / 0), `CUSHION` (0,05 / 1,5 / 0); `STICKY` (Honig) im nächsten Abschnitt.
+- **Meldung der Welt:** im `MoveReport` über `surfaceRestitution`, `surfaceGrip` und `surfaceImpactScale`. Standard 1,0;
+  NaN zählt als 1,0; Werte werden auf 0 bis 1 begrenzt.
+- **Wertung in `DroneSim#classify`:** v und Quergeschwindigkeit werden mit dem Anteil multipliziert. Bei 0 gibt es keinen
+  Prop-Schlag und keinen Eintrag im Aufprall-Protokoll, also keinen Verschleiß. Die Rahmenverluste skalieren mit dem
+  Anteil; die Bodenebene merkt sich Haftung, Rückprall und Anteil auch ohne Berührung.
+- **Abtastung:** `drone.SurfaceMaterials.at(level, hitbox, sx, sy, sz)` und `fill(level, hitbox, report, grounded)`. Je
+  Seite zählt das nächste Feld mit Kollisionsform, es gewinnt die größte Fläche, bei Gleichstand die weichere. Ungeladene
+  Chunks werden nicht gelesen. Bei mehreren Tags gilt Kissen vor federnd vor klebrig. Tags `propwash:drone_bouncy`,
+  `propwash:drone_cushion` und `propwash:drone_sticky` (per Datenpaket erweiterbar).
+- **Aufrufer:** `PilotSession#fillSurface`, `ServerReturnFlight#move`, `VoxelFlight` (optional).
+- **Regel für spätere Änderungen:** Mit Anteil 1,0 bleibt alles bitgleich. Die Kollisionsregeln der Add-ons setzen auf
+  `SurfaceResponse` auf. Kein neues Paket, keine Protokolländerung.
+- **Auflage im Block:** Eine Drohne, die einen Bruchteil eines Millimeters in einem Block steckt, gilt in
+  `DroneSim#afterMove` als gelandet und kommt zur Ruhe (`QuadcopterEntity#supportGap` und `rescue/AddonAutonomy` messen
+  noch ohne angehobene Hülle).
+
+### Honig und Just More Parts ab 1.2.0 (sim, drone, rescue, guard, share, Loader; 0.6.0, Owner-Entscheidungen vom 21.10.2026)
+Honig wirkt auf geflogene Drohnen wie auf Vanilla-Entitys (Baustein `docs/design/surface-blocks.md` §2a); Propwash 0.6.0
+verlangt Just More Parts 1.2.0, der Altmodus für 1.1.x ist entfallen (`docs/namespace-guard.md` §4,
+`docs/sharecode-ui.md` §5).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `sim/SurfaceResponse.STICKY` | sim | Rückprall 0, Haftung 1,5, Aufprall 0 (kein Absturz, kein Prop-Schlag, kein Verschleiß); `withStickyBelow` gibt es nicht mehr |
+| `sim/MoveReport#stickySides`, `STICKY_FLOOR`, `stickyBit(achse, positiv)` | sim | Bitfeld der Seiten der Hülle mit Honig-Kontakt (Bit `achse · 2 + positiv`), `clear()` setzt 0 |
+| `sim/DroneSim` (`STICKY_DRAG` 18/s, `STICKY_HOLD` 4 × Gewicht, `STICKY_SECONDS` 1 s, `stickySides()`, `stickyHold()`) | sim | Bitfeld aus `afterMove`; je Teilschritt Geschwindigkeit und Drehimpuls exakt mit `e^(−18 · h)` gebremst, als Kontaktkraft im Beschleunigungsmesser; am Boden mit Bit unten Haftkraft, die über 1 s Zug (Schub hebt) linear abklingt und ohne Zug wieder aufbaut, nicht im Turtle-Modus; Bitfeld 0 rechnet bitgleich; `clearContacts` setzt alles zurück |
+| `drone/SurfaceMaterials#sticky(level, hitbox, report)`, `#stickySides` | drone | nach jedem Zug alle sechs Seiten: Block aus `#propwash:drone_sticky` mit Kollisions- oder Umrissform höchstens 3 cm vor (1 cm in) der Hülle, nur geladene Chunks; `fill(level, hitbox, report, grounded)` ohne Block unter der Drohne, berührte Honigseiten zählen mit ihrer Antwort |
+| `drone/client/PilotSession`, `rescue/ServerFlight`, `rescue/VoxelFlight` | drone, rescue (Haken fix-2110) | rufen vor `afterMove` die Abtastung auf (Pilot ohne Geist-Modus, Heimflug, Zell-Abfrage `SurfaceCells`: Zelle mit `STICKY` höchstens 3 cm vor der Hülle) |
+| `drone/DroneFluids#at`, `drone/CauldronContent`, `drone/WaterSurface#relative` | drone (fix-2110, Befund OWNP6-7) | Flüssigkeit am Schwerpunkt für `PilotSession` und `ServerFlight`: zuerst der Flüssigkeitszustand, sonst Vanilla-Kessel. Wasser- und Lavakessel zählen im Becken (2–14 px) vom Boden (4 px) bis zur Füllhöhe (Wasser 9/12/15 px, Lava 15 px) als Wasser bzw. Lava, Pulverschneekessel nicht; `WaterSurface` meldet die Oberfläche im Wasserkessel und darüber. Kein Tag, Kessel anderer Mods zählen als leer; ohne Kessel bitgleich. JUnit `drone.CauldronContentTest`, `sim.CauldronFluidTest`, Selbsttest `drone.client.CauldronSelfTests` (Gruppe `drone: Kessel`), Baustein `docs/drone-cauldrons.md` |
+| `fabric.mod.json` `breaks`, `neoforge.mods.toml` `incompatible` | Loader | `"justmoreparts": "<1.2.0-"` bzw. `versionRange = "(,1.2.0-alpha)"`, `side = "BOTH"`, Grund englisch und deutsch („Just More Parts 1.1.x passt nicht zu Propwash 0.6.0 – bitte auf 1.2.0 aktualisieren“); Vorabstände von 1.2.0 laden |
+| `guard/LegacyAddons`, `GuardClient#legacyHint`, `propwash.guard.legacy_jmp`, `ShareClient.LEGACY_TAB`/`tabId` | entfernt | kein unterdrückter JMP-Knopf, kein Hinweis je Spielstart, keine Weiterleitung von `justmoreparts:sharecode`; `PropwashClientApi.openConfigTab` öffnet die Id, wie sie ist; PW1/PW2 lesen bleibt |
+| `interact/SnagMaterial.POWDER_SNOW`, `interact/SnagBlocks#shape`/`#look`, Tag `propwash:drone_snag_powder_snow`, `drone/CauldronContent#snag` | interact, drone (fix-2110, Befund DEC2810-1) | Pulverschnee bremst Drohnen wie Vanilla-Entities: Werkstoff nur mit linearer Bremse 1/(1,5 × 0,05 s) ≈ 13,3/s, ohne Halten, Prop-Last und Verschleiß (Leerlauf sinkt rund 0,7 m/s); der Block über das Tag (Standard `minecraft:powder_snow`), der Vanilla-Pulverschneekessel ohne Tag nur im Becken (2–14 px) vom Boden (4 px) bis zur Füllhöhe (9/12/15 px); `shape` liefert diese Form für Abtastung und `SnagEffects`, `look` das Aussehen des Pulverschnees für Bröckchen und Klang; Client (`PilotSnags`) und Server (`DroneSnags.Flight`) gleich; ohne Pulverschnee bitgleich. JUnit `sim.PowderSnowFlightTest`, `interact.PowderSnowSnagTest`, `drone.CauldronContentTest`, Selbsttest `drone: Kessel`, Bausteine `docs/drone-cauldrons.md` §3, `docs/design/drone-snags.md` |
+| `sim/DroneSim#step` (Anströmung im Wasser) | sim (fix-2110, Befund CAULD2-1) | Im Wasser gehen Wind und Böen in die Anströmung von Rumpf und Props nur mit `1/Widerstandsfaktor` ein (wasserdicht `1/(1 + Eintauchgrad · 399)`, sonst `1/400`), der Eintauchgrad (`updateSubmersion`) wird dafür vor der Anströmung bestimmt; Wasserblock und Wasserkessel wirken wie stehendes Wasser, am Client und im Heimflug am Server; in Luft bitgleich. JUnit `sim.CauldronStillWaterTest`, Selbsttest `drone.client.CauldronDriftSelfTests` (Gruppe `drone: Kessel`) |
+
+JUnit `sim.HoneySurfaceTest`, `sim.SurfaceResponseTest`, `guard.JustMorePartsLockTest`; Selbsttest
+`drone.client.SurfaceSelfTests` (Gruppe `drone: Honig`, Bildschirmfotos `surface_honey_wall.png`,
+`surface_honey_takeoff.png`), `share:` ohne Altmodus-Schritt; Rauchtest mit dem Jar von Just More Parts 1.1.1 in
+`docs/testing.md` (Abschnitt Sharecode).
+
+### Auto-Arm nach Reset (sim, drone, input, osd, race; 0.6.0, Owner-Entscheidung vom 21.10.2026)
+Setzt der Pilot die Drohne per Reset auf den Homepoint zurück und steht Arm noch auf an, armt sie bei Gas unten von
+selbst (Baustein `docs/auto-arm.md`). Nach Absturz, Spawn und GPS-Rettung bleibt es bei „Arm aus und wieder an“.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `sim/DroneSim#homeReset(autoArm)`, `#autoArmPending()`, `#autoArmed()`, `#cancelAutoArm()`; `sim/Arming#autoArm`, `#autoArmed`, `AUTO_ARM_WAIT` | sim | `homeReset` = `forceDisarm(FORCED)` + `requireArmSwitchReset()`; mit `autoArm` statt der Sperre `ARM_SWITCH_NOT_RESET` ein Warten, das `frameArming` im ersten Frame ohne Warte-Sperre (Gas nicht unten bzw. nicht Mitte, Absturz-Pause, Neustart, Turtle in der Luft) mit derselben Prüfung wie die Schalter-Flanke auflöst (abgelehnt ⇒ `ARM_BLOCKED`, danach Schalter aus und an); Schalter aus, `requireArmSwitchReset`, `cancelAutoArm` und `reset` beenden das Warten; `autoArmed` gilt bis zum nächsten Entschärfen; ohne `homeReset(true)` ist das Flugmodell unverändert |
+| `sim/Telemetry#autoArmPending`, `osd/OsdData#autoArmPending`, `osd/OsdWarnings.Warning.AUTO_ARM`, `AUTO_ARM_3D` | sim, osd | ersetzen `ARM_THROTTLE` bzw. `ARM_THROTTLE_3D`, solange gewartet wird („AUTO-ARM: GAS RUNTER“, „AUTO-ARM: GAS MITTE“) |
+| `input/InputConfig#autoArmAfterReset` (Standard `true`), `input/client/screen/ModesTab#autoArmButton()` | input | Schalter „Auto-Arm“ in der Zeile „Scharf schalten“ neben „Tasten…“ (Platz wie die 3D-Freigabe), Suchbegriff „Nach Reset automatisch armen“; Teil der Schalter-Einstellungen (`copy`, `mergeSwitchesFrom`) |
+| `drone/client/PilotSession` (`onReset`, `keyArmed`, `autoArmPending()`, `autoArmed()`) | drone | Reset mit `home` ruft `homeReset(autoArmAfterReset)`; Tastatur: `keyArmed` (per Arm-Taste scharf und nicht per Taste entschärft, auch nach einem Absturz) setzt beim Reset den Arm-Zustand wieder; aktive GPS-Rettung ⇒ `cancelAutoArm()` |
+| `race/client/ClientRaceTracker#onFrame` | race (Haken auto-arm) | eine Scharf-Flanke mit `PilotSession#autoArmed()` zählt nicht für `StandingStart` (ein Reset startet keinen Countdown) |
+
+JUnit `sim.AutoArmTest`; Selbsttest `input.client.AutoArmSelfTests` (Gruppe `input: Auto-Arm`, Bildschirmfotos
+`input_auto_arm_osd.png`, `input_auto_arm_osd_de.png`, `input_auto_arm_modes_tab.png`); Beitrittstest
+`dev.AutoArmJoinCheck` und `input.client.AutoArmJoinProbe` (`PROPWASH_JOINTEST_AUTOARM`).
+
+### Rennsystem 0.6.0 Teil A: Rennstart, Wertung, Flächen und Verschieben (race; Spieler-Baustein `docs/race-system.md`, Entwurf `docs/design/0.6.0/race-system.md`)
+
+| Datei | Vertrag |
+|---|---|
+| `race/ScoreArea` | Reines Java. Rolle NONE/PASS/TURN (nur Gate-Stange), Seite, Reichweite 0,5–16, nach unten 0–32 (Standard 1), nach oben 0–32 (Standard 0), `open` nur beim Freiform-Gate. `normalized(kind)`; `forCourse(kind)`: eine Gate-Stange im Kurs ist mindestens PASS, ohne `open`. `pack`/`unpack` mit 24 Bit. |
+| `race/GateGeometry` | Neu: `score`, `withScore`, `scoringKind`, `stageCount`, `scoreWidth`, `scoringPole`, `moved`. Halbebenen reichen von −below bis Höhe + above. Mit Standardwerten bitgleich zu 0.5.2. |
+| `race/CourseData.Gate` | `score` und `scoringKind`, Merkerbit 16. `layoutHash` nimmt die Wertung nur bei Abweichung auf. Gate-Stangen behalten ihre Lage. |
+| `race/CourseRegistry` | `FORMAT = 2` (fehlt in der Datei = 1). `GateRecord.score` (role/side/reach/below/above) nur bei Abweichung. Prüfpunkte über `scoringKinds`. |
+| `race/GateEntity` | `DATA_SCORE`; NBT `ScoreRole/ScoreSide/ScoreReach/ScoreBelow/ScoreAbove/OpenFrame`, nur bei Abweichung. |
+| `race/ArmEdge`, `race/StandingStart` | Scharf-Flanke und Startregel: ein stehender Start nur nach eigenem Scharfschalten am Start-Gate mit „Start beim Scharfschalten“ oder in einer offenen Aufstellung; Reset und GPS-Rescue starten nie. `ClientRaceTracker#resetStartPending` entfällt, neu ist `armedBefore`. |
+| `race/FreeformFill#lenient` | Freiform-Fläche bei offenem Rand. Dazu `Integrity#ignoringGaps`, `FreeformGateItem.Plan#gapsIgnored`. |
+| `race/GateMounting` | `MAX_NUDGE = 8`; `edit` und `preview` mit Wertung und Versatz; Ergebnisse `NUDGE_LIMIT`, `SCORE_LOCKED`. |
+| `race/RacePayloads.GateEditC2S` | Zusätzlich `score`, `dx`, `dy`, `dz`; Variante mit 4 Bit. Protokoll bleibt 17. |
+| `race/client/GateEditModel` | Neue Zeilen und Seiten („Wertung“, „Position“), `viewNudge`. |
+| `race/client/ScoreAreaRenderer` | Zeichnet über `SUBMIT_WORLD_GEOMETRY`; `lastDrawn` für die Selbsttests. |
+| `RaceConfig` | `scoreAreas`, `nudgeStep`. |
+
+Tests: Selbsttest `race.client.RaceScoringSelfTests` (`race: Wertung`), Beitrittstest `PROPWASH_JOINTEST_RACEHOME`.
+
+### Rennsystem 0.6.0 Teil B: Schleifen, Reihen, Würfel und Stapeln (race; Spieler-Baustein `docs/race-topology.md`)
+
+| Datei | Vertrag |
+|---|---|
+| `race/GateGeometry` | `withReverse`/`reversed`: Seite und Normale gedreht, Stufen und Fouls neu, Rahmen gleich. `withJoints`/`joints` mit `JOINT_LEFT/RIGHT/TOP`: Pfosten bzw. oberer Balken fehlen in `boxes`/`parts`/`boxCount`. `equals` beachtet beides, `sameAs` nur die Richtung. |
+| `race/CourseData.Gate` | `reverse` (Merkerbit 32), `geometry()` mit Richtung, `samePlace`; `CourseData#firstPass`. `layoutHash` +3001 nur bei `reverse`. |
+| `race/CourseOrder` | `Pass(index, reverse)`, `encode`/`decode`/`label` („1 · 3←“), `repeatSide` (Blick gegen die Flugrichtung bzw. den Würfelausgang heißt rückwärts). |
+| `race/CourseRegistry` | `GateRecord.reverse` (nur `true`), `appendPass`, `reversePass`, `passes`, `detachGate` entfernt einen Durchgang, `reindex` und `reconcile` setzen die Durchgänge am Entity. |
+| `race/GateEntity` | `DATA_PASSES`, NBT `Passes`; `passes`, `hasPass`, `passReversed`, `flownForward`/`flownReversed`, `passText`, `setPasses`; `joints`/`linked`, nachgerechnet in `refreshStack`; `inStack` umfasst `linked`. |
+| `race/GateStacking` | `jointable`, `compatible`, `sharedSide`, `joints`, `placementJoints`, `snap` (höchstens 1 Block), `lid`/`covers`/`underLid`. |
+| `race/GatePoles`, `race/GatePoleLinks` | Plätze: Balkenmitte (`CENTER_SEAT`), Tauchwürfel mit 8 Plätzen (`CUBE_SEAT`…); `seated`/`seatable`/`elementOnSeat`; Reiter umfassen Flagge und Slalomstange. |
+| `race/LapTracker`, `race/LapVerifier`, `race/RaceServer` | Zwillinge (gleiche Geometrie ohne Richtung) einmal gezählt; `Crossing.event`, der Server wertet je Durchgang. |
+| `race/CourseToolItem`, `race/CourseEdits` | Zweiter Klick hängt einen Durchgang an (`REPEAT_GUARD_TICKS` = 10), `Action.REVERSE`. |
+| `race/GateMounting` | `turnedInPlace`, `fits` für verbundene Gates und Deckel. |
+| `race/GateStacking` (gedreht, PATTY-4) | `jointable` und Deckel ohne Neigen und Rollen, Gieren in jedem Schritt; `parallel` (Kreuzprodukt der Seitenachsen unter `ALIGN_EPSILON` = 1e-4) für Reihen, `perpendicular` über Eck; `lid` übernimmt die Feindrehung des angeklickten Gates. |
+| `race/client/GateTiles` (PATTY-4) | Teile des Rahmens für `GateRenderer#submitTiled`: auf einer Seite mit `JOINT_LEFT`/`JOINT_RIGHT` kein Teil, auch keine Pfosten-Lichter; mit `JOINT_TOP` weder oberer Balken noch dessen Lichter. Den geteilten Pfosten zeichnet nur das Gate, das ihn behält. |
+
+Tests: `race.client.RaceTopologySelfTests` (`race-topo:`, Bilder `bildschirmfotos: Topologie`) und Beitrittstest
+`PROPWASH_JOINTEST_RACELOOP`.
+
+### Kurs-ID und Renndaten für Server und Bots (race, apiimpl, api; Baustein `docs/race-data.md`, für Entwickler `docs/api/race-data.md`)
+- Kurs-ID als UUID im Kurs (`race.CourseId`, beim Anlegen vergeben, alte Kurse beim ersten Laden); nach außen adressiert
+  die ID, intern bleibt die Nummer. `CourseData` trägt Merker und UUID im Kurs-Sync (Protokoll bleibt 17).
+  `/propwash course id [Nummer|Name]` und Knopf „Kopieren“ im Kurs-Fenster.
+- `race/CourseArgument`: Kurs-Angabe aller Befehle unter `/propwash race`, `last()` nimmt den ganzen Rest, `word()` mit
+  Anführungszeichen. Reihenfolge der Suche: Nummer (alt, mit Hinweis `propwash.race.course_arg.number_hint` samt
+  umgeschriebenem Befehl), UUID, Name (eigene Dimension zuerst, mehrdeutig wird abgelehnt). Vorschläge: alle IDs und
+  die Namen, die `readsAsName` als Namen liest (keine reinen Ziffern, keine ID-Form, nur bereinigte Namen) und die genau
+  ihren Kurs treffen. `/propwash course id` sucht über dieselbe Logik. `race/CourseNames.clean` nimmt umschließende
+  Anführungszeichen ab (wie Brigadier, mit `\`-Escapes; beim Umbenennen, im Kurs-Sync und beim Laden), `unquote` ist
+  dieselbe Regel für die Kurs-Angabe; gesucht wird über den bereinigten Namen. `reference(nummer, id)` ist die
+  Kurs-Angabe für Hilfetexte (ID, ohne bekannte ID die Nummer).
+- `race.export.RaceSnapshots` erzeugt die Daten für API und JSON aus demselben Code. `race.export.RaceDataEvents` feuert
+  aus `CourseRegistry` und `RaceServer`, nur wenn ein Listener angemeldet ist.
+- `race.export.RaceDataMirror` schreibt `<welt>/propwash/race-data/` (Schema 1) gebündelt und atomar auf einem
+  Daemon-Thread; gestartet und gestoppt wird er von `CourseRegistry.start` und `CourseRegistry.stop`.
+  `CourseRegistry.offline(Path, …)` lädt eine Kursdatei ohne Server.
+- API `api.race` (`RaceData` mit `VERSION` 1, `CourseInfo`, `BoardQuery`, `BoardSnapshot`, `BoardEntry`, `Category`,
+  `TimeKind`, `AssistInfo`, `ZoneHint`, `RaceEvents`), Zugang `PropwashApi.race()` (`apiimpl.RaceDataImpl`), nur lesend,
+  nur am Server-Thread (sonst `IllegalStateException`).
+
+### Punkt-zu-Punkt-Rennen und Rechte am Kurs (race; Baustein `docs/race-p2p.md`)
+Rennkurse haben einen Modus (`api.race.CourseMode`): Runden (Standard, alte Kurse) oder Punkt zu Punkt. Bei Punkt zu Punkt
+ist der erste Durchgang der Start und der letzte das Ziel; der Lauf endet am Ziel (`LapTracker` und `LapVerifier` mit
+`pointToPoint`). Die Zeit steht als Rundenzeit in der Bestenliste derselben Kurs-ID, ein Moduswechsel ist ein
+Layout-Wechsel (`ChangeKind.LAYOUT`); der Modus steckt im Kopfbyte des Kurs-Syncs. Kurse ändern nur Besitzer und
+Operatoren (`CourseRegistry#canEdit`, `#isOperator`; der Gastgeber zählt mit), Kurse ohne Besitzer nur Operatoren.
+`/propwash race mode <kurs> laps|point_to_point` mit denselben Rechten.
+
+### Rennwertung: rennrelevante Regeln, Rennstandard und freies Platzieren (race, server, zone, apiimpl; 0.6.0, Owner-Entscheidung vom 21.10.2026)
+Jede Welt-Regel ist rennrelevant oder neutral; Runden zählen rennfrei, wenn die rennrelevanten Werte während der Runde
+dem Rennstandard der Welt entsprachen (rennfreie Zonen ausgenommen). Jede Zeit speichert ihren Regel-Satz, die
+Bestenliste wird gegen den aktuellen Standard berechnet (Baustein `docs/race-rules.md`).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `server/rules/RuleSpec#raceRelevant`, `#neutral()`, `WorldRuleSpecs` | server | Einordnung steht an der Regel; neue Regeln brauchen einen Eintrag in `race.RaceRulesTest` |
+| `api/worldrule/WorldRules#raceNeutral`, `#raceRelevant`; `apiimpl/Api17Registries.Rules#version` | apiimpl | Add-on-Regeln rennrelevant, bis das Add-on sie neutral markiert; `version` steigt bei jeder Anmeldung und Markierung |
+| `race/RaceRules`, `RaceRuleSet`, `RuleTimeline` | race | `observe` liest Welt-Werte (Propwash und Add-ons) und je Physik-Regel die Zone (auch Übergänge über `ZoneField#shares`); ein Satz enthält nur rennrelevante Werte ungleich dem Propwash-Standard der Welt; Überlauf setzt `propwash:too_many_rules` |
+| `race/RaceStandard`, `RaceStandards` (SavedData `propwash:race_standard`, Pakete `propwash:race_standard`, `propwash:race_standard_edit`) | race | nur Abweichungen vom Propwash-Standard gespeichert; Änderung nur mit `WorldRules#mayEdit`; jeder Wechsel schickt den Standard allen Spielern und schreibt den JSON-Spiegel neu |
+| `race/Leaderboard` (`lap_times`, `race_times`, Marke `hidden`, `Scoring`) | race | Wertung jeder gespeicherten Zeit gegen `Scoring#standard`; je Spieler, Klasse und Regel-Satz die beste (höchstens 8 Regel-Sätze, seit LBALL-1 keine Grenze je Klasse); `hidden` = ohne „Runden mit Flughilfe speichern“ geflogen, nie in der Liste mit Flughilfe; die alten Listen schreibt der Codec weiter |
+| `race/AssistCheck#lapVerdict(…, RuleTimeline, …, RaceStandard)` | race | feste Gründe (Halten, Rescue, Drohne, Brille, Add-on) getrennt vom Regel-Satz; Physik-Gründe nur rennrelevant und nur gegen den Standard |
+| `race/GateItem#free(…, blocks, elements)`, `#overlapAllowed`, `#blocked` | race | mit `propwash:free_course_placement` prüft die Platzierung weder Blöcke noch andere Kurs-Elemente, sondern nur Welthöhe und Wesen im Weg; ohne die Regel prüft sie beides wie bisher; `blocked` nennt die Regel nur, wenn allein Elemente im Weg sind |
+| `race/export/*`, `api/race/RaceStandardInfo`, `RuleValue`, `BoardEntry#rules`, `RaceData#standard` | race | Renndaten mit Standard und Regel-Satz je Zeit; `ZoneHint.Zone#changesPhysics` gegen den Standard |
+
+JUnit `race.RaceRulesTest`, `race.RaceRuleSetTest`, `race.RaceStandardScoringTest`, `race.CourseOverlapTest`,
+`race.data.RaceRulesDataTest`; Selbsttest `race.client.RaceRulesSelfTests` (Gruppe `race-rules:`, Bildschirmfotos
+`race_rules_standard.png`, `race_rules_standard_de.png`); Beitrittstest `dev.RaceRulesJoinCheck` und
+`race.client.RaceRulesJoinProbe` (`PROPWASH_JOINTEST_RACE_RULES`).
+
+### Bildprüfung und Ersatz-Shader der Videoeffekte (video; 0.6.0, Baustein `docs/video-check.md`)
+Behebt das schwarze FPV-Bild auf Intel-Grafik mit Fisheye und Bildrauschen 0 (0.5.2): Kopien des Hauptbilds laufen als
+Zeichnung statt als Blit, eine Bildprüfung schaltet bei Schwarz auf einfachere Videoeffekte.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `video/client/VideoPass#SIMPLE_PIPELINE`, `#copy`, `#simple` | video | Pipeline `propwash:pipeline/video_feed_simple` (`post/video_feed_simple.fsh`, nur `InSampler`); jede Kopie des Hauptbilds läuft über diesen Shader statt `RenderTarget#copyColorFrom` (Blit), bitgleich; Blit nur noch, wenn der Ersatz-Shader nicht kompiliert ist |
+| `video/client/VideoPass#level`, `#retryAll`, `#checkOutcome` | video | Stufe `VideoCheck.Level` aus Einstellung und Ergebnis der Bildprüfung: FULL (Video-Shader mit Fisheye), SIMPLE (Ersatz-Shader, kein Fisheye, Störungen als Ersatz-Overlay, gehaltene Bilder einer Digital-Verbindung bleiben), NONE (ohne Shader); `retryAll` = „Shader erneut versuchen“ |
+| `video/client/VideoSelfCheck` | video | Bildprüfung beim ersten FPV-Bild und nach jedem Neuladen der Shader: Testbild durch Kopie, Fisheye, Video-Shader (Rauschen 0 und 50 %) und Ersatz-Shader, je vier Pixel zurückgelesen; Chat-Meldung `propwash.video.simplified.chat` einmal je Spielsitzung (nur bei Automatisch) und Logzeile mit Messwerten, Grafikkarte und KHR_debug-Stand |
+| `video/VideoCheck` | video (reines Java, JUnit `video.VideoCheckTest`) | Testbild, Messpunkte, `Reading`, `evaluate` → `Outcome` (PENDING, PASS, FULL_BROKEN, ALL_BROKEN, UNAVAILABLE) |
+| `video/client/VideoConfig.EffectRenderer`, `#level` | video (JUnit `video.client.VideoEffectsSettingTest`) | AUTO (Standard), FULL, OVERLAY = „Einfach“; gespeichertes altes „Einfaches Overlay“ bleibt „Einfach“; Knopf „Videoeffekte“ mit Tooltip je Wert und Statuszeile in `VideoConfigTab` |
+
+Selbsttest `video.client.VideoCheckSelfTests` (`video: Bildprüfung und Ersatz-Shader …`, `video: Einstellung
+Videoeffekte …`, Bildschirmfotos `video_check_fault_black`, `video_check_simple`). Der Scheinwerfer (`HeadlightPass`)
+kopiert noch per Blit; auf betroffenen Treibern greift dort die eigene Bildprüfung des Scheinwerfers.
+
+### Bildweg der Action-Cam-Aufnahme (video; 0.6.0, Baustein `docs/video-check.md` §5)
+Behebt die komplett grüne Action-Cam-Aufnahme auf Intel-Grafik (0.5.2, Befund INTELREC-1): Jedes gelesene Bild wird
+geprüft; liefert die Grafikkarte nur Nullen, schaltet die Aufnahme auf einen Ersatzweg und dann auf eine
+CPU-Umrechnung, geht beides nicht, bricht sie mit Meldung ab, statt ein grünes Video zu speichern.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `video/client/record/ActionCamCapture#capture(…, ImagePath, …)`, `Sink#accept(ByteBuffer, ImagePath)`, `#fallbacksAvailable(main)` | video | Bildwege GPU (bisheriger Weg, `copyTextureToBuffer`, asynchron), READ (Ersatzweg über `GlReadback`) und CPU (Kamerabild über denselben Weg lesen, `RgbaI420`); Ersatzweg und CPU-Umrechnung nur mit OpenGL, sonst bricht schon das erste leere Bild ab. `Fault` (READBACK, PACK, PASSES) nur für Selbsttests |
+| `video/client/record/GlReadback` | video | eigener Framebuffer je Textur, einmal klassisch angehängt (ohne DSA, ohne Hilfs-Framebuffer des Encoders, ohne Pixelpuffer), synchrones `glReadPixels`; nur mit OpenGL |
+| `video/record/ImageGuard` | video (reines Java, JUnit `video.record.ImageGuardTest`) | `blank(i420, format)` (Y-Ebene durchgehend 0; der Pack-Shader liefert immer Y ≥ 16), `zero(data, bytes)`, `check(quelle, leer)` → `Verdict` ACCEPT, DROP, SWITCH, ABORT; Reihenfolge GPU → READ → CPU → NONE, ohne Ersatzwege sofort NONE; leere Bilder kommen nie ins Video |
+| `video/record/ImagePath` | video | GPU, READ, CPU, NONE; `key()`, `replacement()` |
+| `video/record/RgbaI420` | video (JUnit `video.record.RgbaI420Test`) | `convert(rgba, breite, höhe, out)`: CPU-Umrechnung RGBA → I420 byte-gleich zum Pack-Shader `action_cam_yuv` |
+| `video/record/RecordingDiagnosis#image`, `#withImage` | video (JUnit `video.record.RecordingDiagnosisTest`) | Bildweg der Aufnahme (GPU, Ersatzweg, CPU, abgebrochen), in `describe()` als „Bildweg …“ außer bei GPU |
+| `video/client/record/ActionCamRecorder#finishedDiagnosis`, `#imagePath`, `#imageGuard`, `StopReason.BLANK_IMAGE` | video | Prüfung je Bild, Umschalten mit Chat-Meldung einmal je Sitzung und Weg, HUD-Zeile in `RecordingHud` während der Aufnahme, Logzeile mit Grafikkarte; liefert kein Weg ein Bild: Toast „Aufnahme abgebrochen“ und rote Chat-Meldung, ohne ein einziges gutes Bild wird der Job verworfen (keine Datei, kein Vorschaubild) |
+
+Selbsttest `video.client.record.ActionCamImageSelfTests` (`video: Action-Cam-Bildweg …`, angemeldet in
+`ActionCamSelfTests` nach dem Fisheye-Schritt): normale Aufnahme bleibt auf dem GPU-Weg, Ersatzweg und CPU-Umrechnung
+im selben Bild byte-gleich, Fehler-Injektion je Weg mit Umschalten bzw. Abbruch. Die Bildprüfung der Videoeffekte
+(`VideoSelfCheck`) und die Scheinwerfer-Prüfung lesen noch über `copyTextureToBuffer`.
+
+### Kurs-Elemente sind fest (race; 0.6.0, Spieler-Baustein `docs/race-topology.md` §6)
+Behebt verschiebbare Gates (Befund GATEPUSH-1): Ein Kolben verschob ein Gate am Server ohne Lagepaket, neu verbundene
+Spieler sahen es an der alten Lage, anwesende an der neuen, und `CourseRegistry#reconcile` übernahm die neue Lage in die
+Kursdaten. Alle Kurs-Elemente (Gate, Wendeflagge, Slalomstange, Tauchwürfel, Gate-Stange, Freiform-Gate) sind
+`GateEntity`.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `race/GateEntity#getPistonPushReaction`, `#isPushedByFluid`, `#move(MoverType, Vec3)` | race | `IGNORE_ENTITY` auf beiden Seiten (auch Schleim- und Honigblock), `false`, leer; Explosion, Spieler, Mobs, Loren und Boote bewegen Elemente ohnehin nicht (`ignoreExplosion`, `noPhysics`, `isPushable` `false`) |
+| `race/GateEntity#tick` (Server) | race | jede Lageänderung am Server setzt `needsSync`, auch aus Befehlen oder Mods; der Typ ist `noUpdateInterval`, ohne das bliebe die Spawn-Basis im `ServerEntity` (`ClientboundAddEntityPacket`) auf der alten Lage |
+| `race/GateEntity#readAdditionalSaveData`, `#restoreTo(x, y, z)` | race | aus Speicherdaten geladene Elemente rufen im ersten Server-Tick `CourseRegistry#restore` auf; `restoreTo` setzt die Lage und `needsSync` |
+| `race/CourseRegistry#restore(GateEntity)` | race | steht das Element in einem Kurs derselben Dimension mehr als `MOVE_EPSILON` (1e-3) neben der Lage aus den Kursdaten, kommt es dorthin zurück (Kursdaten maßgeblich, keine neue Layout-Nummer), je Element eine Info-Zeile „Kurs n (Name): … ist zurückgesetzt“; sonst `false` |
+
+Tests: Selbsttest `race.client.GatePushSelfTests` (`race-topo: Kolben`, angemeldet in `RaceSelfTests` nach
+`RaceTopologySelfTests`) und Beitrittstest `PROPWASH_JOINTEST_GATEPUSH` (Server `dev.GatePushJoinCheck`, Client
+`race.client.GatePushJoinProbe`). Schon von `reconcile` nachgezogene Kursdaten aus 0.5.2 oder einem dev-Stand lassen
+sich nicht erkennen; solche Elemente bleiben an der verschobenen Lage, für alle Spieler gleich.
+
+### Grafik-Kompatibilität und Ersatzwege (gpucompat, video, apiimpl, Loader; 0.6.0, Baustein `docs/graphics-compat.md`)
+Gemeinsame Ursache der schwarzen Brille und der grünen Action-Cam-Aufnahme auf Intel-Grafik unter Windows: Der Treiber
+meldet Direct State Access, einzelne DSA-Kopier- und Rücklesewege (`copyTextureToTexture`, `copyTextureToBuffer`) tun
+still nichts. Ein Kompatibilitätsmodus erzwingt den Weg, den macOS ohnehin nimmt; eine Prüfung der Grafikwege liefert
+allen Kopier- und Rücklese-Stellen den funktionierenden Weg. Ändert die beiden Abschnitte davor: `GlReadback` heißt
+jetzt `gpucompat/client/ClassicReadback`, der Scheinwerfer kopiert per Shader, `VideoSelfCheck` und die
+Scheinwerfer-Prüfung lesen über `GuardedReadback`.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `gpucompat/GpuCompatMode` (AUTO, ON, OFF, `#parse`), `GpuCompatConfig` | gpucompat (JUnit `gpucompat.GpuCompatSettingTest`) | Einstellung „Grafik-Kompatibilität: Automatisch/An/Aus“, gespeichert über `gpucompat/client/GpuCompatSettings` (`JsonConfig` `gpu-compat`) |
+| `gpucompat/GpuCompatDecision#decide`, `#intel`, `#override`, `MODE_PROPERTY` (`propwash.gpuCompat`), `MODE_ENV` (`PROPWASH_GPU_COMPAT`), `SIMULATE_ENV` (`PROPWASH_GPU_COMPAT_SIMULATE=intel-windows`, nur Entwicklungsumgebung) | gpucompat (JUnit `gpucompat.GpuCompatDecisionTest`) | Automatisch = an bei Intel-Grafik unter Windows (auch Arc); Vorgabe über Eigenschaft bzw. Umgebung schlägt die Einstellung; Entscheidung einmal beim Start |
+| `mixin/gpucompat/client/DirectStateAccessMixin`, `BufferStorageMixin` (`propwash.gpucompat.mixins.json`, angemeldet in `fabric.mod.json` und `neoforge.mods.toml`) | gpucompat | nur aktiv, wenn die Entscheidung an ist: `DirectStateAccess#create` nimmt `Emulated`, `BufferStorage#create` `Mutable`; sonst geben beide den Wert unverändert zurück; genau eine Logzeile „Grafik-Kompatibilität: …“ beim Start |
+| `gpucompat/client/GpuCompatHooks#status` | gpucompat | nur aus den Mixins befüllt: Entscheidung, vom Treiber gebotene und gewählte Wege; `GpuCompatClient#state`, `#restartNeeded` zeigen Stand und Neustart-Hinweis im Tab „Konfiguration“, Abschnitt „Grafik“ (`ui/client/tab/SettingsTab`) |
+| `gpucompat/GpuPaths` (`pattern`, `compare`, `Result`, `ReadPath` GPU/CLASSIC/NONE, `Health#readPath`) | gpucompat (JUnit `gpucompat.GpuPathsTest`) | Testbild 16×8 RGBA, Vergleich je Weg; Rücklesen über die GPU, sonst klassisch, sonst keiner |
+| `gpucompat/client/GpuPathCheck#ensure`, `#recheck`, `#health`, `#announceBroken` | gpucompat | einmal je Sitzung beim ersten Bedarf vier Wege mit dem Testbild (Rücklesen GPU und klassisch, Kopie per Blit und per Shader), eine Logzeile mit Ergebnis und Grafikkarte; liefert kein Rückleseweg ein Bild, einmal je Sitzung eine rote Chat-Meldung |
+| `gpucompat/client/GuardedReadback#read(texture, x, y, w, h, was, sink)`, `GuardedScreenshot#take` | gpucompat | lesen über den geprüften Weg; ohne Weg bekommt der Aufrufer `data == null` statt eines schwarzen Bildes; Foto der API (`apiimpl/client/RecordingControlImpl`, `#photoFailures`) speichert dann kein PNG und meldet „Foto nicht gespeichert …“ |
+| `gpucompat/client/ClassicReadback` (früher `video/client/record/GlReadback`) | gpucompat | eigener Framebuffer je Textur, klassisch angehängt, synchrones `glReadPixels`; gemeinsam genutzt von Action-Cam (Ersatzweg READ) und Prüfung der Grafikwege; nur mit OpenGL |
+| `video/client/HeadlightPass#shaderCopies`, `#blitCopies`; `video/client/VideoPass#simple` (öffentlich) | video | der Scheinwerfer kopiert über den Ersatz-Shader von `VideoPass` statt per Blit; Blit nur, wenn der Shader fehlt |
+
+Tests: JUnit `gpucompat.*` (17); Selbsttest `gpucompat.client.GpuCompatSelfTests` und `video.client.CompatVideoSelfTests`
+(Gruppe `compat:`), `video.client.record.CompatActionCamSelfTests` (angemeldet in `ActionCamSelfTests`), Fehler-Injektion
+über `gpucompat.client.GpuFaults` und das Entwicklungs-Mixin `mixin/dev/client/GlCommandEncoderFaultMixin`. Nicht
+abgedeckt: Vulkan, Vanillas F2-Bildschirmfoto (nur über den Kompatibilitätsmodus). Auf echter Intel-Hardware noch nicht
+bestätigt (`docs/graphics-compat.md` §6).
+
+### Zubehör nur an bestimmten Rahmen (build, content, parts, webexport; 0.6.0, API 1.7, Baustein `docs/accessory-fix.md` §4)
+Behebt Befund APIFRAMES-1: Ein Add-on konnte ein Zubehör nicht auf bestimmte Rahmen beschränken, `DroneBuild#problems()`
+prüfte nur die Halterung (`frame.accessoryMounts.contains(mount)`).
+- `AccessoryDefinition#frames()` (letzte Record-Komponente, `Set<Identifier>`, sortiert und unveränderlich, leer = jeder
+  Rahmen mit passender Halterung wie bisher, ein leerer Eintrag ist ein Fehler; Builder `frames(Identifier...)`, die
+  Konstruktoren mit 12 bis 15 Argumenten bleiben). JSON `frames` in `propwash_parts/accessory/*.json` als Liste oder
+  einzelne Id über `parts/JsonFields#optIdList`; `PartJson` schreibt das Feld nur, wenn es gesetzt ist.
+- `build.AccessoryType#fitsFrame(PartInfo)` und `#frames()` → `DroneBuild.Issue.ACCESSORY_FRAME` (letzte Konstante, Text
+  `propwash.build.issue.accessory_frame`), gemeldet direkt nach `ACCESSORY_MOUNT`. Es ist ein Kompatibilitätsproblem: Die
+  Welt-Regel „Teile müssen zusammenpassen“ hebt es zur Warnung herab, `BuildSlots#affectedBy` = Rahmen und Zubehör.
+  Werkbank, `builds().check`, `createDrone`, Presets, Importe, PW3 und Web-Export prüfen damit dasselbe.
+- Werkbank: `BuildSlots.fitsFrame(part, frame, rule)` und `DroneWorkbenchMenu#fitsFrame` in `PartSlot#mayPlace` (Klick
+  und Shift-Klick), Hinweis `DroneWorkbenchScreen#otherFramesHint` („Passt nicht an diesen Rahmen, nur an: …“), Tooltip
+  „Passt zu“ über `PartTooltips.fitsFrame`/`fittingFrames`.
+- Laden: Speicherstand, Netz und Sharecodes prüfen beim Zubehör nur die Halterung und verwerfen nichts; eine vor der
+  Einschränkung gebaute Drohne behält das Zubehör, zeigt das Problem und fliegt bei aktiver Regel nicht
+  (`parts_incompatible`), bis es in der Werkbank abgenommen ist.
+- Web-Export: `webexport/RuleCheck` Regel `accessory_frame`, `webexport/PartData` `data.frames` nur bei eingeschränktem
+  Zubehör.
+- Wie bei `hangsStraight` und `muzzleMm` ändert die neue Record-Komponente den Teile-Hash im Handshake jedes Zubehörs.
+  Tests: JUnit `accessory/fix/AccessoryFramesTest` (mit `FramesWorld`, `FramesRestart`), Selbsttest
+  `interact.client.AccessoryFramesSelfTests` (Gruppe `addon-api-17: Zubehör-Befunde`, angemeldet in
+  `AccessoryFixSelfTests`) mit dem Test-Zubehör `propwash_example:cine_gimbal`.
+- Welt-Regel aus (DEC2810-2): an jedem Rahmen mit passender Halterung erlaubt; alle Stellen lesen die Regel über
+  `WorldRules` (Werkbank, `ImportService`, `builds().check`/PW3, `createDrone`, `ServerRules.refusesParts`), ungefiltert
+  nur `RuleCheck` (Web-Export ohne Welt-Regel). Tests:
+  `AccessoryFramesTest#foreignFramesFollowTheWorldRuleInWorkbenchImportsAndPw3` (`FramesWorld.worldRule`), dritter
+  Schritt in `AccessoryFramesSelfTests`.
+
+### Geister und Replays der Bestenliste (race; 0.6.0, Spieler-Baustein `docs/race-ghosts.md`, Owner-Entscheidung vom 25.10.2026)
+Der Server zeichnet für jede gespeicherte Bestenlisten-Zeit (Bestzeit je Pilot, Klasse und Regel-Satz) seine eigene Spur
+auf und legt sie mit dem Sharecode der Drohne ab; die Bestenliste zeigt je Zeile Sharecode, Replay und Geist. Seit
+Netzprotokoll 20 ersetzt die Aufnahme des Piloten (10-ms-Raster) diese Spur, wenn sie zur Spur des Servers passt
+(Befund OT4-2, `docs/race-ghosts.md` „Woher die Spur kommt“); die Zeit bleibt immer die des Servers. Ersetzt
+den Rekord-Geist (`RaceConfig.ghost`/`recordGhost`, `GhostRequestC2S` → `GhostS2C` im Abschnitt „Geister-Rennen“ gelten
+nicht mehr; `race.RecordGhosts` bleibt nur als Quelle der Übernahme und wird nicht mehr beschrieben).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `race/GhostKey` | race (reines Java) | Pilot, Klasse, Zeit, Datum einer Zeit; `fileName()` = `<uuid>_<klasse>_<zeit hex>_<datum hex>.pwghost` (Doppelpunkt der Klasse als `~`), `matches(Entry)`, `playerOf(name)` |
+| `race/EntryGhost` | race (reines Java, JUnit `race.EntryGhostsTest`) | `Info` (Pilot, Name, Klasse, Zeit, Datum, Flughilfe, Layout = `layoutHash`, Kamerawinkel oder NaN, Sharecode höchstens `MAX_CODE` = 4096, Herkunft `SERVER`/`RECORD_GHOST`/`PILOT`, unbekannte Werte lesen als `SERVER`) + Spur im Format `PWG1`; `encode`/`decode` Deflate mit Kopf `PWE1` Version 1, höchstens `MAX_BYTES` (528 KiB), entpackt begrenzt, kaputte Daten werfen `IOException`; `info(data)` liest nur den Kopf |
+| `race/EntryGhosts` | race (JUnit `race.EntryGhostsTest`) | Ablage `<welt>/propwash/race-data/ghosts/<kurs-id>/`, eine Datei je Zeit, atomar geschrieben; `put`, `get`, `read`, `info` (LRU-Zwischenspeicher der Köpfe, 4096), `prune(kurs, behalten)`, `archive(kurs, layout, behaltene Layouts)` nach `archive/<layout>/`, `removeCourse`, `log(zeile)` an `race-data/removals.log`; `disabled()` ohne Ordner |
+| `race/CourseRegistry#entryGhosts`, `#useEntryGhosts`, `#pruneGhosts`, `#migrateRecordGhosts`, `#removeTimes` | race (JUnit `race.data.LeaderboardGhostsTest`) | `start` öffnet die Ablage unter `RaceDataMirror.root` und übernimmt Rekord-Geister, deren Zeit (Klasse, Zeit, Name) noch in der Liste steht und deren Layout passt; jedes `submitTime`/`submitLap`/`submitAssistedLap`/`resetLeaderboard` räumt Geister ohne gespeicherte Zeit weg; Layout-Wechsel archiviert wie die Liste, ohne archivierte Liste wird geräumt; Kurs löschen oder `removeUnusedCourses` löscht den Ordner; `removeTimes(kurs, pilot, klasse|null, Section)` löscht Zeiten, Rekord-Geist und Geister |
+| `race/Leaderboard#removeTimes`, `Section` (ALL/CLEAN/ASSISTED), `#pilotNames`, `#playerNamed`, `clipFrame` | race | Abschnitt nach `Scoring#clean` gegen den aktuellen Standard, danach `rebuild` (Plätze und Rekorde rücken nach) |
+| `race/GhostRecorder#cut(…, intervalNanos)`, `#steady` | race (JUnit `race.GhostFineTrackTest`) | Server-Schnitt im Raster `GhostServer.FINE_INTERVAL_NANOS` (20 ms); `steady` glättet schwankende Ankunftszeiten der Bewegungspakete je Abschnitt ohne Lücke über 200 ms (gleitende Gerade über 9 Proben), streng steigend |
+| `race/GhostTrack#resample(…, intervalNanos)`, `#intervalFor`, `#smoothPose` | race | Abstand wächst, wenn `MAX_SAMPLES` sonst überschritten würde; `smoothPose` = Catmull-Rom auch für die Lage (Vorzeichen-Kontinuität, normiert) für das Replay |
+| `race/GhostServer` | race | `store` nach jeder gespeicherten Zeit (`Leaderboard.Result#stored`, auch mit Flughilfe): Spur aus den eigenen Bewegungspaketen, Aussehen, Sharecode (`ShareService.encode`, `ShareLayer.DEFAULT_EXPORT`, mit Add-on-Infos) und Kamerawinkel (`CameraMount.uptilt`) der gesteuerten Drohne, nur wenn ihre Klasse passt; `decorate` hängt Pilot-UUID, Code und `ghost` (Geist da und Layout passt) an die Zeilen; Abruf `GhostFetchC2S` mit Zweck REPLAY/OPPONENT: höchstens 6 je 10 s, Zeit muss in der Liste stehen, Rechte über `GhostAccess`, Layout muss passen; Antwort `GhostChunkS2C` in Stücken zu 24 KiB, höchstens 2 Stücke und 96 KiB je Tick und Spieler, Warteschlange 2 Abrufe; `TimeRemoveC2S` und `/propwash race remove <kurs> <pilot> [klasse]` (Befehl ab Rechtestufe 2) nur für Operatoren (`CourseRegistry.isOperator`, Gastgeber zählt mit), Protokollzeile `… removed by=… via=window|command course=… key=… pilot=…(uuid) class=… section=… times=… best=…` |
+| `race/GhostAccess` | race (reines Java, JUnit `race.GhostAccessTest`) | Welt-Regel `propwash:foreign_ghosts` (`WorldRuleSpecs.FOREIGN_GHOSTS`, Stufen 0 Aus, 1 Admins, 2 Alle = Standard, Gruppe Spiel, rennneutral): eigene Zeiten immer; Alle → jeder; Admins → nur Operatoren; Aus → Replays nur für Operatoren, Gegner niemand. `flags` → `LeaderboardS2C#access` (Bits REPLAY, OPPONENT, REMOVE) |
+| `race/RacePayloads` | race | `BoardRow` + `player`, `code`, `ghost`, `key()`; `LeaderboardS2C` + `access`; neu `GhostFetchC2S` (`propwash:race_ghost_fetch`), `GhostChunkS2C` (`propwash:race_ghost_chunk`, Status DATA/MISSING/DENIED/BUSY), `TimeRemoveC2S` (`propwash:race_time_remove`); `GhostRequestC2S`/`GhostS2C` entfallen. Seit Netzprotokoll 20 (Befund OT4-2): `GhostUploadS2C` (`propwash:race_ghost_upload_request`: Auftrag, Kurs, Runde, Rundenzeit) und `GhostUploadC2S` (`propwash:race_ghost_upload`: Auftrag, Stück, Stücke, Gesamtgröße, Daten bis `CHUNK` = 8 KiB, höchstens `MAX_BYTES` = 512 KiB; `parts` = 0 heißt „habe die Runde nicht“) |
+| `race/GhostRecorder#keptLap(kurs, rundenzeit)`, `keptLaps`, `UPLOAD_INTERVAL_NANOS`, `KEPT_LAPS`, `window(von, bis)` → `Raw` | race (JUnit `race.GhostUploadCheckTest`) | `onLapComplete` (nur Client) legt jede Runde zusätzlich im Raster 10 ms aus den Rohproben (ohne `steady`) ab, die letzten 4, gefunden über Kurs und Rundenzeit; `reset` leert sie. `window` kopiert die Rohproben des Servers (Ankunftszeiten, Positionen) für die Prüfung |
+| `race/GhostUploadCheck` | race (reines Java, JUnit `race.GhostUploadCheckTest`) | `Reference.of(raw, start, ende, server-spur, gates, rundenzeit, strafe, ping)`: Rohproben relativ zum Start, Serverzeit der Runde, Splits der Server-Spur (`LENIENT` = untere Öffnung bei jedem Gate), Ping höchstens `MAX_PING_NANOS` (300 ms); Toleranz `tolerance()` = 100 ms + Ping + 2 × Median-Abstand der Rohproben, höchstens 1,5 s. `check(ref, spur, gates, punktZuPunkt)` → `ACCEPTED` oder der erste Grund: `FORMAT` (Abstand 5–50 ms, endlich, Vorlauf ≤ 1 s + Abstand), `DURATION` (Dauer = Rundenzeit − Strafe ± 2 Abstände + 5 ms), `SPEED` (je Probe höchstens 165 Blöcke/s + 0,1), `START` (Startgate nahe der Server-Startzeit), `GATES` (jedes Gate, das die Server-Spur hat, in Reihenfolge, zeitlich innerhalb Toleranz + größtem Spielraum `Reference#staleness` der Serverproben dort, Befund G-OT4-2-2), `FINISH`, `LENGTH` (95–125 % ± 5 Blöcke der Server-Strecke), `PATH` (jede Serverprobe höchstens 1,5 Blöcke neben der Spur im Zeitfenster, das um `Reference#staleness` nach hinten wächst: die eigene Pause davor oder die größte Pause, die höchstens ihre eigene Länge (bis 1,5 s) zurückliegt, Befund AUTO68-2; jede Probe der Spur höchstens 1,5 Blöcke + halbe Sehne neben der Server-Spur, Fenster je Stück um den größeren Spielraum seiner Enden; je 2 % Ausreißer, mindestens 1; Ausreißer der Serverproben über 400 ms am Stück lehnen ab, `MAX_OUTLIER_RUN_NANOS`, Befund G-OT4-2-2). Zeitbezug: Ende auf Ende, dann bestes Versatz-Raster 10 ms über den Median der Abstände (Bereich Toleranz + `RaceServer.crossingTolerance`) |
+| `race/GhostUploads` | race | Server: `expect` nach jedem `GhostServer.store` (aus `RaceServer.storeGhost`, nur wenn der Client den Kanal kennt), höchstens 2 offene je Spieler, Frist 120 s; `receive` setzt Stücke in Reihenfolge zusammen (falsche Reihenfolge/Größe, Absage oder mehr als 30 Stücke je Sekunde beenden den Upload), dann `GhostCodec.decode` und `GhostUploadCheck`; nur wenn die gespeicherte Datei noch die Herkunft `SERVER` und das Layout passt, ersetzt `merge(server, upload)` die Spur (Proben, Abstand, Vorlauf höchstens wie die Server-Spur vom Upload; Rundenzeit, Klasse, Layout, Aussehen, Regeln vom Server) mit Herkunft `PILOT`. `accepted`/`rejected`/`last` für Tests; `clear`/`leave`/`tick` aus `RaceServer` |
+| `race/client/GhostUploader` | race | Client: `request(GhostUploadS2C)` sucht `ClientRaceTracker#recorder().keptLap`, sonst Absage; `tick` (TICK_END) schickt je Tick ein Stück, im Rennen (`LapTracker#racing`) nur jeden 4. Tick; `clear` beim Trennen |
+| `race/GhostChoice` | race (reines Java, JUnit `race.GhostChoiceTest`) | Modus OWN/BOARD/OFF, bei BOARD optional die gewählte Zeit (`GhostKey` + Name; ohne = Kursrekord der Klasse); JSON je Kurs; `migrateConfig` macht aus `ghost`/`recordGhost` den Wert `ghostMode` (an → OWN, nur Rekord → BOARD, beide aus → OFF) |
+| `race/client/RaceConfig#ghostMode` | race | Tab „Rennen“ → „Geist: eigener / aus Bestenliste / aus“, Migration über `JsonConfig.create(…, GhostChoice::migrateConfig)` |
+| `race/client/GhostChoices` | race | Wahl je Kurs unter `<spiel>/propwash/ghosts/<sp_ordner\|mp_adresse>/choices.json`; ohne Eintrag gilt `RaceConfig#ghostMode`; `choose`, `chosen`, `forget` |
+| `race/client/GhostDownloads` | race | Client-Seite des Abrufs: Anfrage-Nummern, Stücke in Reihenfolge, Gesamtgröße, Zeitlimit 30 s, Ergebnis `LOADED`/`MISSING`/`DENIED`/`BUSY`/`BROKEN`/`TIMEOUT`/`OFFLINE`; die letzten 4 geladenen Geister zwischengespeichert, `retain` mit den Zeilen jeder neuen Bestenliste |
+| `race/client/GhostLibrary` | race | genau ein Geist: `shownKind()` NONE/OWN/ASSISTED/BOARD, `shown()`; BOARD lädt die gewählte Zeit oder den Klassenrekord aus der Bestenliste (Bestenliste bei Bedarf alle 20 s neu angefordert), fällt ohne Geist auf den eigenen zurück; `referenceSplits` folgt dem gezeigten Geist (bei „aus“ die eigene Bestrunde); `record()`/`recordLapNanos()` = Geist aus der Bestenliste |
+| `race/client/GhostRenderer` | race | zeichnet nur `shown()` (eigener blau, mit Flughilfe violett, Bestenliste golden) und im Replay „hinter der Drohne“ den Replay-Geist golden |
+| `race/client/LeaderboardScreen` | race | Zeile anklicken wählt sie (`select`, `selected`, `rowAt`, `rowY`); Leiste über der Fußzeile: Code (Hover = `ShareChat.tooltip`, Klick kopiert), Kopieren, Importieren (`ShareChat.open`), Replay, Gegen fliegen/Eigener Geist, für Operatoren Zeit löschen (zweiter Klick binnen 3 s); Marke „Geist“ an der gewählten Zeit |
+| `race/client/ReplayScreen`, `ReplaySession` | race | Abruf mit Zweck REPLAY, dann Wiedergabe über `FRAME_START`; Pose aus `GhostTrack#smoothPose`; FPV = Linsenversatz und Fußpunkt aus `AirframeSpec.of(look.build())`, Lage × `rotateX(Kamerawinkel)` (ohne Angabe 20°), Sichtfeld aus `VideoConfig#horizontalFov(null, build.video())` ohne Fisheye; „hinter der Drohne“ 1,6 Blöcke hinter, 0,5 über dem Schwerpunkt, Blick auf die Drohne, Richtung aus der Bewegung (Fenster ±150 ms, ab 1 m/s, sonst Nase); HUD per `Hud#toggle` aus und wieder an; Tempo 0,25–4×, Spulen 5 s, Zeitleiste mit Gate-Marken aus `GhostTrack#splits` |
+| `race/ReplayMarks` | race (reines Java, JUnit `race.ReplayMarksTest`) | „Gates: N“ im Replay ist die Gate-Zahl des Kurses (`CourseData#gates`, ohne Kurs `LeaderboardS2C#gates`); Zeitleiste je Gate eine Marke: Startgate bei 0, dann `GhostTrack#splits`, bei Punkt zu Punkt das Ziel an der Laufzeit; grün = `startOrFinish`. Fehlt ein Durchgang in der Spur, fehlt nur dessen Marke |
+| `race/client/ReplayVideo`, `race/ReplayExport`; `video/client/record/ActionCamRecorder#startReplay`, `#finishReplay`, `#cancelReplay`, `#replayFormat`; `ReplaySession#beginExport`, `#endExport` | race, video (JUnit `race.ReplayExportTest`, Selbsttest `race.client.ReplayVideoSelfTests`) | Knopf „Als Video aufnehmen“ im `ReplayScreen`: Aufnahme ohne Drohne über den Rekorder der Action-Cam (`launch` teilt der Rekorder mit der Live-Aufnahme), Format und Qualität aus `RecordingConfig` mit `ActionCamSpec.HEAVY` als Obergrenze, keine Stabilisierung, kein Ton; Datei `propwash_replay_*.mp4` in `ActionCamRecorder.directory`. Die Wiedergabezeit folgt der Aufnahme-Uhr (`recordedNanos`, `ReplayExport.time`), Video und Spur bleiben auch bei niedriger Bildrate im Takt. Knopf aus ohne ffmpeg (`ReplayExport.ffmpeg`, Status mit `Settings(enabled = true)`, unabhängig von der Encoder-Wahl). `stop(USER)` von außen (Taste, API) greift nicht in die Replay-Aufnahme ein |
+| `mixin/race/client/CameraMixin` | race | nach `Camera#alignWithEntity` in `Camera#update`: Pose aus `ReplaySession#cameraPose`; nach dem Setzen von `fov`: Sichtfeld des Replays. Replay nicht während FPV, Freecam oder Zuschauen (`FpvView.active()`) |
+| `race/GhostTrack#leadNanos`, `#leadSamples`, `#beginNanos`, `#clamp`, `#lapClock`, `#withoutLead`; `GhostRecorder.LEAD_NANOS`, `#leadBefore`, `#cut(…, intervalNanos, leadNanos)`; `GhostCodec.VERSION_WITH_LEAD` | race (JUnit `race.GhostLeadTest`) | Vorlauf bis 1 s vor dem Startgate (Befund REPLAY1-1): die ersten `leadSamples` Proben liegen vor dem Gate, Zeitachse bleibt Rundenzeit (`pose`/`smoothPose` ab `-leadNanos`, `durationNanos`, `splits` ab dem Gate); Vorlauf = Vielfaches des Abstands, nur über lückenlosen Verlauf (Abstand ≤ 200 ms, Sprung ≤ `LapTracker.MAX_SEGMENT`), nur innerhalb `MAX_SAMPLES`. Client behält die Sekunde vor Rundenstart und Rundenende, Server nimmt Bewegungspakete auch außerhalb eines Rennens (letzte Sekunde) und schneidet mit `LEAD_NANOS`. Kodierung Version 4 nur bei Vorlauf > 0 (VarLong nach dem Regelsatz), sonst wie bisher; über `MAX_ENCODED_BYTES` ohne Vorlauf. `ReplaySession` startet bei `begin()` = −Vorlauf, `lapTime` = `lapClock` (0 bis zum Gate); Gegner im Rennen (`GhostRenderer`) nur ab Rundenzeit 0. Selbsttest „race: Replay beginnt vor dem Startgate“, Bild `race_replay_lead` |
+| `race/LapVerifier.VerifiedLap#starts`, `#startingAt`; `RaceServer#verifiedLap(verifier, kurs, prüfpunkte, punktZuPunkt, nach, ersteRunde, startMeldung, geflogen, strafe)`, `#timedStart(runde, geflogen, frühestens, boden)` | race (reines Java, JUnit `race.StartGateAgainReplayTest`, `race.LapParityTest`) | Erneuter Durchflug durch das Startgate (Befund OT10-1): Der `LapTracker` des Clients startet die Uhr am ersten Durchflug, ein weiterer vor Gate 1 ist „ausgelassen“; `LapVerifier.find` nimmt dagegen den **letzten** Start-Durchflug vor Gate 1 (`startNanos`, unverändert) und nennt in `starts` alle Start-Durchflüge, mit denen dieselbe Kette gilt (aufsteigend, ab `afterSequence` bzw. Zeitfenster, ohne das Ereignis von Gate 1). `RaceServer.lap` sucht über `verifiedLap` (Suche wie bisher samt Überspringen alter Runden) und nimmt mit `timedStart` den Start, dessen Server-Zeit der gemeldeten Flugzeit am nächsten liegt, nur unter den Starts, die `crossingTolerance` bestehen (gleich weit: der spätere; ohne passenden: der letzte, die Runde fällt wie bisher durch). Welche Zeiten angenommen werden, bleibt gleich; Spur des Servers (`storeGhost`), `GhostUploadCheck.Reference` und das Fenster der Flughilfen (`lapVerdict`) beginnen am Start der Uhr. Bei Fehlstart gilt für den Vergleich der Boden Startmeldung − `START_SLACK_NANOS` wie bisher |
+
+Tests: JUnit `race.GhostUploadCheckTest` (Spur des Piloten, Befund OT4-2), `race.EntryGhostsTest`, `race.GhostAccessTest`, `race.GhostChoiceTest`, `race.GhostFineTrackTest`,
+`race.data.LeaderboardGhostsTest`, Eintrag in `race.RaceRulesTest`; Selbsttest `race.client.RaceGhostsSelfTests`
+(Gruppe `race:`, angemeldet in `RaceSelfTests` nach „Bestenliste im Theme-Fenster“, Bilder `leaderboard_share_code`,
+`race_replay_fpv`, `race_replay_chase` mit `-PpropwashScreenshots=true`); Beitrittstest `PROPWASH_JOINTEST_RACE_GHOSTS`
+(Server `dev.RaceGhostsJoinCheck`, Client `race.client.RaceGhostsJoinProbe`). Selbsttest „race: Replay ohne Standbilder bei
+schlechter Verbindung des Piloten“ (`race.client.RaceGhostsNetSelfTests`, nach den übrigen Schritten von `RaceGhostsSelfTests`):
+eigener Kurs mit zwei Gates, der Client nimmt die Runde wie beim Fliegen auf, der Server bekommt die Bewegungspakete mit
+`dev.BadNetwork.PILOT` (120 ms Latenz, 80 ms Jitter, 5 % Verlust mit Neusendung nach 300 ms, Server-Takt 50 ms); das Replay
+der Bestenliste (über das Netz abgerufen) muss nach `dev.FreezeMeter` (Standbild = ab 50 ms unter 25 % des erwarteten Wegs,
+Sprung = über das Dreifache) glatt sein und die Herkunft `PILOT` haben.
+Befund OT9-1: `ClientRaceTracker` gibt dem Rekorder je Bild Position und Lage der gesteuerten Drohne aus der eigenen
+Simulation (`QuadcopterEntity#renderAttitude(1, …)`, bei lokalem Zustand die Lage, die `PilotSession` im selben Bild schrieb); `orientation()` sind
+die Entity-Daten vom Server, je Tick und um die Laufzeit verspätet, und gaben Replay, Video und Geist Stufen im
+20-Hz-Takt. Beim Video folgt `ReplaySession` im Export `ActionCamRecorder#replayFrameNanos` =
+`FrameClock#nextSlotNanos(jetzt)` (Zeit des nächsten Bildplatzes, mindestens letzter Platz + 1), damit jedes Videobild
+genau seine Zeit zeigt, auch bei Bildraten des Spiels, die kein Vielfaches der Videorate sind. Tests: JUnit
+`race.ReplaySmoothTest`, Selbsttest „race: Replay glatt bei 60 fps …“ (`race.client.ReplaySmoothSelfTests`, Messung
+`dev.CameraPathMeter`), siehe `docs/testing.md`.
+Selbsttest „race: Replay nach erneutem Durchflug durch das Startgate beginnt mit der Uhr“ (`race.client.RaceStartAgainSelfTests`,
+angemeldet in `RaceGhostsNetSelfTests.register`, Befund OT10-1): eigener Kurs mit drei Gates, Flug durch Start, Gate 1,
+Kehre zurück und nach 5,5 s noch einmal durch das Startgate, dann die Runde; Uhr und Aufnahme aus einem eigenen
+`LapTracker` wie im `ClientRaceTracker`, Server-Flug mit 100 ms Latenz; geprüft werden gewertete Zeit = Uhr, Spur des
+Servers (Dauer ± 60 ms, Weg ab dem ersten Durchflug ± 1 Block), Upload `ACCEPTED` mit Herkunft `PILOT`, im echten
+`ReplayScreen` Dauer = Zeit ± 2 Abstände + 5 ms, Uhr 0 am Startgate und am Ende genau die Zeit der Bestenliste.
+
+### Kreativ-Tab ohne doppelte Add-on-Items (content; 0.6.0, Baustein `docs/accessory-fix.md` §5)
+Behebt Befund OWNP6-3: Items eines Add-ons mit eigenem Kreativ-Tab, die es zusätzlich über `PropwashApi.creativeTab()`
+anmeldete, standen doppelt im eigenen Tab und im Propwash-Tab.
+- Der Propwash-Kreativ-Tab übernimmt `creativeTab()`-Einträge sowie Teil-Items und Presets im Rückfall nur von
+  Namensräumen ohne eigenen Tab; bei `creativeTab()`-Einträgen zählt der Namensraum der Registry-Id des Items.
+- Ob ein eigener Tab besteht, entscheidet `content.CreativeTabNamespaces#ownTab(registrierte Tabs, extensionTab)`: ein
+  registrierter Tab `propwash:main-<ns>` (`ExtensionTabs.PATH_PREFIX`), irgendein Tab `<ns>:…` im Register der
+  Kreativ-Tabs oder `ExtensionTabs#hasTab(ns)`. `propwash` und `minecraft` zählen nie. `ContentTab.contents()` baut die
+  Prüfung je Aufruf einmal aus `BuiltInRegistries.CREATIVE_MODE_TAB`.
+
+Tests: JUnit `accessory.fix.CreativeTabNamespacesTest` (5); Selbsttest `interact.client.AccessoryTabSelfTests` (Gruppe
+`addon-api-17: Zubehör-Befunde`, angemeldet in `AccessoryFixSelfTests`): 18 Teil-Items des Beispiel-Add-ons zusätzlich
+über `creativeTab()`, keines im Propwash-Tab, je ein Kontroll-Eintrag aus `propwash` und `minecraft` bleibt.
+
+### Statistiken im Vanilla-Statistikfenster (stats, race; 0.6.0, Spieler-Baustein `docs/pilot-stats.md`)
+Neues Modul `stats` (Common `stats.StatsModule` am Ende von `PropwashCommon.init()`, Client `stats.client.StatsClient`
+am Ende von `PropwashClient.init()` vor `DevExtensions.client()`), Sprachquellen `common/src/lang/pw-stats/`. Eigene
+Statistiken im Vanilla-Register `minecraft:custom_stat` (Ids `propwash:<name>`, Texte `stat.propwash.<name>`, Kriterium
+der Anzeigetafel `minecraft.custom:propwash.<name>`), gezählt nur am Server und nur für den Piloten der Drohne.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `stats/StatNames` | stats (reines Java) | `FLIGHT_TIME` `flight_time`, `DISTANCE` `flight_distance`, `TOP_SPEED` `top_speed`, `CRASHES` `crashes`, `BATTERIES_DEPLETED` `batteries_depleted`, `ARMS` `arms`, `LAPS` `laps`, `RACES_FINISHED` `races_finished` (= `COUNTERS`, in dieser Reihenfolge), dazu `classTime(FrameRole)` = `flight_time_<role.key()>` je `FrameRole` in Enum-Reihenfolge; `all()` (16 Namen, Registrierungsreihenfolge), `translationKey(name)` = `stat.propwash.<name>` |
+| `stats/PropwashStats` | stats | `PropwashRegistries.list(Registries.CUSTOM_STAT)`, Wert = die `Identifier`-Instanz aus dem Schlüssel; `Entry(name, holder, formatter)` mit `id()`, `translationKey()`, `stat()` (= `Stats.CUSTOM.get(holder.get(), formatter)`; der Typ hält Statistiken in einer `IdentityHashMap`, deshalb immer genau die Instanz aus dem Register); Formate: Flugzeiten `StatFormatter.TIME` (Ticks), Strecke `DISTANCE` (cm), Höchsttempo `StatFormats.SPEED` (Zehntel km/h, „123.4 km/h“), Zähler `DEFAULT`; `classTime(role)`, `all()`; `bind()` legt alle Statistiken mit ihrem Format an, bevor Vanilla sie aus Spielerdateien oder dem Statistik-Paket mit `DEFAULT` anlegen könnte: bei `PropwashEvents.REGISTRY_FROZEN` (Fabric `SERVER_STARTING`/`CLIENT_STARTED`, NeoForge `FMLCommonSetupEvent`) und zur Sicherheit bei `ServerBus.STARTED`; ein schon anders angelegtes Format meldet eine Warnung |
+| `stats/StatClass` | stats (reines Java) | Drohnenklasse = `FrameRole` des Rahmens (`frame.definition().role()`), Add-on-Rahmen über ihre JSON-Rolle; ohne Rahmen `FALLBACK` = `FREESTYLE` |
+| `stats/StatFormats` | stats (reines Java) | `SPEED`, `speed(zehntel)`, `tenthsKmh(m/s)` (nicht endlich oder ≤ 0 → 0) |
+| `stats/FlightTally` | stats (reines Java) | Zählung einer Drohne je Pilot: `update(tick, scharf, blöcke, m/s, akku)` → `Step(ticks, centimeters, armed, depleted, topSpeed)`. Zeit und Strecke nur für Abschnitte, die scharf beginnen, Zeit = Server-Ticks seit dem letzten Paket (mehrere Pakete im selben Tick zählen einmal, Lücken über `MAX_GAP_TICKS` 20 gar nicht), Strecke mit Rest unter 1 cm, Sprünge über `MAX_STEP_BLOCKS` 64 nicht; Scharfschaltung = Wechsel unscharf → scharf (eine scharf übernommene Drohne zählt nicht); leerer Akku = Ladestand > 0 → ≤ 0 (NaN = 0), scharf vorher oder nachher; Höchsttempo nur scharf, meldet nur neue Höchstwerte der Sitzung |
+| `stats/CrashBudget`, `stats/CrashWatch` | stats (reines Java) | Server: höchstens 8 Crashes am Stück, danach einer je 5 Ticks; Client: `observe(aktiv, drohnenId, crashCount)` liefert neue Crashes einer Sitzung (neue Sitzung oder andere Drohne zählt ab 0) |
+| `stats/PilotStats` | stats | Server-Thread: `QuadcopterEntity.PILOT_CHANGED` legt je Pilot eine `FlightTally` an (Zustand der Drohne beim Zuweisen) bzw. entfernt sie; `QuadcopterEntity.SERVER_MOVED` (nur angenommene Pakete des Piloten aus `DronePiloting.onState`) zählt mit `from.distanceTo(to)`, dem Tempo `getDeltaMovement() × 20` (= Tempo des Pakets) und `batteryCharge()`: Flugzeit gesamt und je Klasse, Strecke, Scharfschaltungen, leere Akkus, Höchsttempo (nur höher, als Differenz über `awardStat`, damit die Anzeigetafel mitzieht); `CrashC2S` nur vom Piloten der Drohne, mit `CrashBudget` je Spieler; `lap(pilot)`, `raceFinished(pilot)`, `value(spieler, entry)`, `tracking(drohne)` |
+| `stats/net/CrashC2S` | stats | `propwash:stats_crash` (Entity-Id, Anzahl als VarInt); Anzahl ≤ 0 verworfen, über `MAX_CRASHES` 8 gekürzt. Neuer Payload: Protokollnummer setzt die Integration |
+| `stats/client/StatsClient` | stats | `ClientBus.TICK_END`: neue Crashes der laufenden `PilotSession` (`crashCount()`, dieselbe Zahl wie im OSD) als `CrashC2S`; `sentCrashes()` für Tests |
+| `race/RaceServer` | race (zwei Zeilen pw-stats) | `PilotStats.lap(player)` in `lap(...)`, sobald die Runde vom Server bestätigt ist (saubere und gestützte Runden, auch der Lauf auf Punkt-zu-Punkt-Kursen); `PilotStats.raceFinished(player)` in `finish(...)` vor `RaceDataEvents.race` |
+
+- Keine Doppelzählung: Freecam, Geister und Replays fliegen ohne Entity und schicken keine Bewegungspakete; Server-Flüge
+  (Heimflug, Add-on-Autonomie) laufen nur ohne Pilot; Resets, Teleports und vom Server gesetzte Positionen gehen nicht
+  über `SERVER_MOVED`. Zuschauer und zweiter Operator sind nie Pilot.
+- Keine Bestzeiten in den Statistiken (Owner-Entscheidung vom 27.10.2026): reine Zähler.
+
+Tests: JUnit `stats.FlightTallyTest` (7), `stats.CrashCountTest` (2), `stats.StatClassTest` (4, Klassenzuordnung und
+Sprachdateien); Selbsttest `stats.client.StatsSelfTests` (Präfix `stats:`, 8 Schritte, mit `-PpropwashScreenshots=true`
+zusätzlich `stats_general_en.png` und `stats_general_de.png`); Beitrittstest `PROPWASH_JOINTEST_STATS`
+(`dev.StatsJoinCheck`, `stats.client.StatsJoinProbe`).
+
+#### Fortschritte im Tab „Propwash FPV“ (stats; 0.6.0, Fix FB1-14, Spieler-Baustein `docs/pilot-stats.md` §4)
+Fest in der Mod: `data/propwash/advancement/fpv/*.json` (Wurzel `propwash:fpv/root` mit Hintergrund
+`propwash:gui/advancements/backgrounds/propwash_fpv`, 16×16-Kachel, und 27 Fortschritte), Texte
+`advancements.propwash.fpv.<name>.title|description` in `common/src/lang/pw-stats/`. Kein `minecraft:impossible`: eigene
+Kriterien-Auslöser im Vanilla-Register `minecraft:trigger_type` (`PropwashRegistries.list(Registries.TRIGGER_TYPE)`,
+beide Loader über `RegList`), Bedingungen stehen in den Dateien.
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `stats/advancement/PropwashTriggers` | stats | `propwash:milestone` (`{"milestone": <Milestone>}`), `propwash:flight` (`distance` m gesamt aus der Statistik Flugstrecke, `altitude` Y der scharfen Drohne, `dive` Blöcke, je `MinMaxBounds.Doubles`; `crashes` gesamt, `Ints`), `propwash:trick` (`tricks`: Liste von `TrickType.key()`, `combo`: `Ints`), `propwash:flight_school` (`chapters`: `Ints`, `perfect`: bool), `propwash:cargo_delivered` (`distance` waagerecht in Blöcken), `propwash:drone_strike` (`entity`: Loot-Bedingung wie bei `player_killed_entity`); fehlende Werte (NaN) erfüllen keine Grenze; alle Bedingungen optional, zusätzlich `player` wie bei Vanilla |
+| `stats/advancement/Milestone` | stats | `drone_built`, `takeoff`, `fpv_flight`, `battery_swapped`, `battery_charged`, `lap`, `personal_best`, `ghost_beaten`, `own_course`, `drone_painted`, `sharecode_loaded`, `spectated` |
+| `stats/advancement/FlightFeats` | stats (reines Java) | je Drohne: Abheben = scharf und ≥ `TAKEOFF_HEIGHT` 1 Block über der Höhe beim Scharfschalten, einmal je Scharfschaltung; Sturz = Gipfel − Tiefpunkt seit dem letzten Steigflug über `RECLIMB` 3 Blöcke; unscharf → NaN |
+| `stats/advancement/TrainingTally` | stats (reines Java) | abgeschlossene Kapitel (`Curriculum.chapterComplete`) und `perfect` = alle Sterne; der Server kürzt die Kapitelzahl auf `Curriculum.chapters().size()` |
+| `stats/advancement/FpvAdvancements` | stats | Server: `PropwashEvents.DRONE_ASSEMBLED` → `drone_built`, `BUILD_IMPORTED` mit `APPLIED` → `sharecode_loaded`, `QuadcopterEntity.SERVER_MOVED` (nach `PilotStats`) → `FlightFeats`, `takeoff` und bei `PilotMode.FPV` `fpv_flight`, `flight`-Auslöser je Paket; `crashed` aus `PilotStats.onCrash`; `DroneCargo.CHANGED` merkt die Aufnahme und meldet beim Ablassen (`COMMAND`, `DISARMED`) die Strecke; `DroneStrikes.STRUCK` → `drone_strike` (auch ausgewichene Treffer); Pakete nur mit `CrashBudget` je Spieler (8 am Stück, dann einer je 5 Ticks) |
+| `stats/net/TrickC2S` | stats | `propwash:stats_trick` (Drohnen-Id, Trick-Schlüssel ≤ 48 Zeichen oder leer, Kombo als VarInt ≤ 64); nur vom Piloten der Drohne, unbekannte Tricks verworfen |
+| `stats/net/TrainingC2S` | stats | `propwash:stats_training` (Kapitel als VarInt, alle Sterne als bool) = „Lektion bestanden“: Stand der Flugschule aus dem Client |
+| `stats/net/GhostBeatenC2S` | stats | `propwash:stats_ghost_beaten` (Kurs-Id als VarInt); nur, wenn der Spieler gerade eine Drohne fliegt |
+| `stats/client/StatsClient` | stats | zusätzlich: `tricks(drone, score)` meldet je Verbindung jeden Trick-Typ einmal und jede neue beste Kombo ab 2, nie in der Freecam; `ghostBeaten(kurs)`; alle 40 Ticks den Stand der Flugschule, wenn er sich geändert hat (nach jedem Beitritt neu) |
+| `interact/DroneStrikes` | interact (Fix FB1-14) | `dodges(target)`: ein Enderman (nicht als Mitfahrer) teleportiert sich wie bei Pfeilen bis zu 64-mal zufällig im Umkreis von 32 Blöcken und nimmt keinen Schaden und keinen Rückstoß; `STRUCK` feuert mit `hurt = false` |
+| Aufrufe in fremden Dateien | race, trick, drone, content, video | `RaceServer.lap`: `FpvAdvancements.lap(player, course.ownedBy(...))` neben `PilotStats.lap`, `personal_best` nur bei sauberer Runde mit vorheriger Zeit in der Klasse und `outcome.improved()`; `ClientRaceTracker` (Runde ohne Flughilfe schneller als `GhostLibrary.shown()`); `TrickTracker.onFrame` → `StatsClient.tricks`; `DroneInteractions.quickSwap` und `DroneServiceMenu`-Akkuplatz (`setByPlayer`) → `battery_swapped`; `BatteryChargerMenu`-Platz `onTake` mit vollem Akku → `battery_charged`; `PaintService.onPaint` bei `APPLIED` → `drone_painted`; `SpectateServer.onRequest` bei fremdem Piloten → `spectated` |
+
+- Drache und Wither: Vanilla `minecraft:player_killed_entity` mit `killing_blow.direct_entity` = `propwash:drone`
+  (Treffer tragen den Piloten als Verursacher, `DroneStrikes.damageSource`); beim Drachen trifft eine Drohne nur die
+  Haupt-Hitbox (Teile sind keine `LivingEntity`).
+- Neue Pakete ohne neue Protokollnummer (setzt die Integration).
+
+Tests: JUnit `stats.advancement.FpvAdvancementFilesTest` (5: Liste, Wurzel und Hintergrund, Baum, Auslöser, Texte und
+Symbole) und `FpvTriggerLogicTest` (6); Selbsttest `stats.client.FpvAdvancementSelfTests` (Präfix `stats:`, 4 Schritte,
+mit `-PpropwashScreenshots=true` zusätzlich `stats_advancements_en.png` und `stats_advancements_de.png`).
+
+### Kamera-Chunks für Aufnahmen (capture, server, api; 0.6.0, API 1.7, Baustein `docs/camera-chunks.md`)
+Neues Modul `capture` (Common `capture.CaptureServer` am Ende von `PropwashCommon.init()`, Client
+`capture.client.CaptureClient` am Ende von `PropwashClient.init()`), Sprachquellen `common/src/lang/bg-capture/`. Ein
+Add-on meldet für einen Spieler eine Lage um dessen eigene Drohne an; der Server schickt diesem Client die Chunks und
+Entities dort zusätzlich zu seiner Vanilla-Ansicht. Damit nimmt Flashback die Umgebung einer weit entfernten
+Kamera-Drohne auf. Kein zweiter Zeichen-Durchgang, kein Eingriff in Zeichen-, Shader- oder Sodium-Code
+(Owner-Entscheidung vom 28.10.2026: keine Videoaufnahme im Hintergrund).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `api/drone/CameraChunkSupply` | api | Server: `open(spieler, drohne, radius)` → `CameraChunkResult`, `close`, `closeAll`, `status` → `Optional<CameraChunkStatus>`, `active`; Konstanten `MAX_RADIUS` 8, `MAX_PER_PLAYER` 2, `MAX_DISTANCE_CHUNKS` 128; Zugang `DroneAccess#cameraChunks()` (`default`, `CaptureServer.API`) |
+| `api/drone/CameraChunkResult`, `CameraChunkStatus` | api | `Status` `OPENED`, `UPDATED`, `NOT_A_DRONE`, `NOT_OWN_DRONE`, `OTHER_DIMENSION`, `RULE_OFF`, `TOO_MANY`, `SERVER_BUSY`, `CLIENT_UNSUPPORTED`, `PLAYER_GONE` (neue nur ans Ende), `accepted()`, `refused(status)`; Status: Drohne, Entity-Id, Mitte, gewünschter und gewährter Radius, `paused`, `chunks`, `sentChunks`, `complete()` |
+| `api/client/CameraChunkRequests` | api | Client: `supported()`, `request`/`release`/`radius`/`answer` mit Entity-Id oder Entity; Zugang `PropwashClientApi.cameraChunks()` |
+| `capture/CameraArea`, `CameraTrackingView`, `TrackingDiff` | capture (reines Java mit Vanilla-Typen) | Lage = Mitte und Radius mit der Vanilla-Abstandsregel (`ChunkTrackingView.isWithinDistance`, mit Nachbarn); Ansicht = `Positioned` des Spielers plus Lagen (`of` liefert ohne Lagen das Vanilla-`Positioned`), `forEach` jeden Chunk genau einmal; `difference` nur über die echten Unterschiede (Vanilla würde bei fremden Ansichten alles vergessen und neu schicken) |
+| `capture/CaptureRules`, `CaptureBook` | capture (reines Java) | Radius = Anfrage gekappt auf 1…min(8, Welt-Regel), 0 bei Regel 0; Zulassung: 2 je Spieler, 16 und `maxStreamedChunks` am Server, keine neuen über 45 ms mittlerer Tick-Zeit; Ende in dieser Reihenfolge `DISCONNECTED`, `DIED`, `DRONE_GONE`, `DIMENSION`, `NOT_OWN_DRONE`, `RULE_OFF` (dazu `CLOSED`); Speicher-Radius des Clients = weitester Chunk der Lagen + 3, auf 8 aufgerundet, wächst sofort und schrumpft erst ab 16 Chunks Abstand; Lagen über 128 Chunks pausieren; 10 Anfragen je 20 Ticks |
+| `capture/CaptureServer` | capture | Server-Thread: Sitzung je Spieler (gleiche `ServerPlayer`-Instanz), Lage folgt dem Chunk der Drohne, pausiert außerhalb von `ServerRules.maxPilotDistance` oder 128 Chunks; Tickets `drone_view` (Radius + 2, ohne Erzeugen nur der erzeugte Radius über `RangeManager.generatedStatus`, pausiert nur der Chunk der Drohne mit Radius 0); `ChunkMap#move` alle 20 Ticks und nach jeder Änderung, damit Entities gepaart und wieder gelöst werden; eigene Drohne = Pilot, gebundener Operator oder Tag `pw_owner_<name>` |
+| `capture/CaptureS2C`, `CaptureC2S` | capture | `propwash:camera_chunks` (Speicher-Radius, Liste Entity-Id/Radius/pausiert bis 16, Antwort Entity-Id und Status-Ordinal, −1 = keine), `propwash:camera_chunks_request` (Entity-Id, Radius, 0 = abmelden). Neue Payloads: Protokollnummer setzt die Integration |
+| `capture/client/CaptureClient`, `CaptureStorage` | capture | setzt den Speicher-Radius am `ClientChunkCache` des aktuellen Levels; `DISCONNECT` leert |
+| `mixin/server/CameraChunkMapMixin` | capture | `@WrapMethod` `updateChunkTracking` (mit Lage oder Lagen-Ansicht: Mitte und Weite wie `ViewAnchors`, eigene Ansicht) und `applyChunkTrackingView` (sobald eine Seite eine Lagen-Ansicht ist: Speicher wachsen, Mitte schicken, `TrackingDiff`, Ansicht setzen, Speicher schrumpfen); sonst Vanilla unverändert |
+| `mixin/server/CameraTrackedEntityMixin` | capture | `TrackedEntity#updatePlayer`: sichtbar auch, wenn die Entity in einer Lage der Ansicht liegt (Abstand zur Drohne höchstens min(Tracking-Weite, Radius × 16), `broadcastToPlayer`, Chunk gesendet) |
+| `mixin/server/client/CameraClientChunkCacheMixin` | capture | `updateViewRadius`: Argument mindestens Speicher-Radius − 3; merkt die Vanilla-Weite; neue Levels beginnen ohne Zusatz |
+| `server/rules/WorldRuleSpecs` | server (eine Zeile bg-capture) | `CAMERA_CHUNKS` = `propwash:camera_chunks`, Zahl 0–8, Standard 4, 0 = aus, Gruppe Video, neutral |
+
+- Reihenfolge am Client: Speicher wächst vor den Chunks (Paket vor `SetChunkCacheCenter` und Unterschied), schrumpft
+  erst nach den `ForgetLevelChunk`-Paketen; dazwischen bleiben alle Chunks der alten und neuen Ansicht im Speicher.
+- Hauptbild: Chunks einer Lage liegen außerhalb der Ansicht des Spielers und damit außerhalb der wirksamen Sichtweite
+  (`Options#getEffectiveRenderDistance` = min(Sichtweite, Server)); Vanilla zeichnet dort keine Abschnitte und keine
+  Entities.
+- Mit FPV (`ViewAnchors`) gilt die Lage zusätzlich zur Ansicht um die geflogene Drohne.
+
+Tests: JUnit `capture.CaptureRulesTest` (11), `capture.CameraTrackingViewTest` (5), `capture.TrackingDiffTest` (5),
+`capture.CaptureBookTest` (6), `race.RaceRulesTest` (Regel neutral); Selbsttest `capture.client.CaptureSelfTests`
+(Präfix `capture:`, 7 Schritte, mit Flashback auf Fabric dazu Aufnahme und Prüfung der Wiederholung: Gelände, Drohne und
+Marker der Lage sind im Wiederholungs-Server); Beitrittstest `PROPWASH_JOINTEST_CAPTURE` (`dev.CaptureJoinCheck`,
+`capture.client.CaptureJoinProbe`).
+
+### Gate-Menü mit Tabs und Tab Position (race, guide; 0.6.0, Spieler-Bausteine `docs/race-system.md` §6 und `docs/gate-hint.md` §4, Entwurf `docs/design/0.6.0/race-system.md` §3.A7)
+
+| Datei | Vertrag |
+|---|---|
+| `race/client/GateEditPanel` | Seiten als Tabs (`FlatButton.Style.TAB`, natürliche Breite, bei Platzmangel anteilig) an der Stelle des ersten Abschnittstitels, das Panel bleibt so hoch wie mit dem früheren Seitenknopf; `tabLabel(kind, page)`: „Gate“ (`propwash.race.edit.tab.gate`) bzw. `GateMounting.elementName`, `…tab.signal`, `…tab.score`, `…tab.position`. Seite Position mit `positionInfo(kind)` (`propwash.race.nudge.info`, Argumente erster Tab und `key.propwash.gate_rotate`) unter den Zeilen wie der Zielblock auf der Seite Redstone, in die Panelhöhe eingerechnet (`pageBody`). Fußzeile der Anzeige bei mehr als einer Seite `propwash.race.edit.hint.cancel_tab`. Die Schlüssel des früheren Seitenknopfs (`propwash.race.edit.page.*`, `propwash.race.score.page*`, `propwash.race.nudge.page`) entfallen. |
+| `race/client/GateEditModel` | `turnPage(delta)` ringsum, `pageOf(Page)` (−1, wenn die Art die Seite nicht hat). |
+| `race/client/GateEditor` | Ohne freie Maus und ohne offenes Fenster: Tab = nächste, Umschalt+Tab = vorige Seite (`turnPage`), wenn es mehr als eine Seite gibt; die Taste bleibt bis zum Loslassen verschluckt (keine Spielerliste). Mit freier Maus bleibt Tab die Fokus-Taste des Fensters. |
+| `guide/scenes/GateMenuScene` (`gate_menu`) | fünf Schritte `open`, `adjust`, `redstone`, `position`, `freeform` (die Angabe „vier Schritte“ im Abschnitt „Gate-Hinweis und Kapitel „Gate-Menü““ ist damit überholt); `position`: Gate `WIDE` rastet `NUDGES` mal um `NUDGE` (1/4) nach Osten, zweimal zum Piloten und einmal um `FINE_NUDGE` (1/16); Texte in `common/src/lang/gatehint/`. |
+
+Tests: JUnit `race.client.GateEditModelTest`, `guide.GateMenuSceneTest`; Selbsttest `race.client.GateNudgeTabSelfTests`
+(`race-topo: Position-Tab`, Bilder `bildschirmfotos: Position-Tab`).
+
+### Gerät im Flug anstecken (input; 0.6.0, Baustein `docs/input-hotplug.md`, Befund HOTPLUG-1)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `input/DeviceChooser#pick(devices, preferred, session, blocked, usage, arrived)` | input | Feste Auswahl geht vor; ohne Sitzungsgerät wie bisher die beste Wahl (`usageRank`, dann `score`); mit Sitzungsgerät dieselbe Wahl, aber nur unter dem Sitzungsgerät und den während der Sitzung neu aufgetauchten Geräten (`arrived`). Ohne Ankunft unverändert: das Sitzungsgerät oder `-1` (Failsafe), nie ein schon vorhandenes anderes Gerät. Die Überladung ohne `arrived` rechnet mit `i -> false` |
+| `input/client/TransmitterInput` (`sessionArrivals`) | input | Ids, die ein Scan während einer Flug-Sitzung (`PilotSession` oder Freecam) neu sieht; nach jeder Auswahl im Scan bleiben nur das offene Gerät und eines, das nach einem Öffnungsfehler auf den nächsten Versuch wartet (`openBlocked`), alle anderen gelten ab dann als schon vorhanden (Befund AUTO27-1: sonst übernähme ein im Flug angestecktes, nicht gewähltes Gerät beim Abziehen der Funke statt des Failsafe); leer am Ende der Sitzung, bei `onDisconnect` und beim Neustart der Geräteerkennung. Damit löst eine im Flug angesteckte, eingerichtete Funke ein nicht eingerichtetes Sitzungsgerät sofort ab (vorher erst nach dem Ende der Sitzung), ein eingerichtetes, zuletzt benutztes Sitzungsgerät bleibt |
+
+Tests: JUnit `input.DeviceHotplugTest` (10), `input.DeviceSelectionTest` unverändert; Selbsttest
+`input.client.HotplugSelfTests` (Präfix `input: Hotplug`, 3 Schritte mit virtuellen SDL-Joysticks, beide Loader).
+
+### Kreativ-Werte im Sharecode (share, creative; 0.6.0, Baustein `docs/sharecode-ui.md` §8, Befund PWD3-1)
+
+Der Drohnen-Editor schreibt PW3 statt PWD1. Format: `docs/sharecode/pw3.md` §3.6 (Ebene `CREATIVE`, Erweiterung `e = 0`,
+Revision 3.1) und §7.1 (PWD1 lesen und umrechnen).
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `share/ShareLayer.CREATIVE` (Bit 5), `share/CreativeLayer`, `share/Pw3Params` (`CREATIVE_KEYS`, `K_CREATIVE_*`, `REVISION` 3.1) | pw3-codec | Kodierer schreibt die Erweiterung nur mit Kreativ-Werten, ohne sie ist jeder Code bytegleich zu 3.0; Leser: `e = 0` höchstens einmal, nie mehr Bits als angegeben, Rest der Ebene überlesen, andere `e` wie bisher `layer:<bit>`; Schlüssel-Tabelle nur anhängen (`CreativeShareTest` verlangt für jeden `CreativeParam` einen Index) |
+| `share/ShareContent#creative` | pw3-codec | `Optional<CreativeSpec>`, der 5-stellige Konstruktor bedeutet „ohne“; `only` filtert, `withBuild`/`withCreative` behalten; `toDroneData()` (API) trägt keine Kreativ-Werte |
+| `share/ShareFormat` (PWD1), `share/CreativeShare` | pw3-codec | `PWD1…` → Format `PWD1`, `legacy()`, Bauplan `CreativeShare.PWD1_BUILD` (Freestyle der Flugschule mit Kreativ-FC), Werte unverändert; `CreativeShareCode.decode` verlangt einen vollständigen Deflate-Strom (sonst `CORRUPT` statt leerer Werte); `editorCode` und `paste` (OK, NO_VALUES, INVALID) für den Editor; `ShareCodesImpl#decode` (API) meldet PWD1 weiter `OTHER_CODE`, `convert` rechnet ihn um |
+| `share/ShareCreativeC2S`, `share/ShareServer#createCreative`, `#createDrone`, `#stats` | pw3-ui | C2S `propwash:share_creative_create` (Anfrage-Id aus `ClientApiImpl.PENDING`, `ImportWire`, `CreativeSpec`), angemeldet in `ShareModule`, Antwort `api_import_result`; Regeln wie `ImportService.newDrone` (Rate `ImportNet.RATE`, Kreativmodus oder Recht 2, unbekannte Teile, baubar), danach `CreativeLimits.sanitize` und `CreativeEdits.usable`, sonst `INVALID` mit „Diese Werte ergeben kein gültiges Flugmodell“; `BUILD_IMPORTED` feuert; `createDrone` (Befehle) setzt die Werte genauso; `stats` rechnet die Flugwerte mit den Kreativ-Werten |
+| `share/client/ShareCreativeClient` | pw3-ui | „Drohne erzeugen“ mit Kreativ-Werten über das Paket; kennt der Server es nicht, wie bisher `sendCreateDrone` ohne Werte |
+| `share/ShareCommands` | pw3-ui | `export` nimmt bei einer Kreativ-Drohne die Werte mit (ohne Angabe und mit `creative`), `import`/`give` erzeugen mit Werten, im Überleben Hinweis `propwash.command.code.creative_survival`, `info` mit Zeile „Kreativ-Drohne …“ und Flugwerten aus `ShareServer.stats`, PWD1 mit `propwash.share.pwd1.build` |
+| `share/client/ShareLines`, `ShareScreen`, `ShareConfigTab`, `ShareImportState`, `chat/ChatPreview`, `chat/ChatCodeFinder` | pw3-ui, pw3-chat | Zeilen-Tags `creative`, `creative:survival` (ohne Kreativmodus), `creative:workbench` (Werkbank-Fenster), `pwd1`; Export im Tab nimmt die Werte der gehaltenen Kreativ-Drohne mit; der Chat erkennt `PWD1-…` (vollständiger Deflate-Strom, kürzeste Form ohne Bindestriche am Ende zuerst) |
+| `creative/client/CreativeEditorTab#shareCode`, `#droneData`, `#paste` | creative | PW3 mit Teilen, Lack, Tuning (Kamerawinkel aus dem Entwurf), Name und dem Entwurf als Kreativ-Werte, Add-on-Infos wie im Tab; Einfügen nimmt PW3 mit Kreativ-Werten und PWD1 („code.pasted_legacy“), lehnt PW3 ohne Werte ab („code.no_values“); eigene Vorlagen bleiben intern PWD1 |
+
+Tests: JUnit `share.CreativeShareTest` (17: Rundreise mit allen Ebenen, 3000 Zufallswerte, alte PWD1, Umrechnung, alte
+Leser überspringen die Ebene genau, Rahmung, 20000 verstümmelte Codes, Paket auf dem Draht, Golden
+`pw3-creative-vectors.json` mit C1–C4 und D1–D3), `share.Pw3CodecTest` (`pwd1-abc` jetzt `CORRUPT`, gültiges PWD1 `OK`),
+`share.client.chat.ChatCodeFinderTest` (PWD1 im Chat); Selbsttest `kreativ-drohne: Editor → PW3-Code → Import …`.
+
+### Vorschau-Build mit Wasserzeichen (preview, video, apiimpl, Build; 0.6.0, Baustein `docs/preview-build.md`, Befunde PREVMARK-1, PREVMARK2-1 und PREVMARK3-1)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `build.gradle`, `build-logic/…/multiloader-common.gradle` | Build | `-Ppropwash_preview=true` oder `=false` (Standard `false`, anderes bricht ab; `true` nur mit Vorab-Nummer); `ext.propwashPreview`; `processResources` ersetzt `${propwash_preview}` in `META-INF/propwash-build.properties`, Manifest `Propwash-Preview` (beides nur Kennzeichnung, das Spiel liest es nicht), Jar-Zusatz `preview`, Maven-Veröffentlichung mit Schalter gesperrt; Selbsttest `propwash.selftest.preview`, JUnit `propwash.preview.expected` |
+| `common/build.gradle`, `build-logic/…/multiloader-loader.gradle` | Build | `generatePreviewSwitch` erzeugt `preview/PreviewSwitch` aus der Vorlage mit `ENABLED = <Schalter>` und `VERSION = "<Version>"` (nur `[0-9A-Za-z.+_-]`), `compileJava` von common, fabric und neoforge nimmt die erzeugte Klasse statt der Vorlage (Konfiguration `commonPreviewSwitch`) |
+| `preview/PreviewSwitch` | preview | Vorlage `ENABLED = false`, `VERSION = ""` (gilt ohne Gradle: fastcheck, IDE); nur Konstanten, keine Methoden |
+| `preview/PreviewBuild` | preview | `ENABLED` = `PreviewSwitch.ENABLED` (Konstante, vom Compiler eingesetzt), `enabled()`, `TEXT` = `watermark(PreviewSwitch.VERSION)`, `watermark(version)` = „Propwash Preview <Version> · not final“ (leere Version „?“), `TITLE` = `windowTitle(PreviewSwitch.VERSION)` = „Propwash Preview <Version>“; keine Laufzeitquelle |
+| `preview/PreviewFont` | preview | Pixelschrift im Code (Ziffern, Buchstaben, `. + _ - · ?`, Leerzeichen; 9 Zeilen, 7 über der Grundlinie, 1 Spalte Abstand; unbekannte Zeichen „?“), `raster(text)`, `Raster#rect` (zusammengefasste Rechtecke) |
+| `preview/PreviewStamp` | preview | `TEXT_ARGB` 0xB4FFFFFF, `SHADOW_ARGB` 0xB4000000, `MIN_SCALE` 1, `MARGIN` 4; `screenScale(h)` = `max(1, round(h / 540))`, `place(raster, w, h, anhebung)` (unten rechts, Schatten einen Schriftpunkt versetzt), `stampScale(h)` = `max(1, round(h / 360))`, `mask(raster, bildhöhe)`, `stampI420` und `stampArgb` ändern nur das Rechteck unten rechts (Rand `margin(h)`), Alpha bleibt |
+| `preview/client/PreviewMark` | preview | `extract(graphics, resourcesLoaded)` nach allem anderen in zwei neuen Schichten (Schatten, dann Schrift) als Rechtecke der Pixelschrift in Fensterpixeln mit `PreviewPipeline.PIPELINE`, unabhängig von der GUI-Skalierung, im Titelbildschirm über der Copyright-Zeile; `stampFrame(I420)`, `stampImage(NativeImage)` (Maske je Bildhöhe zwischengespeichert); ohne Schalter beginnen alle drei mit `return`; Zähler `passes`, `drawn`, `drawnHudHidden`, `drawnOnScreen`, `drawnOnTitle`, `stampedFrames`, `stampedImages` |
+| `preview/client/PreviewPipeline` | preview | eigene GUI-Pipeline `PIPELINE` (`propwash:pipeline/preview_mark`, Shader `propwash:core/preview_mark`, `Globals`/`Projection`/`DynamicTransforms`, `POSITION_COLOR`, Quads, durchscheinend, ohne Tiefentest); `SOURCE` = Shader-Quelle im Code (Vertex wie `core/gui`, Fragment gibt die Farbe unverändert aus, kein `discard`, keine Includes; antwortet nur für die beiden eigenen Shader); `compiled()` übersetzt einmal über `GpuDevice#compilePipeline(PIPELINE, SOURCE, …)` (scheitert das, Abbruch mit Meldung); `lookup(pipeline)`; Zähler `compiles`, `lookups`. Nicht in `RenderPipelines` angemeldet, der Shader-Lader von Minecraft übersetzt sie nie |
+| `mixin/core/client/GuiMixin` | preview | `Gui#extractRenderState` vor `GuiGraphicsExtractor#applyCursor` → nur mit Schalter `PreviewMark.extract` (beide Loader, `@Local` aus MixinExtras); ohne Schalter leerer Handler |
+| `mixin/core/client/RenderSystemMixin` | preview | `RenderSystem#getCompiledPipelineNullable` am Anfang → nur mit Schalter für `PreviewPipeline.PIPELINE` die eigene Übersetzung (`PreviewPipeline.lookup`), vor den Pipeline-Caches mit Shadern aus den Ressourcen; ohne Schalter leerer Handler |
+| `mixin/core/client/MinecraftMixin#propwash$previewTitle` | preview | `Minecraft#createTitle` am Anfang → nur mit Schalter `PreviewBuild.TITLE` (Starttitel und jedes `updateTitle`); ohne Schalter leerer Handler |
+| `video/client/record/ActionCamRecorder#accept` | video | nur mit Schalter `PreviewMark.stampFrame` direkt nach dem Kopieren in den Encoder-Puffer (nach der Leer-Bild-Prüfung, vor Statistik und Vorschaubild) |
+| `apiimpl/client/RecordingControlImpl#photo` | apiimpl | nur mit Schalter `PreviewMark.stampImage` vor `writeToFile` |
+
+Ohne Schalter ist das Verhalten unverändert; Release-Jar und Vorschau-Jar unterscheiden sich in Kennzeichen, Manifest,
+`PreviewSwitch` und den Klassen, in die der Compiler die Konstante einsetzt. Tests: JUnit `preview.PreviewHardcodedTest`
+(9), `preview.PreviewPipelineTest` (3), `preview.PreviewFontTest` (5), `preview.PreviewStampTest` (7),
+`preview.PreviewBuildTest` (4); Selbsttest `preview.client.PreviewSelfTests` (Präfix `preview:`, 10 Schritte mit
+Fenstertitel, Pixelprüfung und Ressourcenpaket samt eigenem `core/gui.fsh` und Probe-Fläche, mit und ohne Schalter,
+beide Loader).
+
+### Recyceln in der Werkbank (content, pw3-ui; 0.6.0, Befund RECYCLE-1, Doku `docs/design/survival.md` „Recyceln in der Werkbank“)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `content/WorkbenchTab` | content | `BUILD`, `RECYCLE`; `key()` für Texte, `of(index)` |
+| `content/DroneWorkbenchMenu` | content | Daten-Slots Tab, Recycle-Status, Ergebnisanzahl; `clickMenuButton`: `BUTTON_BUILD` 0, `BUTTON_RECYCLE_TAB` 1 (Tab wechseln), `BUTTON_RECYCLE` 2 (nur im Tab Recyceln und nur auf dem Server). Slots hinter dem Inventar: `RECYCLE_INPUT` = `INV_END` (ganze Stapel, nur Teile mit `propwash:part`), `RECYCLE_OUTPUT` 9 Plätze (nur entnehmen), `RECYCLE_PREVIEW` 9 unsichtbare Plätze (Server legt die Materialien je Rezept hinein, nie anfassbar). Bau-, Ergebnis- und Zerlegen-Plätze gehören zum Tab Bauen, Eingang und Ausgabe zu Recyceln: Plätze des anderen Tabs haben `isActive`, `mayPlace` und `mayPickup` falsch. `recycleMaterials()`, `recycleTier()`, `recyclePieces()` (wie viele Teile sicher in die Ausgabe passen) rechnen auf Client und Server gleich; `recycle(random)` würfelt, füllt die Ausgabe und nimmt so viele Teile aus dem Eingang; `removed` gibt Eingang und Ausgabe zurück. Umschalt-Klick: Bauen → Bauplätze bzw. Drohne ins Zerlegen-Feld, Recyceln → Eingang; `keepsDrone(stack)`: im Tab Recyceln bleibt eine Drohne liegen (Befund AUTO32-1). Indizes `INV_START`…`INV_END` unverändert |
+| `content/Recycling` | content | `tier(zustand)` über `PartCondition.percent`: 100 → `FULL`, 60–99 → `HALF`, sonst `QUARTER`. `Materials(entries, perCraft)` mit `of(zutaten, ergebnisanzahl)` (je Item zusammengefasst, Reihenfolge des Rezepts), `expected`, `least`, `most`, `exact`, `roll(stück, stufe, zufall)` (ganzzahliger Teil fest, Rest als Chance). `fallback(part)` = `RecycleYield` bzw. Kategorie-Standard, `NONE` → leer. `plan(stack, rezepte)` → `Status` `EMPTY`, `READY`, `NOT_A_PART`, `MISSING`, `NOT_RECYCLABLE`; `piecesThatFit`, `fits`, `insert` |
+| `content/RecycleRecipes` | content | `find(recipeManager, item)` (Zwischenspeicher je `RecipeManager`) und `scan(rezepte, item)`: Crafting-Rezepte nach Rezept-ID, Ergebnis aus `display()` (geformt und formlos), Zutaten aus `placementInfo()`, Tag-Zutaten = erstes Item, Zutaten mit Crafting-Rest fallen weg |
+| `content/client/DroneWorkbenchScreen` | content | Panel um die halbe Tab-Höhe tiefer (`WorkbenchLayout.panelTop`), `panelLeft()`/`panelTop()` für Tests; Tabs `WorkbenchTabButton` über dem Fenster (`selectTab` wechselt lokal und schickt den Knopf), Knopf „Recyceln“ (`pressRecycle`); im Tab Recyceln sind Lackierung und Add-on-Knöpfe ausgeblendet |
+| `content/client/RecycleView` | content | Zeichnet den Tab: Eingang, Pfeil, Ausgabe, Statuszeile; rechts Name, Zustand, Stufe, erwartete Materialien (Symbol, Menge, „≈“ bei Zufallsanteil, Tooltip mit Spanne) und die drei Stufen; Texte unter `propwash.content.workbench.recycle.*` (Sprachordner `pw3-ui`). `inputLines(carried)` liefert den Tooltip des Eingangs (Drohne an der Maus: `not_a_part` und `drone`), `droneNotice` zeigt nach einem Umschalt-Klick auf eine Drohne (`DroneWorkbenchScreen#slotClicked`) vier Sekunden lang `drone` in der Statuszeile |
+| `content/client/SalvageHint` | content | Zerlegen-Feld: Drohne zerlegen, Teile im Tab Recyceln; mit Teil an der Maus Warnung `salvage_reject.part` |
+
+Tests: JUnit `content.RecyclingTest` (8: Stufen an jeder Zustandsstufe, jedes Kern-Teil außer dem Kreativ-FC hat ein
+Rezept, unbeschädigt genau die Zutaten je Stück, Craften und Recyceln vermehrt bei keiner Stufe und keiner Stapelgröße
+eine Zutat, jede Zutat schrumpft gleich, Würfeln mit festem Seed, Rückfall ohne Rezept); Selbsttests `zerlegen:` (2) und
+`recyceln:` (7 plus Bildschirmfotos `workbench_recycle*` hell, dunkel, GUI-Skala 2 und 4, deutsch), ui-scale-Fälle
+„Werkbank Recyceln“, „… leer“, „… Props“.
+
+### Kurs-Einstellungen in einem Menü (race-b; 0.6.0, Befund COURSEMENU-1, Doku `docs/race-course-menu.md`)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `race/CourseMenu` | race | Gruppen `Section` (`COURSE`, `ACCESS`, `BOARD`, `DELETE`) und Zeilen `Row` in fester Reihenfolge, je Zeile Gruppe und Bedarf `Need` (`NONE`, `EDIT`, `OPERATOR`, `DELETE`); `rows(punktZuPunkt)` (Runden ↔ Ziel), `rows(gruppe, …)`, `Rights.of(bearbeiten, löschen, besitzer, spielleiter)` mit `Role` (`OWNER`, `OPERATOR`, `VIEWER`), `active(zeile, rechte)`, `resetCommand(kurs)` = `propwash race reset <kurs>` |
+| `race/client/CourseMenuScreen` | race | `ThemedScreen` + `WidgetViews`, Fenster bis 400 breit, Inhalt in `ContentScroll` (Mausrad, Scrollbalken, Bild auf/ab, Pos1/Ende, Tab scrollt ins Bild); Rechte über `CourseEditScreen.access`/`canDelete` und `Permissions.COMMANDS_GAMEMASTER`; ohne Bearbeitungsrecht Hinweis oben (Text aus `CourseEditScreen.denied`), alle Änderungen gesperrt und auch in den Methoden (`rename`, `stepLaps`, `setMode`, `bindTool`, `reset`, `delete`) abgewiesen; Änderungen wie im Kurs-Fenster über `RacePayloads.CourseEditC2S` (Name nach 16 Ticks Pause, Enter oder Schließen; Runden nach 6 Ticks), Zurücksetzen als Befehl, Löschen und Zurücksetzen erst beim zweiten Klick (80 Ticks); `openGates`/`openBoard` gehen zum Eltern-Fenster zurück, wenn es schon das Kurs-Fenster bzw. die Bestenliste dieses Kurses ist |
+| `race/client/ClientLeaderboards#apply` | race | `open` (Kurs-Werkzeug, Rechtsklick in die Luft) öffnet `CourseMenuScreen`, ohne Kursdaten beim Client wie bisher `LeaderboardScreen`; nicht, wenn eines der beiden schon offen ist |
+| `race/client/CourseEditScreen` | race | Knopf „Einstellungen“ (`settingsButton()`, `openSettings()`) rechts in der Kopfzeile; Titel und Info enden davor |
+| `race/RacePayloads.LeaderboardS2C#times`, `race/RaceServer#leaderboardPayload` (AUTO31-2) | race | Zahl aller Zeiten des Kurses für den Betrachter (`Leaderboard#size`, mit Welt-Regel Flughilfe plus `assistedSize`) als `VarInt` nach `access`; nie kleiner als die Zeilenzahl, ältere Konstruktoren setzen die Zeilenzahl |
+| `race/CourseMenu#times` (AUTO31-2) | race | Zahl für die Zeile „Bestenliste“ im Menü (`LeaderboardS2C#times`, nicht die gesendeten Zeilen) |
+
+Kursformat, Protokoll und Befehle unverändert, das Bestenlisten-Paket trägt zusätzlich `times`. Selbsttests, die die
+Bestenliste brauchen, öffnen sie im Client (`new LeaderboardScreen(null, kurs)`), nicht über das `open`-Paket des
+Kurs-Werkzeugs (AUTO31-1). Tests: JUnit `race.CourseMenuTest` (6); Selbsttest
+`race.client.CourseMenuSelfTests` (Präfix `course-menu:`, 11 Schritte plus Bildschirmfotos `course_menu*` hell, dunkel,
+GUI-Skala 2 und 4, nur ansehen, deutsch); ui-scale-Fälle „Kurs-Einstellungen“ und „Kurs-Einstellungen nur ansehen“;
+Beitrittstest `PROPWASH_JOINTEST_COURSE_MENU` (`dev.CourseMenuJoinCheck`, `race.client.CourseMenuJoinProbe`).
+
+### VTX-Antennen hinten am Rahmen (drone-render, assets-parts; 0.6.0, Befund ANTENNA-1, Doku `docs/ASSETS.md` „VTX-Antennen hinten am Rahmen“)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `tools/assets/parts/video.py` (`build_antennas`, `antenna_whip`, `antenna_mount`, `ANTENNA_*`) | assets-parts | Antennen der Kern-VTX als eigene Modelle `video/<vtx>_antenna` (+ `_antenna_paint`, nur `drone_render`): Modellpunkt (8, 8, 8) = Hinterkante der Deckplatte oben; `analog_nano` 35 mm, `analog_race` 45 mm mit Lollipop, `digital_lite` 60 mm mit Kappe, `digital_hd` 2 × 90 mm im V; 40° nach hinten, Kappen im Lack-Kanal `antenna`; Video-Modelle selbst ohne Antennen. `layout.py` `FRAMES[*]["antenna"]` → `drone_layout.json` `frames.<rahmen>.antenna` |
+| `drone/client/render/DroneLayout#antenna()`, `#antenna(frame)`, `defaultAntenna(frame)` | drone-render | Anbaupunkt aus `drone_layout.json` (`DroneLayoutParser`, ungültig oder fehlend → Rückfall), sonst (0, `plate_mm` bzw. max(`electronics_mm` + 8, Linsenhöhe), 0,21 × Radstand); ältere Konstruktoren ohne Antenne → `antenna()` leer, `antenna(frame)` Rückfall |
+| `PartModel#antenna(video)`, `ANTENNA_SUFFIX` | drone-render | Render-Item des Video-Modells + `_antenna` (folgt `visual.render_model`) |
+| `DroneAssembly#antenna`, `DroneRenderState#antenna` | drone-render | Teil am Anbaupunkt, nur mit Video-Modell und vorhandenem `_antenna`; `DroneVisuals` und `SceneDroneVisual` zeichnen es ungedreht, Lack über `paint`; `VisualHull` zählt es für Größe, Radius und Vorschau-Rahmen, nicht für den Bodenkontakt |
+| `PaintPicker` | drone-render | Lack-Platz `ANTENNA` aus den Lack-Gruppen der Antenne, Klick auf die Antenne wählt ihn (nach allen anderen Teilen außer dem Rahmen), Anker in der Mitte der Antenne |
+| `webexport/AssetIndex` | webexport | `_antenna` gehört zu den Varianten, Lack-Gruppen von `<video>_antenna` zu den Farben des Video-Teils |
+
+Flugmodell, Kollisionsbox, Netzprotokoll und Sharecode unverändert. Tests: JUnit `VtxAntennaAssetsTest` (5),
+`validate.py` `check_antennas`; Selbsttest `drone.client.render.AntennaSelfTests` (Präfix `antenne:`, 4 Schritte plus
+Bildschirmfotos `antenna_rear_<rahmen>_light|dark` und `antenna_fpv_freestyle_5`).
+
+### Bestenliste ohne Grenzen (race; 0.6.0, Befund LBALL-1, Doku `docs/race-data.md` §2.2, Entwurf `race-system.md` §13)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `race/Leaderboard` | race | keine Grenze je Klasse (Wertung und Speicher), `MAX_RULE_SETS` 8 bleibt; `ranked(abschnitt)` → `Ranked(entry, classRank, overallRank)` (Gesamtplatz −1, wenn nicht die beste Zeit des Piloten); `revision()` neu bei jedem Neuberechnen, eindeutig über alle Bestenlisten des Servers |
+| `race/LeaderboardPages` | race | Seite 50, höchstens 512 KiB je Paket (`BoardRow#bytes`, `fit`); `first` = Platz 1–50 von „Alle“ je Abschnitt + eigene Zeiten + Klassenrekorde; `view(ranked, klasse)`, `page(view, versatz)`, `totals(revision, …)` |
+| `race/RacePayloads` | race | `LeaderboardS2C#totals` (`BoardTotals`: Revision, Zahl in „Alle“ je Abschnitt, `ClassTotal` je Klasse, beim Lesen höchstens 1 000 000), `merge(seite)` nur bei gleicher Revision; `LeaderboardPageC2S(kurs, revision, alle, klasse, abschnitt, versatz)`, `LeaderboardPageS2C(kurs, revision, zeilen ≤ 50)`; ältere Konstruktoren leiten `totals` aus den Zeilen ab (Revision 0, nie nachgeladen) |
+| `race/RaceServer#leaderboardPayload`, `#leaderboardPage`, `onLeaderboardPage` | race | Seiten höchstens 10/s je Spieler; veraltete Revision oder leere Seite → erstes Paket, gedrosselt wie `LeaderboardRequestC2S` (4/s) |
+| `race/BoardIndex`, `race/BoardPager` | race | Plätze einer Ansicht (dünn besetzt, `firstMissing`, `selfRank`); eine Seiten-Anfrage zur Zeit, 120 ms Abstand, 3 s Wartezeit, 5 Versuche je Seite, 10 Plätze Vorlauf |
+| `race/client/ClientLeaderboards` | race | `index(kurs, klasse, abschnitt)` (zwischengespeichert bis zur nächsten Änderung), `ensure(…)` fragt fehlende sichtbare Plätze nach, `applyPage`, `pageRequests()`, `pagesReceived()`, `loading(…)`; `classes` aus `totals` |
+| `race/client/LeaderboardScreen`, `BoardLayout`, `BoardSections` | race | alle Plätze in `ScrollArea`, nur sichtbare Zeilen gezeichnet, fehlende als „…“; Kopfzeilen je Abschnitt mit Pfeil und Zahl, Klick klappt ein/aus (`BoardSections`, statisch für die Sitzung), Kopfzeile bleibt beim Scrollen oben (`sticky`, Inhalt darunter abgeschnitten); „Meine Zeit (Platz)“ springt zur eigenen Zeile (`jumpToMine`); für Tests `index`, `layout`, `toggleSection`, `headerY`, `mineX`, `rowsDrawn`, `placeholdersDrawn` |
+| `api/race/BoardQuery#MAX_LIMIT` | api | `Integer.MAX_VALUE` = alle Einträge; JSON-Spiegel schreibt jede Zeit |
+| `race/RaceCommands` | race | `/propwash race leaderboard [page <n>] [<kurs>]`, 10 je Seite, `pages`, `page`, `pageCommand` |
+
+Protokoll bleibt 17. Tests: JUnit `race.data.LeaderboardAllTest` (4), `race.data.LeaderboardPagesTest` (8); Selbsttest
+`race-data:` (`race.client.RaceDataBoardSelfTests`: 120 ohne und 60 mit Flughilfe, alle Plätze, Einklappen, „Meine Zeit“,
+GUI-Skalierung 2–4, Bilder `race_data_board_{expanded,collapsed,scrolled,scale2,scale3,scale4}_{en,de}`); Beitrittstest
+`PROPWASH_JOINTEST_RACEDATA` mit derselben Bestenliste am dedizierten Server (`racedata board ok`).
+
+### Zuschauerzahl im OSD (osd, video, server; 0.6.0, Befund SPECCOUNT-1, Baustein `docs/spectator-count.md`)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `osd/OsdElement#SPECTATORS` | osd | Letzte Konstante (Ordinalzahlen der übrigen unverändert), Schlüssel `spectators`, Grundplatz 28/0 rechtsbündig, Gruppe `STATUS`, verschiebbar; an in Standard (`at(SPECTATORS)`) und Voll, aus in Minimal und Rennen. Name und Tooltip-Beschreibung im Sprachordner `addon-osd` |
+| `osd/OsdData#spectators` | osd | Zahl der Zuschauer der gezeigten Drohne, in `copyTo`, `reset` 0, `sample()` 3 (Vorschau im Editor) |
+| `osd/client/OsdRenderer` | osd | sichtbar bei `spectators > 0`; `spectators(slot)` zeichnet ein Auge aus Rechtecken (9 × 5 Pixel, `EYE_SHAPE`, wie der REC-Punkt mit Kontur und Hintergrund) und die Zahl (`SpectatorCount.clamp`, höchstens 9999) in Elementfarbe |
+| `osd/SpectatorCount` (reines Java) | osd | `add(zahlen, spieler, zuschauen, bild, ausgenommen)` zählt einen Spieler je Drohne einmal, `of`, `shown(geflogen, zuschauen, bild)`, `clamp`; `Outbox#offer(empfänger, entity, zahl)` meldet nur Änderungen, eine 0 nur als Ersatz einer gezeigten Zahl derselben Drohne, `forget`, `clear` |
+| `osd/SpectatorCountServer`, `osd/SpectatorCountS2C` | osd | `init()` aus `OsdModule`: Payload `propwash:spectator_count` (Entity-Id, Zahl; S2C), `TICK_END` zählt über alle Spieler `SpectateServer#watching` und `SpectatorLinks#watched` ohne Pilot (`isFlownBy`) und Operator (`OperatorServer#operator`) und schickt jedem Piloten, Zuschauer und Operator die Zahl seiner gezeigten Drohne nur bei Änderung; `PLAYER_JOIN`/`PLAYER_LEAVE` vergessen den Spieler, `STARTED`/`STOPPED` leeren alles. `count(server, drohne)` und `sent()` für Tests |
+| `osd/client/SpectatorCountClient` | osd | `init()` aus `OsdClient`: Handler merkt Entity-Id und Zahl bis `ClientBus.DISCONNECT`; `count(drohne)` liefert die Zahl nur für diese Entity; `received()` |
+| `osd/client/LiveOsdSource` | osd | `spectators` im FPV aus der geflogenen und beim Zuschauen aus der angeschauten Drohne, sonst 0 (auch Freecam) |
+
+Tests: JUnit `osd.SpectatorCountTest` (13), `OsdModelTest` liest die OSD-Texte auch aus `addon-osd`; Selbsttest
+`osd: Vorlagen ohne Überlappung` mit der Zahl 9999; Beitrittstest `PROPWASH_JOINTEST_SPECCOUNT` (1 = Pilot,
+2 = Zuschauer; `dev.SpecCountJoinCheck`, `osd.client.SpecCountJoinProbe`), Ablauf in `docs/testing.md` §1
+„Zuschauerzahl im OSD“.
+
+### VTX-Antennen am Antennenhalter des Rahmens (drone-render, assets-parts, api; 0.6.0, Befund ANTENNA3-1, ersetzt den Abschnitt ANTENNA-1 darüber, Doku `docs/ASSETS.md` „VTX-Antennen hinten am Rahmen“)
+
+| Datei | Besitzer | Vertrag |
+|---|---|---|
+| `api/part/AirframeGeometry#antennaAnchor()`, `DEFAULT_ANTENNA_TILT`, `FrameDefinition.Builder#antennaAnchor(AnchorSpec)` | api (additiv, 1.7) | optionaler Antennenhalter: Mitte der Hinterkante des Top-Plates oben, `tiltDeg` = Neigung aus der Senkrechten nach hinten (35°); alter 9-Komponenten-Konstruktor bleibt (leer). JSON `antenna_anchor` (`pos`, `tilt_deg`) in `PartJson` |
+| `api/part/VideoAntenna`, `AntennaCap`, `VideoDefinition#antenna()`, `VideoDefinition.Builder#antenna(VideoAntenna)` | api (additiv, 1.7) | optionale Vorgabe: Anzahl 1–2, Länge 10–250 mm, Kappe `whip`/`stubby`/`lollipop`/`pagoda`/`patch`; alter 11-Komponenten-Konstruktor bleibt. JSON `antenna` (`count`, `length_mm`, `cap`) |
+| `build/AntennaRules` | drone-render | `antenna(video)` = Vorgabe oder `derived(video)` aus Reichweite, Masse, Videosystem, Bildqualität, Latenz und Leistung (`Kind` Whoop, Race, Lite, HD, Long-Range); `anchor(frame)` = Halter oder `fallbackAnchor(frame)` aus Radstand, Akkuplatte, Elektronikhöhe, Linse und Duct |
+| `drone/client/render/AntennaGeometry` | drone-render | Form am Halter: TPU-Halter, SMA, Hülse, Stab, Kappe je `AntennaCap`; eine Antenne 7 mm links und 12° nach außen, zwei im V ± 7 mm und 25°; `pieces` für Tests, `shape` gecacht; Kappenfarben `CAP`/`CAP_LIGHT` nehmen den Lack-Kanal `antenna` an |
+| `drone/client/render/AntennaMask`, `DroneRenderResources#antennaMask`, `#droneItem` | drone-render | Elemente `antenna*` in VTX-Modellen (auch Lack-Variante) beim Zeichnen an der Drohne ausgelassen (gedrehte Elemente exakt, Flächen anderer Elemente bleiben); `droneItem` liefert den Item-Zustand ohne diese Flächen samt neuen Grenzen |
+| `DroneAssembly#antenna`, `DroneLayout#antenna(frame)`, `#antennaTilt(frame)`, `DroneLayoutParser` (`antenna` nur noch als Verschiebung aus Ressourcenpaketen) | drone-render | Antenne immer als Form am Halter, auch beim Ersatz-Sender (`FallbackShapes#transmitter` ohne Antennen); `PartModel#antenna` und `_antenna`-Modelle entfallen |
+| `PaintPicker` | drone-render | Lack-Platz `ANTENNA` steht zur Wahl, sobald eine Antenne gezeichnet wird; Standardfarbe = Kappenfarbe |
+| `webexport/PartData` | webexport | Rahmen `antenna_anchor` (`pos`, `tilt_deg`, `explicit`), VTX `antenna` (`count`, `length_mm`, `cap`, `kind`, `derived`); `AssetIndex` ohne `_antenna` |
+
+Flugmodell, Kollisionsbox, Netzprotokoll, Sharecode und Kalibrierung unverändert. Tests: JUnit `build.antenna.AntennaDataTest`
+(5), `VtxAntennaAssetsTest` (6), `validate.py` `check_antennas`; Selbsttest `drone.client.render.AntennaSelfTests`
+(Präfix `antenne:`, 6 Schritte plus Bildschirmfotos).
+
+### VTX-Antennen sichtbar hinter dem Akku (drone-render, api; 0.6.0, Befund ANTENNA4-1, ergänzt den Abschnitt ANTENNA3-1 darüber, Doku `docs/ASSETS.md` „VTX-Antennen hinten am Rahmen“)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `build/AntennaRules` | build | `antenna(video, frame)` kürzt auf `maxLengthMm(frame)` = 1,2 × Radstand (auf 0,5 mm, 10–250 mm); `pairLeanDeg(frame)` 15° je Antenne im V (Duct oder ab 200 mm Radstand), an offenen Rahmen 5° bei 100 mm bis 15° bei 200 mm; Race 50 + (Reichweite − 380) / 14 mm, 45–60; Rückfall z = 0,22 × Radstand + 12 mm (über 300 mm 66 + 0,065 × (Radstand − 300) + 12), Whoop 0,18 × Radstand |
+| `api/part/AirframeGeometry#DEFAULT_ANTENNA_TILT` | api (1.7) | 45° statt 35°; `antenna_anchor` meint den Fuß der Antennen hinter Rahmenkante und Akku |
+| `drone/client/render/AntennaGeometry` | drone-render | SMA am Fuß (0,5 mm hinter dem Halter), TPU-Halter 12 % des Radstands (höchstens 16 mm) nach vorn bis an die Deckplatte, einzelne Antenne mittig ohne Seitenneigung, Paar aus einem Punkt im V (`pairLeanDeg`), Peitsche mit 3-mm-Hülse und 2-mm-Stab; `shape(antenna, tilt, wheelbase, extraReach, pairLean)` |
+| `drone/client/render/DroneAssembly` | drone-render | `behindPackMm`: ragt der Pack eines Akkus oben weiter nach hinten als der Fuß, rückt die Antenne 5 mm hinter ihn (`PACK_GAP_MM`), der Halter wird um denselben Weg länger |
+| `drone/client/render/DroneRenderResources#packRear`, `PlugAnchors#isLead` | drone-render | hinterste z-Koordinate des Akku-Packs ohne Stecker, Kabel, Balancer und Pigtails, je Modell zwischengespeichert |
+| `webexport/PartData` | webexport | `antenna_anchor` zusätzlich mit `max_length_mm` und `pair_lean_deg` |
+| `drone/client/render/AntennaVisibility` | devtest | Projektion 3/4 von hinten (±35°, 25° Neigung) und genau seitlich; freie Länge von Hülse, Stab und Kappe vor dem Umriss des Akkus (JUnit und Selbsttest) |
+
+Kern-Rahmen (Fuß, Neigung 45°): `whoop_65` (0, 23,2, 11,5), `cinewhoop_3` (0, 24, 46), `freestyle_5` (0, 28,5, 64),
+`race_5` (0, 20, 54), `long_range_7` (0, 32,5, 72). Flugmodell, Kollisionsbox, Netzprotokoll, Sharecode und Kalibrierung
+unverändert. Tests: JUnit `VtxAntennaAssetsTest` (9), `AntennaDataTest` (6); Selbsttest `antenne:` mit dem neuen Schritt
+„Antennen 3/4 von hinten und seitlich vor freiem Grund, höchstens 1,2 × Radstand“ und den nahen Bildern
+`antenna_close_<namensraum>_<rahmen>`.
+
+### Namen der Flugmodi einer Flughilfe (input, api; 0.6.0, Befund RC2-1, Doku `docs/addon-switches.md` §2 und §3)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `api/flight/FlightAssist#modeNameKey(StabilizationMode)` | api (1.7, additiv) | `default` → `Optional.empty()`; Übersetzungsschlüssel des Add-ons für einen Stabilisierungsmodus (Kamera-Drohne: ANGLE N bzw. ATTI, HORIZON C, ACRO S) |
+| `input/addon/AddonModeNames` | input | `nameKey(flughilfe, modus)` (strip, leer/`null`/blank/Ausnahme → leer, Warnung im Log einmal je Klasse der Flughilfe, weil der Tab „Modi“ den Hinweis in jedem Bild zeichnet), `name` (sonst `propwashKey` = `propwash.drone.mode.<modus>`), `changed(flughilfe, modus, vomSchalter)` baut „Mode: … (key – radio switch: …)“ bzw. „Mode: …“ |
+| `drone/client/PilotSession` | drone | `selectMode` meldet über `AddonModeNames.changed` mit der Flughilfe der Sitzung (`DroneSim#assist`, während GPS Rescue `AddonFlightClient#assist`); `flightModeName(modus)` für den Hinweis „per Taste gewählt“ in `ModesTab`; `modeName(modus)` bleibt die Namen von Propwash |
+
+Der Name wird nur beim Piloten im Client-Thread gefragt (Meldung, Tab „Modi“), nie im Flugmodell; OSD, Flugmodell,
+Netzprotokoll, Sprachdateien von Propwash, Goldens und Kalibrierung unverändert. Tests: JUnit
+`input.addon.AddonModeNamesTest` (5); Selbsttest „addon-api-17: A1 – Meldung beim Moduswechsel nennt die Flugmodi der
+Flughilfe …“ (`drone.client.AddonModeNameSelfTests`, Probe-Flughilfe `propwash_example:mode_name_probe`).
+
+### Drohnen-Item als Deko mit drehenden Props (drone-render, content; 0.6.0, Befund RC2-3, Doku `docs/accessory-gaps.md` §7)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `drone/client/render/DroneItemRenderer` | drone-render | `Look(build, wear, paint, battery, blur)`: `blur` ist gesetzt, wenn die Strings von `minecraft:custom_model_data` genau `blur` enthalten (`BLUR`, `blurRequested`); der alte Konstruktor mit vier Werten setzt `false`. Als Teil des Records zugleich Schlüssel des Zwischenspeichers und des GUI-Item-Atlas |
+| `drone/client/render/DroneVisuals` | drone-render | `fillPreview(…, spinning)` zeichnet in allen Ansichten von `propwash:drone_build` (Item-Rahmen, `item_display`, Boden, Slot, Hand, Kopf, Regal) die `_blur`-Props; `propBlur`: je Prop nur mit `_blur`-Modell (auch Add-on-Props), sonst statisch, gebrochene Props immer statisch; ohne den Schalter verhalten sich `fill` und `fillPreview` wie vorher |
+| `content/paint/PaintItems#store` | content | Lackieren und Lack entfernen ändern nur die Farben von `custom_model_data`, Strings und übrige Werte bleiben (vorher ersetzt bzw. gelöscht) |
+
+Platzieren und Aufheben erzeugt ein neues Item ohne `blur`. `items/drone.json`, Flugmodell, Netzprotokoll, Goldens,
+Kalibrierung und Sprachdateien unverändert. Tests: JUnit `drone.client.render.DroneItemBlurTest` (3); Selbsttest
+„drone-render: Deko-Blur“ (`DroneItemBlurSelfTests`, `DroneBlurShowcase`, Test-Prop `propwash_rendertest:p13_still`
+ohne `_blur`-Modell), Bildschirmfotos `drone_item_blur` und `drone_item_blur_display`.
+
+### Tiefpass vor dem Abtasten im Flashback-Kamerapfad (video, Action-Cam; 0.6.0, Befund RC2-5, Doku `docs/design/flashback-cam.md`)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `video/record/path/PathResampler` | video (reines Java) | `perTick` mittelt seit 0.6.0 die Drehung um jeden Tick mit einem Lanczos-Fenster über ±3 Ticks (`ANTI_ALIAS_TICKS`, Integration in Schritten von `QUADRATURE_TICKS` 0,25 Ticks im Log-Raum der Quaternion um die Punktprobe), am Anfang und Ende der Aufnahme schmaler; Position und Sichtfeld bleiben Punktproben, gleichmäßige Drehungen exakt; `at` liefert weiter die ungefilterte Lage |
+| `video/record/path/LiveTrackCounter` | video (reines Java) | rechnet dieselbe Lage je Tick wie `perTick` und zählt einen Tick, sobald Proben bis 3 Ticks danach vorliegen |
+| `video/record/path/CameraPathBuffer` | video (reines Java) | `rotation(index, dest)` (paketintern) für den Tiefpass |
+
+Schwingungen über etwa 10 Hz falten nicht mehr zu langsamem Schaukeln; mit Vereinfachung „Aus“ Wackeln 0,5–8 Hz
+Faktor 0,97–0,99 des Live-Bilds. Höhere Vereinfachungsstufen schaukeln weiter etwas stärker als live (offen, Entscheidung
+am Keyframe-Budget). Keine neue öffentliche API, Netzprotokoll, Goldens, Kalibrierung und Sprachdateien unverändert.
+Tests: JUnit `video.record.path.AntiAliasTest` (5), `sim.FlashbackPropwashTest`; Selbsttest „video: Action-Cam
+(Flashback) – Propwash im Kamerapfad wie live“ (`FlashbackPropwashSelfTests`, Auswertung `PathWobble`, nur mit
+Flashback auf Fabric, Grenze langsames Schein-Wackeln 0,5–3 Hz 0,01°).
+
+### Untergrund an Kanten (sim, drone, rescue; 0.6.0, Befund PTP-3, Doku `docs/testing.md` „Turtle-Modus an Gate- und Blockkanten“)
+
+Ohne Untergrund-Raster rechnet das Flugmodell bitgleich wie zuvor (Goldens, Kalibrierung, Turtle-Flip auf flachem Boden).
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `sim/SimEnvironment.support`, `supportX`, `supportZ`, `supportSpacing`, `SUPPORT_SIDE` (5), `SUPPORT_RANGE` (0,5 m), `clearSupport()` | sim | Raster 5 × 5 unter der Hitbox: Weltkoordinate Y des Untergrunds je Spalte (NaN unbekannt, −∞ frei); `supportSpacing` 0 = kein Raster |
+| `sim/GroundSupport` (`MATCH` 3 cm, `EDGE_DROP` 3 cm) | sim | Kontaktpunkte und Schwerpunkt je Spalte. Überhang = Spalte unter dem Schwerpunkt mehr als 3 cm unter der Auflage, Auflage nicht rundum (größte Winkellücke über 180°) |
+| `sim/DroneSim` (`EDGE_SLIDE` 0,25) | sim | Im Überhang tragen `GroundSolver`, Box-Kontakt, `HullContact` und das Anheben beim Turtle-Scharfschalten nur Punkte über dem Untergrund. Die Hitbox stützt am nächsten Rand: Moment um die Kante, skaliert auf das Trägheitsmoment um die Kante; Abgleiten nach außen mit (0,25 + Neigung zur Kante) × Last; keine Reibung am Schwerpunkt. Kopfüber im Turtle-Modus nur auf der Hitbox und ohne Turtle-Motoren bremst Reibung |
+| `drone/DroneGround` | drone | Bodensonde mit Gate-Rahmen (`ExtraCollider`, auch gedreht). Füllt das Raster ab Hitbox-Unterkante + 1 cm aus Blöcken, Gate-Rahmen und `SoftGround`. Genutzt von `PilotSession` und `ServerFlight` unter 1 m Bodenabstand oder aufliegend; leer als Geist oder ohne Physik |
+
+Andere Entity-Kollisionen außer Gates (z. B. Boote) sieht das Raster nicht, dort gilt das alte Verhalten. Netzprotokoll,
+API, Loader-Code, Goldens, Kalibrierung und Sprachdateien unverändert. Tests: JUnit `sim.TurtleEdgeTest` (6) mit der
+Testwelt `sim.LedgeWorld`; Selbsttest `turtle:` an Gate-Balken- und Blockkante und mitten auf dem Balken
+(`drone.client.CovTurtleEdgeSelfTests`).
+
+### „Alle“ mit einer Zeile je Pilot und Klasse (race; 0.6.0, Befund ALLBOARD-1, Doku `docs/race-data.md` §2.2)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `race/Leaderboard` | race | `top(null, n)` und `assistedTop(null, n)` liefern jede Zeile der Wertung (Bestzeit je Pilot und Klasse) nach Zeit, nicht mehr nur die erste je Pilot; `ranked(abschnitt)` gibt jeder Zeile ihren Gesamtplatz (vorher −1 außer bei der besten des Piloten); `rank(pilot, null)` = beste eigene Zeile; neu `allRank(pilot, klasse, abschnitt)` = Platz der Zeile dieser Klasse in „Alle“ (−1 ohne Zeile) |
+| `race/export/RaceSnapshots` | race | `lapRank(board, pilot, klasse, abschnitt)` über `allRank`; `PERSONAL_BEST` (Runde) und `LAP_COMPLETED` nennen den Platz der Zeile der geflogenen Klasse |
+
+Fenster, erstes Paket, Seiten, `BoardTotals`, `BoardIndex`, Teilen-Code, Replay und Geist arbeiten unverändert je Zeile
+und zeigen damit jede Klasse eines Piloten; „Meine Zeit“ springt zur besten eigenen Zeile. `/propwash race
+leaderboard`, `BoardQuery.laps()` ohne Klasse und `laps.clean`/`laps.assisted` im JSON-Spiegel folgen derselben Regel.
+Rennzeiten über mehrere Runden bleiben je Pilot und Rundenzahl. Protokoll, NBT, Kursformat und JSON-Schema unverändert.
+Tests: JUnit `race.data.LeaderboardClassRowsTest` (5); Selbsttest „race-data: „Alle“ mit Bestzeit je Pilot und Klasse …“
+(`race.client.RaceDataBoardSelfTests#classesStep`), Bild `race_data_board_classes_{en,de}`.
+
+### Signal-Repeater überarbeitet (relay, video, drone; 0.6.0, Befund RC2-2, Entwurf `docs/design/signal-repeater.md` §9, ersetzt im Abschnitt „Signal-Repeater und Kreativ-Brille in Rennen“ die Zeilen zu `RelayRules`, `RelayLinks`, `RelayCandidates` und `RepeaterIndex`)
+
+Jede Teilstrecke reicht so weit wie die direkte Verbindung (bis 0.5.x hart 128 Blöcke, voll bis 112).
+
+| Klasse | Modul | Vertrag |
+|---|---|---|
+| `relay/RelayRules` | relay (reines Java) | ohne feste Reichweite: `inReach(d, hopReach)`, `span(n, hopReach)` = (n + 1) × hopReach; `RANGE_BLOCKS`, `FULL_RANGE_BLOCKS`, `reachFactor` und `reachPenaltyDb` entfallen |
+| `relay/RelayLinks` | relay | `videoHopReach(system, range)` = `LinkBudget.maxReachBlocks` (Reichweite samt Leistung bis zur Verlustgrenze); `videoHopMarginDb` ohne Rand; `controlHopReach(freeRange, creativeRange)` = 1200, mit Kreativ-Reichweite × 1,5, frei = unendlich (dann keine Funk-Kette); `controlHopQuality(d, free, creative, videoObstructionDb)` = `RadioLink.quality` mit 0,6 × Abschattung; `controlQuality` unverändert |
+| `relay/RelayCandidates#select(…, relays, hopReach, max, out)` | relay (reines Java) | Ellipse aus `span(relays, hopReach)` |
+| `relay/RepeaterIndex` | relay | `keep(pos, owner)` merkt einen Repeater beim Entladen seines Chunks (Eintrag ohne Besitzer), `remove` nur beim Abbau, `prune(level)` wirft gemerkte Repeater aus, deren Chunk wieder geladen ist und keinen Repeater mehr hat; `placed(level, pos)` (Chunk nicht geladen = steht noch), `remembered()`, `remembers(pos)` |
+| `relay/SignalRepeaterBlockEntity#setRemoved` | relay | Block steht im geladenen Chunk noch → `keep`, sonst `remove` |
+| `relay/RelayReach` | relay | `linked(level, pilot, drone, hopReach, relays)`: direkt oder Kette aus höchstens `relays` Repeatern mit Teilstrecken ≤ `hopReach` (nur Entfernung, Breitensuche über die 16 besten Kandidaten), Abgleich gemerkter Repeater alle 20 Ticks; `chain(…)` statisch für JUnit |
+| `relay/RelayServer#inRange(player, drone, releaseRange, serverLimit)` | relay | direkt ≤ Freigabe-Reichweite; sonst nur mit unbegrenzter Reichweite (`serverLimit` unendlich) und endlicher Freigabe (1250) über eine Kette nach der Welt-Regel `propwash:signal_repeaters`. Mit begrenzter Reichweite (an die Sichtweite gebunden) bleibt die Grenze direkt |
+| `drone/DronePiloting` | drone | Freigabe im Flug und beim Zustand vom Client über `RelayServer.inRange` statt der direkten Entfernung; Meldung `propwash.drone.pilot.lost_range` unverändert |
+| `relay/client/RelayVideo#tick(…, relayLimit, hopReach)` | relay | Teilstrecken bis `hopReach` aus `VideoState#relayReach` (Videosender der Drohne samt Leistung aus `VtxRuntime`); merkt `lastSystem`, `lastRange`, `lastObstruction`; Knoten und Strecken lesbar (`nodeCount`, `nodeX/Y/Z`, `edgeLossDb`, `linked`, `chainIndex`); Abgleich des Verzeichnisses alle 20 Ticks |
+| `relay/client/RelayControl#quality(…, relayLimit, video)` | relay | mit laufendem Bild Funk-Teilstrecken über die Knoten und gemessenen Abschattungen der Video-Kette, sonst Kandidaten aus dem Verzeichnis nur nach Entfernung; `PilotSession` übergibt `VideoState#relayFor(drone)` |
+| `relay/client/RepeaterSignals` | relay (Client) | Balken je Repeater (`bars(pos)`: beste Strecke zu einem der drei nächsten Repeater, in der genutzten Kette die schwächere der beiden Teilstrecken), Signalmesser in der Hand (Aktionsleiste `propwash.relay.meter.*`), 8 000 bzw. 6 000 Zellen je Tick, Bezug zuletzt geflogener Videosender, sonst `VideoType.ANALOG_RACE` |
+| `relay/client/SignalRepeaterRenderer` | relay (Client) | Block-Entity-Renderer mit vier LED-Balken auf dem Gehäuse, angemeldet in `RelayClient.init` über `ClientRegistrar.blockEntityRenderer` |
+| `relay/RepeaterMeter`, `relay/SignalRepeaterItem` | relay | Balken im Item-Symbol nur mit aktivem Signalmesser; grün ab drei Balken, gelb zwei, rot einer |
+| `video/client/ClientLinkWorld` | video | eigener `ClientBlockLoss` für Rechnungen außerhalb von `VideoState` |
+
+Netzprotokoll, API, Loader-Code, Goldens und Kalibrierung unverändert; neue Sprachschlüssel in `common/src/lang/fix-2110/`.
+Tests: JUnit `relay.RelayRangeTest` (4), `relay.RepeaterMeterTest` (3), `relay.RelayPathsTest` (16); Selbsttests `relay:`
+aus `relay.client.RelayFieldSelfTests` (Raum hinter Betonwand und U-Gang, Signalmesser und Balken, Freiland bis zum
+Abbruch mit Repeatern bei 60 % und 100 %, Funk über drei Repeater weiter als 1250 Blöcke), Bildschirmfotos
+`signal_repeater_room_fpv`, `signal_repeater_corner_fpv`, `signal_repeater_signal_bars`, `signal_repeater_field_rpt`.
+
+### Zubehör vorn und unten trägt die Drohne, FPV-Auge an der gezeichneten Kamera (sim, drone, drone-render; 0.6.0, Befund PTP-2, Doku `docs/accessory-hang.md` §6, ergänzt die Zeile `FpvView#coverInsideBlock` oben)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `sim/AirframeSpec` | sim | `GROUND_POINTS` = `ACCESSORY_GROUND` (20) + `ACCESSORY_POINTS` (8); `accessoryPointCount()`, `accessoryX/Y/Z(k)` (Bodenpunkte des Zubehörs relativ zum Schwerpunkt), `accessoryDepth(lage)` (wie weit das Zubehör in dieser Lage unter den Fuß der Hitbox reicht, sonst 0) |
+| `sim/ParamDerivation` | sim | ragt Zubehör vorn oder unten mehr als `ACCESSORY_STAND_MIN` (5 mm) unter die Rahmenhülle, werden die vier tiefsten Ecken seiner Box (`AccessoryAnchor#corners`, mit Neigung und Streckung) harte Bodenpunkte ab `ACCESSORY_GROUND`; Hülle, Hitbox, Fuß und Schwerpunkt-Abstand bleiben aus dem Rahmen |
+| `drone/QuadcopterEntity` | drone | lose abgestellt (ohne Pilot, mit Schwerkraft) hält `standOnAccessories` die Drohne um `accessoryDepth` über dem Boden und setzt sie auf den Boden |
+| `drone/client/render/DronePhysique` | drone-render | nimmt die Zubehör-Bodenpunkte zur Hülle für `placeInWorld`, das Modell sitzt an der Physik |
+| `drone/client/render/DroneVisuals#displayLift` | drone-render | Versatz, um den das Modell gezeichnet wird (wie `placeAtDisplayedPose` mit Bodenkontakt) |
+| `drone/client/FpvView` | drone | Auge und Anker des Kameraschutzes (`anchor()`) um `displayLift` verschoben, im Pilot- und Zuschauer-FPV; `coverInsideBlock` prüft nur den Punkt selbst: sichtversperrender Block oder sichtbare Form eines verdeckenden Blocks (`canOcclude`, Stufe, Treppe, Schnee, Teppich …) am Auge, am Schwerpunkt nur sichtversperrende Blöcke |
+
+Flache Teile wie LED-Streifen (bis 4,6 mm) zählen nicht. Hitbox und Rennwertung unverändert; Goldens und Kalibrierung
+byte-gleich (Presets ohne tiefes Zubehör rechnen bitgleich). Eine Drohne mit hohem Zubehör steht schräg und kann über
+dem Scharfschalt-Winkel (`pid.armMaxAngleDeg`) am Boden nicht scharf geschaltet werden. Netzprotokoll, API und
+Sprachdateien unverändert. Tests: JUnit `sim.AccessoryGroundTest` (4), `accessory.hang.AccessoryStandTest` (2),
+`accessory.fix.PayloadLimitTest` (flache Platte); Selbsttest „drone: steht auf Zubehör“ (`AccessoryStandSelfTests`) und
+„drone: FPV-Kamera nie im Block“ (`CameraClipSelfTests`), Bildschirmfotos `accessory_stand_*`.
+
+### Zuschauen mit OSD und Rennen des Piloten (video, osd, race; 0.6.0, Befund RC2-4, Doku `docs/spectate-feed.md`, ergänzt den Abschnitt „Videokanäle und Zuschauen“ oben)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `video/PilotFeed` | video (reines Java) | Live-Werte und Renn-Zustand des Piloten in einem Paket (Sticks, Gas, Modus und Schalter, Akku, Zeiten, Warnungen, Funk, RPT, Figuren, Heimatpunkt, Rettung, Kurs, Phase, nächstes Gate, Start-Gate, Countdown, Frühstart, Zeit seit dem Start, Runde, Rundenzeiten, Label der Flughilfe höchstens `MAX_LABEL` 48 Zeichen); Zeiten laufen zwischen zwei Paketen weiter |
+| `video/PilotLook` | video (reines Java) | OSD-Layout im Format des OSD-Sharecodes (höchstens 8192 Zeichen), Einheit und Stick-Mode; `config(eigene)` ersetzt nur das gezeigte OSD, die eigenen Einstellungen bleiben unverändert |
+| `video/PilotFeedServer`, `video/FeedRate` | video, server | nimmt `PilotFeedC2S`/`PilotLookC2S` nur vom Piloten der Drohne an (Entity der eigenen Drohne), höchstens 30 Live-Pakete je Sekunde (Vorrat 10) und 2 Layouts je Sekunde (Vorrat 4), leitet nur an Zuschauer genau dieser Drohne weiter (`SpectateServer#watchersOf`); `onWatchStarted` schickt das zuletzt erhaltene Layout sofort; `simulate`/`simulateLook` für Selbst- und Beitrittstests |
+| `video/client/PilotFeedClient` | video | schickt nur bei Zuschauerzahl über 0 jeden Client-Tick `PilotFeed` und bei Änderung (geprüft alle `LOOK_CHECK_TICKS` 10 Ticks) `PilotLook`; beides nur über `canSend` |
+| `video/client/WatchedPilot` | video | Zuschauer: `feed()` (frisch höchstens 1 s, sonst `null` und wie früher Werte aus der Drohne), `osdConfig()`, `speedUnit()`, `stickMode()` für `OsdHud`, `OsdRenderer`, `LiveOsdSource`, `GateRenderer`, `ScoreAreaRenderer` und `RaceHud`; beim Ende des Zuschauens geleert |
+| `video/net/PilotFeedC2S`, `PilotFeedS2C`, `PilotLookC2S`, `PilotLookS2C` | video | `propwash:video_pilot_feed`, `video_watched_feed`, `video_pilot_look`, `video_watched_look`; optional, Netzprotokoll bleibt 17 |
+
+Der Zuschauer sieht das OSD des Piloten mit dessen Layout, Einheit, Stick-Mode und Live-Werten und im Rennen das
+nächste Gate grün mit Durchflugfläche (im Countdown das Start-Gate rot, nach Frühstart bernsteinfarben), Startampel,
+Countdown, „LOS!“, Rundenmeldung und „ZIEL“. Der Operator am Gimbal sieht weiter sein eigenes OSD. Keine neue
+öffentliche API, Goldens und Kalibrierung unverändert. Tests: JUnit `video.PilotFeedTest` (9); Selbsttests
+`video: Zuschauen – Renn-Zustand, OSD-Layout und Sticks des Piloten beim Zuschauer` und `video: Zuschauen – Pilot
+schickt Renn-Zustand, OSD-Layout und Sticks nur mit Zuschauer` (`SpectateFeedSelfTests`, simulierter Sender
+`dev.SimulatedPilotFeed`), Bild `spectate_pilot_osd`; Beitrittstest `watchsolo` mit `racehud`, `osd`, `sticks` und
+`gate`.
+
+### Schnelle Drehungen im Flashback-Kamerapfad (video, Action-Cam; 0.6.0, Befund AUTO44-1, Doku `docs/design/flashback-cam.md`)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `video/record/path/PathResampler` | video (reines Java) | Ergänzung zum Tiefpass in `perTick` (Abschnitt „Tiefpass vor dem Abtasten im Flashback-Kamerapfad“): Der Logarithmus der Drehung im Log-Raum der Quaternion um die Punktprobe wird von der Probe vor dem Tick aus nach beiden Seiten entfaltet (`unfold`: je Probe der Zweig `v + 2πk·v̂`, der der Nachbarprobe am nächsten liegt), damit Drehungen über 180° im Fenster von ±3 Ticks nicht auf den Gegenzweig springen; ohne Sprung im Fenster bitgleich wie vorher |
+
+Gleichmäßige Drehungen bleiben bis 3461°/s (Ratengrenze auf drei Achsen) auf 0,001° genau, vorher ab etwa 1200°/s
+nicht mehr (1998°/s: 2,29°, mit 20 % Schwankung 11,83° Tick-Lage). Über 3600°/s (180° je Tick) kann ein Keyframe je
+Tick die Drehung grundsätzlich nicht zeigen. Keine neue öffentliche API, Netzprotokoll, Goldens, Kalibrierung und
+Sprachdateien unverändert. Tests: JUnit `video.record.path.AntiAliasTest` (7), darunter `steadyTurnsStayExact` bis zur
+Ratengrenze, `fastTurnsWithRippleKeepTheirTicks` und `fastTurnsExportLikePointSampledTicks`.
+
+### Untergrund-Raster bis an den Rand der Hitbox (sim, drone; 0.6.0, Befund AUTO45-1, ergänzt den Abschnitt „Untergrund an Kanten“ oben, Doku `docs/testing.md` „Turtle-Modus: Totzone am Rand der Hitbox“)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `sim/SimEnvironment.SUPPORT_RIM` (1 µm), `supportSpacing(width)` | sim | Spaltenabstand (Breite − 2 µm)/4 statt Breite/5. Die äußeren Spalten liegen 1 µm innerhalb des Hitbox-Rands, damit das Raster jede Auflage der Hitbox sieht (vorher nur bis ±0,4 × Breite). Genutzt von `drone/DroneGround#fillSupport` und der Testwelt `sim.LedgeWorld` |
+
+Die Kante bleibt sichtbar, bis die Hitbox den Untergrund verlässt; die Kanten-Schätzung ist damit auf bis zu 12,5 %
+statt 10 % der Breite genau. Ein Überhang zwischen 1e-7 (Toleranz der Minecraft-Kollision) und 1 µm bleibt
+unsichtbar. Ohne Raster und auf flachem Boden unverändert; keine neue öffentliche API, Netzprotokoll, Loader-Code,
+Goldens, Kalibrierung und Sprachdateien unverändert. Tests: JUnit `sim.TurtleEdgeRimTest` (4); Selbsttest `turtle:`
+am Rand der Hitbox (`drone.client.CovTurtleRimSelfTests`, 4 Schritte).
+
+### Zäune, Mauern und Zauntore im Untergrund-Raster (drone; 0.6.0, Befund PTP3B-1, ergänzt den Abschnitt „Untergrund an Kanten“ oben, Doku `docs/testing.md` „Turtle-Modus an jeder Kante“)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `drone/DroneGround#blockTop`, `TALL_SHAPE_REACH` (1) | drone | Geprüft werden je Rasterspalte die Blöcke von der Hitbox-Unterkante plus 1 cm bis einen Block unter dem Strahlende. Es zählt die höchste Kollisionsfläche. So sieht das Raster die 1,5 Blöcke hohen Formen von Zäunen, Mauern und Zauntoren, die zum Block darunter gehören (vorher `level.clip`, das nur die Blöcke auf dem Strahl prüft). Beginnt die Spalte in einer Form, ist der Wert NaN |
+
+Für Formen bis zu einem Block Höhe kommt dasselbe heraus wie mit `level.clip`. Gilt im Client und beim Server-Flug
+ohne Pilot; das Flugmodell (`sim/`) ist unverändert. Keine neue öffentliche API, Netzprotokoll, Loader-Code, Goldens,
+Kalibrierung und Sprachdateien unverändert. Tests: JUnit `drone.DroneGroundTest` (7, mit dem alten Suchbereich 3 rot)
+und `sim.TurtleAnyEdgeTest` (7); Selbsttest `turtle: Kanten` (`drone.client.CovTurtleEdgeSelfTests`) mit
+Bildschirmfotos `turtle_edge_*`.
+
+### Standbeine unter hängendem Zubehör, Halt lose abgestellter Drohnen je Zubehör-Ecke (sim, drone, drone-render; 0.6.0, Befunde AUTO47-1 und AUTO47-2, ergänzt den Abschnitt „Zubehör vorn und unten trägt die Drohne“ oben, Doku `docs/accessory-hang.md` §6)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `sim/AirframeSpec` | sim | `STAND_LEGS` (4), `GROUND_POINTS` = 20 + 8 + 4 = 32; `accessoryPointCount()` zählt nur die Zubehör-Ecken, `standPointCount()` Ecken und Standbeine (`accessoryX/Y/Z(k)` für beide, erst die Ecken) |
+| `sim/ParamDerivation#groundPoints` | sim | gibt es Zubehör-Bodenpunkte, folgen vier Standbeine an den Rahmenecken (Motoren `hull 4–7`, bei Ducts die Ringe `ground 16–19`) in der Ebene der tiefsten Zubehör-Ecke; die Drohne steht eben auf dem Zubehör und lässt sich scharf schalten |
+| `sim/GroundSolver#absorbs` | sim | Zubehör-Ecken und Standbeine (ab `ACCESSORY_GROUND`) federn nicht zurück (Rückprall 0), harte Kontakte ohne Eingraben und ohne Prop-Schaden wie bisher |
+| `drone/client/render/DronePhysique` | drone-render | nimmt alle Standpunkte (`standPointCount`) zur Hülle für `placeInWorld` |
+| `drone/QuadcopterEntity#standOnAccessories` | drone | lose abgestellt: Boden unter jeder Zubehör-Ecke einzeln über eine dünne Säule an ihrer Lage (`groundGap` mit eigener Box, `STAND_PROBE` 1 mm), Standbeine zählen nicht; `accessoryDepth` nur noch als Vorprüfung |
+
+Bauten ohne tief hängendes Zubehör rechnen bitgleich (Goldens und Kalibrierung byte-gleich). Hitbox, Rennwertung,
+Netzprotokoll, API und Sprachdateien unverändert. Tests: JUnit `sim.AccessoryGroundTest` (7),
+`accessory.fix.PayloadLimitTest` (wieder mit 58 mm hoher Box); Selbsttest „drone: steht auf Zubehör“ (8 Schritte, im
+FPV eben ohne Scharfschalt-Sperre, lose an der Stufenkante ohne Schweben).
+
+### Boden unter Zubehör-Ecken und Standbeinen im Flugmodell (sim, drone, rescue; 0.6.0, Befund STAND3-1, ergänzt den Abschnitt „Standbeine unter hängendem Zubehör …“ oben, Doku `docs/accessory-hang.md` §6)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `sim/SimEnvironment` | sim | `POINT_SUPPORT` (12 = 8 Zubehör-Ecken + 4 Standbeine), `pointSupport`, `pointX`, `pointZ`, `pointCount`: Boden genau unter den Bodenpunkten ab `AirframeSpec#ACCESSORY_GROUND` in der Reihenfolge der Punkte, Werte wie im Raster (NaN im Block, −∞ kein Boden bis 0,5 m); `copyTo` kopiert, `clearSupport` leert |
+| `sim/GroundSupport` | sim | `sanitize` übernimmt die Punkte nur mit gültigem Raster und endlicher Lage; `groundPlanes(…, overhang)` gibt ohne Überhang für Zubehör-Ecken und Standbeine den Boden unter dem Punkt (Messung, solange der Punkt höchstens einen halben Rasterabstand von ihr entfernt ist, sonst das Raster), Rahmenpunkte die Ebene; ohne Zubehör oder Raster `null` wie bisher; liegt ein Punkt tiefer, als gemessen wurde, gilt die Ebene; `capStandLegs`: ein Standbein trägt höchstens bis zur Höhe, auf der eine Zubehör-Ecke Boden hat (versetzt um deren Höhe über dem Standbein) |
+| `sim/DroneSim` | sim | `groundImpulse` und der Bodenkontakt im Teilschritt rufen `groundPlanes` immer, mit `overhang` bzw. `edge` als Schalter |
+| `drone/DroneGround#fillPoints` | drone | misst je Frame mit `column` (Blöcke, Gates und Kollider, weicher Boden) ab Fuß + 1 cm bis 0,5 m tief unter jedem Punkt; Lage aus `AirframeSpec#groundX/Y/Z` und der Lage der Entity wie `QuadcopterEntity#standOnAccessories` |
+| `drone/client/PilotSession`, `rescue/ServerFlight` | drone, rescue | rufen `fillPoints` direkt nach `fillSupport` |
+
+Auf ebenem Boden bitgleich (Goldens und Kalibrierung byte-gleich); Netzprotokoll, API, Loader-Code und Sprachdateien
+unverändert. Grenzen: Gates und Kollider außerhalb der Hitbox (+5 cm) sieht die Messung nicht; eine Zubehör-Ecke mehr
+als 0,48 m unter dem Fuß nimmt weiter die Ebene. Tests: JUnit `sim.AccessoryLedgeTest` (4), `LedgeWorld` füllt die
+Punkte wie das Spiel; Selbsttest „drone: steht auf Zubehör“ (9 Schritte, neu gesteuert an der Stufenkante mit Bild
+`accessory_stand_edge_piloted`).
+
+### Zubehör vorne sitzt am Rahmen (build, Teile-Daten; 0.6.0, Befund RC3P-5, ersetzt im Abschnitt zur Halterung vorne die Anker der eingebauten Rahmen, Doku `docs/accessory-hang.md` §7)
+
+Die Anker vorn liegen an der Vorderkante der Bodenplatte statt 6–9 mm davor: `cinewhoop_3` (0; −3; −30), `freestyle_5`
+(0; 0; −64), `race_5` (0; 0; −56), `long_range_7` (0; 0; −68), gleich in den Rahmen-JSONs, `drone_layout.json` und
+`tools/assets/parts/layout.py`. Soll für jedes Zubehör vorne an jedem Rahmen: höchstens 1 mm zwischen gezeichnetem
+Zubehör und Rahmen, höchstens 2 mm Überschneidung mit dem Quader aus `size_mm`. Die Ersatzformel für Rahmen ohne Anker vorn
+bleibt `(0; 0; −0,3 × Radstand)`. Prüfung: JUnit `accessory.hang.FrontAnchorFitTest`, Selbsttest
+„addon-api-17: Zubehör am Rahmen“ (devtest `drone.client.render.AccessoryFit`, `interact.client.AccessoryFitSelfTests`)
+über alle angemeldeten Rahmen mit Ausreißer-Liste und Soll-Anker für Add-on-Rahmen. Kalibrierung und Goldens
+byte-gleich; Netzprotokoll, API, Loader-Code und Sprachdateien unverändert.
+
+### „Am Boden“ für autonome Starts: Kontakt der Kollisionsform, Grund zu NOT_READY (rescue, drone, api; 0.6.0, Befund RC3P-4, ergänzt die Abschnitte zu `addon-autonomy` und „Standbeine unter hängendem Zubehör …“ oben, Doku `docs/addon-autonomy.md` §1, §3)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `rescue/GroundContact` | rescue | `gap(drone, range)`: kleinster Abstand von Hitbox (`supportGap`) und jedem genutzten Bodenpunkt (`AirframeSpec#groundUsed`, Rahmen, Zubehör-Ecken, Standbeine) unter dem Fuß der Hitbox, gedreht mit der Lage der Entity und skaliert wie `standOnAccessories`; `grounded(gap, speed)`: unter `TOUCH` 0,02 m und `REST_SPEED` 0,25 m/s; reine Form `gap(spec, orientation, size, hitboxGap, range, Column)` für JUnit |
+| `drone/QuadcopterEntity#columnGap` | drone | Boden unter einer 1 mm dünnen Säule ab dem Fuß (dieselbe Box wie in `standOnAccessories`, über `groundGap`) |
+| `rescue/AddonAutonomy` | rescue | `grounded` über `GroundContact`; `notReady(grounded, takeoff, handover, battery)` entscheidet `NOT_READY` und den Grund für `begin` und `notReadyReason`; `GROUND_PROBE`/`GROUND_GAP` entfallen (`GroundContact.PROBE`/`TOUCH`) |
+| `rescue/PilotTakeover#seamless` | rescue | in der Luft heißt Abstand der Kollisionsform ab `TOUCH` (vorher Hitbox ab 0,08 m) |
+| `api/drone/AutonomyNotReady`, `AutonomyAccess#notReadyReason` | api | `NOT_ON_GROUND`, `NO_TAKEOFF`, `NO_BATTERY`, `REMOVED`; `default` leer, Propwash über `apiimpl/Api17Registries.Autonomy` |
+
+Bauten ohne Zubehör unter der Hitbox messen wie bisher nur die Hitbox, die Grenze ist aber 2 statt 8 cm: knapp über
+dem Boden schwebend gilt eine Drohne jetzt als in der Luft. Flugmodell, Goldens, Kalibrierung, Netzprotokoll und
+Sprachdateien unverändert; API 1.7 additiv. Tests: JUnit `rescue.AutonomyGroundTest` (5), `rescue.AutonomyNotReadyTest`
+(3); Selbsttest „addon-api-17: B7 – Start aus dem Stand auf hohem Zubehör“.
+
+### Zubehör einrücken (api, build, parts, drone-render; 0.6.0, Befund FB1-9, API 1.7 additiv, ergänzt „Zubehör vorne sitzt am Rahmen“ oben, Doku `docs/accessory-hang.md` §8)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `api/part/AccessoryDefinition` | api | letzte Record-Komponenten `recessMm`, `dropMm` (0 bis Tiefe bzw. Höhe, sonst Fehler mit Feldname), Builder `recess`, `drop`, 16-Argument-Konstruktor bleibt |
+| `parts/PartJson` | parts | `recess_mm`, `drop_mm`; schreibt die Felder nur, wenn sie nicht 0 sind |
+| `build/AccessoryType` | build | `boxMinMm`, `boxMaxMm`, `lensMm`, `ledMm` verschoben (hinten +z, unten −y), `centerMm` und `muzzleMm` folgen; `modelBoxMinMm`, `modelBoxMaxMm`, `modelLensMm`, `modelLedMm` unverschoben für die Ersatzform |
+| `build/AccessoryAnchor#modelOrigin` | build | Zeichenposition: Anker plus Verschiebung in den Achsen des Zubehörs; ohne Felder genau der Anker |
+| `drone/client/render/DroneAssembly`, `FallbackShapes` | drone-render | Körper an `modelOrigin` (auch `ItemDisplay`, über `body.position`), Sockel oben am Anker; Ersatzform aus den unverschobenen Werten |
+| `drone/client/render/AccessoryFit` (devtest) | devtest | `overlapMm` nur vor dem Anker, `wantedOverlapMm` im eingerückten Teil, Soll-Anker ohne Einrücken |
+
+Flugmodell (`ParamDerivation`), `MountPoses`, `DispenseOrigin` und `VisualHull` rechnen schon mit Ecken, Mitte und
+Körperposition und folgen ohne eigene Änderung; `MountPose#anchor` und die Richtungen bleiben. Die Überschneidung mit dem
+Unten-Platz oder dem Akku unter dem Rahmen lässt Propwash zu (Messwerte in der Doku). Ohne die Felder ist alles bitgleich:
+Kalibrierung und Goldens unverändert. Netzprotokoll und Pakete unverändert; im Teile-Handshake ändern sich die Hashes aller
+Zubehörteile, weil der Record zwei Komponenten mehr hat (Anhebung auf 19 macht WA-W2g). Tests: JUnit
+`accessory.hang.AccessoryRecessTest` (11), `sim.AccessoryRecessFlightTest` (1); Selbsttest
+„addon-api-17: Zubehör eingerückt“.
+
+### Greifer am Server: Fracht-API und Aufnehmen ohne Pilot (interact, rescue, api; 0.6.0, Befund FB1-10, ergänzt „Treffer und Greifer“ §15 und die Abschnitte zu `addon-autonomy`, Doku `docs/addon-autonomy.md` §11, Handbuch §21.23)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `api/accessory/AccessoryRegistry` | api | `cargo(Entity)`, `grabCargo(Entity, ServerPlayer)`, `releaseCargo(Entity, ServerPlayer)` als `default` mit leerem Ergebnis, `false` bzw. 0; Propwash über `accessory/AccessoryBehaviors` |
+| `interact/DroneCargo` | interact | `grab`: Griff 5 s offen (`Hold#openGrab`, `GripperSpec.GRAB_TICKS` = 100), sofortiger Versuch, schließt nach der ersten Aufnahme, beim Loslassen, Entschärfen und ohne Greifer; `releaseBy`: `COMMAND` mit Verursacher, gibt die Zahl der Items zurück; `cargo`: Kopien; Meldungen ohne Pilot an den letzten Verursacher (`Hold#actor`) |
+| `interact/GripperSpec` | interact | `picksUp(Greifer, scharf, gesteuert, greift)`: mit Pilot wie bisher, ohne Pilot nur während eines Griffs; `mayTake(Ziel, Pilot, Verursacher)` |
+| `rescue/ServerFlight#followCargo` | rescue | geänderte Fracht im Server-Flug (Heimflug, Add-on-Flug) über `AccessoryPayload#flightBuild` und `DroneSim#setAirframe` ins Flugmodell, wie `PilotSession#syncConfiguration` am Client |
+
+Ohne Griff über die API nimmt eine Drohne ohne Pilot weiter nichts auf (Heimflug unverändert); mit Pilot greift der
+Greifer wie seit 0.5.0. Ohne Fracht-Änderung tut `followCargo` nichts. Flugmodell, Goldens, Kalibrierung, Netzprotokoll,
+Pakete und Sprachdateien unverändert; API 1.7 additiv, die Versionsnummer hebt die Veröffentlichung. Tests: JUnit
+`interact.CargoApiTest` (6); Selbsttest „addon-api-17: B7 – Fracht ohne Pilot“.
+
+### Drohnen und Sculk (interact, drone, stats, rescue, server; 0.6.0, Befund FB1-11, Doku `docs/drone-sculk.md`)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `interact/DroneVibrations` | interact | `tick`: scharf und Motoren im Mittel ab `MOTOR_THRESHOLD` 0,1 der Höchstdrehzahl, alle `INTERVAL_TICKS` 10 Ticks `elytra_glide` an der Drohne; `crashed`: `hit_ground` mit dem Block unter der Drohne; `muted`: Regel aus; `pilot`: Pilot als `ServerPlayer` für den Kreischer |
+| `drone/QuadcopterEntity` | drone | `tickServer` ruft `DroneVibrations.tick` nach `DroneBlockTriggers.tick`; `dampensVibrations` = `DroneVibrations.muted`; `getMovementEmission` bleibt `NONE` |
+| `stats/PilotStats#onCrash` | stats | nach der Prüfung des Absenders und nur für vom Budget zugelassene Abstürze `DroneVibrations.crashed` |
+| `rescue/ServerFlight#fly` | rescue | Absturz im autonomen Flug: `DroneVibrations.crashed` nach `write` |
+| `mixin/drone/SculkShriekerBlockEntityMixin` | drone | `tryGetPlayer` liefert für eine Drohne mit Pilot den Piloten, wie Vanilla für ein Fahrzeug den Steuernden |
+| `server/rules/WorldRuleSpecs#DRONES_TRIGGER_SCULK` | server | Welt-Regel `propwash:drones_trigger_sculk`, Schalter, Gruppe Spiel, Standard an, für Rennen neutral, in allen Voreinstellungen an |
+
+Vor 0.6.0 gab eine geflogene Drohne keine Vibration ab: Der Server bewegt sie nicht über die Vanilla-Bewegung, und
+`getMovementEmission` ist `NONE`. Abgestellte Drohnen ohne Pilot melden beim Aufsetzen nach einem Fall wie bisher Vanillas
+`hit_ground`; mit der Regel aus dämpft `dampensVibrations` auch das und den Glasbruch. Wolle, Teppich und Reichweiten regelt
+Vanilla. Flugmodell, Goldens, Kalibrierung (byte-gleich), Netzprotokoll und Pakete unverändert; `WorldRulesS2C` trägt einen
+Eintrag mehr, das Register `minecraft:game_rule` eine Regel mehr. Tests: JUnit `interact.DroneVibrationsTest` (5),
+`race.RaceRulesTest` (Regel als neutral eingeordnet); Selbsttest-Gruppe `sculk:` (6 Schritte).
+
+### Add-on-API 1.8.0 (api; 0.6.0 ab `0.6.0-dev.14`)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `api/PropwashApi` | api | `API_VERSION` 1.8.0 (vorher 1.7.0 seit `0.6.0-dev.2`); `requireVersion(modId, "1.7")` bleibt erfüllt |
+| `api.ApiContractTest` (Test) | api | `semanticVersionRules` mit 1.8.0, `api18CargoAndRecessExist`: `AccessoryRegistry#cargo`, `#grabCargo`, `#releaseCargo` als `default`, `AccessoryDefinition#recessMm`, `#dropMm` als letzte Komponenten, Builder `recess`, `drop` |
+
+Die Nebenversion 1.8 enthält nur die zwei Ergänzungen nach `0.6.0-rc.3`: Fracht am Greifer (Befund FB1-10, Abschnitt
+„Greifer am Server“ oben) und Zubehör einrücken (`recess_mm`, `drop_mm`, Befund FB1-9). Add-ons, die sie nutzen,
+verlangen `requireVersion(modId, "1.8")`; Versionsbereiche der Abhängigen bleiben (`>=0.6.0-`, `[0.6.0-alpha,)`). Die
+Selbsttests `api:` (Version, Vertrag) und `addon-api:` (Version 1.6) prüfen 1.8.0. `docs/RELEASING.md` §2 nennt die Nummer
+(`ReleasingApiVersionTest`). Netzprotokoll unverändert.
+
+### Sculk nach Server-Flügen (drone, interact, rescue; 0.6.0, Befund OT1-2, Doku `docs/drone-sculk.md` §1 und §4)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `drone/QuadcopterEntity#checkFallDamage` | drone | gibt Vanilla als Fallweg nur die Höhe weiter, um die `super.move` die Drohne wirklich bewegt hat (`moveFromY` vor dem Aufruf, außerhalb von `move` der gemeldete Weg) |
+| `interact/DroneVibrations#fallMoved` | interact | reine Rechnung dafür: Höhe nachher minus vorher, ohne Ausgangshöhe der gemeldete Weg |
+| `rescue/ServerFlight#move`, `rescue/AutonomousReturns#descend` | rescue | Fallhöhe nach jeder Bewegung des Server-Flugs auf 0, ein Flug hinterlässt keine gesammelte Sinkstrecke |
+
+Vanillas `Entity#move` setzt eine Bewegung, die die Kollision auf weniger als etwa 0,3 mm kürzt, nicht um, meldet den
+gekürzten Weg aber an `checkFallDamage`. Eine Drohne, die ein Server-Flug knapp über dem Boden abstellt, meldete so bei
+jedem Schwerkraft-Schritt der eigenen Physik (alle 10 Ticks) `hit_ground`, Sculk-Sensoren in 8 Blöcken lösten ohne Ende
+aus. Scharf, Motoren und Flug ohne Pilot gingen schon vorher sauber auf 0. Flugmodell, Goldens, Kalibrierung,
+Netzprotokoll und Pakete unverändert. Tests: JUnit `interact.DroneVibrationsTest` (7, davon 2 neu), Selbsttest-Gruppe
+`sculk:` (11 Schritte, davon 5 neu in `sculk: Mission`).
+
+### Drehende Props behalten die Mitte (drone-render; 0.6.0, Befund OT4-1, Doku `docs/ASSETS.md` „Props im FPV-Bild“)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `drone/client/render/FpvProps#draw` | drone-render | über der weichen Scheibe (`buildBlur`) zeichnet das drehende Prop im FPV-Bild seine Mitte am Platz, im Drehwinkel und mit der Vergrößerung (`nearScale`) des stehenden Props; die Messung der Prop-Scheiben (`maskColor`) bleibt ohne Mitte, `propsDrawn` zählt die Mitte nicht |
+| `drone/client/render/DroneVisuals#submitCenter`, `BlurItemCollector#center` | drone-render | Mitte = deckende Flächen des `_blur`-Modells (Nabe, Mutter, Schraube), die durchscheinende Scheibe fällt weg; ein `_blur`-Modell ganz ohne durchscheinende Flächen gibt keine Mitte; ohne Modell die deckende Form des Teils |
+| `drone/client/render/FallbackShapes#propCenter`, `DroneAssembly` | drone-render | Ersatzform ohne `_blur`-Modell: deckende Nabe und Mutter (dieselbe Form wie in `buildProp`), `blur` nur noch der Kreisring |
+| `drone/client/render/VisualHull` | drone-render | Ersatzform: deckende und durchscheinende Form zählen zusammen |
+
+Vorher fehlte im FPV-Bild beim Übergang zur Scheibe die Mitte ganz (unter der Scheibe nur Motorglocke und Welle), die
+Ersatzform zeichnete die Nabe durchscheinend und ohne Mutter. Außen mit `_blur`-Modell war die Mitte schon gleich. Flugmodell,
+Netzprotokoll, Goldens und Kalibrierung unverändert. Selbsttest `drone-render: drehende Props behalten die Mitte …`
+(`CovPropBlurCenterSelfTests`).
+
+### Drohnen und Bosse (interact, drone, video, server; 0.6.0, Befund OT4-5, Doku `docs/drone-bosses.md`)
+
+| Klasse | Modul | Inhalt |
+|---|---|---|
+| `interact/DroneBosses` | interact | Server-Takt (`serverTick` am Ende jedes Server-Ticks): Wärter mit Zorn auf eine Drohne laden den Schallschlag und treffen, Drachen bekommen Turbulenz und Angriff (`charging_player` auf die Drohne, Ziel folgt bis 10 Blöcke), Wither schießen mit den Seitenköpfen, Drachenatem-Wolken (Partikel `dragon_breath` oder Drache als Besitzer) zehren; `hit` rechnet Verschleiß, gibt ihn an das Flugmodell eines Server-Flugs, stößt über `DronePushes` und meldet beim Absturz `DroneVibrations.crashed`; Zähler für den Selbsttest |
+| `interact/BossHit`, `interact/BossHits` | interact | Arten mit Absturz-Faktor (Schallschlag 3,0, Rammen 2,2, Flügel 0,7 der Aufprall-Toleranz des Rahmens), Stoß und Auftrieb; Aufprall-Probe für `sim.CrashDamage` über `DroneWear.apply`, Drachenatem als fester Verschleiß je Sekunde, Flügelstoß (80 / Abstand, höchstens 18 m/s), Turbulenz (bis 2,4 × Gewicht in 14 Blöcken) |
+| `interact/WardenGrudge` | interact | Zorn je Drohne wie bei Spielern (35 je Vibration, höchstens 150, −1 je 20 Ticks, wütend ab 80), Schallschlag 34 Ticks laden, nächster frühestens 100 Ticks nach Beginn, Reichweite 15 waagrecht, 20 senkrecht |
+| `mixin/drone/WardenMixin`, `EnderDragonMixin`, `WitherBossAccessor` | drone | Kopf von `Warden#increaseAngerAt(Entity, int, boolean)`, von `EnderDragon#knockBack` und `#hurt(ServerLevel, List)`; Aufruf von `WitherBoss#performRangedAttack(int, double, double, double, boolean)` |
+| `drone/Knockback#forwards` | drone | Rückstoß an den Piloten auch ohne Add-on, wenn die Regel an ist und die Quelle eine Windkugel der Breeze, ein Wither-Schädel oder der Wither ist; Faktor dann vorab 1, Windkugeln von Spielern wie bisher nur mit Add-on (E16) |
+| `video/DarknessPulse`, `video/client/BossDarkness` | video | Wärter in 20 Blöcken um die Drohne: Blende wie Vanillas Dunkelheit (22 Ticks, 140 Ticks Nachklang), Licht-Puls alle 80 Ticks; `FpvView#clearPilotLightEffects` setzt Helligkeit und Dunkelheits-Skala, `FeedInput#darkness` dunkelt das Kamerabild ab und lässt es rauschen |
+| `server/rules/WorldRuleSpecs#DRONES_BOSS_INTERACTIONS` | server | Welt-Regel `propwash:drones_boss_interactions`, Schalter, Gruppe Spiel, Standard an, zählt für Rennen, in allen Voreinstellungen an |
+
+Bis rc.4 waren Drohnen für Bosse Luft: Vanilla nimmt nur Lebewesen als Ziel, und den Rückstoß von Explosionen gab
+Propwash nur an den Piloten weiter, wenn ein Add-on ihn übernahm (`DroneKnockback` mit Faktor 0 ohne Zuhörer).
+Mob Defense behält die gezielten Angriffe normaler Mobs. Flugmodell, Goldens, Kalibrierung (byte-gleich), Netzprotokoll
+und Pakete unverändert; Stöße und Kräfte gehen über das vorhandene `drone_push`, `WorldRulesS2C` trägt einen Eintrag
+mehr. Tests: JUnit `interact.DroneBossesTest` (12), `video.DarknessPulseTest` (4), `race.RaceRulesTest` (Regel
+rennrelevant); Selbsttest-Gruppe `bosses:` (11 Schritte).

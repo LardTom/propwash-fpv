@@ -1,0 +1,6 @@
+{
+  "propwash.drone.removed": "Your drone was removed.",
+  "propwash.server.command.clear.done": "Removed %s drones (%s).",
+  "propwash.server.command.clear.done.one": "Removed 1 drone (%s).",
+  "propwash.server.command.clear.none": "No drones found in loaded areas."
+}

@@ -34,6 +34,7 @@ import static de.lardtom.propwash.osd.OsdElement.POWER;
 import static de.lardtom.propwash.osd.OsdElement.RECORDING;
 import static de.lardtom.propwash.osd.OsdElement.RELAY;
 import static de.lardtom.propwash.osd.OsdElement.RSSI_DBM;
+import static de.lardtom.propwash.osd.OsdElement.SPECTATORS;
 import static de.lardtom.propwash.osd.OsdElement.SPEED;
 import static de.lardtom.propwash.osd.OsdElement.SPLIT_DELTA;
 import static de.lardtom.propwash.osd.OsdElement.THROTTLE;
@@ -96,6 +97,7 @@ public enum OsdPreset {
             at(RELAY, 1, 6),
             at(VTX_POWER, 1, 7),
             at(TRICKS, 15, 13),
+            at(SPECTATORS),
             park(HEADING, 15, 2),
             park(RSSI_DBM, 6, 1),
             park(CURRENT, 1, 8),

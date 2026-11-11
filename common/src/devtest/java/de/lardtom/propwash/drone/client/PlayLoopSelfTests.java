@@ -18,6 +18,7 @@ import de.lardtom.propwash.content.ContentMaterials;
 import de.lardtom.propwash.content.CraftingMaterial;
 import de.lardtom.propwash.content.DroneAssembly;
 import de.lardtom.propwash.content.PartCondition;
+import de.lardtom.propwash.content.RecycleRecipes;
 import de.lardtom.propwash.content.Recycling;
 import de.lardtom.propwash.core.BoundDrone;
 import de.lardtom.propwash.core.CoreComponents;
@@ -34,7 +35,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -768,13 +771,19 @@ final class PlayLoopSelfTests {
                 }
             }
             ItemStack brokenMotor = PartCondition.with(ContentItems.stack(MotorType.M2207_1750), 0.0F);
-            List<ItemStack> yields = Recycling.recycle(brokenMotor);
-            if (yields.size() != 1 || !yields.getFirst().is(ContentMaterials.item(CraftingMaterial.COPPER_COIL).get())) {
-                return "kaputter Motor ergibt keine Kupferspule: " + yields;
+            Recycling.Plan plan = Recycling.plan(brokenMotor, held -> RecycleRecipes.find(server.getRecipeManager(), held));
+            Identifier coil = BuiltInRegistries.ITEM.getKey(ContentMaterials.item(CraftingMaterial.COPPER_COIL).get());
+            if (plan.status() != Recycling.Status.READY || plan.materials().stream().flatMap(found -> found.entries().stream())
+                    .noneMatch(entry -> entry.item().equals(coil))) {
+                return "kaputter Motor ergibt keine Kupferspule: " + plan;
             }
-            if (Recycling.accepts(PartCondition.with(ContentItems.stack(PropType.P51_3B), 0.0F))
-                    || Recycling.accepts(PartCondition.with(ContentItems.stack(MotorType.M2207_1750), 0.4F))) {
-                return "Props oder intakte Teile werden recycelt";
+            if (Recycling.tier(brokenMotor) != Recycling.QUARTER || Recycling.tier(PartCondition.with(ContentItems.stack(MotorType.M2207_1750), 0.6F))
+                    != Recycling.HALF || Recycling.tier(ContentItems.stack(MotorType.M2207_1750)) != Recycling.FULL) {
+                return "Recycling-Stufen falsch";
+            }
+            if (Recycling.plan(PartCondition.with(ContentItems.stack(PropType.P51_3B), 0.0F),
+                    held -> RecycleRecipes.find(server.getRecipeManager(), held)).status() != Recycling.Status.READY) {
+                return "kaputte Props lassen sich nicht recyceln";
             }
             drone.setWear(PartWear.PRISTINE);
             return null;

@@ -71,6 +71,11 @@ public final class JoinCheck {
         return JoinText.missingPropwash(server.propwashVersion(), server.protocol(), server.addons());
     }
 
+    public static Component notNeoForge() {
+        JoinInfo server = LocalJoinInfo.get();
+        return JoinText.notNeoForge(server.propwashVersion(), server.protocol(), server.addons());
+    }
+
     public static List<PartRef> parts(PartsManifestPayload manifest) {
         List<PartRef> out = new ArrayList<>(manifest.entries().size());
         for (PartsManifestPayload.Entry entry : manifest.entries()) {

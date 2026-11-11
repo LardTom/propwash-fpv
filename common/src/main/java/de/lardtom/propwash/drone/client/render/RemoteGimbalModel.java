@@ -24,7 +24,7 @@ public class RemoteGimbalModel extends Model<RemoteGimbalRenderer.Pose> {
     public static final float SWITCH_Z = 9.25F;
     public static final float SWITCH_LENGTH = 1.0F;
     public static final float SWITCH_TILT_RADIANS = (float) Math.toRadians(40.0);
-    public static final float[] BUTTON_X = {7.0F, 8.5F, 10.0F};
+    public static final float[] BUTTON_X = {6.5F, 8.0F, 9.5F};
     public static final float BUTTON_Y = 4.5F;
     public static final float BUTTON_Z = 10.0F;
     public static final float BUTTON_TRAVEL = 0.22F;

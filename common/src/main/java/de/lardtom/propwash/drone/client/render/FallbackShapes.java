@@ -3,6 +3,7 @@ package de.lardtom.propwash.drone.client.render;
 import de.lardtom.propwash.api.part.AirframeGeometry;
 import de.lardtom.propwash.api.part.FrameShape;
 import de.lardtom.propwash.api.part.PackSize;
+import de.lardtom.propwash.api.part.Vec3Mm;
 import de.lardtom.propwash.build.AccessoryMount;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.BatteryType;
@@ -15,10 +16,12 @@ import de.lardtom.propwash.build.VideoSystem;
 import de.lardtom.propwash.build.VideoType;
 import de.lardtom.propwash.sim.FpvRig;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3fc;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -61,6 +64,11 @@ public final class FallbackShapes {
     public static final int GLOW_MID = 0x66FFFFFF;
     public static final int GLOW_EDGE = 0x00FFFFFF;
     public static final float STRIP_HALO_MM = 7.0F;
+    public static final float LED_PATH_STRIP_WIDTH_MM = 2.6F;
+    public static final float LED_PATH_STRIP_THICKNESS_MM = 1.0F;
+    public static final float LED_PATH_LED_HEIGHT_MM = 1.4F;
+    public static final float LED_PATH_GLOW_MM = 3.0F;
+    public static final float LED_PATH_GLOW_HEIGHT_MM = 1.6F;
     public static final float ARM_HALO_MM = 10.0F;
     public static final float MAX_ARM_WIDTH_MM = 36.0F;
     public static final float MAX_PAD_RADIUS_MM = 26.0F;
@@ -84,6 +92,7 @@ public final class FallbackShapes {
     private static final Map<PropType, Shape> PROP_ICONS = new HashMap<>();
     private static final Map<PropType, Shape[]> WIDE_PROPS = new HashMap<>();
     private static final Map<PropType, Shape> BLURS = new HashMap<>();
+    private static final Map<PropType, Shape> PROP_CENTERS = new HashMap<>();
     private static final Map<BatteryType, Shape> BATTERIES = new HashMap<>();
     private static final Map<VideoType, Shape> CAMERAS = new HashMap<>();
     private static final Map<VideoType, Shape> TRANSMITTERS = new HashMap<>();
@@ -181,6 +190,10 @@ public final class FallbackShapes {
 
     public static synchronized Shape blur(PropType prop) {
         return BLURS.computeIfAbsent(prop, FallbackShapes::buildBlur);
+    }
+
+    public static synchronized Shape propCenter(PropType prop) {
+        return PROP_CENTERS.computeIfAbsent(prop, FallbackShapes::buildPropCenter);
     }
 
     public static synchronized Shape motorGlow(MotorType motor) {
@@ -511,10 +524,7 @@ public final class FallbackShapes {
         float hub = hubDiameter(prop);
         float hubHeight = hubHeight(prop);
         int color = propColor(prop);
-        b.cylinder(ShapeBuilder.at(0.0F, hubHeight * 0.5F, 0.0F).scale(hub, hubHeight, hub), 12, color);
-        if (prop.diameterMm >= 50) {
-            b.cylinder(ShapeBuilder.at(0.0F, hubHeight + 1.5F, 0.0F).scale(hub * 0.55F, 3.0F, hub * 0.55F), 6, PROP_NUT);
-        }
+        propCenter(b, prop, color);
         float root = hub * 0.4F;
         float span = radius - root;
         float chord = Math.max(2.5F, 0.19F * radius) * chordScale;
@@ -544,8 +554,22 @@ public final class FallbackShapes {
         int outer = 0x30000000 | rgb;
         float y = hubHeight(prop) * 0.55F;
         b.annulus(ShapeBuilder.at(0.0F, y, 0.0F).scale(radius * 2.0F, 1.0F, radius * 2.0F), hub / (radius * 2.0F), 28, inner, outer);
-        b.cylinder(ShapeBuilder.at(0.0F, hubHeight(prop) * 0.5F, 0.0F).scale(hub, hubHeight(prop), hub), 12, 0xFF000000 | rgb);
         return b.build();
+    }
+
+    static Shape buildPropCenter(PropType prop) {
+        ShapeBuilder b = new ShapeBuilder(DroneVisualScale.MM_TO_UNITS);
+        propCenter(b, prop, propColor(prop));
+        return b.build();
+    }
+
+    private static void propCenter(ShapeBuilder b, PropType prop, int color) {
+        float hub = hubDiameter(prop);
+        float hubHeight = hubHeight(prop);
+        b.cylinder(ShapeBuilder.at(0.0F, hubHeight * 0.5F, 0.0F).scale(hub, hubHeight, hub), 12, color);
+        if (prop.diameterMm >= 50) {
+            b.cylinder(ShapeBuilder.at(0.0F, hubHeight + 1.5F, 0.0F).scale(hub * 0.55F, 3.0F, hub * 0.55F), 6, PROP_NUT);
+        }
     }
 
     static Shape buildBattery(BatteryType battery) {
@@ -589,16 +613,6 @@ public final class FallbackShapes {
         if (digital) {
             b.cylinder(ShapeBuilder.at(0.0F, h + 0.3F, -l * 0.1F).scale(w * 0.5F, 0.6F, w * 0.5F), 12, MOTOR_CAP);
         }
-        float antennaLength = small ? 18.0F : 34.0F;
-        int antennas = digital ? 2 : 1;
-        for (int i = 0; i < antennas; i++) {
-            float roll = antennas == 1 ? 0.0F : (i == 0 ? 0.45F : -0.45F);
-            float x = antennas == 1 ? 0.0F : (i == 0 ? -w * 0.3F : w * 0.3F);
-            Matrix4f antenna = ShapeBuilder.at(x, h, l * 0.5F - 2.0F).rotateX(0.55F).rotateZ(roll)
-                    .translate(0.0F, antennaLength * 0.5F, 0.0F);
-            b.cylinder(new Matrix4f(antenna).scale(2.2F, antennaLength, 2.2F), 6, ANTENNA);
-            b.cylinder(new Matrix4f(antenna).translate(0.0F, antennaLength * 0.5F, 0.0F).scale(5.0F, 3.0F, 5.0F), 8, ANTENNA_CAP);
-        }
         return b.build();
     }
 
@@ -613,15 +627,23 @@ public final class FallbackShapes {
     static Shape[] buildStripLeds(AccessoryType accessory, boolean halo) {
         int count = Math.min(accessory.ledCount, DroneRenderState.MAX_STRIP_LEDS);
         Shape[] out = new Shape[Math.max(0, count)];
+        boolean path = accessory.hasLedPath();
         float pitch = (float) (accessory.widthMm / Math.max(1, accessory.ledCount));
+        float haloRadius = path ? STRIP_HALO_MM : Math.max(STRIP_HALO_MM, pitch * 1.6F);
         for (int i = 0; i < out.length; i++) {
-            double[] led = accessory.ledMm(i, accessory.widthMm);
+            double[] led = accessory.modelLedMm(i, accessory.widthMm);
             ShapeBuilder b = new ShapeBuilder(DroneVisualScale.MM_TO_UNITS);
             float x = (float) led[0];
             float y = (float) led[1];
             float z = (float) led[2];
-            if (halo) {
-                b.glow(x, y - 0.6F, z, Math.max(STRIP_HALO_MM, pitch * 1.6F), GLOW_CORE, GLOW_MID, GLOW_EDGE);
+            if (path) {
+                if (halo) {
+                    b.glow(x, y, z, haloRadius, GLOW_CORE, GLOW_MID, GLOW_EDGE);
+                } else {
+                    b.box(x, y, z, LED_PATH_GLOW_MM, LED_PATH_GLOW_HEIGHT_MM, LED_PATH_GLOW_MM, 0xFFFFFFFF);
+                }
+            } else if (halo) {
+                b.glow(x, y - 0.6F, z, haloRadius, GLOW_CORE, GLOW_MID, GLOW_EDGE);
             } else {
                 b.box(x, y - 0.2F, z, 3.0F, 0.8F, 3.0F, 0xFFFFFFFF);
             }
@@ -630,20 +652,48 @@ public final class FallbackShapes {
         return out;
     }
 
+    private static void ledPathStrip(ShapeBuilder b, AccessoryType accessory) {
+        List<Vec3Mm> path = accessory.ledPath();
+        for (int i = 1; i < path.size(); i++) {
+            Vec3Mm from = path.get(i - 1);
+            Vec3Mm to = path.get(i);
+            float dx = (float) (to.x() - from.x());
+            float dy = (float) (to.y() - from.y());
+            float dz = (float) (to.z() - from.z());
+            float length = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (length < 1.0E-4F) {
+                continue;
+            }
+            Matrix4f segment = ShapeBuilder.at((float) (from.x() + to.x()) * 0.5F, (float) (from.y() + to.y()) * 0.5F,
+                            (float) (from.z() + to.z()) * 0.5F)
+                    .rotate(new Quaternionf().rotationTo(1.0F, 0.0F, 0.0F, dx / length, dy / length, dz / length))
+                    .scale(length + LED_PATH_STRIP_WIDTH_MM, LED_PATH_STRIP_THICKNESS_MM, LED_PATH_STRIP_WIDTH_MM);
+            b.cube(segment, ACCESSORY_CHANNEL);
+        }
+        for (int i = 0; i < accessory.ledCount; i++) {
+            double[] led = accessory.modelLedMm(i, accessory.widthMm);
+            b.box((float) led[0], (float) led[1], (float) led[2], 2.4F, LED_PATH_LED_HEIGHT_MM, 2.4F, ACCESSORY_LED);
+        }
+    }
+
     static Shape buildAccessory(AccessoryType accessory) {
         ShapeBuilder b = new ShapeBuilder(DroneVisualScale.MM_TO_UNITS);
-        double[] min = accessory.boxMinMm();
-        double[] max = accessory.boxMaxMm();
+        double[] min = accessory.modelBoxMinMm();
+        double[] max = accessory.modelBoxMaxMm();
         float x0 = (float) min[0];
         float y0 = (float) min[1];
         float z0 = (float) min[2];
         float x1 = (float) max[0];
         float y1 = (float) max[1];
         float z1 = (float) max[2];
+        if (accessory.hasLedPath()) {
+            ledPathStrip(b, accessory);
+            return b.build();
+        }
         if (accessory.isLight()) {
             b.boxBetween(x0, y0, z0, x1, y1, z1, ACCESSORY_CHANNEL);
             for (int i = 0; i < accessory.ledCount; i++) {
-                double[] led = accessory.ledMm(i, accessory.widthMm);
+                double[] led = accessory.modelLedMm(i, accessory.widthMm);
                 b.box((float) led[0], (float) led[1] - 0.2F, (float) led[2], 2.4F, 0.4F, 2.4F, ACCESSORY_LED);
             }
             return b.build();
@@ -657,7 +707,7 @@ public final class FallbackShapes {
             b.boxBetween(x0, y1 - 9.0F, z0, x1, y1, z1, ACCESSORY_HEATSINK);
             b.boxBetween(-9.0F, y0 + 6.0F, z0, 9.0F, y1 - 6.0F, z0 + 6.0F, CAMERA);
         }
-        double[] lens = accessory.lensMm();
+        double[] lens = accessory.modelLensMm();
         float lensLength = (float) accessory.lensLengthMm;
         float lensDiameter = (float) Math.min(18.0, accessory.heightMm * 0.45);
         Matrix4f barrel = ShapeBuilder.at((float) lens[0], (float) lens[1], (float) lens[2] + lensLength * 0.5F)

@@ -51,6 +51,7 @@ public final class TrainingScreen extends Screen implements ThemedScreen {
     private static final int LESSON_ROW = 22;
     private static final int ICON = 16;
     private static final int NARROW_WIDTH = 520;
+    private static final int CONFIRM_TICKS = 80;
 
     private static @Nullable TrainingScreen active;
 
@@ -74,6 +75,8 @@ public final class TrainingScreen extends Screen implements ThemedScreen {
     private boolean narrow;
     private boolean lessonsStacked;
     private boolean starsInAction;
+    private int subTitleLimit;
+    private int confirmUnlock;
     private final ScrollArea chaptersArea = new ScrollArea();
     private final ScrollArea lessonsArea = new ScrollArea();
     private final ScrollArea detailArea = new ScrollArea();
@@ -178,7 +181,8 @@ public final class TrainingScreen extends Screen implements ThemedScreen {
         this.footer = ChromeLayout.footerHeight(ThemeDraw.footerLines(this.font, this.tip(), this.tipLimit));
         Component scenes = Component.translatable("propwash.guide.training.scenes");
         int scenesWidth = this.font.width(scenes) + 14;
-        boolean stacked = this.font.width(this.subTitle()) + 8 + Metrics.GAP + scenesWidth + Metrics.PADDING > w;
+        int unlockWidth = this.unlockWidth();
+        boolean stacked = this.font.width(this.subTitle()) + 8 + Metrics.GAP + unlockWidth + Metrics.GAP + scenesWidth + Metrics.PADDING > w;
         this.subHeader = stacked ? SUBHEADER + Metrics.CONTROL_HEIGHT : SUBHEADER;
         this.bodyTop = this.windowTop + HEADER + this.subHeader + Metrics.PADDING;
         this.bodyBottom = this.windowBottom - this.footer - Metrics.PADDING;
@@ -195,8 +199,12 @@ public final class TrainingScreen extends Screen implements ThemedScreen {
         this.addRenderableWidget(new FlatButton(this.windowRight - Metrics.PADDING - closeWidth, buttonY, closeWidth, Metrics.CONTROL_HEIGHT,
                 closeLabel, FlatButton.Style.NORMAL, this::onClose));
         int subY = this.windowTop + HEADER + this.subHeader - SUBHEADER + (SUBHEADER - Metrics.CONTROL_HEIGHT) / 2 + 1;
-        this.addRenderableWidget(new FlatButton(this.windowRight - Metrics.PADDING - scenesWidth, subY, scenesWidth, Metrics.CONTROL_HEIGHT,
+        int scenesX = this.windowRight - Metrics.PADDING - scenesWidth;
+        this.addRenderableWidget(new FlatButton(scenesX, subY, scenesWidth, Metrics.CONTROL_HEIGHT,
                 scenes, FlatButton.Style.NORMAL, () -> GuideOpener.openIndex(this.parent, ItemStack.EMPTY)));
+        int unlockX = scenesX - Metrics.GAP - unlockWidth;
+        this.addRenderableWidget(this.unlockButton(unlockX, subY, unlockWidth));
+        this.subTitleLimit = stacked ? w - 16 : unlockX - Metrics.GAP - (this.windowLeft + 8);
         int detailLeft = this.lessonsRight + Metrics.GAP;
         int detailRight = this.windowRight - Metrics.PADDING;
         boolean unlocked = Curriculum.unlocked(this.selected, TrainingStore.progress());
@@ -229,6 +237,62 @@ public final class TrainingScreen extends Screen implements ThemedScreen {
         }
         this.detailArea.view(detailLeft + 1, this.bodyTop + 1, detailRight - 1, this.actionTop);
         this.buildEntries();
+    }
+
+    private int unlockWidth() {
+        int widest = 0;
+        for (String key : List.of("propwash.guide.training.unlock_all", "propwash.guide.training.unlock_all.confirm",
+                "propwash.guide.training.keep_order")) {
+            widest = Math.max(widest, this.font.width(Component.translatable(key)));
+        }
+        return widest + 14;
+    }
+
+    private FlatButton unlockButton(int x, int y, int width) {
+        boolean unlocked = TrainingStore.allUnlocked();
+        boolean confirming = !unlocked && this.confirmUnlock > 0;
+        String key = unlocked ? "propwash.guide.training.keep_order"
+                : confirming ? "propwash.guide.training.unlock_all.confirm" : "propwash.guide.training.unlock_all";
+        FlatButton button = new FlatButton(x, y, width, Metrics.CONTROL_HEIGHT, Component.translatable(key),
+                confirming ? FlatButton.Style.DANGER : FlatButton.Style.NORMAL, this::toggleUnlock);
+        button.active = unlocked || !everyLessonOpen();
+        button.setTooltip(ThemeText.tip(Component.translatable(key + ".tooltip")));
+        return button;
+    }
+
+    private static boolean everyLessonOpen() {
+        TrainingProgress progress = TrainingStore.progress();
+        for (Lesson lesson : Curriculum.lessons()) {
+            if (!Curriculum.unlocked(lesson, progress)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void toggleUnlock() {
+        if (TrainingStore.allUnlocked()) {
+            this.confirmUnlock = 0;
+            TrainingStore.unlockAll(false);
+        } else if (this.confirmUnlock <= 0) {
+            this.confirmUnlock = CONFIRM_TICKS;
+        } else {
+            this.confirmUnlock = 0;
+            TrainingStore.unlockAll(true);
+        }
+        this.rebuildWidgets();
+    }
+
+    public boolean confirmingUnlock() {
+        return this.confirmUnlock > 0;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (this.confirmUnlock > 0 && --this.confirmUnlock == 0) {
+            this.rebuildWidgets();
+        }
     }
 
     private Component tip() {
@@ -455,7 +519,7 @@ public final class TrainingScreen extends Screen implements ThemedScreen {
         ThemeDraw.subHeaderBar(g, this.windowLeft, subTop, this.windowRight, this.subHeader);
         boolean stacked = this.subHeader > SUBHEADER;
         ThemeText.fitted(g, this.font, this.subTitle(), this.windowLeft + 8, stacked ? subTop + 4 : Metrics.textY(subTop, SUBHEADER),
-                stacked ? this.windowRight - this.windowLeft - 16 : this.windowRight - this.windowLeft - 120, Palette.TEXT_MUTED);
+                this.subTitleLimit, Palette.TEXT_MUTED);
         this.chapters(g, progress, mouseX, mouseY);
         this.lessons(g, progress, mouseX, mouseY);
         this.details(g, progress);

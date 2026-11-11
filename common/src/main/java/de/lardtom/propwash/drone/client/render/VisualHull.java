@@ -55,6 +55,7 @@ public final class VisualHull {
         b.part(assembly.battery(), null);
         b.part(assembly.video(), new Quaternionf().rotationX((float) Math.toRadians(assembly.cameraTiltDegrees())));
         b.part(assembly.transmitter(), null);
+        b.part(assembly.antenna(), null);
         for (AccessoryMount mount : AccessoryMount.values()) {
             DroneAssembly.Accessory accessory = assembly.accessory(mount);
             if (accessory.present()) {
@@ -304,14 +305,8 @@ public final class VisualHull {
             float mm = DroneVisualScale.MILLIMETRES_PER_MODEL_BLOCK;
             float limit = (float) MAX_PART_EXTENT_BLOCKS * mm;
             if (item == null || item.isEmpty()) {
-                Shape shape = !part.solid().isEmpty() ? part.solid() : part.translucent();
-                for (int v = 0; v < shape.vertexCount(); v++) {
-                    shape.position(v, this.scratch);
-                    float x = this.scratch.x * mm;
-                    float z = this.scratch.z * mm;
-                    float radius = square ? Math.max(Math.abs(x), Math.abs(z)) : (float) Math.sqrt(x * x + z * z);
-                    this.point(Math.min(radius, limit), Math.max(-limit, Math.min(limit, this.scratch.y * mm)), 0.0F);
-                }
+                this.shape(part.solid(), square, mm, limit);
+                this.shape(part.translucent(), square, mm, limit);
                 return;
             }
             item.visitExtents(vertex -> {
@@ -320,6 +315,16 @@ public final class VisualHull {
                 float radius = square ? Math.max(Math.abs(x), Math.abs(z)) : (float) Math.sqrt(x * x + z * z);
                 this.point(Math.min(radius, limit), Math.max(-limit, Math.min(limit, vertex.y() * mm)), 0.0F);
             });
+        }
+
+        private void shape(Shape shape, boolean square, float mm, float limit) {
+            for (int v = 0; v < shape.vertexCount(); v++) {
+                shape.position(v, this.scratch);
+                float x = this.scratch.x * mm;
+                float z = this.scratch.z * mm;
+                float radius = square ? Math.max(Math.abs(x), Math.abs(z)) : (float) Math.sqrt(x * x + z * z);
+                this.point(Math.min(radius, limit), Math.max(-limit, Math.min(limit, this.scratch.y * mm)), 0.0F);
+            }
         }
 
         void point(float x, float y, float z) {

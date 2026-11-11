@@ -62,7 +62,10 @@ class GhostRecorderTest {
         GhostTrack second = recorder.onLapComplete(1_500L * MS, 2_500L * MS, "", 0);
         assertNotNull(first);
         assertNotNull(second);
-        assertEquals(10.0, second.x(0), 1.0E-9);
+        assertEquals(0L, first.leadNanos());
+        assertEquals(GhostRecorder.LEAD_NANOS, second.leadNanos());
+        assertEquals(0.0, second.x(0), 1.0E-9);
+        assertEquals(10.0, second.x(second.leadSamples()), 1.0E-9);
         assertEquals(25.0, second.x(second.samples() - 1), 1.0E-9);
     }
 

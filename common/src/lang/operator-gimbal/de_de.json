@@ -1,0 +1,9 @@
+{
+  "propwash.drone.operator.bound": "Du steuerst die Kamera von %s",
+  "propwash.drone.operator.ended": "Kamera-Steuerung von %s beendet",
+  "propwash.drone.operator.leave_hint": "Esc gibt die Kamera zurück",
+  "propwash.drone.operator.photo_saved": "Foto gespeichert: %s",
+  "propwash.drone.operator.photo_title": "Foto gespeichert",
+  "propwash.drone.operator.pilot": "%s steuert deine Kamera",
+  "propwash.drone.operator.pilot_ended": "%s steuert deine Kamera nicht mehr"
+}

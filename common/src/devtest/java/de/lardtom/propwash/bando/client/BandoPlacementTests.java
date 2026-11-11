@@ -5,6 +5,7 @@ import de.lardtom.propwash.bando.BandoModule;
 import de.lardtom.propwash.bando.BandoPiece;
 import de.lardtom.propwash.bando.plan.BandoFamily;
 import de.lardtom.propwash.bando.plan.BandoPlan;
+import de.lardtom.propwash.bando.plan.BandoSite;
 import de.lardtom.propwash.bando.plan.BandoTransform;
 import de.lardtom.propwash.bando.plan.BandoVariant;
 import de.lardtom.propwash.bando.plan.Mat;
@@ -51,6 +52,7 @@ final class BandoPlacementTests {
     private static final int FLAT = 3;
     private static final List<Site> SITES = new CopyOnWriteArrayList<>();
     private static final List<Site> SHOTS = new CopyOnWriteArrayList<>();
+    static final List<Site> FLAGGED = new CopyOnWriteArrayList<>();
 
     record Site(BandoFamily family, BandoVariant variant, ChunkPos chunk, int spread, String terrain) {
         Site as(String label) {
@@ -75,6 +77,7 @@ final class BandoPlacementTests {
         if (Screenshots.enabled()) {
             SelfTest.afterLeaveStep("bando: Lage – Luftbilder jeder Variante auf flachem und steilem Gelände", 20 * 60 * 12, new ShotTour()::tick);
         }
+        BandoFindingShots.register();
     }
 
     private static StepResult searchStep(SelfTest.StepContext ctx) {
@@ -137,6 +140,7 @@ final class BandoPlacementTests {
         }
         SITES.clear();
         SHOTS.clear();
+        FLAGGED.clear();
         List<String> missing = new ArrayList<>();
         StringBuilder log = new StringBuilder("ok ").append(cells).append(" Zellen bis Ring ").append(ring - 1).append(';');
         for (BandoVariant variant : BandoVariant.values()) {
@@ -357,6 +361,7 @@ final class BandoPlacementTests {
                     }
                 }
             }
+            int before = this.problems.size();
             boolean land = site.family().terrain() != BandoFamily.Terrain.SHORE;
             BandoGroundCheck.Report report = BandoGroundCheck.check(level, piece, land);
             BandoTransform t = piece.transform();
@@ -382,6 +387,17 @@ final class BandoPlacementTests {
             }
             if (land && report.median() < 0) {
                 this.problems.add(site.label() + ": Bando sitzt auf dem Gelände (Gelände am Rand im Median " + report.median() + " unter dem Boden)");
+            }
+            BandoLeafCheck.Result leaves = BandoLeafCheck.check(level, piece);
+            this.log.append(' ').append(site.label()).append(": ").append(leaves.leaves()).append(" Blätter im Bereich plus ")
+                    .append(BandoSite.LEAF_MARGIN).append(" Blöcke Rand, ").append(leaves.orphans()).append(" ohne Stamm, ").append(leaves.decaying())
+                    .append(" zerfallende ohne Stamm;");
+            if (leaves.orphans() > 0) {
+                this.problems.add(site.label() + ": " + leaves.orphans() + " Blätter ohne Stamm (Abstand 7), die nicht zerfallen, im Bereich plus "
+                        + BandoSite.LEAF_MARGIN + " Blöcke Rand " + leaves.orphansAt());
+            }
+            if (this.problems.size() > before) {
+                FLAGGED.add(site);
             }
         }
     }

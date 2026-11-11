@@ -60,6 +60,7 @@ public final class PartsRenderSelfTests {
         SelfTest.clientStep("drone-render: Props im FPV-Bild (Geometrie und Schalter)", 1, ctx -> fpvGeometryStep());
         FpvCoverageSelfTests.register();
         FpvGuardSelfTests.register();
+        FpvArmSelfTests.register();
         PartsRenderShowcase.register();
     }
 
@@ -210,7 +211,7 @@ public final class PartsRenderSelfTests {
         if (exampleXClass == null) {
             return StepResult.fail("X-Class des Beispiel-Addons nicht baubar");
         }
-        DroneItemRenderer.Fitted fitted = DroneItemRenderer.fitted(new DroneItemRenderer.Look(exampleXClass, PartWear.PRISTINE, DronePaint.DEFAULT,
+        DroneItemRenderer.Fitted fitted = DroneItemRenderer.iconFitted(new DroneItemRenderer.Look(exampleXClass, PartWear.PRISTINE, DronePaint.DEFAULT,
                 true));
         if (!(fitted.scale() < DroneItemRenderer.ICON_SHAPES_BELOW)) {
             return StepResult.fail("X-Class wird im Slot nicht verkleinert: " + fitted.scale());
@@ -223,7 +224,7 @@ public final class PartsRenderSelfTests {
                 res.layout(exampleXClass.frame()).counterClockwise(0))) {
             return StepResult.fail("verkleinerte X-Class zeichnet im Slot nicht die breiteren Prop-Blätter");
         }
-        DroneItemRenderer.Fitted freestyle = DroneItemRenderer.fitted(new DroneItemRenderer.Look(DroneBuild.FREESTYLE, PartWear.PRISTINE,
+        DroneItemRenderer.Fitted freestyle = DroneItemRenderer.iconFitted(new DroneItemRenderer.Look(DroneBuild.FREESTYLE, PartWear.PRISTINE,
                 DronePaint.DEFAULT, true));
         if (freestyle.state().frame.solid == FallbackShapes.frameIcon(DroneBuild.FREESTYLE.frame(), res.layout(DroneBuild.FREESTYLE.frame()))) {
             return StepResult.fail("Freestyle-Item benutzt die Symbolform statt des Modells");

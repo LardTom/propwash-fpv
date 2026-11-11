@@ -74,6 +74,7 @@ public final class SpectateSession {
     private SpectateS2C.@Nullable Result lastResult;
     private int pendingStopAcks;
     private int sessions;
+    private boolean operator;
 
     private SpectateSession() {
     }
@@ -88,6 +89,25 @@ public final class SpectateSession {
 
     public boolean watching() {
         return this.phase == Phase.WATCHING && this.watched != null;
+    }
+
+    public boolean operator() {
+        return this.operator && this.phase != Phase.IDLE;
+    }
+
+    public void operate(Minecraft minecraft, UUID drone, int entityId) {
+        if (this.active() && !(this.operator && drone.equals(this.target))) {
+            this.stop(minecraft, true);
+        }
+        if (this.operator && drone.equals(this.target)) {
+            return;
+        }
+        this.target = drone;
+        this.targetEntityId = entityId;
+        this.phase = Phase.CONNECTING;
+        this.phaseTicks = 0;
+        this.lastResult = null;
+        this.operator = true;
     }
 
     public @Nullable QuadcopterEntity drone() {
@@ -212,6 +232,7 @@ public final class SpectateSession {
             toast(minecraft, Component.translatable("propwash.video.spectate.no_server"), null, Palette.WARNING);
             return false;
         }
+        this.operator = false;
         this.target = entry.drone();
         this.targetEntityId = entry.entityId();
         this.phase = Phase.REQUESTED;
@@ -292,6 +313,10 @@ public final class SpectateSession {
         if (this.phase == Phase.IDLE && this.watched == null) {
             return;
         }
+        if (this.operator) {
+            this.operator = false;
+            notifyServer = false;
+        }
         if (notifyServer && ClientBus.inSession() && ClientNet.sendToServer(SpectateC2S.STOP)) {
             this.pendingStopAcks++;
         }
@@ -325,6 +350,9 @@ public final class SpectateSession {
     void onResult(Minecraft minecraft, SpectateS2C result) {
         if (result.result() == SpectateS2C.Result.STOPPED && this.pendingStopAcks > 0) {
             this.pendingStopAcks--;
+            return;
+        }
+        if (this.operator) {
             return;
         }
         this.lastResult = result.result();
@@ -506,6 +534,7 @@ public final class SpectateSession {
     }
 
     private void reset() {
+        this.operator = false;
         this.watched = null;
         this.phase = Phase.IDLE;
         this.target = null;

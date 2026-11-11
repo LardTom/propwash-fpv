@@ -5,11 +5,114 @@
   },
   "elements": [
     {
-      "name": "foot_z",
+      "name": "foot_north",
       "from": [
         6.5,
         0.0,
         4.0
+      ],
+      "to": [
+        9.5,
+        1.0,
+        6.5
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0.0,
+            4.0,
+            1.5,
+            5.25
+          ],
+          "texture": "#frame"
+        },
+        "north": {
+          "uv": [
+            2.0,
+            4.0,
+            3.5,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            4.0,
+            4.0,
+            5.25,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "west": {
+          "uv": [
+            4.0,
+            4.0,
+            5.25,
+            4.5
+          ],
+          "texture": "#frame"
+        }
+      }
+    },
+    {
+      "name": "foot_east",
+      "from": [
+        9.5,
+        0.0,
+        6.5
+      ],
+      "to": [
+        12.0,
+        1.0,
+        9.5
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0.0,
+            4.0,
+            1.5,
+            5.25
+          ],
+          "texture": "#frame",
+          "rotation": 90
+        },
+        "east": {
+          "uv": [
+            2.0,
+            4.0,
+            3.5,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "south": {
+          "uv": [
+            4.0,
+            4.0,
+            5.25,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "north": {
+          "uv": [
+            4.0,
+            4.0,
+            5.25,
+            4.5
+          ],
+          "texture": "#frame"
+        }
+      }
+    },
+    {
+      "name": "foot_south",
+      "from": [
+        6.5,
+        0.0,
+        9.5
       ],
       "to": [
         9.5,
@@ -22,18 +125,10 @@
             0.0,
             4.0,
             1.5,
-            8.0
+            5.25
           ],
-          "texture": "#frame"
-        },
-        "north": {
-          "uv": [
-            2.0,
-            4.0,
-            3.5,
-            4.5
-          ],
-          "texture": "#frame"
+          "texture": "#frame",
+          "rotation": 180
         },
         "south": {
           "uv": [
@@ -44,20 +139,20 @@
           ],
           "texture": "#frame"
         },
-        "east": {
-          "uv": [
-            4.0,
-            4.0,
-            8.0,
-            4.5
-          ],
-          "texture": "#frame"
-        },
         "west": {
           "uv": [
             4.0,
             4.0,
-            8.0,
+            5.25,
+            4.5
+          ],
+          "texture": "#frame"
+        },
+        "east": {
+          "uv": [
+            4.0,
+            4.0,
+            5.25,
             4.5
           ],
           "texture": "#frame"
@@ -65,15 +160,15 @@
       }
     },
     {
-      "name": "foot_x",
+      "name": "foot_west",
       "from": [
         4.0,
         0.0,
         6.5
       ],
       "to": [
-        12.0,
-        0.75,
+        6.5,
+        1.0,
         9.5
       ],
       "faces": {
@@ -82,16 +177,25 @@
             0.0,
             4.0,
             1.5,
-            8.0
+            5.25
           ],
           "texture": "#frame",
-          "rotation": 90
+          "rotation": 270
+        },
+        "west": {
+          "uv": [
+            2.0,
+            4.0,
+            3.5,
+            4.5
+          ],
+          "texture": "#frame"
         },
         "north": {
           "uv": [
             4.0,
             4.0,
-            8.0,
+            5.25,
             4.5
           ],
           "texture": "#frame"
@@ -100,25 +204,7 @@
           "uv": [
             4.0,
             4.0,
-            8.0,
-            4.5
-          ],
-          "texture": "#frame"
-        },
-        "east": {
-          "uv": [
-            2.0,
-            4.0,
-            3.5,
-            4.5
-          ],
-          "texture": "#frame"
-        },
-        "west": {
-          "uv": [
-            2.0,
-            4.0,
-            3.5,
+            5.25,
             4.5
           ],
           "texture": "#frame"

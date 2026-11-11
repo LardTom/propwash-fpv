@@ -50,10 +50,11 @@ class GateStackingTest {
                     assertEquals(base.z(), top.z(), EPS);
                     assertEquals(base.y() + lower.height() - lower.frame(), top.y(), EPS);
                     assertEquals(yaw, top.yawDegrees(), 1.0E-4F);
-                    assertTrue(GateStacking.restsOn(top, base));
+                    boolean fits = upper.width() <= lower.width();
+                    assertEquals(fits, GateStacking.restsOn(top, base), lower + " unter " + upper);
+                    assertTrue(GateStacking.seatedOn(top, base));
                     assertFalse(GateStacking.restsOn(base, top));
                     assertFalse(overlaps(base, GateStacking.Base.LEGS, top, GateStacking.Base.STACKED), lower + " unter " + upper);
-                    boolean fits = upper.width() <= lower.width();
                     assertEquals(fits, GateStacking.check(base, 1, upper) == GateStacking.Refusal.NONE, lower + " unter " + upper);
                     if (fits) {
                         double baseLeft = base.x() - base.halfExtentX();

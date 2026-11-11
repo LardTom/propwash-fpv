@@ -36,6 +36,7 @@ public final class VideoClient {
         ClientRegistrar.renderPipeline(HeadlightPass.PIPELINE);
         ClientRegistrar.renderPipeline(HeadlightOverlay.BOOST_PIPELINE);
         ClientRegistrar.renderPipeline(HeadlightOverlay.LIFT_PIPELINE);
+        ClientRegistrar.renderPipeline(VideoPass.SIMPLE_PIPELINE);
         ClientRegistrar.hudLayer(Constants.id("video_feed"), VideoOverlay::extract, HudVisibility.ALWAYS);
         ClientRegistrar.hudLayer(RecordingHud.ID, RecordingHud::extract);
         ClientRegistrar.hudLayer(SpectateHud.ID, SpectateHud::extract);
@@ -67,5 +68,6 @@ public final class VideoClient {
         ConfigTabs.register(VideoConfigTab::new);
         ConfigTabs.register(ActionCamTab::new);
         ConfigTabs.register(ChannelTab::new);
+        PilotFeedClient.init();
     }
 }

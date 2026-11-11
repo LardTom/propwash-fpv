@@ -18,6 +18,7 @@ import de.lardtom.propwash.sim.SimSnapshot;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
+import de.lardtom.propwash.ui.client.config.StepSlider;
 import de.lardtom.propwash.video.record.EncoderChoice;
 import de.lardtom.propwash.video.record.PipelineStats;
 import de.lardtom.propwash.video.record.RecordingDiagnosis;
@@ -25,6 +26,7 @@ import de.lardtom.propwash.video.record.RecordingFormat;
 import de.lardtom.propwash.video.record.external.HardwareEncoders;
 import de.lardtom.propwash.video.record.mp4.Mp4Info;
 import de.lardtom.propwash.video.record.mp4.Mp4Reader;
+import de.lardtom.propwash.video.record.path.Simplification;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -68,10 +70,10 @@ public final class RecordingPerfSelfTests {
     private static final String SINCE = "since";
     private static final String WRONG_TIP = "wrongTip";
     private static final String SHOT = "shot";
+    private static final String DEFAULTS = "defaults";
     private static final String ENCODER_LINE = "encoderLine";
     private static final String ENCODER_SHOWN = "encoderShown";
     private static final double MAX_RENDER_THREAD_MS = 2.0;
-    private static final double MAX_RENDER_THREAD_STALL_MS = 25.0;
     private static volatile @Nullable RecordingConfig savedConfig;
     private static final SimSnapshot SNAPSHOT = new SimSnapshot();
 
@@ -284,10 +286,14 @@ public final class RecordingPerfSelfTests {
                     return StepResult.fail(String.format(Locale.ROOT, "Renderthread %.3f ms je Bild (Grenze %.1f ms)", snapshot.renderThreadMs(),
                             MAX_RENDER_THREAD_MS));
                 }
-                double worst = Math.max(snapshot.captureNanosMax(), snapshot.readbackNanosMax()) / 1.0E6;
-                if (worst > MAX_RENDER_THREAD_STALL_MS) {
-                    return StepResult.fail(String.format(Locale.ROOT, "Renderthread hängt: schlimmstes Bild %.1f ms (Auftrag max %.2f, Auslesen max %.2f; Grenze %.0f ms)",
-                            worst, snapshot.captureNanosMax() / 1.0E6, snapshot.readbackNanosMax() / 1.0E6, MAX_RENDER_THREAD_STALL_MS));
+                RecordingStallCheck.Result stall = RecordingStallCheck.check(snapshot);
+                String memory = RecordingStallCheck.memory(snapshot);
+                ctx.log(format.label() + " Renderthread-Spitzen: " + stall.detail() + " | Speicher: " + memory);
+                if (stall.outliers() != null) {
+                    ctx.log(stall.outliers() + " | Speicher: " + memory);
+                }
+                if (stall.failure() != null) {
+                    return StepResult.fail(stall.failure());
                 }
                 if ((run == Run.HARDWARE) == (info.profile() == 66)) {
                     return StepResult.fail("Profil " + info.profile() + " passt nicht zum Encoder (" + run + ")");
@@ -454,6 +460,13 @@ public final class RecordingPerfSelfTests {
 
     private static StepResult tabStep(SelfTest.StepContext ctx) {
         Minecraft minecraft = Minecraft.getInstance();
+        if (!ctx.state().containsKey(DEFAULTS)) {
+            ctx.state().put(DEFAULTS, Boolean.TRUE);
+            if (savedConfig == null) {
+                savedConfig = RecordingConfig.get().copy();
+            }
+            RecordingConfig.CONFIG.set(new RecordingConfig());
+        }
         if (!(minecraft.gui.screen() instanceof ConfiguratorScreen screen)) {
             if (ctx.tick() > 200) {
                 return StepResult.fail("Konfigurator öffnet nicht");
@@ -485,6 +498,12 @@ public final class RecordingPerfSelfTests {
             return StepResult.fail("Abschnitt „ffmpeg“ ohne Status: " + ffmpeg);
         }
         if (!ctx.state().containsKey(SEEN)) {
+            StepSlider simplify = FlashbackBudgetSelfTests.simplifySlider(minecraft);
+            if (simplify != null && simplify.current() != Math.round(Simplification.DEFAULT_SLIDER * 100.0)) {
+                screen.discardAndClose();
+                return StepResult.fail("Tab Action-Cam nicht mit Standardwerten: Vereinfachung " + simplify.current() + " statt "
+                        + Math.round(Simplification.DEFAULT_SLIDER * 100.0));
+            }
             ctx.state().put(SEEN, ctx.tick());
             ctx.log("Status im Tab: " + lines + " | ffmpeg: " + ffmpeg);
             Screenshots.parkMouse(minecraft);

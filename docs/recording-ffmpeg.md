@@ -13,7 +13,8 @@ Mac, NVENC bei NVIDIA, Quick Sync bei Intel, AMF bei AMD, VA-API unter Linux). D
 1080p60 oder 1440p60 gehen ohne Rückstand. ffmpeg ist kostenlos, gehört nicht zu Propwash und wird nicht mitgeliefert.
 
 Du musst nichts einstellen: Mit Encoder *Automatisch* (Standard) nutzt Propwash ffmpeg, sobald es gefunden wird, und
-sonst den eigenen Encoder.
+sonst den eigenen Encoder. Nur **Als Video aufnehmen** im Replay der Bestenliste braucht ein gefundenes ffmpeg, sonst
+ist der Knopf aus.
 
 ## Installieren
 
@@ -100,7 +101,7 @@ on AMD, VA-API on Linux). The game runs smoother and 1080p60 or 1440p60 record w
 is not part of Propwash and is not included.
 
 There is nothing to set up: with the encoder on *Automatic* (the default) Propwash uses ffmpeg as soon as it finds it,
-and its own encoder otherwise.
+and its own encoder otherwise. Only **Record as video** in the leaderboard replay needs ffmpeg to be found; without it the button is off.
 
 ## Install it
 

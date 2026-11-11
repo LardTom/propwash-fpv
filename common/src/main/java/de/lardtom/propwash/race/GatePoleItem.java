@@ -59,7 +59,7 @@ public class GatePoleItem extends CourseElementItem {
         if (player instanceof ServerPlayer serverPlayer) {
             CourseRegistry.Course course = foreignCourse(serverPlayer, target);
             if (course != null) {
-                serverPlayer.sendOverlayMessage(Component.translatable("propwash.race.tool.not_owner", course.id, CourseRegistry.ownerName(course))
+                serverPlayer.sendOverlayMessage(CourseRegistry.notOwner(course)
                         .withStyle(ChatFormatting.RED));
                 return InteractionResult.FAIL;
             }
@@ -67,7 +67,7 @@ public class GatePoleItem extends CourseElementItem {
         GatePoleLinks.Target found = GatePoleLinks.target(target, target.getX() + location.x, target.getZ() + location.z);
         if (found == null) {
             if (server) {
-                player.sendOverlayMessage(Component.translatable("propwash.race.pole.no_seat"));
+                player.sendOverlayMessage(Component.translatable("propwash.race.stack.pole_no_seat"));
             }
             return InteractionResult.FAIL;
         }

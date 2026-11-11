@@ -64,7 +64,7 @@ public final class RepairScene {
         ScenePos craftTop = new ScenePos(CRAFT_X + 0.5F, 2.0F, CRAFT_Z + 0.5F);
         ScenePos merged = craftTop.add(0.0F, 0.45F, 0.0F);
         float crashYaw = SceneKit.heading(HOVER, IMPACT);
-        float wreckYaw = crashYaw + 35.0F;
+        float wreckYaw = 180.0F;
         return SceneBuilder.scene(ID)
                 .icon(PROPS)
                 .items(SceneKit.parts(PropType.values()))
@@ -81,13 +81,13 @@ public final class RepairScene {
                     s.at(18.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true), HOVER, crashYaw, Cue.Appear.POP, 8.0F);
                     s.at(18.0F).arm(DRONE, true);
                     s.at(18.0F).throttle(DRONE, 0.6F, 6.0F);
-                    s.at(26.0F).turn(DRONE, crashYaw, -22.0F, 0.0F, 8.0F);
+                    s.at(26.0F).turn(DRONE, crashYaw, 22.0F, 0.0F, 8.0F);
                     s.at(28.0F).move(DRONE, 22.0F, Ease.IN, IMPACT);
                     s.at(CRASH_AT).propConditions(DRONE, AFTER_CRASH);
                     s.at(CRASH_AT).arm(DRONE, false);
                     s.at(CRASH_AT).throttle(DRONE, 0.0F, 0.0F);
                     s.at(CRASH_AT).move(DRONE, 20.0F, Ease.IN, IMPACT.add(-0.3F, -0.2F, 0.2F), WRECK);
-                    s.at(CRASH_AT).turn(DRONE, wreckYaw, 20.0F, 35.0F, 16.0F);
+                    s.at(CRASH_AT).turn(DRONE, wreckYaw, -20.0F, -35.0F, 16.0F);
                     s.at(68.0F).turn(DRONE, wreckYaw, 0.0F, 0.0F, 8.0F);
                     s.at(54.0F).highlight(IMPACT.add(-0.1F, -0.3F, -0.3F), IMPACT.add(0.22F, 0.3F, 0.3F), 14.0F);
                     s.at(60.0F).callout("crash", onDrone, Cue.Side.RIGHT, 0.0F);

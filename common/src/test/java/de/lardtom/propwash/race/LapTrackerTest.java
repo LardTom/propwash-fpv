@@ -52,6 +52,13 @@ class LapTrackerTest {
             }
         }
 
+        void climb(double ty) {
+            this.now += 50 * MS;
+            this.y = ty;
+            this.tracker.update(this.now, this.x, this.y, this.z);
+            this.events.addAll(this.tracker.drainEvents());
+        }
+
         void hover(long nanos) {
             long end = this.now + nanos;
             while (this.now < end) {
@@ -316,5 +323,101 @@ class LapTrackerTest {
         flight.lap(10.0);
         assertEquals(2, flight.of(LapTracker.EventType.LAP).size());
         assertEquals(8_000L * MS, tracker.lastLapNanos(), TOLERANCE);
+    }
+
+    private static final double LOW = 64.0 + GateSize.MEDIUM.frame() * 0.5;
+
+    private static final class CountingOpenings implements GateOpenings {
+        final int legsGate;
+        int asked;
+
+        CountingOpenings(int legsGate) {
+            this.legsGate = legsGate;
+        }
+
+        @Override
+        public boolean legs(int gateIndex) {
+            this.asked++;
+            return gateIndex == this.legsGate;
+        }
+    }
+
+    private static Flight lowLap(LapTracker tracker) {
+        Flight flight = new Flight(tracker);
+        flight.to(0.0, -1.0, 10.0);
+        flight.climb(LOW);
+        flight.to(0.0, 5.0, 10.0);
+        flight.climb(Y);
+        flight.to(0.0, 25.0, 10.0);
+        flight.to(10.0, 25.0, 10.0);
+        flight.to(10.0, -5.0, 10.0);
+        flight.to(0.0, -5.0, 10.0);
+        flight.climb(LOW);
+        flight.to(0.0, 1.0, 10.0);
+        return flight;
+    }
+
+    @Test
+    void bottomStripCountsOnlyWhenTheGateStandsOnLegs() {
+        LapTracker plain = tracker(0);
+        assertEquals(GateOpenings.NONE, plain.openings());
+        Flight without = lowLap(plain);
+        assertTrue(without.of(LapTracker.EventType.START).isEmpty(), "ohne Anbieter zählt der untere Streifen nicht");
+        assertTrue(without.of(LapTracker.EventType.LAP).isEmpty());
+
+        LapTracker bar = tracker(0);
+        CountingOpenings none = new CountingOpenings(-1);
+        bar.setOpenings(none);
+        Flight barred = lowLap(bar);
+        assertTrue(barred.of(LapTracker.EventType.START).isEmpty(), "Gate mit Balken zählt unten nicht");
+        assertEquals(2, none.asked);
+
+        LapTracker legs = tracker(0);
+        CountingOpenings openings = new CountingOpenings(0);
+        legs.setOpenings(openings);
+        Flight counted = lowLap(legs);
+        assertEquals(1, counted.of(LapTracker.EventType.START).size());
+        assertEquals(List.of(1, 2), counted.of(LapTracker.EventType.GATE).stream().map(LapTracker.Event::gate).toList());
+        assertEquals(1, counted.of(LapTracker.EventType.LAP).size());
+        assertTrue(counted.of(LapTracker.EventType.MISSED).isEmpty());
+        assertEquals(2, openings.asked, "nur die beiden Durchflüge unten fragen den Anbieter");
+    }
+
+    @Test
+    void openingsAreNotAskedAboveTheFrame() {
+        LapTracker tracker = tracker(0);
+        CountingOpenings openings = new CountingOpenings(0);
+        tracker.setOpenings(openings);
+        Flight flight = new Flight(tracker);
+        flight.lap(10.0);
+        flight.lap(10.0);
+        flight.lap(10.0);
+        assertEquals(2, flight.of(LapTracker.EventType.LAP).size());
+        assertEquals(0, openings.asked);
+        flight.climb(LOW - 1.0);
+        flight.to(0.0, 5.0, 10.0);
+        assertEquals(0, openings.asked, "unter dem Gate kein Durchflug");
+        tracker.setOpenings(null);
+        assertEquals(GateOpenings.NONE, tracker.openings());
+    }
+
+    @Test
+    void wrongWayThroughTheBottomStripNeedsLegs() {
+        for (boolean legs : new boolean[]{false, true}) {
+            LapTracker tracker = tracker(0);
+            CountingOpenings openings = new CountingOpenings(legs ? 1 : -1);
+            tracker.setOpenings(openings);
+            Flight flight = new Flight(tracker);
+            flight.to(0.0, 5.0, 10.0);
+            assertTrue(tracker.racing());
+            flight.to(10.0, 5.0, 10.0);
+            flight.to(10.0, 11.0, 10.0);
+            flight.to(0.0, 11.0, 10.0);
+            flight.climb(LOW);
+            flight.to(0.0, 9.0, 10.0);
+            assertEquals(legs ? 1 : 0, flight.of(LapTracker.EventType.WRONG_WAY).size(), "rückwärts unten, Beine " + legs);
+            assertEquals(1, openings.asked);
+            assertEquals(1, tracker.nextGate());
+        }
     }
 }

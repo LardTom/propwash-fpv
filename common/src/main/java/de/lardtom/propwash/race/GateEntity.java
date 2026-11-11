@@ -19,12 +19,14 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -67,6 +69,10 @@ public class GateEntity extends Entity implements ExtraCollider {
             SynchedEntityData.defineId(GateEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> DATA_SIGNAL =
             SynchedEntityData.defineId(GateEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_SCORE =
+            SynchedEntityData.defineId(GateEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> DATA_PASSES =
+            SynchedEntityData.defineId(GateEntity.class, EntityDataSerializers.STRING);
     private static final int STANDARD_OPENING = 0;
     private static final int VARIANT_SHIFT = 4;
     private static final int KIND_MASK = 0x0F;
@@ -81,16 +87,27 @@ public class GateEntity extends Entity implements ExtraCollider {
     private float cacheYaw;
     private int cacheMount = -1;
     private int cacheKind = -1;
+    private int cacheJoints = -1;
+    private int joints;
+    private boolean linked;
+    private String passesText = "";
+    private int passesFirst = NO_INDEX;
+    private List<CourseOrder.Pass> passesCache = List.of();
     private @Nullable GateSize cacheSize;
     private GateStacking.@Nullable Base cacheBase;
     private @Nullable WorldCourseMarker worldCourse;
     private boolean covered;
     private boolean supported;
+    private boolean crossed;
     private boolean carrying;
     private String regionText = "";
     private @Nullable FreeformRegion regionCache;
     private int pulseLeft;
     private @Nullable GateSignalTarget emitting;
+    private boolean fromSave;
+    private double syncedX = Double.NaN;
+    private double syncedY = Double.NaN;
+    private double syncedZ = Double.NaN;
 
     public GateEntity(EntityType<? extends GateEntity> type, Level level) {
         super(type, level);
@@ -108,10 +125,20 @@ public class GateEntity extends Entity implements ExtraCollider {
         builder.define(DATA_KIND, (byte) 0);
         builder.define(DATA_REGION, "");
         builder.define(DATA_SIGNAL, GateSignal.DEFAULT.pack());
+        builder.define(DATA_SCORE, ScoreArea.DEFAULT.pack());
+        builder.define(DATA_PASSES, "");
     }
 
     public GateSignal signal() {
         return GateSignal.unpack(this.entityData.get(DATA_SIGNAL));
+    }
+
+    public ScoreArea score() {
+        return ScoreArea.unpack(this.entityData.get(DATA_SCORE)).normalized(this.kind());
+    }
+
+    public void setScore(ScoreArea score) {
+        this.entityData.set(DATA_SCORE, (score == null ? ScoreArea.DEFAULT : score).normalized(this.kind()).pack());
     }
 
     public void setSignal(GateSignal signal) {
@@ -376,6 +403,11 @@ public class GateEntity extends Entity implements ExtraCollider {
         FreeformRegion region = geometry.region();
         if (region != null) {
             this.setFreeform(region, geometry.variant());
+            this.entityData.set(DATA_SCORE, geometry.score().pack());
+            if (region.horizontal()) {
+                super.setYRot(GateGeometry.snapYaw(geometry.yawDegrees()));
+                this.yRotO = this.getYRot();
+            }
             this.setPos(geometry.x(), geometry.y(), geometry.z());
             this.setBoundingBox(this.makeBoundingBox());
             this.needsSync = true;
@@ -383,6 +415,7 @@ public class GateEntity extends Entity implements ExtraCollider {
         }
         this.entityData.set(DATA_KIND, (byte) (geometry.kind().ordinal() | (geometry.variant() << VARIANT_SHIFT)));
         this.entityData.set(DATA_MOUNT, (byte) GateMount.pack(geometry.mount(), geometry.flipped()));
+        this.entityData.set(DATA_SCORE, geometry.score().pack());
         GateTilt tilt = geometry.tilt();
         this.entityData.set(DATA_TILT, new Vector3f(tilt.yaw(), tilt.pitch(), tilt.roll()));
         this.setOuter(geometry.width(), geometry.height());
@@ -422,6 +455,86 @@ public class GateEntity extends Entity implements ExtraCollider {
     public void setCourse(int courseId, int index) {
         this.setCourseId(courseId);
         this.setGateIndex(courseId == NO_COURSE ? NO_INDEX : index);
+        this.entityData.set(DATA_PASSES, "");
+    }
+
+    public void setPasses(int courseId, List<CourseOrder.Pass> passes) {
+        if (courseId == NO_COURSE || passes.isEmpty()) {
+            this.setCourse(NO_COURSE, NO_INDEX);
+            return;
+        }
+        int first = passes.getFirst().index();
+        for (CourseOrder.Pass pass : passes) {
+            first = Math.min(first, pass.index());
+        }
+        this.setCourseId(courseId);
+        this.setGateIndex(first);
+        this.entityData.set(DATA_PASSES, CourseOrder.encode(passes));
+    }
+
+    public List<CourseOrder.Pass> passes() {
+        if (!this.inCourse()) {
+            return List.of();
+        }
+        String text = this.entityData.get(DATA_PASSES);
+        int first = this.gateIndex();
+        if (!text.equals(this.passesText) || first != this.passesFirst) {
+            this.passesText = text;
+            this.passesFirst = first;
+            this.passesCache = CourseOrder.decode(text, first);
+        }
+        return this.passesCache;
+    }
+
+    public boolean hasPass(int index) {
+        if (index < 0 || !this.inCourse()) {
+            return false;
+        }
+        for (CourseOrder.Pass pass : this.passes()) {
+            if (pass.index() == index) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean passReversed(int index) {
+        for (CourseOrder.Pass pass : this.passes()) {
+            if (pass.index() == index) {
+                return pass.reverse();
+            }
+        }
+        return false;
+    }
+
+    public boolean flownForward() {
+        List<CourseOrder.Pass> passes = this.passes();
+        if (passes.isEmpty()) {
+            return true;
+        }
+        for (CourseOrder.Pass pass : passes) {
+            if (!pass.reverse()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean flownReversed() {
+        for (CourseOrder.Pass pass : this.passes()) {
+            if (pass.reverse()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean repeated() {
+        return !CourseOrder.plain(this.passes()) && this.inCourse();
+    }
+
+    public String passText() {
+        return CourseOrder.label(this.passes());
     }
 
     public @Nullable WorldCourseMarker worldCourse() {
@@ -445,7 +558,19 @@ public class GateEntity extends Entity implements ExtraCollider {
     }
 
     public GateGeometry geometry() {
-        return this.geometryAt(this.getX(), this.getY(), this.getZ());
+        GateGeometry geometry = this.geometryAt(this.getX(), this.getY(), this.getZ());
+        if (this.kind() != CourseElement.GATE) {
+            return geometry;
+        }
+        return (this.base() == GateStacking.Base.LEGS ? geometry.withLegs(true) : geometry).withJoints(this.joints);
+    }
+
+    public int joints() {
+        return this.joints;
+    }
+
+    public boolean linked() {
+        return this.linked;
     }
 
     @Override
@@ -459,10 +584,12 @@ public class GateEntity extends Entity implements ExtraCollider {
         CourseElement kind = this.kind();
         if (kind == CourseElement.FREEFORM) {
             FreeformRegion region = this.region();
-            return GateGeometry.freeform(x, y, z, region == null ? FreeformRegion.single(FreeformRegion.AXIS_Z) : region, this.variant());
+            return GateGeometry.freeform(x, y, z, region == null ? FreeformRegion.single(FreeformRegion.AXIS_Z) : region, this.variant(),
+                    this.score(), region != null && region.horizontal() ? this.facingYaw() : 0.0F);
         }
         if (!kind.gate()) {
-            return GateGeometry.element(x, y, z, this.facingYaw(), kind, this.variant(), this.width(), this.height(), tilt, this.mount());
+            return GateGeometry.element(x, y, z, this.facingYaw(), kind, this.variant(), this.width(), this.height(), tilt, this.mount(),
+                    this.score());
         }
         if (tilt.none() && !this.customOpening()) {
             return GateGeometry.of(x, y, z, this.facingYaw(), this.size(), this.mount(), this.flipped());
@@ -535,12 +662,13 @@ public class GateEntity extends Entity implements ExtraCollider {
         GateTilt tilt = this.tilt();
         int opening = this.entityData.get(DATA_OPENING);
         int kind = this.entityData.get(DATA_KIND);
+        int joints = this.kind() == CourseElement.GATE ? this.joints : 0;
         AABB[] cached = this.colliderCache;
         if (cached == null || x != this.cacheX || y != this.cacheY || z != this.cacheZ || yaw != this.cacheYaw || size != this.cacheSize
                 || base != this.cacheBase || mount != this.cacheMount || !tilt.equals(this.cacheTilt) || opening != this.cacheOpening
-                || kind != this.cacheKind) {
+                || kind != this.cacheKind || joints != this.cacheJoints) {
             List<AABB> boxes = new ArrayList<>(6);
-            GateGeometry geometry = this.geometryAt(x, y, z);
+            GateGeometry geometry = this.geometryAt(x, y, z).withJoints(joints);
             geometry.boxes((minX, minY, minZ, maxX, maxY, maxZ) -> boxes.add(new AABB(minX, minY, minZ, maxX, maxY, maxZ)), base);
             List<OrientedBox> oriented = new ArrayList<>(6);
             if (!geometry.alignedFrame()) {
@@ -559,6 +687,7 @@ public class GateEntity extends Entity implements ExtraCollider {
             this.cacheTilt = tilt;
             this.cacheOpening = opening;
             this.cacheKind = kind;
+            this.cacheJoints = joints;
         }
         return cached;
     }
@@ -616,6 +745,25 @@ public class GateEntity extends Entity implements ExtraCollider {
     @Override
     public boolean canBeHitByProjectile() {
         return false;
+    }
+
+    @Override
+    public PushReaction getPistonPushReaction() {
+        return PushReaction.IGNORE_ENTITY;
+    }
+
+    @Override
+    public boolean isPushedByFluid() {
+        return false;
+    }
+
+    @Override
+    public void move(MoverType type, Vec3 delta) {
+    }
+
+    public void restoreTo(double x, double y, double z) {
+        this.setPos(x, y, z);
+        this.needsSync = true;
     }
 
     @Override
@@ -721,6 +869,10 @@ public class GateEntity extends Entity implements ExtraCollider {
         return this.supported;
     }
 
+    public boolean crossed() {
+        return this.crossed;
+    }
+
     public GateStacking.Base base() {
         if (this.kind() == CourseElement.GATE_POLE) {
             return GatePoles.base(this.mount(), this.supported);
@@ -735,7 +887,7 @@ public class GateEntity extends Entity implements ExtraCollider {
         if (!mount.stackable()) {
             return mount.base();
         }
-        return GateStacking.Base.of(this.supported, this.covered);
+        return GateStacking.Base.of(this.supported, this.covered, this.crossed);
     }
 
     public boolean stackable() {
@@ -743,7 +895,7 @@ public class GateEntity extends Entity implements ExtraCollider {
     }
 
     public boolean inStack() {
-        return (this.stackable() && (this.covered || this.supported)) || this.carrying;
+        return (this.stackable() && (this.covered || this.supported)) || this.carrying || this.linked;
     }
 
     public boolean carrying() {
@@ -751,21 +903,53 @@ public class GateEntity extends Entity implements ExtraCollider {
     }
 
     public void refreshStack() {
-        if (this.kind() == CourseElement.GATE_POLE) {
+        this.refreshJoints();
+        this.crossed = false;
+        if (GatePoleLinks.rides(this.kind())) {
             this.covered = false;
             this.supported = GatePoleLinks.support(this) != null;
-            this.carrying = !GatePoleLinks.riders(this).isEmpty();
+            this.carrying = this.kind() == CourseElement.GATE_POLE && !GatePoleLinks.riders(this).isEmpty();
             return;
         }
         if (!this.stackable()) {
             this.covered = false;
             this.supported = false;
-            this.carrying = this.kind().gate() && !GatePoleLinks.riders(this).isEmpty();
+            this.carrying = (this.kind().gate() || this.kind() == CourseElement.CUBE) && !GatePoleLinks.riders(this).isEmpty();
             return;
         }
         this.covered = this.gateAbove() != null;
-        this.supported = this.gateBelow() != null;
+        GateEntity below = this.gateBelow();
+        this.supported = below != null;
+        this.crossed = below != null && GateStacking.crossed(this.geometryAt(this.getX(), this.getY(), this.getZ()), below.geometry());
         this.carrying = !this.covered && !GatePoleLinks.riders(this).isEmpty();
+    }
+
+    private void refreshJoints() {
+        if (this.kind() != CourseElement.GATE || this.isRemoved()) {
+            this.joints = 0;
+            this.linked = false;
+            return;
+        }
+        GateGeometry own = this.geometryAt(this.getX(), this.getY(), this.getZ());
+        if (!GateStacking.jointable(own) && own.mount() != GateMount.FLOOR_FLAT) {
+            this.joints = 0;
+            this.linked = false;
+            return;
+        }
+        List<GateGeometry> others = new ArrayList<>();
+        for (GateEntity other : this.jointNeighbours()) {
+            if (other.kind() == CourseElement.GATE) {
+                others.add(other.geometryAt(other.getX(), other.getY(), other.getZ()));
+            }
+        }
+        GateStacking.Joints found = GateStacking.joints(own, others);
+        this.joints = found.mask();
+        this.linked = found.linked();
+    }
+
+    public List<GateEntity> jointNeighbours() {
+        AABB area = this.getBoundingBox().inflate(GateStacking.NEIGHBOUR_REACH);
+        return this.level().getEntitiesOfClass(GateEntity.class, area, gate -> gate != this && !gate.isRemoved());
     }
 
     public void refreshColumn() {
@@ -775,16 +959,20 @@ public class GateEntity extends Entity implements ExtraCollider {
     }
 
     private List<GateEntity> neighbours(double y) {
+        return this.neighbours(y, y);
+    }
+
+    private List<GateEntity> neighbours(double from, double to) {
         double x = this.getX();
         double z = this.getZ();
-        AABB area = new AABB(x - NEIGHBOUR_REACH, y - NEIGHBOUR_REACH, z - NEIGHBOUR_REACH, x + NEIGHBOUR_REACH, y + NEIGHBOUR_REACH,
+        AABB area = new AABB(x - NEIGHBOUR_REACH, from - NEIGHBOUR_REACH, z - NEIGHBOUR_REACH, x + NEIGHBOUR_REACH, to + NEIGHBOUR_REACH,
                 z + NEIGHBOUR_REACH);
         return this.level().getEntitiesOfClass(GateEntity.class, area, gate -> gate != this && !gate.isRemoved());
     }
 
     public @Nullable GateEntity gateAbove() {
         GateGeometry own = this.geometry();
-        for (GateEntity other : this.neighbours(GateStacking.seat(own))) {
+        for (GateEntity other : this.neighbours(GateStacking.seat(own), own.y() + own.height())) {
             if (GateStacking.restsOn(other.geometry(), own)) {
                 return other;
             }
@@ -826,19 +1014,20 @@ public class GateEntity extends Entity implements ExtraCollider {
 
     private void settleAbove(ServerLevel level) {
         GateEntity above = this.gateAbove();
+        GateEntity below = this.gateBelow();
+        double delta = above == null ? 0.0 : GateStacking.dropDelta(this.geometry(), above.geometry(), below == null ? null : below.geometry());
         double support = this.getY();
         List<GateEntity> moved = new ArrayList<>();
         while (above != null && !moved.contains(above) && moved.size() < GateStacking.MAX_STACK * 2) {
             GateEntity next = above.gateAbove();
-            above.dropTo(support);
+            above.dropTo(above.getY() + delta);
             moved.add(above);
-            support += above.size().height() - above.size().frame();
+            support = above.getY() + above.size().height() - above.size().frame();
             above = next;
         }
         for (GateEntity gate : moved) {
             gate.refreshStack();
         }
-        GateEntity below = this.gateBelow();
         if (below != null) {
             below.refreshStack();
         }
@@ -903,7 +1092,7 @@ public class GateEntity extends Entity implements ExtraCollider {
         CourseRegistry registry = CourseRegistry.get();
         CourseRegistry.Course course = registry == null ? null : registry.course(registry.courseOf(this.getUUID()));
         if (course != null && !CourseRegistry.canEdit(player, course)) {
-            player.sendOverlayMessage(Component.translatable("propwash.race.tool.not_owner", course.id, CourseRegistry.ownerName(course))
+            player.sendOverlayMessage(CourseRegistry.notOwner(course)
                     .withStyle(ChatFormatting.RED));
             return false;
         }
@@ -920,7 +1109,12 @@ public class GateEntity extends Entity implements ExtraCollider {
     @Override
     public void tick() {
         super.tick();
-        if (this.tickCount <= 1 || (this.tickCount + this.getId()) % STACK_INTERVAL == 0) {
+        if (!this.level().isClientSide()) {
+            this.keepCourseLayout();
+        }
+        if (this.tickCount <= 1) {
+            this.refreshColumn();
+        } else if ((this.tickCount + this.getId()) % STACK_INTERVAL == 0) {
             this.refreshStack();
         }
         if (this.pulseLeft > 0 && this.emitting == null && !this.level().isClientSide()) {
@@ -939,6 +1133,27 @@ public class GateEntity extends Entity implements ExtraCollider {
         }
     }
 
+    private void keepCourseLayout() {
+        if (this.fromSave) {
+            this.fromSave = false;
+            CourseRegistry registry = CourseRegistry.get();
+            if (registry != null) {
+                registry.restore(this);
+            }
+        }
+        double x = this.getX();
+        double y = this.getY();
+        double z = this.getZ();
+        if (x != this.syncedX || y != this.syncedY || z != this.syncedZ) {
+            if (!Double.isNaN(this.syncedX)) {
+                this.needsSync = true;
+            }
+            this.syncedX = x;
+            this.syncedY = y;
+            this.syncedZ = z;
+        }
+    }
+
     @Override
     public void onRemoval(Entity.RemovalReason reason) {
         super.onRemoval(reason);
@@ -946,6 +1161,9 @@ public class GateEntity extends Entity implements ExtraCollider {
         if (this.level() instanceof ServerLevel level && reason.shouldDestroy()) {
             GatePoleLinks.detach(this, null);
             this.settleAbove(level);
+            for (GateEntity neighbour : this.jointNeighbours()) {
+                neighbour.refreshStack();
+            }
             CourseRegistry registry = CourseRegistry.get();
             if (registry != null) {
                 registry.gateDestroyed(this);
@@ -955,6 +1173,7 @@ public class GateEntity extends Entity implements ExtraCollider {
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
+        this.fromSave = true;
         input.read("Size", GateSize.CODEC).ifPresent(this::setSize);
         CourseElement kind = CourseElement.byKey(input.getStringOr("Kind", CourseElement.GATE.key()));
         this.entityData.set(DATA_KIND, (byte) (kind.ordinal() | (kind.variant(input.getIntOr("Variant", 0)) << VARIANT_SHIFT)));
@@ -965,6 +1184,7 @@ public class GateEntity extends Entity implements ExtraCollider {
         }
         this.setGateIndex(input.getIntOr("GateIndex", NO_INDEX));
         this.setCourseId(input.getIntOr("Course", NO_COURSE));
+        this.entityData.set(DATA_PASSES, CourseOrder.encode(CourseOrder.decode(input.getStringOr("Passes", ""), this.gateIndex())));
         this.worldCourse = input.read("WorldCourse", WorldCourseMarker.CODEC).orElse(null);
         GateMount mount = input.read("Mount", GateMount.CODEC).orElse(GateMount.STANDING);
         this.entityData.set(DATA_MOUNT, (byte) GateMount.pack(mount, input.getBooleanOr("Flipped", false)));
@@ -979,6 +1199,11 @@ public class GateEntity extends Entity implements ExtraCollider {
                 input.getIntOr("PulseTicks", GateSignal.DEFAULT_PULSE), input.getBooleanOr("SignalRaceOnly", false));
         this.entityData.set(DATA_SIGNAL, signal.pack());
         this.pulseLeft = signal.enabled() ? Math.clamp(input.getIntOr("SignalPulse", 0), 0, signal.pulseTicks()) : 0;
+        ScoreArea score = new ScoreArea(ScoreArea.Role.byKey(input.getStringOr("ScoreRole", ScoreArea.Role.NONE.key())),
+                ScoreArea.sideByKey(input.getStringOr("ScoreSide", ScoreArea.sideKey(CourseElement.LEFT))),
+                input.getDoubleOr("ScoreReach", ScoreArea.DEFAULT_REACH), input.getDoubleOr("ScoreBelow", ScoreArea.DEFAULT_BELOW),
+                input.getDoubleOr("ScoreAbove", ScoreArea.DEFAULT_ABOVE), input.getBooleanOr("OpenFrame", false));
+        this.setScore(score);
     }
 
     @Override
@@ -994,6 +1219,10 @@ public class GateEntity extends Entity implements ExtraCollider {
         }
         output.putInt("GateIndex", this.gateIndex());
         output.putInt("Course", this.courseId());
+        String passes = this.entityData.get(DATA_PASSES);
+        if (!passes.isEmpty() && this.inCourse()) {
+            output.putString("Passes", passes);
+        }
         output.storeNullable("WorldCourse", WorldCourseMarker.CODEC, this.worldCourse);
         output.store("Mount", GateMount.CODEC, this.mount());
         output.putBoolean("Flipped", this.flipped());
@@ -1013,6 +1242,25 @@ public class GateEntity extends Entity implements ExtraCollider {
         }
         if (this.pulseLeft > 0) {
             output.putInt("SignalPulse", this.pulseLeft);
+        }
+        ScoreArea score = this.score();
+        if (score.role() != ScoreArea.DEFAULT.role()) {
+            output.putString("ScoreRole", score.role().key());
+        }
+        if (score.side() != ScoreArea.DEFAULT.side()) {
+            output.putString("ScoreSide", ScoreArea.sideKey(score.side()));
+        }
+        if (score.reach() != ScoreArea.DEFAULT_REACH) {
+            output.putDouble("ScoreReach", score.reach());
+        }
+        if (score.below() != ScoreArea.DEFAULT_BELOW) {
+            output.putDouble("ScoreBelow", score.below());
+        }
+        if (score.above() != ScoreArea.DEFAULT_ABOVE) {
+            output.putDouble("ScoreAbove", score.above());
+        }
+        if (score.open()) {
+            output.putBoolean("OpenFrame", true);
         }
     }
 }

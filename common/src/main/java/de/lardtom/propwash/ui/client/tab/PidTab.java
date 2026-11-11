@@ -36,7 +36,7 @@ public final class PidTab extends UiTab {
     private static final List<String> POS_HOLD = List.of(TuneKeys.HOLD_POS_P, TuneKeys.HOLD_POS_I, TuneKeys.HOLD_POS_D,
             TuneKeys.HOLD_MAX_ANGLE, TuneKeys.HOLD_STICK_DEADBAND, TuneKeys.HOLD_MIN_SATS);
 
-    private static final List<String> GROUPED = Stream.of(MODES, CONTROLLER, MOTORS, FILTERS, ALT_HOLD, POS_HOLD).flatMap(List::stream).toList();
+    static final List<String> GROUPED = Stream.of(MODES, CONTROLLER, MOTORS, FILTERS, ALT_HOLD, POS_HOLD).flatMap(List::stream).toList();
 
     private final List<Heading> headings = new ArrayList<>();
     private final PresetPanel presets = new PresetPanel(this, TunePresets.Section.PID);
@@ -115,7 +115,7 @@ public final class PidTab extends UiTab {
                 ThemeText.wrappedHeight(this.font(), Component.translatable("propwash.ui.pid.template_hint"), w));
         cy += Math.max(18, hintHeight + 8);
 
-        int colWidth = Metrics.columns(w) >= 2 ? (w - 10) / 2 : w;
+        int colWidth = columnWidth(w);
         this.groupLabelWidth = this.labelWidth(GROUPED, colWidth);
         cy = this.group(Component.translatable("propwash.ui.pid.section.modes"), MODES, left, cy, w);
         cy = this.group(Component.translatable("propwash.ui.pid.section.controller"), CONTROLLER, left, cy, w);
@@ -134,15 +134,18 @@ public final class PidTab extends UiTab {
         panel.stop(cy);
         this.headings.add(new Heading(Component.translatable("propwash.ui.rates.section.presets"), cy));
         cy += 14;
-        int presetLabel = Math.min(w / 2, this.font().width(Component.translatable("propwash.ui.rates.preset")) + 8);
         int presetTop = cy;
-        cy = this.presets.build(left, cy, w, Math.max(presetLabel, this.groupLabelWidth));
+        cy = this.presets.build(left, cy, w, this.groupLabelWidth);
         for (int row = 0; presetTop + row * ROW < cy; row++) {
             panel.stop(presetTop + row * ROW);
         }
         panel.stop(cy);
         cy += 6;
         this.endScroll(cy);
+    }
+
+    static int columnWidth(int w) {
+        return Metrics.columns(w) >= 2 ? (w - 10) / 2 : w;
     }
 
     private int group(Component title, List<String> keys, int left, int cy, int w) {

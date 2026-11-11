@@ -144,10 +144,18 @@ final class SceneDroneVisual {
                             collector.submitCustomGeometry(ps, solidType(), (pose, buffer) -> leds.emit(pose, buffer, light, overlay, -1));
                         }
                     }
-                    case STACK -> submitSlot(s.stack, ps, collector, light, overlay);
-                    case BATTERY -> submitSlot(s.battery, ps, collector, light, overlay);
+                    case STACK -> {
+                        if (s.powerLead.shown(s) && partState.attached()) {
+                            submitSlot(s.powerLead.stack, ps, s.powerLead.stackCables.wrap(collector), light, overlay);
+                        } else {
+                            submitSlot(s.stack, ps, collector, light, overlay);
+                        }
+                    }
+                    case BATTERY -> submitSlot(s.battery, ps, s.powerLead.shown(s) && actor.part(DronePart.STACK).attached()
+                            ? s.powerLead.batteryPlug.wrap(collector) : collector, light, overlay);
                     case VIDEO -> {
                         submitSlot(s.transmitter, ps, collector, light, overlay);
+                        submitSlot(s.antenna, ps, collector, light, overlay);
                         ps.pushPose();
                         translate(ps, s.video.position);
                         ps.rotate(Axis.XP, (float) Math.toRadians(s.cameraTiltDegrees));

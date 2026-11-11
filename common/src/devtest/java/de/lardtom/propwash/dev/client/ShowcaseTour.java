@@ -41,6 +41,7 @@ import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.creative.client.CreativeShowcase;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.SelfTest;
+import de.lardtom.propwash.dev.example.ExampleAddon;
 import de.lardtom.propwash.drone.bind.client.BindSelfTests;
 import de.lardtom.propwash.drone.DroneInteractions;
 import de.lardtom.propwash.drone.DroneModule;
@@ -50,6 +51,7 @@ import de.lardtom.propwash.drone.PilotMode;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.TuneMapping;
 import de.lardtom.propwash.drone.client.DroneServiceScreen;
+import de.lardtom.propwash.drone.client.MotorHeatSelfTests;
 import de.lardtom.propwash.drone.client.trail.TrailShowcase;
 import de.lardtom.propwash.drone.client.Mode3dShowcase;
 import de.lardtom.propwash.drone.client.WaterproofTurtleShowcase;
@@ -79,6 +81,7 @@ import de.lardtom.propwash.input.client.WizardRemoteSelfTests;
 import de.lardtom.propwash.input.client.screen.ReceiverWizardScreen;
 import de.lardtom.propwash.osd.OsdConfig;
 import de.lardtom.propwash.osd.client.BatterySagSelfTests;
+import de.lardtom.propwash.osd.client.FlightPathMarkerSelfTests;
 import de.lardtom.propwash.osd.client.OsdClient;
 import de.lardtom.propwash.osd.client.StickOverlaySelfTests;
 import de.lardtom.propwash.platform.Services;
@@ -129,6 +132,7 @@ import de.lardtom.propwash.video.AnalogBreakup;
 import de.lardtom.propwash.video.ImageFormat;
 import de.lardtom.propwash.video.SpectateServer;
 import de.lardtom.propwash.video.client.AspectShowcase;
+import de.lardtom.propwash.video.client.CameraAngleMenuSelfTests;
 import de.lardtom.propwash.video.client.FpvImage;
 import de.lardtom.propwash.video.client.Headlight;
 import de.lardtom.propwash.video.client.HeadlightShowcase;
@@ -162,6 +166,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.KeyMapping;
@@ -362,6 +367,7 @@ public final class ShowcaseTour {
         BindSelfTests.registerScreenshots(true);
         VideoTabSelfTests.registerScreenshots(true);
         ZoneScenes.registerScreenshots(true);
+        CameraAngleMenuSelfTests.registerScreenshots(true);
         SelfTest.clientStep("bildschirmfotos: Sprache zurücksetzen", 1200, Screenshots::restoreLanguage);
         Screenshots.step("bildschirmfotos: Steuerung mit R für Flugmodus und Gate drehen", "controls_shared_key", 20,
                 Screenshots.guiScale(2, GateKeySelfTests.controlsScene()));
@@ -388,6 +394,7 @@ public final class ShowcaseTour {
                 new CameraServiceScene(DroneBuild.RACER, 52.0F));
         BindSelfTests.registerScreenshots(false);
         VideoTabSelfTests.registerScreenshots(false);
+        CameraAngleMenuSelfTests.registerScreenshots(false);
         Screenshots.step("bildschirmfotos: Video-Tab mit analoger Brille (Race-Kamera)", "configurator_video_analog", 30,
                 new VideoTabScene(ContentIds.GOGGLES_ANALOG, DroneBuild.RACER, true));
         Screenshots.step("bildschirmfotos: Video-Tab mit digitaler Brille (Lite-System des Cinewhoops)", "configurator_video_digital", 30,
@@ -436,6 +443,9 @@ public final class ShowcaseTour {
                 new CloseUpScene(DroneBuild.FREESTYLE.withAccessory(AccessoryType.ACTION_CAM_HEAVY), PartWear.PRISTINE));
         Screenshots.step("bildschirmfotos: Drohne mit Action-Cam (Flashback)", "drone_closeup_action_cam_flashback", 25,
                 new CloseUpScene(DroneBuild.FREESTYLE.withAccessory(AccessoryType.ACTION_CAM_FLASHBACK), PartWear.PRISTINE));
+        Screenshots.step("bildschirmfotos: Drohne mit LED-Ring (Zubehör mit LED-Pfad, Regenbogen)", "drone_closeup_led_path", 25,
+                new CloseUpScene(() -> AccessoryType.byId(ExampleAddon.LED_RING).map(DroneBuild.FREESTYLE::withAccessory).orElse(null),
+                        PartWear.PRISTINE, DronePaint.DEFAULT, new LedSettings(LedMode.RAINBOW, LedColor.WHITE, 100, false)));
         Screenshots.step("bildschirmfotos: Drohne mit beschädigten Props", "drone_closeup_damaged_props", 25,
                 new CloseUpScene(DroneBuild.FREESTYLE, damagedProps()));
         Screenshots.step("bildschirmfotos: lackierte Drohne (Neon)", "drone_closeup_paint_neon", 25,
@@ -522,6 +532,8 @@ public final class ShowcaseTour {
         VtxPowerShowcase.register();
         TrailShowcase.register();
         BatterySagSelfTests.registerShowcase();
+        FlightPathMarkerSelfTests.registerShowcase();
+        MotorHeatSelfTests.registerShowcase();
         SelfTest.setupStep("bildschirmfotos: Aufräumen", 200, ShowcaseTour::cleanupStep);
     }
 
@@ -549,6 +561,10 @@ public final class ShowcaseTour {
 
     public static Screenshots.Scene workbenchScene() {
         return new WorkbenchScene();
+    }
+
+    public static Screenshots.Scene workbenchScene(DroneBuild build, String name) {
+        return new WorkbenchScene(build, name);
     }
 
     public static Screenshots.Scene paintScene() {
@@ -796,7 +812,7 @@ public final class ShowcaseTour {
             return StepResult.pending();
         }
         if (!state.containsKey(SHOT)) {
-            state.put(SHOT, Screenshots.capture("configurator_" + id));
+            state.put(SHOT, Screenshots.capture(configuratorShot(id)));
             return StepResult.pending();
         }
         CompletableFuture<?> shot = (CompletableFuture<?>) state.get(SHOT);
@@ -815,6 +831,10 @@ public final class ShowcaseTour {
             screen.selectTab(ids.get(index + 1));
         }
         return StepResult.pending();
+    }
+
+    static String configuratorShot(String id) {
+        return Screenshots.fileName("configurator_" + id.replace('/', '_'));
     }
 
     private static StepResult fpvPropsOffStep(SelfTest.StepContext ctx) {
@@ -2082,18 +2102,25 @@ public final class ShowcaseTour {
     }
 
     private static final class CloseUpScene implements Screenshots.Scene {
-        private final DroneBuild build;
+        private final Supplier<@Nullable DroneBuild> source;
         private final PartWear wear;
         private final DronePaint paint;
+        private final @Nullable LedSettings leds;
+        private DroneBuild build = DroneBuild.FREESTYLE;
 
         private CloseUpScene(DroneBuild build, PartWear wear) {
             this(build, wear, DronePaint.DEFAULT);
         }
 
         private CloseUpScene(DroneBuild build, PartWear wear, DronePaint paint) {
-            this.build = build;
+            this(() -> build, wear, paint, null);
+        }
+
+        private CloseUpScene(Supplier<@Nullable DroneBuild> source, PartWear wear, DronePaint paint, @Nullable LedSettings leds) {
+            this.source = source;
             this.wear = wear;
             this.paint = paint;
+            this.leds = leds;
         }
 
         @Override
@@ -2101,9 +2128,14 @@ public final class ShowcaseTour {
             Minecraft mc = Minecraft.getInstance();
             Map<String, Object> state = ctx.state();
             if (!state.containsKey(FUTURE)) {
-                DroneBuild build = this.build;
+                DroneBuild build = this.source.get();
+                if (build == null) {
+                    return StepResult.fail("Nahaufnahme: Aufbau nicht verfügbar (Teil des Beispiel-Add-ons fehlt)");
+                }
+                this.build = build;
                 PartWear wear = this.wear;
                 DronePaint paint = this.paint;
+                LedSettings leds = this.leds;
                 state.put(FUTURE, ctx.onServer(server -> {
                     ServerPlayer player = player(server);
                     ServerLevel level = player.level();
@@ -2115,6 +2147,9 @@ public final class ShowcaseTour {
                     QuadcopterEntity drone = spawnDrone(level, Vec3.atBottomCenterOf(stand.above()), 215.0F, build);
                     drone.setWear(wear);
                     drone.setPaint(paint);
+                    if (leds != null) {
+                        drone.setTune(new FlightTune(new TreeMap<>(leds.values())));
+                    }
                 }));
                 return StepResult.pending();
             }
@@ -2123,7 +2158,8 @@ public final class ShowcaseTour {
                 return server;
             }
             if (mc.level == null || !(mc.level.getEntity(DRONE.get()) instanceof QuadcopterEntity drone)
-                    || !drone.build().equals(this.build) || !drone.wear().equals(this.wear) || !drone.paint().equals(this.paint)) {
+                    || !drone.build().equals(this.build) || !drone.wear().equals(this.wear) || !drone.paint().equals(this.paint)
+                    || (this.leds != null && !DroneLeds.settings(drone).equals(this.leds))) {
                 return ctx.tick() > 200 ? StepResult.fail("Nahaufnahme: Drohne mit Aufbau/Verschleiß kam nicht beim Client an") : StepResult.pending();
             }
             mc.options.fov().set(30);

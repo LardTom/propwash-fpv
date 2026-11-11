@@ -73,12 +73,12 @@ public final class LoginShell {
     static Optional<Path> parse(List<String> lines, String program) {
         for (int i = lines.size() - 1; i >= 0; i--) {
             String line = lines.get(i).strip();
-            if (line.isEmpty()) {
+            if (!line.startsWith("/")) {
                 continue;
             }
             try {
                 Path path = Path.of(line);
-                if (path.isAbsolute() && path.getFileName() != null && path.getFileName().toString().equals(program)) {
+                if (path.getFileName() != null && path.getFileName().toString().equals(program)) {
                     return Optional.of(path);
                 }
             } catch (InvalidPathException ignored) {

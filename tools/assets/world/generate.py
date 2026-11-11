@@ -902,7 +902,6 @@ GATE_PIECES_BANNER = {
 }
 GATE_HANGER_PIECES = ("clamp", "strap", "ceiling_plate")
 GATE_POLE_PIECES = ("pole_end", "pole_tee", "pole_foot")
-GATE_POLE_FOOT_LOW = 0.09375
 
 
 def moved_element(element, dx, dy):
@@ -991,22 +990,30 @@ def pole_tee_elements():
 def pole_foot_elements():
     fd = GATE_FOOT_DEPTH / 2.0
     w = GATE_FRAME / 2.0 - GATE_FOOT_INSET
-    along_z = {
-        "up": frame_face("foot_top"),
-        "north": frame_face("foot_ns"), "south": frame_face("foot_ns"),
-        "east": frame_face("foot_ew"), "west": frame_face("foot_ew"),
-    }
-    top = frame_face("foot_top")
-    top["rotation"] = 90
-    along_x = {
-        "up": top,
-        "north": frame_face("foot_ew"), "south": frame_face("foot_ew"),
-        "east": frame_face("foot_ns"), "west": frame_face("foot_ns"),
-    }
-    return [
-        element((-w, 0.0, -fd, w, GATE_FOOT_HEIGHT, fd), along_z, "foot_z"),
-        element((-fd, 0.0, -w, fd, GATE_POLE_FOOT_LOW, w), along_x, "foot_x"),
-    ]
+    share = (fd - w) / GATE_FOOT_DEPTH
+
+    def part(region, along_v):
+        face = frame_face(region)
+        u0, v0, u1, v1 = face["uv"]
+        if along_v:
+            face["uv"] = [u0, v0, u1, round(v0 + (v1 - v0) * share, 4)]
+        else:
+            face["uv"] = [u0, v0, round(u0 + (u1 - u0) * share, 4), v1]
+        return face
+
+    arms = []
+    for name, tip, sides, rotation, box in (
+        ("foot_north", "north", ("east", "west"), 0, (-w, 0.0, -fd, w, GATE_FOOT_HEIGHT, -w)),
+        ("foot_east", "east", ("south", "north"), 90, (w, 0.0, -w, fd, GATE_FOOT_HEIGHT, w)),
+        ("foot_south", "south", ("west", "east"), 180, (-w, 0.0, w, w, GATE_FOOT_HEIGHT, fd)),
+        ("foot_west", "west", ("north", "south"), 270, (-fd, 0.0, -w, -w, GATE_FOOT_HEIGHT, w)),
+    ):
+        top = part("foot_top", True)
+        if rotation:
+            top["rotation"] = rotation
+        faces = {"up": top, tip: frame_face("foot_ns"), sides[0]: part("foot_ew", False), sides[1]: part("foot_ew", False)}
+        arms.append(element(box, faces, name))
+    return arms
 
 
 def gen_gate_pole():
@@ -1166,6 +1173,12 @@ def gen_course_tool():
     save_png(PIXEL["course_tool"], tex_path("item", "course_tool"))
     flat_item_model("course_tool", parent="minecraft:item/handheld")
     item_def("course_tool", f"{NS}:item/course_tool")
+
+
+def gen_zone_marker():
+    save_png(PIXEL["zone_marker"], tex_path("item", "zone_marker"))
+    flat_item_model("zone_marker", parent="minecraft:item/handheld")
+    item_def("zone_marker", f"{NS}:item/zone_marker")
 
 
 SLOT_CATEGORIES = ("frame", "stack", "motor", "prop", "video", "battery", "drone", "accessory_top", "accessory_bottom", "accessory_front")
@@ -1492,6 +1505,7 @@ def main():
     gen_gate_pieces()
     gen_gate_pole()
     gen_course_tool()
+    gen_zone_marker()
     gen_waterproof_spray()
     gen_slot_sprites()
     gen_gui()

@@ -411,13 +411,52 @@ final class CrashFallSelfTests {
         return StepResult.pass();
     }
 
+    static final class FallenPlacement {
+        static final int SETTLE_TICKS = 100;
+        static final int SYNC_TICKS = CrashFallSelfTests.SYNC_TICKS;
+        static final int REST_TICKS = 5;
+        static final double REST_SPEED = 0.05;
+        static final double VIEW_BACK = 2.2;
+        static final double VIEW_SIDE = 2.2;
+        static final double MAX_LOOK_ERROR = 5.0;
+        static final double THERE = 0.2;
+        private int start = -1;
+        private int resting;
+        private int movedAt = -1;
+        private Vec3 target;
+
+        enum Kind { WAIT, MOVE, PASS, NOT_LANDED, NOT_THERE }
+
+        record Sample(int tick, boolean landed, double speed, Vec3 drone, double floorY, boolean moveDone, Vec3 player, double lookError) {
+        }
+
+        record Decision(Kind kind, Vec3 target, boolean there) {
+        }
+
+        Decision next(Sample s) {
+            if (this.start < 0) {
+                this.start = s.tick();
+            }
+            if (this.target == null) {
+                this.resting = s.landed() && s.speed() < REST_SPEED ? this.resting + 1 : 0;
+                if (this.resting < REST_TICKS) {
+                    return new Decision(s.tick() - this.start < SETTLE_TICKS ? Kind.WAIT : Kind.NOT_LANDED, null, false);
+                }
+                this.target = new Vec3(s.drone().x - VIEW_BACK, s.floorY(), s.drone().z + VIEW_SIDE);
+                this.movedAt = s.tick();
+                return new Decision(Kind.MOVE, this.target, false);
+            }
+            boolean there = s.moveDone() && s.player().distanceTo(this.target) < THERE;
+            if (!there || s.lookError() > MAX_LOOK_ERROR) {
+                return new Decision(s.tick() - this.movedAt > SYNC_TICKS ? Kind.NOT_THERE : Kind.WAIT, this.target, there);
+            }
+            return new Decision(Kind.PASS, this.target, true);
+        }
+    }
+
     private static final class FallenScene implements Screenshots.Scene {
         private static final String MOVED = "moved";
-        private static final String SETTLING = "settling";
-        private static final int SETTLE_TICKS = 100;
-        private static final double VIEW_BACK = 2.2;
-        private static final double VIEW_SIDE = 2.2;
-        private static final double MAX_LOOK_ERROR = 5.0;
+        private static final String PLACEMENT = "placement";
         private static final AtomicReference<double[]> HOME = new AtomicReference<>();
 
         @Override
@@ -437,36 +476,33 @@ final class CrashFallSelfTests {
             }
             Screenshots.hideMarker(true);
             Map<String, Object> state = ctx.state();
-            if (!landed(drone, arena, sim)) {
-                int since = (int) state.computeIfAbsent(SETTLING, key -> ctx.tick());
-                if (ctx.tick() - since < SETTLE_TICKS) {
-                    return StepResult.pending();
-                }
-                return StepResult.fail("Drohne für das Bildschirmfoto nach " + SETTLE_TICKS + " Ticks nicht am Boden: " + where(drone, arena, sim));
-            }
-            Vec3 view = new Vec3(drone.getX() - VIEW_BACK, arena[1], drone.getZ() + VIEW_SIDE);
-            if (!state.containsKey(MOVED)) {
-                state.put(MOVED, ctx.onServer(server -> {
-                    ServerPlayer player = serverPlayer(server);
-                    HOME.set(new double[]{player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()});
-                    player.teleportTo(player.level(), view.x, view.y, view.z, Set.of(), -135.0F, 30.0F, true);
-                }));
-                return StepResult.pending();
-            }
+            FallenPlacement placement = (FallenPlacement) state.computeIfAbsent(PLACEMENT, key -> new FallenPlacement());
             CompletableFuture<?> moved = (CompletableFuture<?>) state.get(MOVED);
-            if (moved.isCompletedExceptionally()) {
+            if (moved != null && moved.isCompletedExceptionally()) {
                 return StepResult.fail("Spieler nicht neben die Drohne gesetzt: " + moved.exceptionNow().getMessage());
             }
-            boolean there = moved.isDone() && mc.player.position().distanceTo(view) < 0.2;
             Vec3 eye = mc.player.getEyePosition();
             Vec3 wanted = drone.position().subtract(eye).normalize();
             double error = Math.toDegrees(Math.acos(Math.max(-1.0, Math.min(1.0, wanted.dot(mc.player.getLookAngle())))));
-            if (!there || error > MAX_LOOK_ERROR) {
-                return ctx.tick() > SYNC_TICKS ? StepResult.fail(String.format(Locale.ROOT,
-                        "Blick nicht auf der Drohne (%.1f°, Spieler %s)", error, there ? "neben der Drohne" : "nicht versetzt"))
-                        : StepResult.pending();
-            }
-            return StepResult.pass();
+            FallenPlacement.Decision decision = placement.next(new FallenPlacement.Sample(ctx.tick(), landed(drone, arena, sim),
+                    sim.telemetry().speed, drone.position(), arena[1], moved != null && moved.isDone(), mc.player.position(), error));
+            return switch (decision.kind()) {
+                case WAIT -> StepResult.pending();
+                case MOVE -> {
+                    Vec3 view = decision.target();
+                    state.put(MOVED, ctx.onServer(server -> {
+                        ServerPlayer player = serverPlayer(server);
+                        HOME.set(new double[]{player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()});
+                        player.teleportTo(player.level(), view.x, view.y, view.z, Set.of(), -135.0F, 30.0F, true);
+                    }));
+                    yield StepResult.pending();
+                }
+                case PASS -> StepResult.pass();
+                case NOT_LANDED -> StepResult.fail("Drohne für das Bildschirmfoto nach " + FallenPlacement.SETTLE_TICKS + " Ticks nicht in Ruhe am Boden: "
+                        + where(drone, arena, sim));
+                case NOT_THERE -> StepResult.fail(String.format(Locale.ROOT, "Blick nicht auf der Drohne (%.1f°, Spieler %s, %.2f m vom Ziel)", error,
+                        decision.there() ? "neben der Drohne" : "nicht versetzt", mc.player.position().distanceTo(decision.target())));
+            };
         }
 
         @Override

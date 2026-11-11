@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "namespace": "propwash_example",
+  "parts": {
+    "frame": [
+      {"id": "old_stretch_5", "since": "1.0.0", "deprecated": "1.0.0", "replaced_by": "propwash_example:race_stretch_5", "fallback": "propwash:race_5"},
+      {"id": "race_stretch_5", "since": "1.0.0", "fallback": "propwash:race_5", "name": {"en_us": "Example Stretch 5\"", "de_de": "Beispiel-Stretch 5\""}},
+      {"id": "deadcat_5", "since": "1.0.0", "fallback": "propwash:freestyle_5"},
+      {"id": "xclass_13", "since": "1.0.0", "fallback": "propwash:long_range_7"}
+    ],
+    "stack": [
+      {"id": "stack_30_8s", "since": "1.0.0", "fallback": "propwash:stack_30"}
+    ],
+    "motor": [
+      {"id": "m2806_1300", "since": "1.0.0", "fallback": "propwash:m2807_1300"},
+      {"id": "m4214_400", "since": "1.0.0", "fallback": "propwash:m2807_1300"}
+    ],
+    "prop": [
+      {"id": "p13_7_2b_carbon", "since": "1.0.0", "fallback": "propwash:p7_2b"}
+    ],
+    "battery": [
+      {"id": "b8s_4500_lion", "since": "1.0.0", "fallback": "propwash:b6s_4000_lion"}
+    ],
+    "accessory": [
+      {"id": "led_ring", "since": "1.0.0", "fallback": "propwash:led_strip"},
+      {"id": "pellet_launcher", "since": "1.0.0", "fallback": "propwash:gripper"},
+      {"id": "spear_mount", "since": "1.0.0", "fallback": "propwash:gripper"},
+      {"id": "gimbal_cam", "since": "1.0.0", "fallback": "propwash:action_cam_heavy"},
+      {"id": "signal_light", "since": "1.0.0", "fallback": "propwash:action_cam_flashback"},
+      {"id": "dispenser", "since": "1.0.0", "fallback": "propwash:gripper"},
+      {"id": "spear_holder", "since": "1.0.0", "fallback": "propwash:gripper"},
+      {"id": "booster", "since": "1.0.0", "fallback": "propwash:action_cam_flashback"},
+      {"id": "gimbal_front", "since": "1.0.0", "fallback": "propwash:action_cam_heavy"},
+      {"id": "cine_gimbal", "since": "1.0.0", "fallback": "propwash:action_cam_heavy"},
+      {"id": "dispenser_recessed", "since": "1.0.0", "fallback": "propwash:gripper"}
+    ]
+  }
+}

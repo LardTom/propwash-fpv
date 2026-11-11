@@ -2,6 +2,7 @@ package de.lardtom.propwash.drone;
 
 import de.lardtom.propwash.accessory.AccessoryComponents;
 import de.lardtom.propwash.accessory.AccessoryContents;
+import de.lardtom.propwash.accessory.dispense.OwnShots;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.ActionCamSpec;
 import de.lardtom.propwash.build.BatteryType;
@@ -26,17 +27,24 @@ import de.lardtom.propwash.core.event.Event;
 import de.lardtom.propwash.drone.bind.BindCodecs;
 import de.lardtom.propwash.drone.bind.BindComponents;
 import de.lardtom.propwash.drone.coating.CoatingComponents;
+import de.lardtom.propwash.drone.data.AddonData;
+import de.lardtom.propwash.drone.data.DroneDataComponents;
+import de.lardtom.propwash.drone.data.DroneDataStore;
 import de.lardtom.propwash.drone.bind.ReceiverBind;
 import de.lardtom.propwash.drone.net.DroneStateC2S;
 import de.lardtom.propwash.drone.net.MoveBudget;
 import de.lardtom.propwash.drone.net.StateValidation;
 import de.lardtom.propwash.drone.tag.DroneTagRules;
 import de.lardtom.propwash.drone.tag.DroneTags;
+import de.lardtom.propwash.interact.DroneBlockTriggers;
+import de.lardtom.propwash.interact.DroneVibrations;
 import de.lardtom.propwash.interact.DroneCargo;
 import de.lardtom.propwash.rescue.HomePoint;
 import de.lardtom.propwash.rescue.HomePointCodecs;
 import de.lardtom.propwash.rescue.ReturnPlan;
 import de.lardtom.propwash.sim.AirframeSpec;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponents;
@@ -55,13 +63,19 @@ import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.InterpolationHandler;
-import net.minecraft.world.entity.LinearInterpolationHandler;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.PositionMoveRotation;
+import net.minecraft.world.entity.Relative;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.ProjectileDeflection;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.entity.EntityInLevelCallback;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -78,6 +92,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -93,9 +108,11 @@ public class QuadcopterEntity extends Entity {
 
     public static final int MOTORS = 4;
     public static final int INTERPOLATION_STEPS = 2;
+    private static final double TELEPORT_MOVED_SQR = 1.0E-8;
     public static final float BREAK_DAMAGE = 6.0F;
     public static final double GRAVITY = 0.08;
     public static final double GROUND_PROBE_RAISE = 0.02;
+    static final double STAND_PROBE = 0.001;
     public static final String RETURN_PLAN_KEY = "ReturnPlan";
     public static final String RECEIVER_BIND_KEY = "ReceiverBind";
     public static final String WATERPROOF_KEY = "Waterproof";
@@ -147,6 +164,10 @@ public class QuadcopterEntity extends Entity {
             SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<AccessoryContents> DATA_ACCESSORY_CONTENTS =
             SynchedEntityData.defineId(QuadcopterEntity.class, AccessoryComponents.CONTENTS_SERIALIZER);
+    private static final EntityDataAccessor<AddonData> DATA_ADDON_DATA =
+            SynchedEntityData.defineId(QuadcopterEntity.class, DroneDataComponents.SERIALIZER);
+    private static final EntityDataAccessor<Float> DATA_SCALE =
+            SynchedEntityData.defineId(QuadcopterEntity.class, EntityDataSerializers.FLOAT);
     private static DamageFilter damageFilter = (drone, level, source, damage) -> damage;
 
     private static volatile Predicate<UUID> localPlayerCheck = uuid -> false;
@@ -157,6 +178,7 @@ public class QuadcopterEntity extends Entity {
     private final MoveBudget moveBudget = new MoveBudget();
     private boolean physicsModified;
     private int pilotUpdates;
+    private AddonData addonData = AddonData.EMPTY;
     private float damageTaken;
     private final DroneCargo.Hold cargo = new DroneCargo.Hold();
     private @Nullable ReturnPlan returnPlan;
@@ -166,11 +188,13 @@ public class QuadcopterEntity extends Entity {
     private boolean homeEdited;
     private @Nullable Vec3 launchPoint;
     private long lastHomeResetTick = Long.MIN_VALUE;
+    private long teleportTick = Long.MIN_VALUE;
     private double beeperDrain;
 
     private final Quaternionf renderAttitude = new Quaternionf();
     private final Quaternionf prevRenderOrientation = new Quaternionf();
     private final Quaternionf orientationTarget = new Quaternionf();
+    private final Quaternionf remoteAttitude = new Quaternionf();
     private int orientationSteps;
     private boolean renderOrientationReady;
     private final float[] rotorAngle = new float[MOTORS];
@@ -182,10 +206,14 @@ public class QuadcopterEntity extends Entity {
     private int localMotors;
     private boolean localLedsOff;
     private final Quaternionf settleScratch = new Quaternionf();
+    private boolean standsOnAccessory;
+    private final Vector3f standCorner = new Vector3f();
     private final OrientedSweep.Result sweepResult = new OrientedSweep.Result();
     private boolean obliqueContact;
     private Vec3 obliqueNormal = Vec3.ZERO;
     private Vec3 obliqueDelta = Vec3.ZERO;
+    private double moveFromY = Double.NaN;
+    private final DroneAttributes attributes = new DroneAttributes();
 
     public QuadcopterEntity(EntityType<? extends QuadcopterEntity> type, Level level) {
         super(type, level);
@@ -210,6 +238,15 @@ public class QuadcopterEntity extends Entity {
 
     public void setAccessoryContents(AccessoryContents contents) {
         this.entityData.set(DATA_ACCESSORY_CONTENTS, contents == null ? AccessoryContents.EMPTY : contents);
+    }
+
+    public AddonData addonData() {
+        return this.level().isClientSide() ? this.entityData.get(DATA_ADDON_DATA) : this.addonData;
+    }
+
+    public void setAddonData(AddonData data) {
+        this.addonData = Objects.requireNonNull(data, "data");
+        this.entityData.set(DATA_ADDON_DATA, DroneDataStore.tracked(data));
     }
 
     public @Nullable ReturnPlan returnPlan() {
@@ -283,6 +320,23 @@ public class QuadcopterEntity extends Entity {
         builder.define(DATA_CARGO_ITEM, ItemStack.EMPTY);
         builder.define(DATA_WATERPROOF, false);
         builder.define(DATA_ACCESSORY_CONTENTS, AccessoryContents.EMPTY);
+        builder.define(DATA_ADDON_DATA, AddonData.EMPTY);
+        builder.define(DATA_SCALE, DroneScale.NORMAL);
+    }
+
+    public DroneAttributes attributes() {
+        return this.attributes;
+    }
+
+    public float scale() {
+        return DroneScale.sanitize(this.entityData.get(DATA_SCALE));
+    }
+
+    private void syncScale() {
+        float scale = this.attributes.scale();
+        if (Float.compare(scale, this.entityData.get(DATA_SCALE)) != 0) {
+            this.entityData.set(DATA_SCALE, scale);
+        }
     }
 
     public boolean waterproof() {
@@ -295,7 +349,23 @@ public class QuadcopterEntity extends Entity {
 
     @Override
     protected InterpolationHandler createInterpolationHandler() {
-        return LinearInterpolationHandler.create(this, INTERPOLATION_STEPS);
+        return this.level().isClientSide() ? new RemoteInterpolation(this) : InterpolationHandler.NO_OP;
+    }
+
+    boolean remoteMotionAllowed() {
+        return this.level().isClientSide() && !this.localState;
+    }
+
+    void remoteRotation(float yRot, float xRot) {
+        this.setRot(yRot, xRot);
+    }
+
+    @Override
+    public void lerpMotion(Vec3 movement) {
+        super.lerpMotion(movement);
+        if (this.getInterpolation() instanceof RemoteInterpolation remote) {
+            remote.velocity(movement);
+        }
     }
 
     @Override
@@ -324,7 +394,8 @@ public class QuadcopterEntity extends Entity {
     }
 
     private void tickServer() {
-        boolean autonomous = this.returnPlan != null && this.pilot().isEmpty() && serverAutopilot.test(this);
+        this.syncScale();
+        boolean autonomous = this.pilot().isEmpty() && serverAutopilot.test(this);
         if (!autonomous && this.canSimulateMovement()) {
             this.tickLoosePhysics();
         }
@@ -334,6 +405,8 @@ public class QuadcopterEntity extends Entity {
         DroneCargo.tick(this);
         this.tickBeeper();
         this.syncFlightTags(autonomous);
+        DroneBlockTriggers.tick(this, (ServerLevel) this.level());
+        DroneVibrations.tick(this, (ServerLevel) this.level());
         SERVER_TICK.fire(listener -> listener.accept(this));
     }
 
@@ -366,7 +439,11 @@ public class QuadcopterEntity extends Entity {
             velocity = velocity.multiply(0.8, 0.8, 0.8);
             velocity = new Vec3(velocity.x, Math.max(velocity.y, -0.06), velocity.z);
         }
+        velocity = this.standOnAccessories(velocity);
         this.move(MoverType.SELF, velocity);
+        if (this.standsOnAccessory) {
+            this.setOnGround(true);
+        }
         if (this.onGround()) {
             velocity = velocity.multiply(0.5, 0.0, 0.5);
         }
@@ -375,6 +452,58 @@ public class QuadcopterEntity extends Entity {
             velocity = Vec3.ZERO;
         }
         this.setDeltaMovement(velocity);
+    }
+
+    private Vec3 standOnAccessories(Vec3 velocity) {
+        this.standsOnAccessory = false;
+        if (this.noPhysics || this.isNoGravity() || velocity.y > 0.0) {
+            return velocity;
+        }
+        double fall = -velocity.y;
+        double room = this.accessoryRoom(fall);
+        if (!(room < fall)) {
+            return velocity;
+        }
+        this.standsOnAccessory = true;
+        if (room < 0.0) {
+            this.move(MoverType.SELF, new Vec3(0.0, -room, 0.0));
+            room = 0.0;
+        }
+        return new Vec3(velocity.x, -room, velocity.z);
+    }
+
+    public double accessoryLift() {
+        if (this.noPhysics || this.isNoGravity()) {
+            return 0.0;
+        }
+        double room = this.accessoryRoom(0.0);
+        return room < 0.0 ? -room : 0.0;
+    }
+
+    private double accessoryRoom(double fall) {
+        AirframeSpec spec = AirframeSpec.of(this.build());
+        Quaternionfc orientation = this.orientation();
+        if (!(spec.accessoryDepth(orientation) > 0.0)) {
+            return Double.POSITIVE_INFINITY;
+        }
+        float scale = this.scale();
+        double size = DroneScale.scaled(scale) ? scale : 1.0;
+        double foot = this.getY();
+        double room = Double.POSITIVE_INFINITY;
+        Vector3f corner = this.standCorner;
+        for (int k = 0; k < spec.accessoryPointCount(); k++) {
+            corner.set((float) -spec.accessoryX(k), (float) spec.accessoryY(k), (float) -spec.accessoryZ(k));
+            orientation.transform(corner);
+            double depth = size * (spec.hitboxFootOffset - corner.y);
+            if (!(depth > 0.0)) {
+                continue;
+            }
+            double x = this.getX() + size * corner.x;
+            double z = this.getZ() + size * corner.z;
+            AABB column = new AABB(x - STAND_PROBE, foot, z - STAND_PROBE, x + STAND_PROBE, foot + STAND_PROBE, z + STAND_PROBE);
+            room = Math.min(room, this.groundGap(column, depth + fall) - depth);
+        }
+        return room;
     }
 
     private void tickClientVisuals() {
@@ -386,7 +515,10 @@ public class QuadcopterEntity extends Entity {
         }
         if (!this.localState) {
             this.prevRenderOrientation.set(this.renderAttitude);
-            if (this.orientationSteps > 0) {
+            if (this.getInterpolation() instanceof RemoteInterpolation remote && remote.rotation(this.remoteAttitude)) {
+                this.renderAttitude.set(this.remoteAttitude);
+                this.orientationSteps = 0;
+            } else if (this.orientationSteps > 0) {
                 this.renderAttitude.slerp(this.orientationTarget, 1.0F / this.orientationSteps).normalize();
                 this.orientationSteps--;
             } else {
@@ -413,12 +545,15 @@ public class QuadcopterEntity extends Entity {
     @Override
     public void onSyncedDataUpdated(EntityDataAccessor<?> accessor) {
         super.onSyncedDataUpdated(accessor);
-        if (DATA_BUILD.equals(accessor)) {
+        if (DATA_BUILD.equals(accessor) || DATA_SCALE.equals(accessor)) {
             this.refreshDimensions();
         } else if (DATA_PILOT.equals(accessor) && this.level().isClientSide()) {
             this.pilotUpdates++;
         } else if (DATA_ORIENTATION.equals(accessor) && this.level().isClientSide()) {
             this.orientationTarget.set(this.orientation());
+            if (!this.localState && this.getInterpolation() instanceof RemoteInterpolation remote) {
+                remote.orientation(this.orientationTarget);
+            }
             if (this.renderOrientationReady) {
                 this.orientationSteps = INTERPOLATION_STEPS;
             } else {
@@ -432,7 +567,7 @@ public class QuadcopterEntity extends Entity {
     @Override
     public EntityDimensions getDimensions(Pose pose) {
         AirframeSpec params = AirframeSpec.of(this.build());
-        return EntityDimensions.fixed((float) params.hitboxWidth, (float) params.hitboxHeight);
+        return DroneScale.dimensions(params.hitboxWidth, params.hitboxHeight, this.scale());
     }
 
     @Override
@@ -444,7 +579,13 @@ public class QuadcopterEntity extends Entity {
         if (extra) {
             clipped = this.clipAgainstExtraColliders(delta);
         }
-        super.move(type, clipped);
+        double outerFromY = this.moveFromY;
+        this.moveFromY = this.getY();
+        try {
+            super.move(type, clipped);
+        } finally {
+            this.moveFromY = outerFromY;
+        }
         if (extra && delta.y < 0.0 && clipped.y - delta.y > 1.0E-7 && !this.obliqueContact) {
             this.setOnGround(true);
             Vec3 velocity = this.getDeltaMovement();
@@ -452,6 +593,11 @@ public class QuadcopterEntity extends Entity {
                 this.setDeltaMovement(velocity.x, 0.0, velocity.z);
             }
         }
+    }
+
+    @Override
+    protected void checkFallDamage(double ya, boolean onGround, BlockState onState, BlockPos pos) {
+        super.checkFallDamage(DroneVibrations.fallMoved(ya, this.moveFromY, this.getY()), onGround, onState, pos);
     }
 
     public double supportGap(double range) {
@@ -470,10 +616,19 @@ public class QuadcopterEntity extends Entity {
     }
 
     public double groundGap(double range) {
+        return this.groundGap(this.getBoundingBox(), range);
+    }
+
+    public double columnGap(double x, double z, double range) {
+        double foot = this.getY();
+        return this.groundGap(new AABB(x - STAND_PROBE, foot, z - STAND_PROBE, x + STAND_PROBE, foot + STAND_PROBE, z + STAND_PROBE), range);
+    }
+
+    private double groundGap(AABB base, double range) {
         if (this.noPhysics || !(range > 0.0)) {
             return Math.max(0.0, range);
         }
-        AABB box = this.getBoundingBox().move(0.0, GROUND_PROBE_RAISE, 0.0);
+        AABB box = base.move(0.0, GROUND_PROBE_RAISE, 0.0);
         double reach = range + GROUND_PROBE_RAISE;
         double free = Math.max(0.0, -collideBoundingBox(this, new Vec3(0.0, -reach, 0.0), box, this.level(), List.of()).y);
         if (free > 0.0) {
@@ -555,6 +710,11 @@ public class QuadcopterEntity extends Entity {
     @Override
     protected Entity.MovementEmission getMovementEmission() {
         return Entity.MovementEmission.NONE;
+    }
+
+    @Override
+    public boolean dampensVibrations() {
+        return DroneVibrations.muted(this);
     }
 
     public DroneBuild build() {
@@ -937,6 +1097,7 @@ public class QuadcopterEntity extends Entity {
         this.receiverBind = BindComponents.of(stack);
         this.setWaterproof(CoatingComponents.coated(stack));
         this.setAccessoryContents(stack.getOrDefault(AccessoryComponents.CONTENTS.get(), AccessoryContents.EMPTY));
+        this.setAddonData(stack.getOrDefault(DroneDataComponents.ADDON_DATA.get(), AddonData.EMPTY));
     }
 
     public ItemStack toStack() {
@@ -970,6 +1131,9 @@ public class QuadcopterEntity extends Entity {
         if (!this.accessoryContents().isEmpty()) {
             stack.set(AccessoryComponents.CONTENTS.get(), this.accessoryContents());
         }
+        if (!this.addonData.isEmpty()) {
+            stack.set(DroneDataComponents.ADDON_DATA.get(), this.addonData);
+        }
         return stack;
     }
 
@@ -989,6 +1153,47 @@ public class QuadcopterEntity extends Entity {
         this.stateSentTick = this.level().getGameTime();
         this.moveBudget.restart();
         DronePiloting.broadcastReset(this, home);
+    }
+
+    @Override
+    public void teleportSetPosition(PositionMoveRotation currentValues, PositionMoveRotation destination, Set<Relative> relatives) {
+        super.teleportSetPosition(currentValues, destination, relatives);
+        if (!this.level().isClientSide()) {
+            boolean moved = currentValues.position().distanceToSqr(this.position()) > TELEPORT_MOVED_SQR;
+            if (moved) {
+                this.teleportTick = this.level().getGameTime();
+            }
+            if (VanillaRotation.turns(destination, relatives)) {
+                this.turnToVanillaRotation(moved);
+            }
+        }
+    }
+
+    @Override
+    public void forceSetRotation(float yRot, boolean relativeY, float xRot, boolean relativeX) {
+        super.forceSetRotation(yRot, relativeY, xRot, relativeX);
+        if (!this.level().isClientSide() && VanillaRotation.turns(yRot, relativeY, xRot, relativeX)) {
+            this.turnToVanillaRotation(this.teleportTick == this.level().getGameTime());
+        }
+    }
+
+    @Override
+    public void lookAt(EntityAnchorArgument.Anchor anchor, Vec3 pos) {
+        super.lookAt(anchor, pos);
+        if (!this.level().isClientSide()) {
+            this.turnToVanillaRotation(this.teleportTick == this.level().getGameTime());
+        }
+    }
+
+    private void turnToVanillaRotation(boolean moved) {
+        this.setAttitude(VanillaRotation.attitude(this.getYRot(), this.getXRot(), new Quaternionf()));
+        if (this.pilot().isEmpty()) {
+            return;
+        }
+        this.entityData.set(DATA_EPOCH, this.resetEpoch() + 1);
+        this.stateSentTick = this.level().getGameTime();
+        this.moveBudget.restart();
+        DronePiloting.sendTurn(this, !moved);
     }
 
     @Override
@@ -1018,6 +1223,9 @@ public class QuadcopterEntity extends Entity {
     public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
         if (this.isRemoved()) {
             return true;
+        }
+        if (OwnShots.from(this, source)) {
+            return false;
         }
         if (this.isInvulnerableToBase(source)) {
             return false;
@@ -1067,6 +1275,35 @@ public class QuadcopterEntity extends Entity {
     }
 
     @Override
+    public ProjectileDeflection deflection(Projectile projectile) {
+        return OwnShots.deflection(this, projectile, super.deflection(projectile));
+    }
+
+    @Override
+    public void push(double x, double y, double z) {
+        super.push(x, y, z);
+        Knockback.pushed(this, x, y, z);
+    }
+
+    @Override
+    public void pushFromExplosion(Vec3 impulse) {
+        Knockback.explosionPush(this, impulse);
+        super.pushFromExplosion(impulse);
+    }
+
+    @Override
+    public void onExplosionHit(@Nullable Entity explosionCausedBy) {
+        super.onExplosionHit(explosionCausedBy);
+        Knockback.explosionHit(this, explosionCausedBy);
+    }
+
+    @Override
+    public void setLevelCallback(EntityInLevelCallback levelCallback) {
+        super.setLevelCallback(levelCallback);
+        LoadedDrones.track(this, levelCallback != EntityInLevelCallback.NULL);
+    }
+
+    @Override
     public @Nullable ItemStack getPickResult() {
         ItemStack stack = this.toStack();
         if (stack.isEmpty()) {
@@ -1108,7 +1345,10 @@ public class QuadcopterEntity extends Entity {
         this.setWaterproof(input.getBooleanOr(WATERPROOF_KEY, false));
         this.setAccessoryContents(input.read(ACCESSORY_CONTENTS_KEY, AccessoryContents.CODEC).orElse(AccessoryContents.EMPTY));
         this.setBeeper(input.read(BEEPER_KEY, UUIDUtil.CODEC).orElse(null));
+        this.setAddonData(input.read(AddonData.SAVE_KEY, AddonData.CODEC).orElse(AddonData.EMPTY));
+        input.read(DroneAttributes.SAVE_KEY, AttributeInstance.Packed.LIST_CODEC).ifPresent(this.attributes::load);
         if (!this.level().isClientSide()) {
+            this.syncScale();
             this.syncFlightTags(false);
         }
     }
@@ -1139,6 +1379,12 @@ public class QuadcopterEntity extends Entity {
         }
         if (!this.accessoryContents().isEmpty()) {
             output.store(ACCESSORY_CONTENTS_KEY, AccessoryContents.CODEC, this.accessoryContents());
+        }
+        if (!this.addonData.isEmpty()) {
+            output.store(AddonData.SAVE_KEY, AddonData.CODEC, this.addonData);
+        }
+        if (this.attributes.changed()) {
+            output.store(DroneAttributes.SAVE_KEY, AttributeInstance.Packed.LIST_CODEC, this.attributes.pack());
         }
     }
 

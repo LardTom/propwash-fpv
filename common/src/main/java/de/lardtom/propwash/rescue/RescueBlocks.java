@@ -1,14 +1,21 @@
 package de.lardtom.propwash.rescue;
 
+import de.lardtom.propwash.barrier.DroneBarriers;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class RescueBlocks {
+    private static final double TOP_LAYER = 1.0E-3;
+
     private RescueBlocks() {
     }
 
@@ -26,7 +33,20 @@ public final class RescueBlocks {
         if (hazard(state)) {
             return Ground.HAZARD;
         }
-        return state.getCollisionShape(level, pos).isEmpty() ? Ground.NONE : Ground.SOLID;
+        return DroneBarriers.droneShape(state, level, pos).isEmpty() ? Ground.NONE : Ground.SOLID;
+    }
+
+    public static double top(BlockGetter level, BlockPos pos, BlockState state) {
+        VoxelShape shape = DroneBarriers.droneShape(state, level, pos);
+        if (shape.isEmpty()) {
+            return Double.NaN;
+        }
+        double top = shape.max(Direction.Axis.Y);
+        if (top > 1.0 + 1.0E-6) {
+            return Double.NaN;
+        }
+        VoxelShape face = Shapes.box(0.0, Math.max(0.0, top - TOP_LAYER), 0.0, 1.0, top, 1.0);
+        return Shapes.joinIsNotEmpty(face, shape, BooleanOp.ONLY_FIRST) ? Double.NaN : top;
     }
 
     static boolean hazard(BlockState state) {

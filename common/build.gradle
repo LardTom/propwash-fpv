@@ -34,6 +34,11 @@ sourceSets {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
+    // Die Tests der Selbsttest-Auswahl (dev.SelfTestSelectionTest) brauchen die Klassen aus devtest, wie tools/fastcheck.sh test.
+    test {
+        compileClasspath += sourceSets.devtest.output
+        runtimeClasspath += sourceSets.devtest.output
+    }
 }
 
 configurations {
@@ -188,6 +193,8 @@ sourceSets.configureEach {
 }
 
 tasks.named('test', Test) {
+    systemProperty 'propwash.rootDir', rootDir.absolutePath
+    systemProperty 'propwash.testResources', file('src/test/resources').absolutePath
     useJUnitPlatform {
         if (!System.getenv('PROPWASH_CALIBRATION_ADDON')) {
             excludeTags 'addon-daten'
@@ -198,4 +205,64 @@ tasks.named('test', Test) {
         showStandardStreams = true
         exceptionFormat = 'full'
     }
+}
+
+// Vorschau-Build (docs/preview-build.md): JUnit prüft das Kennzeichen im Klassenpfad gegen den Schalter -Ppropwash_preview.
+tasks.named('test', Test) {
+    systemProperty 'propwash.preview.expected', rootProject.ext.propwashPreview ? 'true' : 'false'
+}
+
+// Vorschau-Schalter als Konstante (docs/preview-build.md, Befund PREVMARK2-1): Jeder Gradle-Build erzeugt
+// preview/PreviewSwitch aus der Vorlage in src/main/java mit ENABLED = <Schalter -Ppropwash_preview> und VERSION = <Version>
+// und kompiliert die erzeugte Klasse statt der Vorlage (fabric und neoforge über commonPreviewSwitch, siehe
+// multiloader-loader.gradle). Das Spiel liest den Schalter nie zur Laufzeit. Ohne Gradle (tools/fastcheck.sh, IDE) gilt die
+// Vorlage: ENABLED = false.
+def previewSwitchTemplate = file('src/main/java/de/lardtom/propwash/preview/PreviewSwitch.java')
+def previewSwitchDir = layout.buildDirectory.dir('generated/sources/previewSwitch/java')
+def generatePreviewSwitch = tasks.register('generatePreviewSwitch') {
+    def enabled = rootProject.ext.propwashPreview ? 'true' : 'false'
+    def shownVersion = version.toString()
+    def template = previewSwitchTemplate
+    def outDir = previewSwitchDir
+    inputs.property('enabled', enabled)
+    inputs.property('version', shownVersion)
+    inputs.file(template)
+    outputs.dir(outDir)
+    doLast {
+        if (!(shownVersion ==~ /[0-9A-Za-z.+_-]+/)) {
+            throw new GradleException("Version ${shownVersion}: im Vorschau-Wasserzeichen nur Ziffern, Buchstaben und . + _ - (docs/preview-build.md)")
+        }
+        def enabledLine = '    public static final boolean ENABLED = false;\n'
+        def versionLine = '    public static final String VERSION = "";\n'
+        def text = template.getText('UTF-8')
+        if (text.count(enabledLine) != 1 || text.count(versionLine) != 1) {
+            throw new GradleException("${template}: Vorlage braucht genau eine Zeile ENABLED = false und eine Zeile VERSION = \"\"")
+        }
+        text = text.replace(enabledLine, "    public static final boolean ENABLED = ${enabled};\n")
+                .replace(versionLine, "    public static final String VERSION = \"${shownVersion}\";\n")
+        def root = outDir.get().asFile
+        root.deleteDir()
+        def target = new File(root, 'de/lardtom/propwash/preview/PreviewSwitch.java')
+        target.parentFile.mkdirs()
+        target.setText(text, 'UTF-8')
+    }
+}
+
+configurations {
+    commonPreviewSwitch {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+artifacts {
+    commonPreviewSwitch(previewSwitchDir.get().asFile) {
+        builtBy(generatePreviewSwitch)
+    }
+}
+
+tasks.named('compileJava', JavaCompile) {
+    dependsOn(generatePreviewSwitch)
+    source(previewSwitchDir)
+    exclude { it.file == previewSwitchTemplate }
 }

@@ -6,7 +6,12 @@
   "mixins": [
     "EntityDataAccessorMixin",
     "ItemEntityAccessor",
-    "ServerPlayerMixin"
+    "ServerPlayerMixin",
+    "AttributeCommandMixin",
+    "SculkShriekerBlockEntityMixin",
+    "WardenMixin",
+    "EnderDragonMixin",
+    "WitherBossAccessor"
   ],
   "client": [
     "client.AvatarRendererMixin",

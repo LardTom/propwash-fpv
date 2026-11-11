@@ -1,0 +1,57 @@
+{
+  "format": 1,
+  "kind": "propwash_share_baseline",
+  "namespaces": {
+    "propwash": {
+      "frame": [
+        "cinewhoop_3",
+        "freestyle_5",
+        "long_range_7",
+        "race_5",
+        "whoop_65"
+      ],
+      "stack": [
+        "aio_20",
+        "aio_whoop",
+        "stack_30",
+        "creative_fc"
+      ],
+      "motor": [
+        "m0802_22000",
+        "m1404_4600",
+        "m2004_3000",
+        "m2207_1750",
+        "m2306_1860",
+        "m2807_1300"
+      ],
+      "prop": [
+        "p31_3b",
+        "p31_4b",
+        "p3_3b",
+        "p51_3b",
+        "p7_2b",
+        "p51_29_3b"
+      ],
+      "video": [
+        "analog_nano",
+        "analog_race",
+        "digital_hd",
+        "digital_lite"
+      ],
+      "battery": [
+        "b1s_300_hv",
+        "b4s_650",
+        "b6s_1100",
+        "b6s_1300",
+        "b6s_4000_lion"
+      ],
+      "accessory": [
+        "action_cam_heavy",
+        "action_cam_light",
+        "led_strip",
+        "action_cam_flashback",
+        "gripper"
+      ]
+    }
+  }
+}

@@ -146,3 +146,33 @@ publishing {
         }
     }
 }
+
+// Vorschau-Build (docs/preview-build.md, Schalter -Ppropwash_preview im Wurzel-Build): Kennzeichen preview=true|false in
+// META-INF/propwash-build.properties und im Manifest (Propwash-Preview), Jar-Name mit Zusatz -preview, keine
+// Maven-Veröffentlichung. Ohne Schalter bleibt alles wie im Release, nur das Kennzeichen steht auf false.
+def propwashPreviewOn = rootProject.ext.propwashPreview as boolean
+def propwashPreviewFlag = propwashPreviewOn ? 'true' : 'false'
+
+processResources {
+    inputs.property('propwash_preview', propwashPreviewFlag)
+    filesMatching('META-INF/propwash-build.properties') {
+        expand(propwash_preview: propwashPreviewFlag)
+    }
+}
+
+jar {
+    manifest {
+        attributes('Propwash-Preview': propwashPreviewFlag)
+    }
+    if (propwashPreviewOn) {
+        archiveClassifier = 'preview'
+    }
+}
+
+tasks.withType(AbstractPublishToMaven).configureEach {
+    doFirst {
+        if (propwashPreviewOn) {
+            throw new GradleException('Vorschau-Builds (-Ppropwash_preview=true) werden nicht veröffentlicht (docs/preview-build.md)')
+        }
+    }
+}

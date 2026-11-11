@@ -41,13 +41,21 @@
         "${mod_id}.content.mixins.json",
         "${mod_id}.join.mixins.json",
         "${mod_id}.bando.mixins.json",
-        "${mod_id}.zone.mixins.json"
+        "${mod_id}.zone.mixins.json",
+        "${mod_id}.guard.mixins.json",
+        "${mod_id}.rx.mixins.json",
+        "${mod_id}.share.mixins.json",
+        "${mod_id}.gpucompat.mixins.json",
+        "${mod_id}.accessory.mixins.json"
     ],
     "depends": {
         "fabricloader": ">=${fabric_loader_version}",
         "fabric-api": ">=${fabric_version}",
         "minecraft": "~${minecraft_version}",
         "java": ">=${java_version}"
+    },
+    "breaks": {
+        "justmoreparts": "<1.2.0-"
     },
     "custom": {
         "modmenu": {

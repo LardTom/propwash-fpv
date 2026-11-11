@@ -3,6 +3,7 @@ package de.lardtom.propwash.race.client;
 import de.lardtom.propwash.dev.AssistJoinCheck;
 import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.AssistServerChecks;
+import de.lardtom.propwash.server.client.ClientPersonalRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import net.minecraft.client.Minecraft;
@@ -25,11 +26,12 @@ public final class AssistJoinProbe {
             state.put(KNOWN, ClientWorldRules.INSTANCE.known());
         }
         int waited = tick - (int) state.get(START);
-        ClientWorldRules rules = ClientWorldRules.INSTANCE;
-        boolean changed = rules.get(WorldRuleSpecs.GRAVITY_SCALE) == AssistJoinCheck.GRAVITY
-                && rules.get(WorldRuleSpecs.CRASH_TOLERANCE) == AssistJoinCheck.CRASH_TOLERANCE;
-        boolean reset = rules.get(WorldRuleSpecs.GRAVITY_SCALE) == WorldRuleSpecs.GRAVITY_SCALE.defaultValue()
-                && rules.get(WorldRuleSpecs.CRASH_TOLERANCE) == WorldRuleSpecs.CRASH_TOLERANCE.defaultValue();
+        ClientPersonalRules rules = ClientPersonalRules.INSTANCE;
+        boolean changed = rules.effective(WorldRuleSpecs.GRAVITY_SCALE) == AssistJoinCheck.GRAVITY
+                && rules.effective(WorldRuleSpecs.CRASH_TOLERANCE) == AssistJoinCheck.CRASH_TOLERANCE
+                && ClientWorldRules.INSTANCE.on(WorldRuleSpecs.DRONE_TRAILS);
+        boolean reset = rules.own().isEmpty() && rules.effective(WorldRuleSpecs.GRAVITY_SCALE) == WorldRuleSpecs.GRAVITY_SCALE.defaultValue()
+                && rules.effective(WorldRuleSpecs.CRASH_TOLERANCE) == WorldRuleSpecs.CRASH_TOLERANCE.defaultValue();
         String head = "assist_rules_known_at_join=" + state.get(KNOWN) + "\n";
         if (!state.containsKey(RULES)) {
             if (changed) {

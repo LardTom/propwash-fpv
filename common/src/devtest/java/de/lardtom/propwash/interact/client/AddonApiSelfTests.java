@@ -162,7 +162,7 @@ public final class AddonApiSelfTests {
 
     private static StepResult basicsStep() {
         List<String> errors = new ArrayList<>();
-        if (!PropwashApi.isCompatible("1.6") || PropwashApi.isCompatible("1.7")) {
+        if (!PropwashApi.isCompatible("1.6") || !PropwashApi.isCompatible("1.7") || !PropwashApi.isCompatible("1.8") || PropwashApi.isCompatible("1.9")) {
             errors.add("API-Version " + PropwashApi.API_VERSION);
         }
         Optional<AccessoryType> launcher = AccessoryType.byId(ExampleAccessories.LAUNCHER);

@@ -11,6 +11,7 @@ Wann welche Nummer steigt, regelt [`docs/RELEASING.md`](../RELEASING.md).
 
 | Propwash | Parts-API | Netzprotokoll | Für Addons |
 |---|---|---|---|
+| 0.6.0 | 1.8.0 | 20 | Schalter und Achsen, OSD-Elemente, Kollisionsregeln, Werfen, sichtbarer Inhalt, Stöße, Welt-Regeln, Daten an der Drohne, autonomer Flug, zweiter Operator, Gimbal in Aufnahme und Modell, Wartungsknöpfe, Kompass, LED-Pfad und gerade hängendes Zubehör, Sharecodes über Propwash (Teile-Tabelle je Add-on), Renndaten für Server und Bots, in 1.8 Fracht am Greifer und Zubehör einrücken; Namensraum `propwash` reserviert |
 | 0.5.2 | 1.6.0 | 16 | Halterung vorne, Zubehör mit Verhalten, Inventar und Aktionen 1–4, Stöße und Kräfte im Flugmodell, Events für Treffer und Schaden, Drohnen-Abfragen, Flughilfen, Gimbal-Kamera, HUD-Elemente; Leistungsstufen des Videosenders (`vtx_levels_mw`); Homepoint im NBT, Zonen, Block-Tags für Ranken, Bando-Karte, wasserdichte Drohnen, Gründe der Flughilfe im Detail |
 | 0.5.1 | 1.5.0 | 15 | nichts Neues für Addons; Drohnen tragen Entity-Tags für Server-Admins |
 | 0.5.0 | 1.5.0 | 15 | fünf Szenen-Konstanten, Umkehrschub der Props, Welt-Regeln, Schadensart, Bando-Beute, Beitritts-Übersicht aus den Metadaten, Addons nur beim Spieler inaktiv statt Trennung (`isAddonActive`), API unter MIT, Konfigurator-Tabs scrollen von selbst (`ConfigTab.reportBottom`, `scrollsItself`, `ConfigTabHost.contentShift`) |
@@ -26,6 +27,401 @@ Client und Server mit verschiedener Protokollnummer trennt schon der Handshake m
 Versionen nennt.
 
 ---
+
+## 0.6.0 — Parts-API 1.8.0, Netzprotokoll 20
+
+Veröffentlicht mit Propwash 0.6.0. `PropwashApi.API_VERSION` steht auf **1.8.0** (intern seit `0.6.0-dev.14`, davor 1.7.0
+seit `0.6.0-dev.2`); was hier steht, ist Teil von API 1.7.0, außer dem Abschnitt „Parts-API 1.8.0“. Propwash 0.6.0
+bringt 1.7 und 1.8 zusammen.
+Ab dem ersten Release-Kandidaten ist die API eingefroren (nur noch Ergänzungen für die offiziellen Add-ons); Fracht am
+Greifer und Zubehör einrücken heben die Nebenversion auf 1.8. Das Netzprotokoll steht auf 20, in
+`0.6.0-rc.4` auf 19, in `0.6.0-rc.3` auf 18, bis `0.6.0-rc.2` auf 17 (siehe unten). Handbuch: [`addon-guide.md`](addon-guide.md) Abschnitt 21 (Sharecodes: Abschnitt 13),
+Kurzfassung [`../addon-api-1.7.md`](../addon-api-1.7.md), Design
+[`../design/0.6.0/addon-api-namespace.md`](../design/0.6.0/addon-api-namespace.md).
+
+### Parts-API 1.7.0: Abhängigkeit und Kompatibilität
+- Abhängigkeit für Add-ons, die 1.7 nutzen: Fabric `"propwash": ">=0.6.0-"`, NeoForge `versionRange = "[0.6.0-alpha,)"`,
+  zur Laufzeit `PropwashApi.requireVersion(modId, "1.7")`. Beide Bereiche nehmen `0.6.0-dev.N`, `0.6.0-rc.N` und
+  `0.6.0` an. Nicht `>=0.6.0` (Fabric lehnt Vorabstände ab), `[0.6.0,)` (NeoForge lehnt `-rc`-Stände ab) oder
+  `[0.6.0-dev.N,)` (lehnt unter NeoForge `0.6.0` ab).
+- **Additiv:** Jede neue Methode an einer Schnittstelle aus 1.6 ist `default` (`FlightState`, `AssistOutput`,
+  `GimbalContext`, `GimbalProvider`, `ClientInput`, `AccessoryBehavior`, `AccessoryContext`, `AccessoryRegistry`,
+  `DroneAccess`); eigene Implementierungen und Test-Doubles kompilieren weiter. Alle Signaturen aus 1.6 bleiben,
+  auch der 12-Argument-Konstruktor von `AccessoryDefinition`. Add-ons für 1.0–1.6 laufen unverändert, *Just More
+  Parts* 1.1.x im Altmodus (keine eigene Sharecode-Werkbank, Hinweis zum Update).
+- **Auch 1.7 bleibt additiv:** Was eine Schnittstelle aus 1.7 in einem veröffentlichten `0.6.0-dev.N` hatte, bleibt;
+  jede spätere Methode daran ist `default`. Das betrifft `WorldRules#raceNeutral(WorldRule)` (Standard: markiert
+  nichts), `WorldRules#raceRelevant(WorldRule)` (Standard: jede Regel rennrelevant) und `RaceData#standard(MinecraftServer)`
+  (Standard: `RaceStandardInfo.DEFAULTS`). In `0.6.0-dev.6` waren die drei abstrakt; eigene Implementierungen und
+  Test-Doubles von `WorldRules` oder `RaceData` aus `dev.2` bis `dev.5` kompilierten gegen `dev.6` nicht und
+  kompilieren ab dem nächsten Stand wieder unverändert.
+- **Verhaltensänderung für bestehende Add-ons, Namensraum `propwash`:** Anmeldungen unter `propwash:` an bisher
+  toleranten Stellen (`registerConfigTab`, `registerWorkbenchExtension`, `registerFlightSchoolScene`) übernimmt Propwash
+  nicht mehr (ohne Ausnahme, Fehler im Log). Eine Flugschul-Szene ohne eigenen Namensraum warf bis 1.6 eine Ausnahme und
+  wird jetzt still verweigert. Stellen, die schon in 1.6 warfen, werfen weiter `IllegalArgumentException`, jetzt mit
+  dem englischen Text
+  `Mod '<mod>' tried to register 'propwash:<pfad>' (<art>): the namespace propwash is reserved for Propwash. Use your mod id.`
+- **Verhaltensänderung für bestehende Add-ons, Kreativ-Tab:** `creativeTab().add(…)`: Einträge, deren Item aus
+  einem Namensraum mit eigenem Kreativ-Tab stammt (`extensionTab`, automatisch oder direkt registriert), stehen nicht
+  mehr zusätzlich im Propwash-Tab. Eigener Tab heißt ein registrierter `propwash:main-<ns>` oder irgendein Tab `<ns>:…`
+  im Register der Kreativ-Tabs; Items aus `propwash` und `minecraft` bleiben immer im Propwash-Tab. Dieselbe Prüfung gilt
+  für den Rückfall der Teil-Items und Presets. Für eigene Einträge ist `extensionTab(ns).add(…)` gedacht
+  ([`addon-guide.md`](addon-guide.md) Abschnitt 9, [`../accessory-fix.md`](../accessory-fix.md) §5).
+- **Verhaltensänderung für bestehende Add-ons, Dreizack:** `AccessoryRegistry#itemGrams` (1.6) zählt einen Dreizack mit
+  1500 g statt 150 g, auch in Behältern; Beladung, Flugmasse und Schub/Gewicht einer Drohne mit Dreizacken im
+  Zubehör-Inventar steigen entsprechend, der Greifer (höchstens 400 g) nimmt keine Dreizacke mehr auf
+  ([`../accessory-gaps.md`](../accessory-gaps.md)).
+- **Verhaltensänderung für bestehende Add-ons, Halterung vorne der eingebauten Rahmen:** Die Anker vorn
+  (`accessory_anchors.front`, `MountPose` für `AccessorySlot.FRONT`) liegen an der Vorderkante der Bodenplatte statt
+  davor: `cinewhoop_3` (0; −3; −30) statt (0; −3; −50), `freestyle_5` −64 statt −72, `race_5` −56 statt −66,
+  `long_range_7` −68 statt −76 (mm). Zubehör vorne an diesen Rahmen sitzt damit 8–20 mm weiter hinten, und alles, was
+  ein Add-on aus der `MountPose` dieser Halterung ableitet, wandert mit. Eigene Rahmen legen den Anker ebenso an die
+  Vorderkante (höchstens 1 mm Luft, höchstens 2 mm Überschneidung mit dem Quader aus `size_mm`); prüfen lässt sich das
+  mit dem Selbsttest „addon-api-17: Zubehör am Rahmen“ ([`addon-guide.md`](addon-guide.md) Abschnitt 20.1,
+  [`../accessory-hang.md`](../accessory-hang.md) §7).
+- **Verhaltensänderung für bestehende Add-ons, `DRONE_ASSEMBLED` beim Shift-Klick:** Bis 0.5.2 kam das Ereignis beim
+  Shift-Klick aus dem Werkbank-Ausgang mit einem leeren Stapel (`minecraft:air`) und Standard-Daten (`FREESTYLE` ohne
+  Lack, Tuning und Namen). Jetzt kommt es auf jedem Entnahmeweg (Klick, Shift-Klick, Zifferntaste, Wegwerfen) genau
+  einmal; `drone` ist die entnommene Drohne mit Bauplan, Lack, Tuning und Namen, `data` ihre `DroneData`. Ist im
+  Inventar kein Platz frei, bleibt die Drohne im Ausgang und es gibt kein Ereignis ([`addon-guide.md`](addon-guide.md)
+  Abschnitt 15).
+- Records aus 1.7 entstehen nur über Builder und Fabriken und bekommen in Nebenversionen Felder; neue Enum-Konstanten
+  kommen nur ans Ende (Handbuch Abschnitt 16).
+
+### Parts-API 1.7.0: neue Bausteine
+- **Schalter und Achsen** (`api.input`): `PropwashApi.switches()` → `SwitchRegistry` (`register(SwitchSpec)` →
+  `AddonSwitch`, `registerAxis(AxisSpec)` → `AddonAxis`, `switches`, `axes`, `find`, `findAxis`; höchstens 64 Schalter
+  und 16 Achsen, Ids höchstens 64 Zeichen), `SwitchSpec.builder` (`toggle`, `latchesOnGamepad`, `serverSync`, `nameKey`,
+  `descriptionKey`), `AxisSpec.builder` (`center`, `keyRateDps`, `serverSync`, `nameKey`);
+  `PropwashClientApi.bindSwitchKey`, `bindAxisKeys`; `ClientInput#switchActive(Identifier)`, `#axis(Identifier)`;
+  Event `ADDON_SWITCH_CHANGED`. Seite „Add-ons“ im Tab „Modi“. `FlightState#addonSwitch(String)`, `#addonAxis(String)`
+  und `GimbalContext#axis(String)` liefern dieselben Werte wie `AddonSwitch#active` bzw. `AddonAxis#value` für die
+  Drohne (Achsen gekappt auf −1…1, unbekannte Id `false` bzw. 0). Testfunke für Selbsttests (nur Client, nur in der
+  Entwicklungsumgebung): `PropwashClientApi.simulateRadio(boolean gamepad)`, `stopSimulatedRadio()`,
+  `setSimulatedAxis(int, float)`, `setSimulatedButton(int, boolean)`, `bindSimulatedSwitch(Identifier, int)` und
+  `bindSimulatedSwitch(Identifier, int, int, int)` – simuliertes Gamepad oder Funke mit dem Standardprofil, Add-on-Schalter
+  belegen wie auf der Seite „Add-ons“ (am Gamepad rastend mit `latchesOnGamepad`), Knöpfe und Achsen bewegen
+  ([`addon-guide.md`](addon-guide.md) Abschnitt 21.2); sowie `bindSimulatedAction(int, int)` und
+  `bindSimulatedAction(int, int, int, int)` – Zubehör-Aktion 1–4 an der Testfunke als Taster auf einem Knopf bzw. als
+  Schalter auf Kanal und Bereich, belegt wie im Tab „Modi“; die Aktion nimmt den Weg der echten Funke bis `onAction`;
+  außerhalb der Entwicklungsumgebung ohne Wirkung (`false`).
+- **Namen der Zubehör-Aktionen:** `AccessoryBehavior#actionNameKey(int)`; Hinweis beim ersten Flug je Zubehörtyp.
+- **Namen der Flugmodi:** `FlightAssist#modeNameKey(StabilizationMode)` (Standard leer): Übersetzungsschlüssel für den
+  Namen eines Stabilisierungsmodus, wenn eine Flughilfe die Modi umdeutet (etwa N, C und S einer Kamera-Drohne).
+  Propwash nimmt ihn in der Meldung beim Moduswechsel („Mode: C (key – radio switch: S)“) und im Hinweis „per Taste
+  gewählt“ im Tab „Modi“; leer, blank oder eine Ausnahme ergeben für diesen Modus Acro, Angle bzw. Horizon
+  ([`addon-guide.md`](addon-guide.md) Abschnitt 20.7, [`docs/addon-switches.md`](../addon-switches.md)).
+- **OSD** (`api.client.osd`): `PropwashClientApi.registerOsdElement(OsdElementSpec)`, `registerOsdWarning(Identifier,
+  OsdWarning)`; `OsdElementSpec.builder`, `OsdContent`, `OsdWarning`, `OsdText`, `OsdTone`, `OsdAlign`, `OsdGroup`,
+  `OsdContext`. Raster 30 × 16, höchstens 30 Zeichen, druckbares ASCII. `OsdLayoutSpec` (Export und Import über
+  `PropwashClientApi.osd()`) und die OSD-Ebene von Sharecodes nehmen Add-on-Elemente mit (Schlüssel `<ns>:<pfad>`,
+  Handbuch §12).
+- **Kollision** (`api.drone`): `DroneAccess#registerCollisionRule(Identifier, CollisionRule)`, `CollisionRule#flags`,
+  `#onBlockContact`, `CollisionFlags` (`SOLID`, `GHOST`, `with…`, `and`), `CollisionQuery` (mit `Side`),
+  `BlockContact` (Rückprall 0–0,95, Haftung 0,05–1,5, Aufprall 0–1). Der Server wertet jede Regel selbst aus; Runden mit
+  abgeschalteter Kollision zählen als Runde mit Hilfe (Grund `other`, Id der Regel).
+- **Werfen und Anzeige** (`api.accessory`): `AccessoryContext#dispense(int, DispenseOptions)` → `DispenseResult`
+  (`FIRED`, `PLACED`, `USED`, `EMPTY`, `REFUSED`, `BLOCKED`, `DENIED`), `DispenseOptions.defaults()` mit `speedScale`,
+  `inaccuracy`, `allowFluids` (Standard aus), `applyRecoil`, `consume`; `AccessoryRegistry#triggerAction(Entity, int,
+  boolean, ServerPlayer)`; `AccessoryBehavior#display(int)` → `ItemDisplay` (`at`, `rotated`, `scaled`).
+  `DispenseResult#recoilNs()` ist Masse × Mündungstempo, bei der Windkugel zusätzlich 0,8 N·s Druckwelle (zusammen
+  1,8 N·s; bis `0.6.0-rc.2` 2,5 bzw. 3,5 N·s), beim Dreizack mit 1,5 kg (33 N·s; bis `0.6.0-rc.2` 0,6 kg). Der Windstoß
+  einer Windkugel aus `dispense` stößt alle getroffenen Entities, auch die eigene Drohne, halb so stark wie Vanilla;
+  Windkugeln von Spielern und aus Dispenser-Blöcken bleiben unverändert ([`../accessory-gaps.md`](../accessory-gaps.md)).
+- **Stöße und Drohnen:** Event `DRONE_KNOCKBACK` (`DroneKnockback`, Ursachen `EXPLOSION`, `WIND_CHARGE`, `OTHER`,
+  Standard-Skala 0, `setScale` bis 2, `cancel`); `DroneAccess#loaded(ServerLevel)`, `#cameraPose(Entity)` → `CameraPose`.
+- **Welt-Regeln** (`api.worldrule`): `PropwashApi.worldRules()` → `WorldRules` (`registerBoolean`, `registerInt`,
+  `presetValue` für `realistic`, `training`, `arcade`, `registered`, `find`), `WorldRule#get(Level)`. Echte Gamerules im
+  Namensraum des Add-ons, eigener Abschnitt im Tab „Welt-Regeln“, optionaler Sprachschlüssel `<ns>.world_rules.section`.
+  Add-on-Regeln zählen fürs Rennen als rennrelevant; `WorldRules#raceNeutral(rule)` markiert eine eigene Regel als
+  neutral (wirkt nie auf die Wertung), `#raceRelevant(rule)` fragt die Einordnung ab
+  ([`docs/race-rules.md`](../race-rules.md)).
+- **Daten an der Drohne:** `PropwashApi.droneData()` → `DroneDataAccess` (`register`, `get` an Entity und Item, `set`,
+  `remove`, `keys`, `find`; 2048 Bytes je Schlüssel, 8192 je Drohne), `DroneDataKey` mit `Sync.NONE`/`TRACKING`.
+- **Autonomer Flug:** `DroneAccess#autonomy()` → `AutonomyAccess` (`start`, `stop`, `active`, `registerExitHandler`),
+  `AutonomyOptions.of` (`label` bis 8 Zeichen, `maxDuration` 1 s bis 60 min, `takeoff` 1–30 m), `AutonomyResult`
+  (neu `NOT_ARMABLE`), `AutonomyRequest`, `ExitHandler`, `AssistOutput#land()`, Event `AUTONOMY_ENDED` mit
+  `AutonomyEnd`. Budget mit dem Heimflug geteilt (Add-on-Flüge höchstens 6 von 8 je Server und 1 von 2 je Spieler).
+  Add-on-Flüge erzeugen neues Gelände nach der Welt-Regel „Drohnen erzeugen neues Gelände“ des Besitzers wie ein
+  Pilot; darf er nicht erzeugen, meldet `FlightState#terrainLimit()` (`default` `false`) den Halt am Rand des erzeugten
+  Geländes, und nach 1 s endet der Flug mit dem neuen Grund `AutonomyEnd.TERRAIN_LIMIT` (letzte Konstante, Folge
+  wie nach `OUT_OF_RANGE`). Nach `OUT_OF_RANGE` und `TERRAIN_LIMIT` folgt Propwashs Heimflug wie bei einer GPS-Drohne
+  nach Funkverlust (ohne Ziel Landung); ohne GPS-Empfang an der Stelle der Drohne (Steindecke, Höhle, unter Wasser,
+  Nether) landet sie an Ort und Stelle. `switch` über `AutonomyEnd` immer mit `default`
+  ([`docs/addon-autonomy.md`](../addon-autonomy.md) §4).
+- **Grund zu `NOT_READY`:** neu `AutonomyAccess#notReadyReason(Entity, AutonomyOptions)` → `Optional<AutonomyNotReady>`
+  (`default`, leer) und der neue Typ `AutonomyNotReady` mit `NOT_ON_GROUND`, `NO_TAKEOFF`, `NO_BATTERY`, `REMOVED`. Die
+  Methode nennt, warum `start` mit diesen Optionen `NOT_READY` ergibt; nur am Server-Thread, `switch` immer mit
+  `default`. Einen Grund für fehlenden GPS-Empfang gibt es nicht, Propwash prüft beim Start weder Akkustand noch GPS.
+  **Verhaltensänderung:** „Am Boden“ heißt für den Start aus dem Stand jetzt Kontakt der ganzen Kollisionsform (Hitbox,
+  Bodenpunkte des Rahmens, Zubehör-Ecken samt Gimbal, Standbeine) unter 2 cm und Ruhe unter 0,25 m/s; bis
+  `0.6.0-rc.2` galt die Hitbox unter 0,08 m. Drohnen auf hohem Zubehör oder Gimbal starten mit `takeoff` aus dem Stand;
+  eine Drohne, die 2 cm oder mehr über dem Boden schwebt, gilt als in der Luft
+  ([`../addon-autonomy.md`](../addon-autonomy.md) §1, §3).
+- **Zweiter Operator:** `DroneAccess#operators()` → `OperatorAccess` (`bind`, `unbind`, `operator`),
+  `GimbalContext#operatorAxis(int)`, `#operatorAction(int)`, `FlightState#operatorAxis(int)`, `ClientInput#operating()`.
+  Für Tests ohne Funke oder Gamepad legt die System-Eigenschaft
+  `propwash.test.operatorInput=<Roll>,<Nick>,<Gier>,<Gas>[,<Aktion>…]` die Eingaben fest, die der Client des Operators
+  schickt ([`docs/operator-gimbal.md`](../operator-gimbal.md) Abschnitt 9); ohne sie keine Wirkung.
+- **Gimbal:** `action_cam` auch auf der Halterung `front`; `GimbalProvider#stabilizesRecording()`,
+  `#modelPose(GimbalContext, Quaternionf)` (Element `gimbal_head` im Zubehör-Modell), `#fovDegrees(GimbalContext)`
+  (20–150°, `NaN` = Bau); `PropwashClientApi.recording()` → `RecordingControl` (`start`, `stop`, `photo`, `recording`),
+  `PropwashClientApi.spectate(Entity)`.
+- **Getrennte FPV- und Gimbal-Kamera:** `GimbalProvider#showsProps(GimbalContext)` (Standard `true`): bei `false`
+  zeichnet Propwash im Bild dieses Gimbals weder Props noch Ducts vor die Kamera (Livebild des Piloten, Zuschauer,
+  Operator und damit Fotos und Aufnahmen dieses Bilds). `GimbalProvider#gimbalRotation(GimbalContext, Quaternionf)`
+  (Standard `false`): bei `true` nimmt der Flashback-Kamerapfad diese Lage der Gimbal-Kamera, unabhängig vom Bild auf
+  dem Schirm; bei `false`, nicht endlicher Lage oder Ausnahme bleibt er wie bisher.
+  `GimbalProvider#gimbalFovDegrees(GimbalContext)` (Standard `NaN`): ein endlicher Wert ist das horizontale Sichtfeld
+  der Gimbal-Kamera (Brennweite samt Zoom) für den Flashback-Kamerapfad, gekappt auf 20–150°, unabhängig vom Bild auf
+  dem Schirm; bei `NaN`, nicht endlichem Wert oder Ausnahme nimmt der Pfad wie bisher das Sichtfeld des Schirms. Ohne
+  die Methoden ändert sich nichts ([`docs/operator-gimbal.md`](../operator-gimbal.md) Abschnitt 3,
+  [`addon-guide.md`](addon-guide.md) Abschnitt 21.14).
+- **Pilotenwechsel und Wartung:** Event `PILOT_CHANGED` (`PilotChanged`), `PropwashClientApi.registerServiceExtension`
+  mit `ServiceExtension` (höchstens drei Knöpfe sichtbar, weitere unter „Mehr“).
+- **Kompass:** `FlightState#compassHeadingDeg()`, `#compassErrorDeg()`, `#compassHealthy()`,
+  `FlightState.COMPASS_DISTURBED_DEG` (15°); Standard für eigene Implementierungen: echter Kurs, gesund
+  ([`docs/api-compass.md`](../api-compass.md)). Für Selbst-, Rauch- und Beitrittstests legt die System-Eigenschaft
+  `propwash.test.compassErrorDeg=<Grad>` den Kompassfehler jedes danach startenden Flugs fest
+  ([`docs/api-compass.md`](../api-compass.md) Abschnitt 4); ohne sie unverändert.
+- **Neigungsgrenze:** `FlightState#angleLimitDeg()` liefert die Neigung in Grad, die ANGLE bei vollem Knüppel ansteuert
+  (Winkelgrenze `pid.angleLimitDeg` aus dem PID-Tab, 10–85°), am Client aus dem Flight Controller, im Add-on-Flug am
+  Server aus dem Flugmodell des Server-Flugs; Standard für eigene Implementierungen `FlightState.DEFAULT_ANGLE_LIMIT_DEG`
+  (60°). `DroneView#angleLimitDeg()` (neue letzte Record-Komponente) liefert dieselbe Grenze aus dem Tuning der Drohne,
+  auch an Clients; der Konstruktor mit 11 Argumenten bleibt und setzt 60°, Record-Muster mit allen Komponenten brauchen
+  beim Neubau die neue Komponente. Flughilfen setzen Knüppel als Neigung / `angleLimitDeg()` und planen Bremswege mit
+  dem Minimum aus eigener Höchstneigung und Grenze; am Flugverhalten ändert sich nichts
+  ([`addon-guide.md`](addon-guide.md) Abschnitt 20.7, [`../addon-autonomy.md`](../addon-autonomy.md) §2).
+- **Gerade hängendes Zubehör:** `AccessoryDefinition#hangsStraight()` (neue letzte Record-Komponente), Builder
+  `hangsStraight(boolean)`, JSON `hangs_straight` (Standard `false` = wie 1.6); die Konstruktoren mit 12 und 13 Argumenten
+  bleiben ([`docs/accessory-hang.md`](../accessory-hang.md)). Record-Muster mit allen Komponenten brauchen beim Neubau
+  die neue Komponente.
+- **Zubehör nur an bestimmten Rahmen:** `AccessoryDefinition#frames()` (neue letzte Record-Komponente,
+  `Set<Identifier>`, sortiert und unveränderlich; leer = jeder Rahmen mit passender Halterung wie in 1.6), Builder
+  `frames(Identifier...)`, JSON `frames` in `propwash_parts/accessory/*.json` (Liste oder eine Id); die Konstruktoren mit
+  12 bis 15 Argumenten bleiben. Ein so beschränktes Zubehör an einem anderen Rahmen meldet das neue Bauproblem
+  `accessory_frame` (`DroneBuild.Issue.ACCESSORY_FRAME`, letzte Konstante; Text `propwash.build.issue.accessory_frame`)
+  in `builds().check`, `createDrone`, Presets, Importen und PW3; die Werkbank nimmt es dort nicht an. Wie die übrigen
+  Halterungsprobleme wird es bei ausgeschalteter Welt-Regel „Teile müssen zusammenpassen“ zur Warnung. Gebaute Drohnen
+  behalten das Zubehör, fliegen bei aktiver Regel aber erst nach dem Abnehmen in der Werkbank
+  ([`addon-guide.md`](addon-guide.md) Abschnitt 3.4, [`../accessory-fix.md`](../accessory-fix.md) §4). Die neue
+  Komponente ändert `toString()` und damit den Teile-Hash jedes Zubehörs im Handshake (gleiche Versionen vergleichen
+  weiter gleich, die Reihenfolge in der Datei zählt nicht).
+- **VTX ohne externe Antennen:** `VideoAntenna.none()` und `VideoAntenna#isNone()`, Builder
+  `VideoDefinition.Builder#antenna(VideoAntenna.none())`, JSON `"antenna": "none"` in `propwash_parts/video/*.json`
+  (gelesen und geschrieben). Propwash zeichnet dann weder Antennen noch Halter und bietet den Lack-Platz
+  „Antennenspitzen“ (`antenna`) nicht an; Masse, Reichweite und Videolink bleiben, wie die Daten des VTX sie angeben.
+  `new VideoAntenna(0, …)` ergibt dasselbe (Länge 0, Kappe `whip`); bis `0.6.0-rc.2` warf der Konstruktor bei Anzahl 0
+  eine `IllegalArgumentException`, und `0.6.0-rc.2` lehnt `"antenna": "none"` ab (das Teil lädt dann nicht). VTX ohne
+  Angabe bekommen weiter abgeleitete Antennen. Der Web-Export schreibt dafür `antenna` mit `count` 0, `length_mm` 0,
+  `cap` `whip` und `derived` `false` ([`addon-guide.md`](addon-guide.md) Abschnitt 21.16, [`../ASSETS.md`](../ASSETS.md)
+  „VTX-Antennen hinten am Rahmen“).
+- **Flugschul-Taste im Selbsttest** (nur Client, nur in der Entwicklungsumgebung):
+  `PropwashClientApi.simulateFlightSchoolHold(int slot)` hält die Flugschul-Taste über dem Slot mit diesem Index im Menü
+  des offenen Container-Screens, bis `stopSimulatedFlightSchoolHold()`; Halte-Zeit, Hinweis und Öffnen wie mit der echten
+  Taste, jeder Aufruf beginnt ein neues Halten ([`addon-guide.md`](addon-guide.md) Abschnitt 14.3); außerhalb der
+  Entwicklungsumgebung und bei negativem Slot ohne Wirkung (`false`).
+
+### Parts-API 1.7.0: Sharecodes gehören Propwash
+- Propwash liest PW1, PW2 und PW3 und schreibt nur noch PW3 ([`docs/sharecode/pw3.md`](../sharecode/pw3.md)). Ein
+  Add-on liefert nur eine Teile-Tabelle `data/<ns>/propwash_share/table.json` ([`docs/sharecode/tables.md`](../sharecode/tables.md));
+  ohne Tabelle gehen seine Teile als Text in den Code. Eine Tabelle für `propwash` aus einem fremden Jar wird verworfen.
+- `PropwashApi.shareCodes()` → `ShareCodes` (`decode`, `encode`, `convert`), `ShareResult` (Status, Format,
+  `DroneData`, OSD-JSON, `NamespaceInfo` je Namensraum, unbekannte Teile, umgerechneter Code), `ShareOptions` (Ebenen,
+  Add-on-Infos, OSD). Prüfwerkzeug `ShareTableCheck` im API-Paket (`check`, `add`, `freeze`, `init`).
+- Eigene Sharecode-Systeme von Add-ons sind damit überflüssig; die Werkbank-Erweiterung von *Just More Parts* 1.1.x
+  für Sharecodes meldet Propwash nicht mehr an (eine Werkbank, ein Knopf „Sharecode“).
+
+### Parts-API 1.7.0: Renndaten für Server und Bots
+- Ein Server-Add-on gibt es nicht. `PropwashApi.race()` → `RaceData` (`courses`, `course` nach Kurs-ID,
+  `courseByNumber`, `leaderboard(server, UUID, BoardQuery)`, `version`), `BoardQuery` (`laps`, `races`, `assisted`,
+  `layout`, `limit`, `frame`), Schnappschüsse `CourseInfo`, `BoardSnapshot`, `BoardEntry`, `ZoneHint`; Ereignisse in
+  `RaceEvents` (`LAP_COMPLETED`, `RACE_FINISHED`, `PERSONAL_BEST`, `COURSE_RECORD`, `COURSE_CREATED`, `COURSE_CHANGED`,
+  `COURSE_DELETED`). Nur lesend, nur am Server-Thread ([`race-data.md`](race-data.md)).
+- Rennstandard: `RaceData#standard(server)` → `RaceStandardInfo` (`rules` mit Wert und Propwash-Standard je
+  rennrelevanter Regel, `neutral`, `changedAtMillis`, `changedBy`, `defaults()`, `value(id)`); `BoardEntry#rules` →
+  `RuleValue` je Zeit (`rule`, `value`, `zone`, `raceLegalZone`), der Konstruktor ohne `rules` bleibt. JSON-Spiegel mit
+  `raceStandard` in `courses.json` und jeder Bestenliste und `rules` je Eintrag (Schema bleibt 1).
+- Jeder Kurs hat eine Kurs-ID (UUID, Feld `uuid` je Kurs in `data/propwash_race.json`); alte Kurse bekommen sie beim
+  ersten Laden. JSON-Spiegel je Welt unter `propwash/race-data/` (`courses.json`, `leaderboards/<kurs-id>.json`, Schema 1).
+
+### Parts-API 1.7.0: Namensraum `propwash`
+- Neue Punkte aus 1.7 werfen bei `propwash:`-Ids; bisher tolerante Punkte verweigern still (siehe oben). Reserviert ist
+  nur genau `propwash`.
+- Beim Start und Neuladen meldet Propwash fremde Registry-Ids, Übersetzungsschlüssel, Tastenbelegungen,
+  Netzwerk-Pakete, per Mixin angehängte Enum-Werte, Daten- und Asset-Dateien und `/propwash`-Unterbefehle unter
+  `propwash` (Log, einmal je Start im Chat, kein Absturz; [`docs/namespace-guard.md`](../namespace-guard.md)). Crash-Reports
+  haben den Abschnitt „Propwash add-ons“. Regeln: [`ADDONS.md`](../../ADDONS.md).
+
+### Parts-API 1.7.0: Pakete, Daten und Dateien
+- Pakete: `propwash:addon_switch`, `propwash:addon_axis` (C2S), `propwash:addon_features` (S2C, beim Betreten),
+  `propwash:operator_input` (C2S), `propwash:operator_state`, `propwash:operator_role`, `propwash:autonomy_status` (S2C);
+  `propwash:drone_push` trägt auch Stöße aus `DRONE_KNOCKBACK`; Add-on-Welt-Regeln reisen mit `propwash:world_rules`.
+- Entity-NBT `AddonData` (`{"<ns>": {"<pfad>": …}}`), Item-Komponente und Entity-Daten-Serializer `propwash:addon_data`.
+  0.5.x ignoriert `AddonData` an Drohnen in der Welt; ein Drohnen-Item mit der Komponente kann 0.5.x nicht lesen.
+- Client-Dateien: `config/propwash/input.json` behält Belegungen `<ns>:<pfad>` unter `switches` und neu `addonAxes`,
+  `config/propwash/osd.json` behält Add-on-Elemente unter `<ns>:<pfad>` (Format bleibt Version 4), neu
+  `config/propwash/accessory_hints.json`. 0.5.x verwirft die Add-on-Schlüssel beim Normalisieren.
+
+### Parts-API 1.7.0: LED-Pfad für Zubehör
+- **`led_path`** (JSON) bzw. **`AccessoryDefinition#ledPathMm()`** (`List<Vec3Mm>`, Builder `ledPath(List<Vec3Mm>)` und
+  `ledPath(Vec3Mm...)`): 2–256 Punkte in mm im Koordinatensystem des Zubehörs (wie `size_mm`: Ursprung am Anbaupunkt,
+  +X rechts, +Y oben, −Z vorn, vor der Neigung). Die `leds` verteilen sich gleichmäßig nach Länge entlang der Linie
+  (LED *i* bei (*i* + 0,5)/`leds` der Gesamtlänge), so leuchtet ein Ring, ein Bogen oder ein Streifen entlang der Arme
+  LED für LED entlang seiner Form, in jedem LED-Modus (Regenbogen läuft um den Ring, Blinken, Scharf, Akku-Warnung),
+  mit Leuchthof und „LEDs aus“ wie beim geraden Streifen. Ein geschlossener Ring wiederholt am Ende den ersten Punkt.
+  ```json
+  "leds": 20,
+  "led_path": [[20.0, 7.0, 0.0], [0.0, 7.0, 20.0], [-20.0, 7.0, 0.0], [0.0, 7.0, -20.0], [20.0, 7.0, 0.0]]
+  ```
+- Prüfung (Meldung mit Datei, Feld `led_path` und Punktnummer): 2 bis 256 Punkte (`MIN_LED_PATH_POINTS`,
+  `MAX_LED_PATH_POINTS`), je Punkt drei endliche Zahlen, jede Koordinate höchstens ±500 mm (`MAX_LED_PATH_MM`),
+  Gesamtlänge > 0, nur mit `leds` > 0. Neu ist auch `AccessoryDefinition.MAX_LEDS` (64, die schon geltende Grenze).
+- Darstellung ohne eigenes Modell: eine schmale Leiterplatte entlang der Linie mit den LEDs darauf statt des Quaders
+  `size_mm`. Mit eigenem Modell (`render_model` oder `items/drone_render/accessory/…`) zeichnet Propwash das Modell und
+  die leuchtenden LEDs an den Pfad-Punkten. Ein Zubehör mit Pfad wird unten **nicht** auf die Streifenlänge des Rahmens
+  gestreckt (`AccessoryAnchor#stretch` = 1): der Pfad ist die Form. Kollision, Stirnfläche und Masse rechnen weiter mit
+  `size_mm`; den Quader so wählen, dass er den Pfad umschließt.
+- Alle LEDs bis 64 leuchten jetzt; bis 0.5.2 zeigte die Drohne höchstens 16 LEDs eines Zubehörs, und zwar nur die
+  ersten 16 Plätze (bei 32 LEDs leuchtete nur die halbe Leiste).
+- **Kompatibilität:** additiv. Zubehör ohne `led_path` verhält sich genau wie bisher (gleiche LED-Plätze, gleiche
+  Streckung, gleiche Formen). Der bisherige 12-Argument-Konstruktor von `AccessoryDefinition` bleibt (leerer Pfad), Addons
+  gegen 1.6 laufen ohne Neubau. Die Komponente ändert `toString()` und damit den Teile-Hash im Handshake für jedes
+  Zubehör; Server und Client derselben Version vergleichen weiter gleich, ein abweichender Pfad trennt wie jede andere
+  abweichende Teile-Angabe. Ältere Propwash-Versionen ignorieren `led_path` mit der Warnung „unbekanntes Feld wird
+  ignoriert“ und zeigen den geraden Streifen; wer den Pfad braucht, prüft `requireVersion(modId, "1.7")`, sobald 1.7.0
+  veröffentlicht ist. Record-Muster mit allen Komponenten (`case AccessoryDefinition(var id, …)`) brauchen beim Neubau
+  die neue Komponente.
+- **Werkzeuge und Web-Export:** der Codec `PropwashApi.parts().toJson(definition)` schreibt `led_path` (nur wenn
+  gesetzt) und `fromJson` liest es. Im Web-Export für den Konfigurator ist das Feld unverändert als `data.led_path`
+  vorgesehen (Liste von `[x, y, z]`, leer = gerader Streifen), damit die Website den Pfad zeichnen kann.
+- Beispiel: `propwash_example:led_ring` im Beispiel-Addon (nur Entwicklungslauf), 20 LEDs auf einem Ring mit 20 mm Radius.
+
+### Parts-API 1.7.0: Motor-Hitze
+- `MotorThermal#derateStartC` / `derate_start_c`: gleiche Namen und Werte, neue Bedeutung – ab hier verliert ein heißer
+  Motor Leistung (Drehmoment linear bis −10 % bei `maxTempC`) und verschleißt; `max_temp_c`: ab hier starker Verschleiß.
+  Abgeregelt wird nur noch im ESC nach dessen Temperatur (ab 140 °C linear bis 25 % bei 155 °C), Ereignisse `MOTOR_HOT`
+  und `ESC_DERATE` statt `MOTOR_DERATE`.
+- Die Standard-Kühlwerte nach dem Umbau stehen in [`../design/parts-api.md`](../design/parts-api.md) (Felder
+  `thermal`). Kühlwerte eigener Motoren stellt man am besten nach dem 60-s-Wert des Datenblatts ein (Handbuch Abschnitt
+  3.1; Werkbank: Vollgas im Stand nach 60 s); der eingebaute 1404 4600 KV nutzt so `cooling_w_per_k_per_rad_s` =
+  1,6·10⁻⁴.
+
+### Parts-API 1.8.0: Fracht am Greifer und Zubehör einrücken
+- **Version:** `PropwashApi.API_VERSION` 1.8.0 ab `0.6.0-dev.14`, nur Ergänzungen. Wer die beiden Bausteine nutzt, prüft
+  `PropwashApi.requireVersion(modId, "1.8")`; die Versionsbereiche bleiben (Fabric `>=0.6.0-`, NeoForge
+  `[0.6.0-alpha,)`). Stände bis `0.6.0-rc.3` tragen 1.7.0 und kennen die Methoden und Builder nicht, ein Add-on, das sie
+  dort aufruft, scheitert mit `NoSuchMethodError`. Add-ons, die nur 1.7 nutzen, laufen unverändert.
+- **Greifer am Server:** `AccessoryRegistry#grabCargo(Entity, ServerPlayer)` → `boolean`, `#releaseCargo(Entity,
+  ServerPlayer)` → `int` und `#cargo(Entity)` → `List<ItemStack>` (alle `default`, neutral `false`, 0 bzw. leer;
+  eigene Implementierungen kompilieren weiter). Der eingebaute Greifer hat kein `AccessoryBehavior`, `triggerAction`
+  erreicht ihn nicht; `grabCargo` öffnet ihn 5 s lang und greift auch ohne Pilot im Add-on-Flug, etwa an Wegpunkten
+  eines Flugplaners, `releaseCargo` lässt los wie die Taste des Piloten und gibt die Zahl der Items zurück, `cargo`
+  liefert Kopien. Ohne `grabCargo` nimmt eine Drohne ohne Pilot weiter nichts auf, auch nicht im Heimflug; Meldungen
+  gehen ohne Pilot an `actor`. Geändertes Verhalten: Das Flugmodell autonomer Flüge am Server (Add-on-Flug und
+  Heimflug) rechnet Fracht, die im Flug dazukommt oder losgelassen wird, mit (`FlightState#massKg()`). Kein neues
+  Paket, Netzprotokoll unverändert
+  ([`addon-guide.md`](addon-guide.md) Abschnitt 21.23, [`../addon-autonomy.md`](../addon-autonomy.md) §11).
+- **Zubehör einrücken:** `AccessoryDefinition#recessMm()` und `#dropMm()` (neue letzte Record-Komponenten), Builder
+  `recess(double)` und `drop(double)`, JSON `recess_mm` und `drop_mm` in `propwash_parts/accessory/*.json` (Standard 0 =
+  wie bisher, bitgleich). `recess_mm` schiebt das Zubehör nach hinten, `drop_mm` nach unten, in den Achsen des Zubehörs;
+  Quader, Mitte, Mündung, Linse, LEDs und Zeichenposition rücken mit, Flugmodell und `MountPose#center`/`#front` folgen,
+  `anchor()` und die Richtungen bleiben. Erlaubt sind 0 bis Tiefe bzw. Höhe, sonst wirft die Definition mit dem
+  Feldnamen. Die Konstruktoren mit 12 bis 16 Argumenten bleiben; Record-Muster mit allen Komponenten brauchen beim
+  Neubau die beiden neuen Komponenten. Ältere Propwash-Versionen ignorieren die Felder mit einer Warnung. Wie bei
+  `frames` ändert sich der Teile-Hash jedes Zubehörs im Handshake ([`addon-guide.md`](addon-guide.md) Abschnitt 3.4,
+  [`../accessory-hang.md`](../accessory-hang.md) §8).
+
+### Parts-API 1.7.0: Umstellung
+- Add-ons für 1.6: nichts nötig, außer sie melden etwas unter `propwash:` an (eigenen Namensraum nehmen).
+- Add-ons mit Mixins in Propwash-Interna: Interna ändern sich in 0.6.0 unter anderem bei der Schaltermaske (`int` →
+  `long` in `RadioFrame`, `SwitchEvaluator` und Aufrufern), im Heimflug (`rescue.ServerFlight`), im Flugweg von
+  `PilotSession` und `DroneSim` und mit dem OSD-Element `FLIGHT_PATH_MARKER`. Die Ziele von Noclip 0.1.x sind erhalten,
+  wo es ging; der Umstieg auf die API steht im Handbuch Abschnitt 21.19 („Noclip ohne Mixins“), was bricht in 21.20.
+- Wer Record-Muster mit allen Komponenten von `AccessoryDefinition` nutzt, ergänzt beim Neubau `ledPathMm`,
+  `hangsStraight`, `muzzleMm`, `frames` und mit 1.8 `recessMm` und `dropMm`.
+
+### Beitritts-Übersicht: Add-ons ohne Client-Bedarf
+
+Add-ons, die der Client nicht braucht, stehen nicht mehr in der Beitritts-Übersicht: Fabric-Add-ons mit
+`"environment": "server"` und Add-ons mit `"propwash:client": "optional"` (Fabric unter `custom`, NeoForge unter
+`[modproperties.<modid>]`). Add-ons mit Teilen oder Akku-Chemien bleiben immer drin. Nur Anzeige, am Netz ändert sich
+nichts. Details: [`addon-guide.md`](addon-guide.md) Abschnitt 1.3.1.
+
+### NeoForge-Spieler auf Fabric-Servern
+
+Ein NeoForge-Client tritt seit 0.6.0 einem Fabric-Server mit gleicher Propwash-Version und gleichen Add-ons bei, auch
+hinter Velocity (Design: [`../design/cross-loader-join.md`](../design/cross-loader-join.md)). Gegenüber einem Server ohne
+NeoForge verweigert NeoForge jede Mod mit Pflicht-Paketen. Add-ons mit eigenen NeoForge-Paketen melden sie deshalb mit
+`.optional()` an (`event.registrar(version).optional()`), sonst kann ihr Spieler auf solchen Servern nicht beitreten.
+Das Netzprotokoll bleibt. Die Gegenrichtung gibt es nicht: Ein NeoForge-Server lehnt jede Verbindung ohne NeoForge ab.
+
+### Netzprotokoll 20
+`Constants.PROTOCOL_VERSION` steht für 0.6.0 auf 20, nach dem veröffentlichten Release-Kandidaten `0.6.0-rc.4`.
+Übersprungen seit 0.5.2 (16) sind 17 (Basis-Commit bis `0.6.0-rc.2`), 18 (`0.6.0-rc.3`) und 19 (`0.6.0-rc.4`), beide mit
+eigenem Abschnitt unten. Grund: Replays aus der Spur des Piloten (Befund OT4-2, [`docs/race-ghosts.md`](../race-ghosts.md)):
+
+- Neues Paket `propwash:race_ghost_upload_request` (Server → Client, `RacePayloads.GhostUploadS2C`: Auftrag, Kurs,
+  Runde, Rundenzeit). Der Server bittet den Piloten nach jeder gespeicherten Bestenlisten-Zeit um seine Aufnahme der
+  Runde im 10-ms-Raster.
+- Neues Paket `propwash:race_ghost_upload` (Client → Server, `RacePayloads.GhostUploadC2S`: Auftrag, Stück, Stücke,
+  Gesamtgröße, Daten bis 8 KiB, höchstens 512 KiB). Der Server prüft die Spur gegen seine eigene und nimmt sie nur
+  dann für Replay und Geist; die Zeit bleibt die des Servers.
+- Fremde Drohnen puffert der Client vor dem Zeichnen (`drone.RemoteMotion`); dafür ändert sich kein Paket.
+
+### Netzprotokoll 19
+`Constants.PROTOCOL_VERSION` stand für 0.6.0 auf 19, ab dem Entwicklungsstand `0.6.0-dev.15` und dem
+Release-Kandidaten `0.6.0-rc.4`. Übersprungen seit 0.5.2 (16) sind 17 (Basis-Commit, Entwicklungsstände und
+`0.6.0-rc.1` bis `0.6.0-rc.2`) und 18 (`0.6.0-rc.3`, eigener Abschnitt unten). Der letzte Fix-Block nach dem
+veröffentlichten rc.3 hat Pakete und den Teile-Abgleich noch einmal geändert; die Fix-Aufträge haben die Nummer
+absichtlich nicht angehoben, das geschieht einmal für alle im Wellenabschluss ([`docs/RELEASING.md`](../RELEASING.md)
+§3: auch zwischen zwei veröffentlichten Vorabversionen). Gründe:
+
+- Urteil zur Runde: neues Paket `propwash:race_lap_verdict` (Server → Client, `RacePayloads.LapVerdictS2C`: Kurs,
+  Runde, Ergebnis `COUNTED`, `MISSED`, `REJECTED` oder `RACE`, verpasstes Element, gewertete Runden). Der Server meldet
+  dem Piloten, wenn er eine Runde nicht wertet; eine nicht bestätigte Runde kippt die Sitzung nicht mehr
+  ([`docs/race-verdict.md`](../race-verdict.md)).
+- Ideallinie je Kurs: `propwash:race_course_edit` (`CourseEditC2S`) hat die neue Aktion `RACE_LINE`, und
+  `propwash:race_courses` (`CourseSyncS2C`) trägt den Merker `CourseData#raceLine` als Bit im Kopf jedes Kurses. Ein
+  Client mit 18 kennt die Aktion nicht und liest das Bit als Teil der Kursdaten falsch.
+- Fortschritte: neue Pakete `propwash:stats_trick` (Trick mit Combo), `propwash:stats_training` (Kapitel der
+  Flugschule bestanden, auch fehlerfrei) und `propwash:stats_ghost_beaten` (Geist geschlagen), alle Client → Server
+  ([`docs/pilot-stats.md`](../pilot-stats.md)).
+- Teile-Abgleich: Zubehör mit `recess_mm` oder `drop_mm` (Zubehör einrücken, Parts-API 1.8.0) geht mit diesen Feldern
+  in die Prüfsumme seines Eintrags im Teile-Manifest (`PartsManifestPayload`) ein; Teile ohne die Felder behalten ihre
+  Prüfsumme.
+- Fracht am Greifer (Parts-API 1.8.0) ändert kein Paket: Aufnehmen im Autopilot, `grabCargo` und `releaseCargo` laufen am
+  Server, das Gewicht geht dort ins Flugmodell. Ein Client mit 18 sähe es nur mit dem Verhalten von rc.3 an.
+
+0.5.2 (Protokoll 16) und alle Stände mit 17 oder 18 trennt der Handshake beim Beitreten mit klarer Meldung, die beide
+Versionen nennt; Client und Server brauchen beide 0.6.0 ab `0.6.0-dev.15` bzw. `0.6.0-rc.4`.
+
+### Netzprotokoll 18
+`Constants.PROTOCOL_VERSION` stand in `0.6.0-rc.3` und `0.6.0-dev.13` bis `0.6.0-dev.14` auf 18. Der Basis-Commit von 0.6.0 hat die Nummer einmal für das ganze
+Release auf 17 gestellt, nicht je neuem Paket; mit 17 sind die Entwicklungsstände `0.6.0-dev.N` und die
+Release-Kandidaten `0.6.0-rc.1` und `0.6.0-rc.2` erschienen. Ab `0.6.0-rc.3` gilt 18, weil sich das Protokoll nach dem
+veröffentlichten rc.2 noch einmal geändert hat ([`docs/RELEASING.md`](../RELEASING.md) §3: das gilt auch zwischen zwei
+veröffentlichten Vorabversionen). Grund:
+
+- Persönliche Regeln ([`docs/personal-rules.md`](../personal-rules.md)): neue Pakete `propwash:personal_rules`
+  (Server → Client: Recht, Freigabestufen der Physikregeln und eigene Abweichungen), `propwash:personal_rules_edit`
+  (Client → Server: Abweichungen setzen, zurücksetzen oder einen Preset anwenden) und `propwash:rule_tier`
+  (Client → Server: Freigabestufe Fest, Zonen oder Spieler einer Regel).
+- Geändertes `BoardRow`: Jede Zeile von `propwash:race_leaderboard` (`RacePayloads.BoardRow`) trägt am Ende die
+  Serverregeln beim Fliegen (`BoardRow#server`: ein `Boolean`, danach bei `true` der Regelsatz wie beim Rennstandard,
+  `VarInt` Anzahl und je Regel Name und `VarInt` Wert). Ein Client mit 17 würde beim Öffnen der Bestenliste mit einem
+  Paketfehler getrennt; mit 18 trennt ihn schon der Handshake. JUnit `race.BoardRowWireTest` hält je Protokollnummer
+  genau ein Format der Zeile fest.
+
+0.5.2 (Protokoll 16) und alle Stände mit 17 trennt der Handshake beim Beitreten mit klarer Meldung, die beide Versionen
+nennt; Client und Server brauchen beide 0.6.0. Die neuen und geänderten Pakete und Abgleiche stehen hier, sobald sie in
+der Integration sind.
+
+- Kurs-Einstellungen: `propwash:race_leaderboard` trägt zusätzlich die Zahl aller Zeiten des Kurses für den Betrachter
+  (`VarInt` nach den Geister-Rechten `access`, mit der Welt-Regel für Runden mit Flughilfe samt diesen Zeiten). Das
+  Paket hat damit ein Feld mehr, die Protokollversion blieb dabei 17; Entwicklungsstände vor und nach dieser Änderung
+  verstehen das Paket gegenseitig nicht. Die Parts-API ändert sich nicht
+  ([`docs/race-course-menu.md`](../race-course-menu.md)).
 
 ## 0.5.2 — Parts-API 1.6.0, Netzprotokoll 16
 

@@ -44,6 +44,18 @@ config = "${mod_id}.join.mixins.json"
 config = "${mod_id}.bando.mixins.json"
 [[mixins]]
 config = "${mod_id}.zone.mixins.json"
+[[mixins]]
+config = "${mod_id}.guard.mixins.json"
+[[mixins]]
+config = "${mod_id}.rx.mixins.json"
+[[mixins]]
+config = "${mod_id}.share.mixins.json"
+[[mixins]]
+config = "${mod_id}.gpucompat.mixins.json"
+[[mixins]]
+config = "${mod_id}.accessory.mixins.json"
+[[mixins]]
+config = "${mod_id}.fabricsync.mixins.json"
 
 [[dependencies.${mod_id}]]
 modId = "neoforge"
@@ -56,5 +68,13 @@ side = "BOTH"
 modId = "minecraft"
 type = "required"
 versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "justmoreparts"
+type = "incompatible"
+reason = "Just More Parts 1.1.x does not work with Propwash 0.6.0 – please update to Just More Parts 1.2.0. (Just More Parts 1.1.x passt nicht zu Propwash 0.6.0 – bitte auf 1.2.0 aktualisieren.)"
+versionRange = "(,1.2.0-alpha)"
 ordering = "NONE"
 side = "BOTH"

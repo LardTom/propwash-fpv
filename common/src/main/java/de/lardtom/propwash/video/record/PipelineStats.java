@@ -7,6 +7,8 @@ import java.util.concurrent.atomic.AtomicLongArray;
 
 public final class PipelineStats {
     public static final int PRESETS = 4;
+    public static final int TIME_BUCKETS = 256;
+    public static final long TIME_BUCKET_NANOS = 250_000L;
 
     private final int fps;
     private final long gcCountStart;
@@ -39,6 +41,8 @@ public final class PipelineStats {
     private volatile long heapPeak;
     private volatile long poolBytes;
     private final AtomicLongArray presets = new AtomicLongArray(PRESETS);
+    private final AtomicLongArray captureBuckets = new AtomicLongArray(TIME_BUCKETS);
+    private final AtomicLongArray readbackBuckets = new AtomicLongArray(TIME_BUCKETS);
 
     public PipelineStats(int fps) {
         this.fps = Math.max(1, fps);
@@ -67,6 +71,7 @@ public final class PipelineStats {
         if (nanos > this.captureNanosMax) {
             this.captureNanosMax = nanos;
         }
+        this.captureBuckets.incrementAndGet(bucket(nanos));
     }
 
     public void readback(long nanos, long latency) {
@@ -75,6 +80,7 @@ public final class PipelineStats {
         if (nanos > this.readbackNanosMax) {
             this.readbackNanosMax = nanos;
         }
+        this.readbackBuckets.incrementAndGet(bucket(nanos));
         this.latencyFrames += latency;
         if (latency > this.latencyFramesMax) {
             this.latencyFramesMax = latency;
@@ -152,7 +158,20 @@ public final class PipelineStats {
                 this.captureNanosMax, this.readbacks, this.readbackNanos, this.readbackNanosMax, this.latencyFrames, this.latencyFramesMax,
                 this.ringFullDrops, this.memoryDrops, this.gameGapSlots, this.decimated, this.slots, this.encoded, this.encodeNanos, this.encodeNanosMax,
                 this.writeNanos, this.repeats, this.queueMax, this.spoolWrites, this.spoolWriteNanos, this.spoolReads, this.heapPeak,
-                this.poolBytes, gc[0] - this.gcCountStart, gc[1] - this.gcMillisStart, presetCounts);
+                this.poolBytes, gc[0] - this.gcCountStart, gc[1] - this.gcMillisStart, presetCounts, copy(this.captureBuckets),
+                copy(this.readbackBuckets));
+    }
+
+    private static int bucket(long nanos) {
+        return (int) Math.min(TIME_BUCKETS - 1L, Math.max(0L, nanos) / TIME_BUCKET_NANOS);
+    }
+
+    private static long[] copy(AtomicLongArray buckets) {
+        long[] counts = new long[buckets.length()];
+        for (int i = 0; i < counts.length; i++) {
+            counts[i] = buckets.get(i);
+        }
+        return counts;
     }
 
     private static long[] gc() {
@@ -171,7 +190,7 @@ public final class PipelineStats {
                            long encoded,
                            long encodeNanos, long encodeNanosMax, long writeNanos, long repeats, int queueMax, long spoolWrites,
                            long spoolWriteNanos, long spoolReads, long heapPeak, long poolBytes, long gcCount, long gcMillis,
-                           long[] presets) {
+                           long[] presets, long[] captureBuckets, long[] readbackBuckets) {
         public double gameFps() {
             return this.frameNanos <= 0L ? 0.0 : this.renderFrames * 1.0E9 / this.frameNanos;
         }
@@ -190,6 +209,22 @@ public final class PipelineStats {
 
         public double renderThreadMs() {
             return this.captureMs() + this.readbackMs();
+        }
+
+        public double captureMsAt(double quantile) {
+            return quantileMs(this.captureBuckets, quantile, this.captureNanosMax);
+        }
+
+        public double readbackMsAt(double quantile) {
+            return quantileMs(this.readbackBuckets, quantile, this.readbackNanosMax);
+        }
+
+        public long capturesOver(double ms) {
+            return countOver(this.captureBuckets, ms, this.captureNanosMax);
+        }
+
+        public long readbacksOver(double ms) {
+            return countOver(this.readbackBuckets, ms, this.readbackNanosMax);
         }
 
         public double latency() {
@@ -234,7 +269,8 @@ public final class PipelineStats {
                     this.encoded - earlier.encoded, this.encodeNanos - earlier.encodeNanos, this.encodeNanosMax,
                     this.writeNanos - earlier.writeNanos, this.repeats - earlier.repeats, this.queueMax,
                     this.spoolWrites - earlier.spoolWrites, this.spoolWriteNanos - earlier.spoolWriteNanos, this.spoolReads - earlier.spoolReads,
-                    this.heapPeak, this.poolBytes, this.gcCount - earlier.gcCount, this.gcMillis - earlier.gcMillis, p);
+                    this.heapPeak, this.poolBytes, this.gcCount - earlier.gcCount, this.gcMillis - earlier.gcMillis, p,
+                    minus(this.captureBuckets, earlier.captureBuckets), minus(this.readbackBuckets, earlier.readbackBuckets));
         }
 
         public String summary() {
@@ -254,6 +290,47 @@ public final class PipelineStats {
 
         private static double average(long nanos, long count) {
             return count <= 0L ? 0.0 : nanos / (double) count / 1.0E6;
+        }
+
+        private static double quantileMs(long[] buckets, double quantile, long maxNanos) {
+            long total = 0L;
+            for (long count : buckets) {
+                total += count;
+            }
+            if (total <= 0L) {
+                return 0.0;
+            }
+            long rank = Math.max(1L, (long) Math.ceil(Math.max(0.0, Math.min(1.0, quantile)) * total - 1.0E-9));
+            long seen = 0L;
+            for (int i = 0; i < buckets.length - 1; i++) {
+                seen += buckets[i];
+                if (seen >= rank) {
+                    return Math.min((i + 1L) * TIME_BUCKET_NANOS, maxNanos) / 1.0E6;
+                }
+            }
+            return maxNanos / 1.0E6;
+        }
+
+        private static long countOver(long[] buckets, double ms, long maxNanos) {
+            long threshold = Math.round(ms * 1.0E6);
+            if (maxNanos <= threshold) {
+                return 0L;
+            }
+            long count = 0L;
+            for (int i = 0; i < buckets.length; i++) {
+                if (i == buckets.length - 1 || (i + 1L) * TIME_BUCKET_NANOS > threshold) {
+                    count += buckets[i];
+                }
+            }
+            return count;
+        }
+
+        private static long[] minus(long[] now, long[] earlier) {
+            long[] counts = new long[now.length];
+            for (int i = 0; i < counts.length; i++) {
+                counts[i] = now[i] - earlier[i];
+            }
+            return counts;
         }
     }
 }

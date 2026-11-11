@@ -8,7 +8,6 @@ import de.lardtom.propwash.content.ContentBlocks;
 import de.lardtom.propwash.content.ContentItems;
 import de.lardtom.propwash.content.DroneWorkbenchMenu;
 import de.lardtom.propwash.content.TooltipShift;
-import de.lardtom.propwash.content.WorkbenchLayout;
 import de.lardtom.propwash.content.client.DroneWorkbenchScreen;
 import de.lardtom.propwash.creative.CreativeFlight;
 import de.lardtom.propwash.creative.CreativeModule;
@@ -296,8 +295,8 @@ public final class CreativeShowcase {
                 return;
             }
             Slot slot = screen.getMenu().getSlot(BuildSlots.STACK);
-            double guiX = (screen.width - WorkbenchLayout.WIDTH) / 2.0 + slot.x + 8;
-            double guiY = (screen.height - WorkbenchLayout.HEIGHT) / 2.0 + slot.y + 8;
+            double guiX = screen.panelLeft() + slot.x + 8;
+            double guiY = screen.panelTop() + slot.y + 8;
             double x = guiX * mc.getWindow().getScreenWidth() / mc.getWindow().getGuiScaledWidth();
             double y = guiY * mc.getWindow().getScreenHeight() / mc.getWindow().getGuiScaledHeight();
             mc.mouseHandler.onMove(mc.getWindow().handle(), x, y, 0.0, 0.0);

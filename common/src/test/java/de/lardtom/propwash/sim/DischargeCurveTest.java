@@ -2,12 +2,10 @@ package de.lardtom.propwash.sim;
 
 import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -29,18 +27,9 @@ class DischargeCurveTest {
         }
     }
 
-    static Path resource(String name) {
-        for (Path candidate : List.of(Path.of("common/src/test/resources", name), Path.of("src/test/resources", name))) {
-            if (Files.exists(candidate)) {
-                return candidate;
-            }
-        }
-        return Path.of("common/src/test/resources", name);
-    }
-
     static List<Fixture> fixtures() throws IOException {
         List<Fixture> out = new ArrayList<>();
-        for (String line : Files.readAllLines(resource(FIXTURES), StandardCharsets.UTF_8)) {
+        for (String line : TestPaths.requireLines(FIXTURES)) {
             if (line.isBlank()) {
                 continue;
             }
@@ -58,7 +47,7 @@ class DischargeCurveTest {
 
     static List<double[]> previous(String id) throws IOException {
         List<double[]> out = new ArrayList<>();
-        for (String line : Files.readAllLines(resource(PREVIOUS), StandardCharsets.UTF_8)) {
+        for (String line : TestPaths.requireLines(PREVIOUS)) {
             String[] f = line.trim().split("\\s+");
             if (f.length == 3 && f[0].equals(id)) {
                 out.add(new double[]{Double.parseDouble(f[1]), Double.parseDouble(f[2])});

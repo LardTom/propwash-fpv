@@ -63,7 +63,7 @@ public final class RescueScene {
                     s.at(26.0F).pop(1, 5, -2, OAK_LEAVES, 8.0F);
                     s.at(18.0F).spawn(PILOT, new ActorSpec.Pilot(SceneKit.GOGGLES_DIGITAL, REMOTE), PILOT_POS, SceneKit.pilotYaw(PILOT_POS, FAR),
                             Cue.Appear.POP, 10.0F);
-                    s.at(22.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), HOME, 45.0F, Cue.Appear.POP, 10.0F);
+                    s.at(22.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), HOME, -135.0F, Cue.Appear.POP, 10.0F);
                     s.at(0.0F).camera(new ScenePos(-1.8F, 1.9F, 2.0F), 30.0F, 30.0F, 1.7F, 30.0F);
                     s.at(34.0F).keys("arm", 40.0F, KeyToken.mapping(SceneKit.KEY_ARM));
                     s.at(44.0F).arm(DRONE, true);

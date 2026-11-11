@@ -1,7 +1,11 @@
 package de.lardtom.propwash.creative.client;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.api.build.DroneData;
+import de.lardtom.propwash.api.build.ImportResult;
+import de.lardtom.propwash.api.client.PropwashClientApi;
 import de.lardtom.propwash.api.part.PartKind;
+import de.lardtom.propwash.apiimpl.Conversions;
 import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.FrameType;
@@ -23,8 +27,8 @@ import de.lardtom.propwash.creative.CreativeParam;
 import de.lardtom.propwash.creative.CreativeShareCode;
 import de.lardtom.propwash.creative.CreativeSpec;
 import de.lardtom.propwash.creative.net.CreativeEditC2S;
-import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
+import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.drone.DroneInteractions;
 import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.DronePiloting;
@@ -32,6 +36,14 @@ import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.share.CreativeShare;
+import de.lardtom.propwash.share.Pw3Params;
+import de.lardtom.propwash.share.ShareDecoded;
+import de.lardtom.propwash.share.ShareFormat;
+import de.lardtom.propwash.share.ShareLayer;
+import de.lardtom.propwash.share.ShareService;
+import de.lardtom.propwash.share.client.ShareConfigTab;
+import de.lardtom.propwash.share.client.ShareLines;
 import de.lardtom.propwash.sim.AirframeSpec;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.StabMode;
@@ -91,6 +103,8 @@ public final class CreativeSelfTests {
         SelfTest.clientStep("kreativ-drohne: Teilen-Code und eigene Vorlage im Editor", 400, CreativeSelfTests::templateStep);
         SelfTest.clientStep("kreativ-drohne: Fliegt mit den Editor-Werten, Änderung gilt nach dem Entschärfen", 1200,
                 CreativeSelfTests::flightStep);
+        SelfTest.clientStep("kreativ-drohne: Editor → PW3-Code → Import im Sharecode-Tab (Kreativ erzeugt mit Werten, Überleben nur mit Hinweis), "
+                + "alter PWD1-Code wird gelesen und umgewandelt", 1200, CreativeSelfTests::shareImportStep);
     }
 
     public static CreativeSpec sample() {
@@ -440,7 +454,7 @@ public final class CreativeSelfTests {
                             return StepResult.fail("Feld " + row.param().key() + " im Überlebensmodus aktiv");
                         }
                     }
-                    if (!t.shareCode().startsWith(CreativeShareCode.PREFIX)) {
+                    if (!t.shareCode().startsWith(Pw3Params.PREFIX)) {
                         return StepResult.fail("Teilen-Code fehlt im Lesemodus");
                     }
                     closeScreen();
@@ -507,6 +521,159 @@ public final class CreativeSelfTests {
                     return null;
                 },
                 server("Aufräumen", cleanup)), cleanup);
+    }
+
+    private static int creativeDrones(ServerPlayer player, CreativeSpec spec, boolean remove) {
+        int found = 0;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            if (i == player.getInventory().getSelectedSlot()) {
+                continue;
+            }
+            DroneBuild build = player.getInventory().getItem(i).get(CoreComponents.DRONE_BUILD.get());
+            if (build != null && build.isCreative() && build.creative().equals(spec)) {
+                found++;
+                if (remove) {
+                    player.getInventory().setItem(i, ItemStack.EMPTY);
+                }
+            }
+        }
+        if (remove) {
+            player.containerMenu.broadcastChanges();
+        }
+        return found;
+    }
+
+    private static StepResult shareImportStep(SelfTest.StepContext ctx) {
+        AtomicReference<ItemStack> previous = keep(ctx, "previous", AtomicReference::new);
+        AtomicReference<GameType> mode = keep(ctx, "mode", AtomicReference::new);
+        AtomicReference<CreativeEditorTab> tab = keep(ctx, "tab", AtomicReference::new);
+        AtomicReference<String> code = keep(ctx, "code", AtomicReference::new);
+        AtomicReference<CompletableFuture<ImportResult>> created = keep(ctx, "created", AtomicReference::new);
+        AtomicReference<String> log = keep(ctx, "log", AtomicReference::new);
+        CreativeSpec held = sample();
+        CreativeSpec shared = held.with(CreativeParam.MOTOR_KV, 2480.0).with(CreativeParam.INERTIA_YAW, 31000.0);
+        CreativeSpec old = CreativeSpec.EMPTY.with(CreativeParam.PROP_PITCH, 4.3).with(CreativeParam.BATTERY_CELLS, 4.0);
+        DroneBuild start = INSTALLED.withCreative(held);
+        Consumer<MinecraftServer> cleanup = server -> {
+            creativeDrones(player(server), shared, true);
+            restoreHand(previous, mode).accept(server);
+        };
+        return script(ctx, List.of(
+                give(start, GameType.CREATIVE, previous, mode),
+                await("Kreativ-Drohne kommt in der Hand an", () -> clientHeld().equals(start) && Minecraft.getInstance().player != null
+                        && Minecraft.getInstance().player.isCreative()),
+                server("Inventar ohne alte Proben", server -> creativeDrones(player(server), shared, true)),
+                tabOpen(tab),
+                (c, waited) -> {
+                    CreativeEditorTab t = tab.get();
+                    t.draft().set(CreativeParam.MOTOR_KV, 2480.0);
+                    t.draft().set(CreativeParam.INERTIA_YAW, 31000.0);
+                    if (!t.draft().spec().equals(shared)) {
+                        return StepResult.fail("Entwurf " + t.draft().spec());
+                    }
+                    String text = t.shareCode();
+                    ShareDecoded decoded = ShareService.decode(text);
+                    if (!text.startsWith(Pw3Params.PREFIX) || !decoded.ok() || !Pw3Params.FORMAT.equals(decoded.format())) {
+                        return StepResult.fail("Editor kopiert keinen PW3-Code: " + text + " " + decoded.status());
+                    }
+                    if (!decoded.layers().contains(ShareLayer.CREATIVE) || !decoded.require().creative().equals(Optional.of(shared))
+                            || !CreativeShare.creativeStack(decoded.require().build())) {
+                        return StepResult.fail("PW3-Code ohne die Kreativ-Werte: " + decoded.layers() + " " + decoded.require().creative());
+                    }
+                    t.draft().resetAll();
+                    if (!t.paste(text) || !t.draft().spec().equals(shared)) {
+                        return StepResult.fail("PW3-Code im Editor eingefügt ergibt " + t.draft().spec());
+                    }
+                    if (!t.paste(CreativeShareCode.encode(old)) || !t.draft().spec().equals(old)) {
+                        return StepResult.fail("alter PWD1-Code im Editor ergibt " + t.draft().spec());
+                    }
+                    if (t.paste(ShareService.encode(DroneData.of(Conversions.spec(DroneBuild.FREESTYLE)), ShareLayer.DEFAULT_EXPORT, true,
+                            Optional.empty()))) {
+                        return StepResult.fail("Code ohne Kreativ-Werte im Editor angenommen");
+                    }
+                    code.set(text);
+                    log.set("PW3 " + text.length() + " Zeichen: " + text);
+                    closeScreen();
+                    return null;
+                },
+                await("Editor geschlossen", () -> !(Minecraft.getInstance().gui.screen() instanceof ConfiguratorScreen)),
+                (c, waited) -> PropwashClientApi.openConfigTab(ShareConfigTab.ID, null) ? null : StepResult.fail("Sharecode-Tab öffnet nicht"),
+                await("Sharecode-Tab erscheint", () -> ShareConfigTab.active() != null && ShareConfigTab.active().frames() >= 3),
+                (c, waited) -> {
+                    ShareConfigTab share = ShareConfigTab.active();
+                    share.setInput(code.get());
+                    if (ShareLines.find(share.detailLines(), ShareLines.TAG_CREATIVE, true).isEmpty()) {
+                        return StepResult.fail("Vorschau zeigt keine Kreativ-Drohne");
+                    }
+                    if (ShareLines.find(share.detailLines(), ShareLines.TAG_CREATIVE_SURVIVAL, true).isPresent()) {
+                        return StepResult.fail("Hinweis für das Überleben im Kreativmodus");
+                    }
+                    CompletableFuture<ImportResult> future = share.buildOrShop();
+                    if (future == null) {
+                        return StepResult.fail("„Drohne erzeugen“ geht nicht: " + share.state().decoded().status() + " " + share.state().check());
+                    }
+                    created.set(future);
+                    return null;
+                },
+                await("Server antwortet auf „Drohne erzeugen“", () -> created.get().isDone()),
+                (c, waited) -> {
+                    ImportResult result = created.get().join();
+                    return result.status().success() ? null : StepResult.fail("Erzeugen: " + result.status());
+                },
+                server("neue Kreativ-Drohne mit den Werten im Inventar", server -> {
+                    int found = creativeDrones(player(server), shared, false);
+                    if (found != 1) {
+                        throw new IllegalStateException(found + " Drohnen mit den geteilten Kreativ-Werten im Inventar statt 1");
+                    }
+                }),
+                server("Überlebensmodus", server -> player(server).setGameMode(GameType.SURVIVAL)),
+                await("Überlebensmodus kommt an", () -> Minecraft.getInstance().player != null && !Minecraft.getInstance().player.hasInfiniteMaterials()),
+                (c, waited) -> {
+                    ShareConfigTab share = ShareConfigTab.active();
+                    if (share == null) {
+                        return StepResult.fail("Sharecode-Tab ist zu");
+                    }
+                    share.setInput(code.get());
+                    if (ShareLines.find(share.detailLines(), ShareLines.TAG_CREATIVE_SURVIVAL, true).isEmpty()) {
+                        return StepResult.fail("Hinweis „nur im Kreativmodus“ fehlt im Überleben");
+                    }
+                    String pwd1 = CreativeShareCode.encode(old);
+                    share.setInput(pwd1);
+                    ShareDecoded decoded = share.state().decoded();
+                    if (!decoded.ok() || !decoded.legacy() || !ShareFormat.DRONE_EDITOR.equals(decoded.format())) {
+                        return StepResult.fail("PWD1 im Sharecode-Tab: " + decoded.status() + " " + decoded.format());
+                    }
+                    if (ShareLines.find(share.detailLines(), ShareLines.TAG_PWD1, true).isEmpty()
+                            || ShareLines.find(share.detailLines(), ShareLines.TAG_COPY_PW3, true).isEmpty()) {
+                        return StepResult.fail("PWD1 ohne Hinweis oder „Als PW3 kopieren“");
+                    }
+                    Minecraft.getInstance().keyboardHandler.setClipboard("");
+                    share.copyPw3();
+                    ShareDecoded converted = ShareService.decode(Minecraft.getInstance().keyboardHandler.getClipboard());
+                    if (!converted.ok() || !converted.require().creative().equals(Optional.of(old))
+                            || !converted.require().build().equals(CreativeShare.PWD1_BUILD)) {
+                        return StepResult.fail("PWD1 umgewandelt: " + converted.status() + " " + converted.content());
+                    }
+                    share.setInput("");
+                    closeScreen();
+                    return null;
+                },
+                server("Befehl import im Überleben lässt die Kreativ-Werte der Drohne in der Hand", server -> {
+                    ServerPlayer player = player(server);
+                    server.getCommands().performPrefixedCommand(player.createCommandSourceStack(), "propwash code import " + code.get());
+                    DroneBuild build = player.getMainHandItem().get(CoreComponents.DRONE_BUILD.get());
+                    if (build == null || !build.creative().equals(held)) {
+                        throw new IllegalStateException("Kreativ-Werte in der Hand: " + (build == null ? "keine Drohne" : build.creative()));
+                    }
+                    if (creativeDrones(player, shared, false) != 1) {
+                        throw new IllegalStateException("Befehl im Überleben erzeugte eine Drohne");
+                    }
+                }),
+                server("Aufräumen", cleanup),
+                (c, waited) -> {
+                    c.log(log.get());
+                    return null;
+                }), cleanup);
     }
 
     private static @Nullable QuadcopterEntity serverDrone(MinecraftServer server) {

@@ -1,0 +1,25 @@
+{
+  "parent": "propwash:fpv/takeoff",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:trick"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:freestyle_5"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.first_trick.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.first_trick.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

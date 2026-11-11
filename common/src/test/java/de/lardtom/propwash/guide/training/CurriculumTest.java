@@ -2,6 +2,7 @@ package de.lardtom.propwash.guide.training;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -29,12 +30,7 @@ class CurriculumTest {
     private static final int CHAPTER_DESCRIPTION_MAX = 48;
 
     private static Path guideLang() {
-        for (Path candidate : List.of(Path.of("common/src/lang/guide"), Path.of("src/lang/guide"))) {
-            if (Files.isDirectory(candidate)) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("Sprachdateien der Flugschule nicht gefunden");
+        return TestPaths.lang("guide");
     }
 
     private static JsonObject lang(String language) throws IOException {

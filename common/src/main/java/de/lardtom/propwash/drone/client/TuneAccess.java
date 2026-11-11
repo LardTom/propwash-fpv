@@ -9,6 +9,9 @@ import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.TuneMapping;
 import de.lardtom.propwash.drone.led.LedSettings;
 import de.lardtom.propwash.drone.net.TuneC2S;
+import de.lardtom.propwash.freecam.FreecamPreset;
+import de.lardtom.propwash.freecam.client.FreecamConfig;
+import de.lardtom.propwash.freecam.client.FreecamSession;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.sim.AirframeSpec;
 import net.minecraft.client.Minecraft;
@@ -18,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
+import java.util.TreeMap;
 
 public final class TuneAccess {
     public static final TuneAccess INSTANCE = new TuneAccess();
@@ -26,7 +30,7 @@ public final class TuneAccess {
     }
 
     public boolean available() {
-        return PilotSession.INSTANCE.isActive() || this.heldHand() != null;
+        return FreecamSession.active() || PilotSession.INSTANCE.isActive() || this.heldHand() != null;
     }
 
     public FlightTune current() {
@@ -57,6 +61,9 @@ public final class TuneAccess {
             return false;
         }
         FlightTune result = new FlightTune(TuneMapping.applyEdit(target.tune().values(), tune.values(), AirframeSpec.of(target.build())));
+        if (FreecamSession.active()) {
+            return applyFreecam(result);
+        }
         QuadcopterEntity drone = PilotSession.INSTANCE.drone();
         if (drone != null) {
             PilotSession.INSTANCE.applyTuneLocally(result);
@@ -70,7 +77,28 @@ public final class TuneAccess {
         return ClientNet.sendToServer(new TuneC2S(TuneC2S.HELD_ITEM, hand == InteractionHand.OFF_HAND, tune));
     }
 
+    private static boolean applyFreecam(FlightTune result) {
+        FreecamSession session = FreecamSession.INSTANCE;
+        FreecamPreset preset = session.preset();
+        FreecamConfig config = FreecamConfig.get();
+        Float uptilt = result.values().get(TuneMapping.CAMERA_UPTILT);
+        if (uptilt != null) {
+            config.setUptilt(preset, uptilt);
+        }
+        config.setTune(preset, result.values());
+        FreecamConfig.save();
+        session.applyTune(config.tune(preset));
+        return true;
+    }
+
     private @Nullable Subject target() {
+        if (FreecamSession.active()) {
+            FreecamSession session = FreecamSession.INSTANCE;
+            FreecamConfig config = FreecamConfig.get();
+            Map<String, Float> values = new TreeMap<>(config.tune(session.preset()));
+            values.put(TuneMapping.CAMERA_UPTILT, config.uptilt(session.preset()));
+            return new Subject(session.build(), new FlightTune(values));
+        }
         QuadcopterEntity drone = PilotSession.INSTANCE.drone();
         if (drone != null) {
             return new Subject(drone.build(), drone.tune());

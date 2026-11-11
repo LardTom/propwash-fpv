@@ -57,7 +57,8 @@ public record GateSignalTarget(int x, int y, int z, int face) {
     public static GateSignalTarget of(GateGeometry geometry) {
         FreeformRegion region = geometry.region();
         if (region != null) {
-            return freeform(region, FreeformBlocks.plane(geometry), FreeformBlocks.minA(geometry), FreeformBlocks.minB(geometry));
+            return freeform(region, FreeformBlocks.plane(geometry), FreeformBlocks.minA(geometry), FreeformBlocks.minB(geometry),
+                    geometry.yawDegrees());
         }
         double[] point = GatePlacement.mountPoint(geometry);
         GateMount mount = geometry.mount();
@@ -70,7 +71,14 @@ public record GateSignalTarget(int x, int y, int z, int face) {
     }
 
     public static GateSignalTarget freeform(FreeformRegion region, int plane, int minA, int minB) {
-        int face = region.horizontal() ? SOUTH : UP;
+        return freeform(region, plane, minA, minB, 0.0F);
+    }
+
+    public static GateSignalTarget freeform(FreeformRegion region, int plane, int minA, int minB, float yaw) {
+        if (region.horizontal()) {
+            return lying(region, plane, minA, minB, Math.round(GateGeometry.snapYaw(Float.isFinite(yaw) ? yaw : 0.0F) / 90.0F) & 3);
+        }
+        int face = UP;
         int[] cells = new int[region.width()];
         for (int b = 0; b < region.height(); b++) {
             int count = 0;
@@ -86,5 +94,34 @@ public record GateSignalTarget(int x, int y, int z, int face) {
         }
         int[] seed = FreeformBlocks.world(region.axis(), plane, minA + region.seedA(), minB + region.seedB() - 1);
         return new GateSignalTarget(seed[0], seed[1], seed[2], face);
+    }
+
+    private static GateSignalTarget lying(FreeformRegion region, int plane, int minA, int minB, int quarter) {
+        int forwardA = quarter == 1 ? -1 : quarter == 3 ? 1 : 0;
+        int forwardB = quarter == 0 ? 1 : quarter == 2 ? -1 : 0;
+        int face = horizontal(forwardA, forwardB);
+        boolean rows = forwardA == 0;
+        int lines = rows ? region.height() : region.width();
+        int length = rows ? region.width() : region.height();
+        boolean lineUp = rows ? forwardB > 0 : forwardA > 0;
+        boolean alongUp = rows ? forwardB > 0 : forwardA < 0;
+        int[] cells = new int[length];
+        for (int step = 0; step < lines; step++) {
+            int line = lineUp ? step : lines - 1 - step;
+            int count = 0;
+            for (int i = 0; i < length; i++) {
+                int along = alongUp ? i : length - 1 - i;
+                if (rows ? region.contains(along, line) : region.contains(line, along)) {
+                    cells[count++] = along;
+                }
+            }
+            if (count > 0) {
+                int along = cells[(count - 1) / 2];
+                int a = rows ? along : line;
+                int b = rows ? line : along;
+                return new GateSignalTarget(minA + a - forwardA, plane, minB + b - forwardB, face);
+            }
+        }
+        return new GateSignalTarget(minA + region.seedA() - forwardA, plane, minB + region.seedB() - forwardB, face);
     }
 }

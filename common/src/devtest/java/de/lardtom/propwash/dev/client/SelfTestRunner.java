@@ -41,8 +41,10 @@ import java.util.stream.Stream;
 public final class SelfTestRunner {
     public static final String WORLD_NAME = "Propwash Selftest";
     private static final int GLOBAL_TIMEOUT_TICKS = 20 * 4800;
-    private static final long WATCHDOG_MILLIS = 96L * 60L * 1000L;
+    private static final int TICKS_PER_SELECTED_STEP = 20 * 6;
+    private static final long WATCHDOG_MARGIN_MILLIS = 16L * 60L * 1000L;
     private static final long SMOKE_WATCHDOG_MILLIS = 5L * 60L * 1000L;
+    private static final long JOIN_WATCHDOG_MARGIN_MILLIS = 60L * 1000L;
     private static final long EXIT_GRACE_MILLIS = 120L * 1000L;
     private static final long CRASH_GRACE_MILLIS = 30L * 1000L;
     private static final long HALT_GRACE_MILLIS = 5L * 60L * 1000L;
@@ -56,6 +58,9 @@ public final class SelfTestRunner {
 
     private static Phase phase = Phase.WAIT_TITLE;
     private static int totalTicks;
+    private static int timeoutTicks = GLOBAL_TIMEOUT_TICKS;
+    private static volatile long startedAt;
+    private static volatile long watchdogAt;
     private static int phaseTicks;
     private static List<SelfTest.Step> steps = List.of();
     private static boolean worldEntered;
@@ -95,12 +100,15 @@ public final class SelfTestRunner {
         smoke = smokeMode;
         Constants.LOG.info("[Selbsttest] {} aktiv ({})", smoke ? "Rauchtest" : "Selbsttest", Services.PLATFORM.getPlatformName());
         ClientBus.TICK_END.register(SelfTestRunner::tick);
-        long timeout = smoke ? SMOKE_WATCHDOG_MILLIS : WATCHDOG_MILLIS;
+        startedAt = System.currentTimeMillis();
+        watchdogAt = startedAt + (smoke ? SMOKE_WATCHDOG_MILLIS : watchdogMillis(GLOBAL_TIMEOUT_TICKS));
         Thread watchdog = new Thread(() -> {
-            try {
-                Thread.sleep(timeout);
-            } catch (InterruptedException e) {
-                return;
+            for (long left = watchdogAt - System.currentTimeMillis(); left > 0L; left = watchdogAt - System.currentTimeMillis()) {
+                try {
+                    Thread.sleep(left);
+                } catch (InterruptedException e) {
+                    return;
+                }
             }
             if (!finished) {
                 Constants.LOG.error("{} FAIL Watchdog: Client hängt (Phase {})", marker(), phase);
@@ -113,6 +121,18 @@ public final class SelfTestRunner {
         Thread exitGuard = new Thread(SelfTestRunner::guardExit, "Propwash-Selftest-Exit");
         exitGuard.setDaemon(true);
         exitGuard.start();
+    }
+
+    static int runTimeoutTicks(int selectedSteps) {
+        return Math.max(GLOBAL_TIMEOUT_TICKS, Math.max(0, selectedSteps) * TICKS_PER_SELECTED_STEP);
+    }
+
+    static long watchdogMillis(int runTimeoutTicks) {
+        return runTimeoutTicks * 50L + WATCHDOG_MARGIN_MILLIS;
+    }
+
+    static long smokeWatchdogMillis(int joinTicks) {
+        return Math.max(SMOKE_WATCHDOG_MILLIS, joinTicks * 50L + JOIN_WATCHDOG_MARGIN_MILLIS);
     }
 
     private static void guardExit() {
@@ -177,7 +197,7 @@ public final class SelfTestRunner {
         totalTicks++;
         phaseTicks++;
         try {
-            if (totalTicks > GLOBAL_TIMEOUT_TICKS && phase.ordinal() < Phase.WAIT_LEFT.ordinal()) {
+            if (totalTicks > timeoutTicks && phase.ordinal() < Phase.WAIT_LEFT.ordinal()) {
                 FAILURES.add("Zeitüberschreitung in Phase " + phase + " (Screen: " + screenName(mc) + ")");
                 leaveWorld(mc);
             }
@@ -196,6 +216,7 @@ public final class SelfTestRunner {
                             setPhase(Phase.FINISH);
                         } else if (smoke && JoinTest.enabled()) {
                             steps = JoinTest.steps();
+                            watchdogAt = Math.max(watchdogAt, startedAt + smokeWatchdogMillis(steps.stream().mapToInt(SelfTest.Step::maxTicks).sum()));
                             startStep(0);
                             setPhase(Phase.AFTER_LEAVE);
                         } else if (legacy != null) {
@@ -235,6 +256,10 @@ public final class SelfTestRunner {
                         leaveWorld(mc);
                     } else if (phaseTicks >= SETTLE_TICKS) {
                         steps = SelfTest.startClientSteps();
+                        timeoutTicks = runTimeoutTicks(steps.size());
+                        watchdogAt = Math.max(watchdogAt, startedAt + watchdogMillis(timeoutTicks));
+                        Constants.LOG.info("[Selbsttest] Zeitgrenze {} min für {} Schritte in der Welt, Wächter nach {} min", timeoutTicks / 1200,
+                                steps.size(), (watchdogAt - startedAt) / 60000L);
                         if (SelfTest.filter() != null) {
                             Constants.LOG.info("[Selbsttest] Filter '{}': {} von {} Schritten", SelfTest.filter(), SelfTest.selectedCount(),
                                     SelfTest.registeredCount());
@@ -295,7 +320,7 @@ public final class SelfTestRunner {
         }
     }
 
-    private static void createWorld(Minecraft mc) {
+    static void createWorld(Minecraft mc) {
         deleteOldWorlds(mc);
         CreateWorldScreen.openFresh(mc, () -> mc.gui.setScreen(new TitleScreen()));
         if (!(mc.gui.screen() instanceof CreateWorldScreen screen)) {
@@ -335,7 +360,7 @@ public final class SelfTestRunner {
         }
     }
 
-    private static boolean pressButton(Screen screen, String text) {
+    static boolean pressButton(Screen screen, String text) {
         for (GuiEventListener child : screen.children()) {
             if (child instanceof Button button && text.equals(button.getMessage().getString())) {
                 button.onPress(new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0));

@@ -16,6 +16,7 @@ public final class FpvPropGeometry {
     public static final float CONE_TAN = (float) Math.tan(Math.toRadians(85.0));
     public static final float NEAR_FLOOR_MM = 52.0F;
     private static final float[] NO_POINTS = new float[0];
+    private static final boolean[] ALL_ATTACHED = {true, true, true, true};
 
     private final Vector3fc[] hubs = new Vector3fc[SLOTS];
     private final float radiusMm;
@@ -24,6 +25,8 @@ public final class FpvPropGeometry {
     private final float[][] samples = new float[SLOTS][];
     private final float[][] inner = new float[SLOTS][];
     private final float[] guards;
+    private final float[] arms;
+    private final boolean[] attached;
     private final float nearScale;
 
     public FpvPropGeometry(Vector3fc[] hubsMm, float propRadiusMm, Vector3fc lensMm, float tiltDegrees) {
@@ -31,7 +34,12 @@ public final class FpvPropGeometry {
     }
 
     public FpvPropGeometry(Vector3fc[] hubsMm, float propRadiusMm, Vector3fc lensMm, float tiltDegrees, float[] guardPointsMm) {
-        if (hubsMm.length != SLOTS) {
+        this(hubsMm, propRadiusMm, lensMm, tiltDegrees, guardPointsMm, NO_POINTS, ALL_ATTACHED);
+    }
+
+    public FpvPropGeometry(Vector3fc[] hubsMm, float propRadiusMm, Vector3fc lensMm, float tiltDegrees, float[] guardPointsMm, float[] armQuadsMm,
+                           boolean[] attached) {
+        if (hubsMm.length != SLOTS || attached.length != SLOTS) {
             throw new IllegalArgumentException("Es gibt genau " + SLOTS + " Props");
         }
         this.radiusMm = Math.max(1.0F, propRadiusMm);
@@ -81,6 +89,14 @@ public final class FpvPropGeometry {
             }
         }
         this.nearScale = Float.isFinite(nearest) ? Math.clamp(NEAR_TARGET_MM / nearest, 1.0F, MAX_NEAR_SCALE) : 1.0F;
+        this.arms = new float[armQuadsMm.length / FpvGuardZone.QUAD_FLOATS * FpvGuardZone.QUAD_FLOATS];
+        for (int i = 0; i + 2 < this.arms.length; i += 3) {
+            this.toCamera(armQuadsMm[i], armQuadsMm[i + 1], armQuadsMm[i + 2], camera);
+            this.arms[i] = camera.x;
+            this.arms[i + 1] = camera.y;
+            this.arms[i + 2] = camera.z;
+        }
+        this.attached = attached.clone();
     }
 
     public static float pushScale(float depthMm, float nearScale) {
@@ -95,6 +111,42 @@ public final class FpvPropGeometry {
 
     public boolean guardsVisible(float tanHalfX, float tanHalfY) {
         return inView(this.guards, tanHalfX, tanHalfY);
+    }
+
+    public boolean armsVisible(float tanHalfX, float tanHalfY) {
+        for (int q = 0; q + FpvGuardZone.QUAD_FLOATS <= this.arms.length; q += FpvGuardZone.QUAD_FLOATS) {
+            if (quadInView(this.arms, q, tanHalfX, tanHalfY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean quadInView(float[] points, int offset, float tanHalfX, float tanHalfY) {
+        boolean behind = true;
+        boolean left = true;
+        boolean right = true;
+        boolean below = true;
+        boolean above = true;
+        for (int i = offset; i < offset + FpvGuardZone.QUAD_FLOATS; i += 3) {
+            float x = points[i];
+            float y = points[i + 1];
+            float depth = -points[i + 2];
+            behind &= depth <= MIN_DEPTH_MM;
+            left &= x < -depth * tanHalfX;
+            right &= x > depth * tanHalfX;
+            below &= y < -depth * tanHalfY;
+            above &= y > depth * tanHalfY;
+        }
+        return !(behind || left || right || below || above);
+    }
+
+    public boolean attached(int slot) {
+        return this.attached[slot];
+    }
+
+    public int armQuads() {
+        return this.arms.length / FpvGuardZone.QUAD_FLOATS;
     }
 
     public int guardPoints() {

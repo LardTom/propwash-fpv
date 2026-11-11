@@ -1,0 +1,66 @@
+name: Bug report
+description: Something in Propwash FPV does not work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check first whether the problem also happens without add-ons. Only the API `de.lardtom.propwash.api` is stable, and crashes caused by add-ons are not supported. The rules for add-ons are in [ADDONS.md](https://github.com/LardTom/propwash-fpv/blob/main/ADDONS.md).
+  - type: input
+    id: propwash-version
+    attributes:
+      label: Propwash version
+      placeholder: "0.6.0"
+    validations:
+      required: true
+  - type: input
+    id: minecraft-version
+    attributes:
+      label: Minecraft version
+      placeholder: "26.3"
+    validations:
+      required: true
+  - type: input
+    id: loader-version
+    attributes:
+      label: Loader and version
+      placeholder: "Fabric Loader 0.19.5 with Fabric API 0.161.0+26.3, or NeoForge 26.3.0.10-beta"
+    validations:
+      required: true
+  - type: textarea
+    id: addons
+    attributes:
+      label: Installed add-ons
+      description: All Propwash add-ons with their versions, plus other mods that might be involved. Write "none" if you play without add-ons.
+      placeholder: |
+        Propwash: Just More Parts 1.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: without-addons
+    attributes:
+      label: Does it also happen without add-ons?
+      options:
+        - Yes, also without add-ons
+        - No, only with add-ons
+        - Not tested yet
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, what happened and what you expected instead.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log or crash report
+      description: Attach or paste `logs/latest.log` or the file from `crash-reports/`.
+    validations:
+      required: false

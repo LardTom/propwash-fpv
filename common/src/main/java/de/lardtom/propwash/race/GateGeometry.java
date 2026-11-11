@@ -11,6 +11,10 @@ public final class GateGeometry {
     public static final double NO_CROSSING = -1.0;
     public static final double HANGER_SIZE = 0.125;
     public static final double SEGMENT_LENGTH = 0.25;
+    public static final int JOINT_LEFT = 1;
+    public static final int JOINT_RIGHT = 2;
+    public static final int JOINT_TOP = 4;
+    public static final int JOINT_MASK = JOINT_LEFT | JOINT_RIGHT | JOINT_TOP;
     private static final double EPSILON = 1.0E-9;
     private static final double SAME_EPSILON = 1.0E-6;
 
@@ -47,6 +51,10 @@ public final class GateGeometry {
     private final List<Passage> stages;
     private final List<List<Passage>> fouls;
     private final @Nullable FreeformRegion region;
+    private final boolean legs;
+    private final ScoreArea score;
+    private final boolean reversed;
+    private final int joints;
 
     public record Waypoint(double x, double y, double z, double dx, double dy, double dz) {
     }
@@ -58,9 +66,18 @@ public final class GateGeometry {
 
     public GateGeometry(double x, double y, double z, float yawDegrees, double width, double height, double frame, double depth,
                         GateMount mount, boolean flipped, GateTilt tilt, CourseElement kind, int variant) {
+        this(x, y, z, yawDegrees, width, height, frame, depth, mount, flipped, tilt, kind, variant, ScoreArea.DEFAULT);
+    }
+
+    public GateGeometry(double x, double y, double z, float yawDegrees, double width, double height, double frame, double depth,
+                        GateMount mount, boolean flipped, GateTilt tilt, CourseElement kind, int variant, ScoreArea score) {
         this.kind = kind == null ? CourseElement.GATE : kind;
         this.variant = this.kind.variant(variant);
         this.region = null;
+        this.legs = false;
+        this.reversed = false;
+        this.joints = 0;
+        this.score = (score == null ? ScoreArea.DEFAULT : score).normalized(this.kind);
         boolean element = !this.kind.gate();
         this.x = x;
         this.y = y;
@@ -187,8 +204,9 @@ public final class GateGeometry {
         this.aligned = axis(this.sideX, this.sideY, this.sideZ) && axis(this.upX, this.upY, this.upZ) && axis(this.normalX, this.normalY, this.normalZ);
         if (element) {
             this.stages = List.copyOf(this.elementStages());
-            List<List<Passage>> perStage = new ArrayList<>(this.kind.stages());
-            for (int stage = 0; stage < this.kind.stages(); stage++) {
+            int count = this.scoringKind().stages();
+            List<List<Passage>> perStage = new ArrayList<>(count);
+            for (int stage = 0; stage < count; stage++) {
                 perStage.add(List.copyOf(this.elementFouls(stage)));
             }
             this.fouls = List.copyOf(perStage);
@@ -240,17 +258,34 @@ public final class GateGeometry {
 
     public static GateGeometry element(double x, double y, double z, float yawDegrees, CourseElement kind, int variant, double width, double height,
                                        GateTilt tilt, GateMount mount) {
-        return new GateGeometry(x, y, z, yawDegrees, width, height, kind.thickness(), kind.depth(width), mount, false, tilt, kind, variant);
+        return element(x, y, z, yawDegrees, kind, variant, width, height, tilt, mount, ScoreArea.DEFAULT);
+    }
+
+    public static GateGeometry element(double x, double y, double z, float yawDegrees, CourseElement kind, int variant, double width, double height,
+                                       GateTilt tilt, GateMount mount, ScoreArea score) {
+        return new GateGeometry(x, y, z, yawDegrees, width, height, kind.thickness(), kind.depth(width), mount, false, tilt, kind, variant, score);
     }
 
     public static GateGeometry freeform(double x, double y, double z, FreeformRegion region, int variant) {
-        return new GateGeometry(x, y, z, region == null ? FreeformRegion.single(FreeformRegion.AXIS_Z) : region, variant);
+        return freeform(x, y, z, region, variant, ScoreArea.DEFAULT);
     }
 
-    private GateGeometry(double x, double y, double z, FreeformRegion region, int variant) {
+    public static GateGeometry freeform(double x, double y, double z, FreeformRegion region, int variant, ScoreArea score) {
+        return freeform(x, y, z, region, variant, score, 0.0F);
+    }
+
+    public static GateGeometry freeform(double x, double y, double z, FreeformRegion region, int variant, ScoreArea score, float yaw) {
+        return new GateGeometry(x, y, z, region == null ? FreeformRegion.single(FreeformRegion.AXIS_Z) : region, variant, score, yaw);
+    }
+
+    private GateGeometry(double x, double y, double z, FreeformRegion region, int variant, ScoreArea score, float yaw) {
         this.kind = CourseElement.FREEFORM;
         this.variant = this.kind.variant(variant);
         this.region = region;
+        this.legs = false;
+        this.reversed = false;
+        this.joints = 0;
+        this.score = (score == null ? ScoreArea.DEFAULT : score).normalized(CourseElement.FREEFORM);
         this.x = x;
         this.y = y;
         this.z = z;
@@ -270,7 +305,7 @@ public final class GateGeometry {
         this.yawDegrees = switch (axis) {
             case FreeformRegion.AXIS_X -> sign > 0.0 ? 270.0F : 90.0F;
             case FreeformRegion.AXIS_Z -> sign > 0.0 ? 0.0F : 180.0F;
-            default -> 0.0F;
+            default -> Float.isFinite(yaw) ? snapYaw(yaw) : 0.0F;
         };
         this.width = region.width();
         this.height = region.height();
@@ -304,12 +339,110 @@ public final class GateGeometry {
         return this.region != null;
     }
 
+    private GateGeometry(GateGeometry source, boolean legs, boolean reversed, int joints) {
+        boolean turn = reversed != source.reversed;
+        double s = turn && source.region == null ? -1.0 : 1.0;
+        double n = turn ? -1.0 : 1.0;
+        this.x = source.x;
+        this.y = source.y;
+        this.z = source.z;
+        this.yawDegrees = source.yawDegrees;
+        this.width = source.width;
+        this.height = source.height;
+        this.frame = source.frame;
+        this.depth = source.depth;
+        this.mount = source.mount;
+        this.flipped = source.flipped;
+        this.tilt = source.tilt;
+        this.sideX = clean(source.sideX * s);
+        this.sideY = clean(source.sideY * s);
+        this.sideZ = clean(source.sideZ * s);
+        this.upX = source.upX;
+        this.upY = source.upY;
+        this.upZ = source.upZ;
+        this.normalX = clean(source.normalX * n);
+        this.normalY = clean(source.normalY * n);
+        this.normalZ = clean(source.normalZ * n);
+        this.originX = source.originX;
+        this.originY = source.originY;
+        this.originZ = source.originZ;
+        this.centerX = source.centerX;
+        this.centerY = source.centerY;
+        this.centerZ = source.centerZ;
+        this.upright = source.upright;
+        this.aligned = source.aligned;
+        this.kind = source.kind;
+        this.variant = source.variant;
+        this.region = source.region;
+        this.legs = legs;
+        this.score = source.score;
+        this.reversed = reversed;
+        this.joints = joints;
+        if (!turn) {
+            this.stages = source.stages;
+            this.fouls = source.fouls;
+        } else if (this.region != null) {
+            this.stages = List.of(new Passage(this.originX, this.originY, this.originZ, this.sideX, this.sideY, this.sideZ, this.upX, this.upY,
+                    this.upZ, this.normalX, this.normalY, this.normalZ, 0.0, this.width, 0.0, this.height, this.region));
+            this.fouls = List.of(List.of());
+        } else if (!this.kind.gate()) {
+            List<Passage> own = List.copyOf(this.elementStages());
+            int count = this.scoringKind().stages();
+            List<List<Passage>> perStage = new ArrayList<>(count);
+            for (int stage = 0; stage < count; stage++) {
+                perStage.add(List.copyOf(this.elementFouls(stage)));
+            }
+            this.stages = own;
+            this.fouls = List.copyOf(perStage);
+        } else {
+            this.stages = List.of();
+            this.fouls = List.of();
+        }
+    }
+
+    public GateGeometry withLegs(boolean next) {
+        boolean value = next && this.region == null && this.kind.gate();
+        return value == this.legs ? this : new GateGeometry(this, value, this.reversed, this.joints);
+    }
+
+    public boolean reversed() {
+        return this.reversed;
+    }
+
+    public GateGeometry withReverse(boolean next) {
+        return next == this.reversed ? this : new GateGeometry(this, this.legs, next, this.joints);
+    }
+
+    public int joints() {
+        return this.joints;
+    }
+
+    public GateGeometry withJoints(int next) {
+        int value = this.kind.gate() && this.region == null ? next & JOINT_MASK : 0;
+        return value == this.joints ? this : new GateGeometry(this, this.legs, this.reversed, value);
+    }
+
+    public boolean legs() {
+        return this.legs;
+    }
+
+    public double openingFloor() {
+        return this.legs ? 0.0 : this.frame;
+    }
+
     public GateGeometry at(double newX, double newY, double newZ) {
         if (this.region != null) {
-            return new GateGeometry(newX, newY, newZ, this.region, this.variant);
+            return new GateGeometry(newX, newY, newZ, this.region, this.variant, this.score, this.yawDegrees).withReverse(this.reversed);
         }
         return new GateGeometry(newX, newY, newZ, this.yawDegrees, this.width, this.height, this.frame, this.depth, this.mount, this.flipped, this.tilt,
-                this.kind, this.variant);
+                this.kind, this.variant, this.score).withReverse(this.reversed);
+    }
+
+    public GateGeometry moved(double dx, double dy, double dz) {
+        if (dx == 0.0 && dy == 0.0 && dz == 0.0) {
+            return this;
+        }
+        return this.at(this.x + dx, this.y + dy, this.z + dz).withLegs(this.legs).withJoints(this.joints);
     }
 
     public GateGeometry withTilt(GateTilt next) {
@@ -317,15 +450,62 @@ public final class GateGeometry {
             return this;
         }
         return new GateGeometry(this.x, this.y, this.z, this.yawDegrees, this.width, this.height, this.frame, this.depth, this.mount, this.flipped, next,
-                this.kind, this.variant);
+                this.kind, this.variant, this.score).withReverse(this.reversed);
+    }
+
+    public GateGeometry withFreeformYaw(float yaw) {
+        if (this.region == null || !this.region.horizontal()) {
+            return this;
+        }
+        return new GateGeometry(this.x, this.y, this.z, this.region, this.variant, this.score, yaw).withReverse(this.reversed);
     }
 
     public GateGeometry withVariant(int next) {
         if (this.region != null) {
-            return new GateGeometry(this.x, this.y, this.z, this.region, next);
+            return new GateGeometry(this.x, this.y, this.z, this.region, next, this.score, this.yawDegrees).withReverse(this.reversed);
         }
         return new GateGeometry(this.x, this.y, this.z, this.yawDegrees, this.width, this.height, this.frame, this.depth, this.mount, this.flipped,
-                this.tilt, this.kind, next);
+                this.tilt, this.kind, next, this.score).withReverse(this.reversed);
+    }
+
+    public GateGeometry withScore(ScoreArea next) {
+        ScoreArea value = (next == null ? ScoreArea.DEFAULT : next).normalized(this.kind);
+        if (value.equals(this.score)) {
+            return this;
+        }
+        if (this.region != null) {
+            return new GateGeometry(this.x, this.y, this.z, this.region, this.variant, value, this.yawDegrees).withReverse(this.reversed);
+        }
+        return new GateGeometry(this.x, this.y, this.z, this.yawDegrees, this.width, this.height, this.frame, this.depth, this.mount, this.flipped,
+                this.tilt, this.kind, this.variant, value).withLegs(this.legs).withReverse(this.reversed).withJoints(this.joints);
+    }
+
+    public ScoreArea score() {
+        return this.score;
+    }
+
+    public boolean scoringPole() {
+        return this.kind == CourseElement.GATE_POLE && this.score.scoring() && this.verticalPole();
+    }
+
+    public boolean verticalPole() {
+        return this.mount == GateMount.STANDING || this.mount == GateMount.HANGING;
+    }
+
+    public CourseElement scoringKind() {
+        if (this.kind == CourseElement.GATE_POLE) {
+            return this.scoringPole() ? this.score.role().scoringKind() : CourseElement.GATE_POLE;
+        }
+        return this.kind;
+    }
+
+    public int stageCount() {
+        CourseElement scoring = this.scoringKind();
+        return scoring.gate() || scoring.freeform() ? 1 : scoring.stages();
+    }
+
+    public double scoreWidth() {
+        return this.kind == CourseElement.GATE_POLE ? this.score.reach() : this.width;
     }
 
     public CourseElement kind() {
@@ -534,7 +714,11 @@ public final class GateGeometry {
     }
 
     public boolean insideOpening(double side, double up) {
-        return Math.abs(side) < this.innerHalfWidth() && up > this.frame && up < this.height - this.frame;
+        return this.insideOpening(side, up, this.legs);
+    }
+
+    private boolean insideOpening(double side, double up, boolean legs) {
+        return Math.abs(side) < this.innerHalfWidth() && up > (legs ? 0.0 : this.frame) && up < this.height - this.frame;
     }
 
     public double signedDistance(double px, double pz) {
@@ -549,6 +733,10 @@ public final class GateGeometry {
     }
 
     public double crossing(double x0, double y0, double z0, double x1, double y1, double z1, boolean forward) {
+        return this.crossing(x0, y0, z0, x1, y1, z1, forward, this.legs);
+    }
+
+    public double crossing(double x0, double y0, double z0, double x1, double y1, double z1, boolean forward, boolean legs) {
         if (!this.kind.gate()) {
             return NO_CROSSING;
         }
@@ -562,7 +750,7 @@ public final class GateGeometry {
         double hx = x0 + (x1 - x0) * t;
         double hy = y0 + (y1 - y0) * t;
         double hz = z0 + (z1 - z0) * t;
-        return this.insideOpening(this.localSide(hx, hy, hz), this.localUp(hx, hy, hz)) ? t : NO_CROSSING;
+        return this.insideOpening(this.localSide(hx, hy, hz), this.localUp(hx, hy, hz), legs) ? t : NO_CROSSING;
     }
 
     public double halfExtentX() {
@@ -671,12 +859,19 @@ public final class GateGeometry {
         double half = this.width * 0.5;
         double inner = half - this.frame;
         double foot = base == GateStacking.Base.STACKED ? this.frame : 0.0;
-        this.part(-half, -inner, foot, this.height, sink);
-        this.part(inner, half, foot, this.height, sink);
+        double postTop = this.postTop();
+        if ((this.joints & JOINT_LEFT) == 0) {
+            this.part(-half, -inner, foot, postTop, sink);
+        }
+        if ((this.joints & JOINT_RIGHT) == 0) {
+            this.part(inner, half, foot, postTop, sink);
+        }
         if (base.bottomBar()) {
             this.part(-inner, inner, 0.0, this.frame, sink);
         }
-        this.part(-inner, inner, this.height - this.frame, this.height, sink);
+        if ((this.joints & JOINT_TOP) == 0) {
+            this.part(-inner, inner, this.height - this.frame, this.height, sink);
+        }
         if (this.mount == GateMount.HANGING) {
             if (this.tilt.none()) {
                 double h = HANGER_SIZE * 0.5;
@@ -698,12 +893,19 @@ public final class GateGeometry {
         double inner = half - this.frame;
         double foot = base == GateStacking.Base.STACKED ? this.frame : 0.0;
         double n = this.depth * 0.5;
-        sink.accept(this.oriented(-half, -inner, foot, this.height, -n, n));
-        sink.accept(this.oriented(inner, half, foot, this.height, -n, n));
+        double postTop = this.postTop();
+        if ((this.joints & JOINT_LEFT) == 0) {
+            sink.accept(this.oriented(-half, -inner, foot, postTop, -n, n));
+        }
+        if ((this.joints & JOINT_RIGHT) == 0) {
+            sink.accept(this.oriented(inner, half, foot, postTop, -n, n));
+        }
         if (base.bottomBar()) {
             sink.accept(this.oriented(-inner, inner, 0.0, this.frame, -n, n));
         }
-        sink.accept(this.oriented(-inner, inner, this.height - this.frame, this.height, -n, n));
+        if ((this.joints & JOINT_TOP) == 0) {
+            sink.accept(this.oriented(-inner, inner, this.height - this.frame, this.height, -n, n));
+        }
         if (this.mount == GateMount.HANGING) {
             if (this.tilt.none()) {
                 double h = HANGER_SIZE * 0.5;
@@ -783,7 +985,12 @@ public final class GateGeometry {
                 default -> 1;
             };
         }
-        return (base.bottomBar() ? 4 : 3) + (this.mount == GateMount.HANGING ? 2 : 0);
+        int skipped = Integer.bitCount(this.joints & JOINT_MASK);
+        return (base.bottomBar() ? 4 : 3) - skipped + (this.mount == GateMount.HANGING ? 2 : 0);
+    }
+
+    private double postTop() {
+        return (this.joints & JOINT_TOP) != 0 ? this.height - this.frame : this.height;
     }
 
     private void part(double side0, double side1, double up0, double up1, BoxSink sink) {
@@ -863,10 +1070,10 @@ public final class GateGeometry {
 
     public boolean sameAs(GateGeometry other) {
         return other != null && this.kind == other.kind && this.variant == other.variant && Objects.equals(this.region, other.region)
-                && this.mount == other.mount && this.flipped == other.flipped && this.tilt.equals(other.tilt)
+                && this.score.equals(other.score) && this.mount == other.mount && this.flipped == other.flipped && this.tilt.equals(other.tilt)
                 && Math.abs(this.x - other.x) < SAME_EPSILON && Math.abs(this.y - other.y) < SAME_EPSILON && Math.abs(this.z - other.z) < SAME_EPSILON
                 && Math.abs(this.width - other.width) < SAME_EPSILON && Math.abs(this.height - other.height) < SAME_EPSILON
-                && Math.abs(GateTilt.wrap(this.yawDegrees - other.yawDegrees)) < 1.0E-3F;
+                && Math.abs(GateTilt.wrap(this.yawDegrees - other.yawDegrees)) < 1.0E-3F && this.reversed == other.reversed;
     }
 
     @Override
@@ -881,7 +1088,8 @@ public final class GateGeometry {
                 && Float.compare(this.yawDegrees, that.yawDegrees) == 0 && Double.compare(this.width, that.width) == 0
                 && Double.compare(this.height, that.height) == 0 && Double.compare(this.frame, that.frame) == 0
                 && Double.compare(this.depth, that.depth) == 0 && this.mount == that.mount && this.flipped == that.flipped
-                && this.tilt.equals(that.tilt) && this.kind == that.kind && this.variant == that.variant && Objects.equals(this.region, that.region);
+                && this.tilt.equals(that.tilt) && this.kind == that.kind && this.variant == that.variant && Objects.equals(this.region, that.region)
+                && this.legs == that.legs && this.score.equals(that.score) && this.reversed == that.reversed && this.joints == that.joints;
     }
 
     @Override
@@ -891,6 +1099,18 @@ public final class GateGeometry {
         if (this.region != null) {
             hash = hash * 31 + this.region.hashCode();
         }
+        if (this.legs) {
+            hash = hash * 31 + 1;
+        }
+        if (!this.score.isDefault()) {
+            hash = hash * 31 + this.score.pack();
+        }
+        if (this.reversed) {
+            hash = hash * 31 + 2;
+        }
+        if (this.joints != 0) {
+            hash = hash * 31 + 16 + this.joints;
+        }
         return this.kind.gate() ? hash : hash * 31 + this.kind.ordinal() * 7 + this.variant;
     }
 
@@ -899,7 +1119,8 @@ public final class GateGeometry {
         return "GateGeometry[x=" + this.x + ", y=" + this.y + ", z=" + this.z + ", yawDegrees=" + this.yawDegrees + ", width=" + this.width
                 + ", height=" + this.height + ", frame=" + this.frame + ", depth=" + this.depth + ", mount=" + this.mount + ", flipped="
                 + this.flipped + ", tilt=" + this.tilt + (this.kind.gate() ? "" : ", kind=" + this.kind + ", variant=" + this.variant)
-                + (this.region == null ? "" : ", region=" + this.region) + "]";
+                + (this.region == null ? "" : ", region=" + this.region) + (this.score.isDefault() ? "" : ", score=" + this.score)
+                + (this.reversed ? ", reversed" : "") + (this.joints == 0 ? "" : ", joints=" + this.joints) + "]";
     }
 
     private static boolean vertical(OrientedBox box) {
@@ -935,6 +1156,9 @@ public final class GateGeometry {
     }
 
     public int passSign() {
+        if (this.kind == CourseElement.GATE_POLE) {
+            return this.score.passSign();
+        }
         return this.variant == CourseElement.LEFT ? 1 : -1;
     }
 
@@ -1008,8 +1232,8 @@ public final class GateGeometry {
     }
 
     private Passage ray(double dx, double dz, double nx, double nz) {
-        return this.passage(this.originX, this.originY, this.originZ, dx, 0.0, dz, 0.0, 1.0, 0.0, nx, 0.0, nz, 0.0, this.width,
-                -CourseElement.BELOW, this.height);
+        return this.passage(this.originX, this.originY, this.originZ, dx, 0.0, dz, 0.0, 1.0, 0.0, nx, 0.0, nz, 0.0, this.scoreWidth(),
+                -this.score.below(), this.height + this.score.above());
     }
 
     private Passage face(int exit) {
@@ -1057,7 +1281,7 @@ public final class GateGeometry {
         double fx = this.normalX;
         double fz = this.normalZ;
         int sign = this.passSign();
-        return switch (this.kind) {
+        return switch (this.scoringKind()) {
             case POLE -> List.of(this.ray(lx * sign, lz * sign, fx, fz));
             case FLAG -> List.of(
                     this.ray(-lx * sign, -lz * sign, fx, fz),
@@ -1076,7 +1300,7 @@ public final class GateGeometry {
 
     private List<Passage> elementFouls(int stage) {
         int sign = this.passSign();
-        return switch (this.kind) {
+        return switch (this.scoringKind()) {
             case POLE -> List.of(this.ray(-this.sideX * sign, -this.sideZ * sign, this.normalX, this.normalZ));
             case FLAG -> List.of(this.ray(this.sideX * sign, this.sideZ * sign, this.normalX, this.normalZ));
             case CUBE -> {
@@ -1099,15 +1323,15 @@ public final class GateGeometry {
         double fz = this.normalZ;
         double t = this.frame * 0.5;
         int sign = this.passSign();
-        return switch (this.kind) {
+        return switch (this.scoringKind()) {
             case GATE, FREEFORM, GATE_POLE -> List.of(new Waypoint(this.centerX, this.centerY, this.centerZ, this.normalX, this.normalY, this.normalZ));
             case POLE -> {
-                double r = t + Math.max(0.8, Math.min(2.0, this.width * 0.35));
+                double r = t + Math.max(0.8, Math.min(2.0, this.scoreWidth() * 0.35));
                 double y = this.originY + lineHeight(this.height, 0.5);
                 yield List.of(new Waypoint(this.originX + lx * sign * r, y, this.originZ + lz * sign * r, fx, 0.0, fz));
             }
             case FLAG -> {
-                double r = t + Math.max(1.0, Math.min(2.2, this.width * 0.35));
+                double r = t + Math.max(1.0, Math.min(2.2, this.scoreWidth() * 0.35));
                 double y = this.originY + lineHeight(this.height, 0.45);
                 yield List.of(
                         new Waypoint(this.originX - lx * sign * r, y, this.originZ - lz * sign * r, fx, 0.0, fz),

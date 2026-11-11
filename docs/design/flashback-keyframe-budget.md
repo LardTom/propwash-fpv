@@ -366,7 +366,8 @@ Propwash braucht das Budget trotzdem, solange ältere Versionen im Umlauf sind.
 - JUnit `CameraTrackTest`: Ausdünnen mit `maxKeyframes` bleibt unter der Grenze, behält ersten und letzten Tick und
   meldet die erreichte Toleranz. Ohne Grenze ist das Ergebnis unverändert.
 - Live-Zähler gegen `CameraTrack.of` am Ende derselben Aufnahme: gleiche Zahl bei Regler „Aus“, sonst höchstens
-  wenige Keyframes Unterschied.
+  wenige Keyframes Unterschied. Seit 0.6.0 (Tiefpass vor dem Abtasten, `flashback-cam.md`) zählt der Live-Zähler einen
+  Tick erst, wenn die Proben bis 3 Ticks danach da sind; bei „Aus“ fehlen ihm am Ende genau diese 3 Ticks.
 - JUnit `FlashbackSplineTest`: Nachbildung gegen Werte, die Flashbacks `CatmullRom.position` und `CatmullRom.value` für
   dieselben Keyframes liefern (einmal im Selbsttest erzeugt und als Tabelle eingecheckt).
 - JUnit Regler: Abbildung 0 → „Aus“, 1 cm-Stelle → Toleranz von `REDUCED`, 1 → 20 cm / 10°; Übernahme alter

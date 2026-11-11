@@ -1,0 +1,5 @@
+{
+  "propwash.drone.esc_derate": "ESC überhitzt – er regelt zum Selbstschutz ab",
+  "propwash.drone.motor_hot": "Motoren sehr heiß – sie verlieren Leistung und verschleißen",
+  "propwash.osd.warning.esc_hot": "ESC ÜBERHITZT"
+}

@@ -80,6 +80,6 @@ public final class DroneClient {
             return;
         }
         Quaternionf orientation = new Quaternionf(payload.qx(), payload.qy(), payload.qz(), payload.qw()).normalize();
-        drone.snapClientPose(new Vec3(payload.x(), payload.y(), payload.z()), orientation);
+        drone.snapClientPose(payload.keepPosition() ? drone.position() : new Vec3(payload.x(), payload.y(), payload.z()), orientation);
     }
 }

@@ -14,11 +14,15 @@ public enum LapAssist {
     PARTS_MISMATCH,
     GOGGLES_LATENCY,
     OTHER,
-    ZONE_PHYSICS;
+    ZONE_PHYSICS,
+    SCALE,
+    PERSONAL_RULES;
 
     public static final int NONE = 0;
     public static final int ALL = (1 << values().length) - 1;
-    public static final int SERVER_REASONS = WORLD_PHYSICS.bit() | CREATIVE_DRONE.bit() | PARTS_MISMATCH.bit() | ZONE_PHYSICS.bit();
+    public static final int SERVER_REASONS = WORLD_PHYSICS.bit() | CREATIVE_DRONE.bit() | PARTS_MISMATCH.bit() | ZONE_PHYSICS.bit() | SCALE.bit()
+            | PERSONAL_RULES.bit();
+    public static final int RULE_REASONS = WORLD_PHYSICS.bit() | ZONE_PHYSICS.bit() | PERSONAL_RULES.bit();
     public static final int CLIENT_REASONS = ALL & ~SERVER_REASONS;
 
     private final String key = this.name().toLowerCase(Locale.ROOT);
@@ -69,6 +73,10 @@ public enum LapAssist {
             }
         }
         return OTHER;
+    }
+
+    public boolean ruleBased() {
+        return this.in(RULE_REASONS);
     }
 
     public boolean serverSide() {

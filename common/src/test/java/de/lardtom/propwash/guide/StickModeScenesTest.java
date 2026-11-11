@@ -10,6 +10,7 @@ import de.lardtom.propwash.guide.scenes.ConfiguratorScene;
 import de.lardtom.propwash.guide.scenes.Mode3dScene;
 import de.lardtom.propwash.input.StickChannel;
 import de.lardtom.propwash.input.StickMode;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -17,7 +18,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,14 +35,7 @@ class StickModeScenesTest {
             "stick_yaw", StickChannel.YAW, "stick_throttle", StickChannel.THROTTLE, "input", StickChannel.ROLL);
 
     private static JsonObject lang(String language) throws IOException {
-        for (Path candidate : List.of(Path.of("common/src/lang/guide"), Path.of("src/lang/guide"))) {
-            Path file = candidate.resolve(language + ".json");
-            if (Files.isRegularFile(file)) {
-                return JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
-            }
-        }
-        fail("Sprachquellen der Flugschule nicht gefunden");
-        return new JsonObject();
+        return JsonParser.parseString(Files.readString(TestPaths.lang("guide").resolve(language + ".json"), StandardCharsets.UTF_8)).getAsJsonObject();
     }
 
     private static String shown(JsonObject lang, String base, StickMode mode) {

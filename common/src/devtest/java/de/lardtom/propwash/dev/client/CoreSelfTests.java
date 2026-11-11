@@ -68,6 +68,7 @@ public final class CoreSelfTests {
     private static final AtomicInteger COMMAND_REGISTRATIONS = new AtomicInteger();
     private static final AtomicInteger HUD_CALLS = new AtomicInteger();
     private static final AtomicInteger ALWAYS_HUD_CALLS = new AtomicInteger();
+    private static final AtomicInteger MARKER_DRAWS = new AtomicInteger();
     private static final AtomicInteger KEYS_REGISTERED_EVENTS = new AtomicInteger();
     private static final AtomicInteger CLIENT_DISCONNECTS = new AtomicInteger();
     private static final AtomicInteger PLAYER_LEAVES = new AtomicInteger();
@@ -163,6 +164,7 @@ public final class CoreSelfTests {
         ClientRegistrar.hudLayer(Constants.id("selftest"), (graphics, deltaTracker) -> {
             HUD_CALLS.incrementAndGet();
             if (!Screenshots.markerHidden()) {
+                MARKER_DRAWS.incrementAndGet();
                 graphics.text(Minecraft.getInstance().font, "Propwash Selbsttest", 4, 4, 0xFFFFFFFF);
             }
         });
@@ -279,6 +281,9 @@ public final class CoreSelfTests {
         });
 
         SelfTest.clientStep("core: HUD bei F1", 100, CoreSelfTests::hiddenHudStep);
+        if (Screenshots.enabled()) {
+            SelfTest.clientStep("core: Bildschirmfotos ohne Marker „Propwash Selbsttest“", 200, CoreSelfTests::markerStep);
+        }
 
         SelfTest.clientStep("core: Config", 1, ctx -> StepResult.check(CoreConfig.CONFIG.isLoaded() && Files.isRegularFile(CoreConfig.CONFIG.path()),
                 "config/propwash/core.json fehlt"));
@@ -404,6 +409,19 @@ public final class CoreSelfTests {
             return StepResult.fail("HUD-Ebene ALWAYS bei F1 nicht gezeichnet");
         }
         return StepResult.check(normal == 0, "HUD-Ebene WITH_HUD trotz F1 " + normal + "× gezeichnet");
+    }
+
+    private static StepResult markerStep(SelfTest.StepContext ctx) {
+        if (ctx.tick() == 0) {
+            ctx.state().put("hud", HUD_CALLS.get());
+            ctx.state().put("marker", MARKER_DRAWS.get());
+            return StepResult.pending();
+        }
+        if (HUD_CALLS.get() - (Integer) ctx.state().get("hud") < 5) {
+            return ctx.tick() > 180 ? StepResult.fail("HUD-Ebene in 180 Ticks nicht fünfmal gezeichnet") : StepResult.pending();
+        }
+        int drawn = MARKER_DRAWS.get() - (Integer) ctx.state().get("marker");
+        return StepResult.check(drawn == 0, "Marker „Propwash Selbsttest“ im Lauf mit Bildschirmfotos " + drawn + "× gezeichnet, Doku-Bilder zeigen ihn");
     }
 
     private static StepResult droneStep(SelfTest.StepContext ctx) {

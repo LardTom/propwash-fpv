@@ -33,6 +33,8 @@ beim Anlegen einer Welt.
 | `propwash:drone_hits_entities` | Schalter | an | – | Spiel | Drohnen prallen an Mobs und Spielern ab und verletzen sie (Modul interact, `docs/design/drone-interaction.md`) | nein |
 | `propwash:drones_break_blocks` | Schalter | aus | – | Spiel | schnelle Drohnen zerbrechen Glas, Glasscheiben und verzierte Töpfe (Block-Tag `propwash:drone_breakable`), wenn die Energie reicht, und fliegen langsamer weiter; Rechte wie beim Abbauen durch den Piloten (`docs/design/drone-break-blocks.md`) | nein |
 | `propwash:break_impact_scale` | Zahl, % | 100 | 0–300, Schritt 10 | Spiel | wie stark eine Drohne den Durchbruch durch einen zerbrechlichen Block spürt: Tempoverlust an die mitgerissenen Scherben, Drehstoß, Scherben in den vorderen Props; 0 = nur die Bruchenergie („Kein Stoß“). Ob ein Block bricht und wann die Drohne dabei abstürzt, ändert sie nicht (`docs/design/drone-break-blocks.md` §3.2) | nein |
+| `propwash:drones_trigger_sculk` | Schalter | an | – | Spiel | Drohnen lösen Sculk aus: Eine scharfe Drohne mit Motoren ab 10 % der Höchstdrehzahl meldet alle 10 Ticks `elytra_glide`, ein Absturz `hit_ground`; Sculk-Sensoren und Wärter reagieren, Sculk-Kreischer rechnen die Drohne dem Piloten zu; aus = Drohnen sind für Sculk lautlos (`docs/drone-sculk.md`) | nein |
+| `propwash:drones_boss_interactions` | Schalter | an | – | Spiel | Bosse kämpfen gegen Drohnen: Wärter hören Drohnen, werden wütend und treffen sie mit dem Schallschlag (Schaden nach den Crash-Regeln), ihre Dunkelheit pulsiert durch das FPV-Bild; der Enderdrache schleudert Drohnen mit Flügeln und Turbulenz weg, rammt und greift sie an, sein Atem beschädigt sie; der Wither schießt Schädel auf geflogene Drohnen; Windkugeln der Breeze stoßen geflogene Drohnen auch ohne Add-on; aus = Bosse und Breezes lassen Drohnen in Ruhe (`docs/drone-bosses.md`) | nein |
 | `propwash:allow_3d_mode` | Schalter | an | – | Spiel | Piloten dürfen den 3D-Modus fliegen, wenn sie ihn freigeschaltet haben; aus lässt ihn niemanden einschalten, etwa auf Rennservern (`docs/design/mode-3d.md`). Wie das Flugmodell setzt der Client die Regel um: Der Zustand der Drohne enthält den 3D-Modus nicht, der Server kann ihn nicht prüfen, ein veränderter Client umgeht die Regel (ebenso jede Physik-Regel); der Regeltext verspricht deshalb nichts für Server ohne Aufsicht | nein |
 | `propwash:part_compatibility` | Schalter | an | – | Spiel | „Teile müssen zusammenpassen“: aus = jedes Teil passt zu jedem, die Drohne fliegt mit den echten Daten ihrer Teile (`docs/design/part-freedom.md`) | nein** |
 | `propwash:autonomous_rescue` | Schalter | an | – | Spiel | GPS Rescue ohne Pilot: steigt der Pilot im Heimflug aus, fliegt die Drohne allein weiter und landet am Homepoint; aus = Motoren aus wie bisher (`docs/design/autonomous-rescue.md`) | nein |
@@ -82,6 +84,8 @@ der Tabelle nicht steht, ist der Standardwert.
 | `drone_hits_entities` | an | an | **aus** |
 | `drones_break_blocks` | aus | aus | aus |
 | `break_impact_scale` | 100 % | 100 % | 100 % |
+| `drones_trigger_sculk` | an | an | an |
+| `drones_boss_interactions` | an | an | an |
 | `allow_3d_mode` | an | an | an |
 | `part_compatibility` | an | an | **aus** |
 | `autonomous_rescue` | an | an | an |
@@ -232,7 +236,8 @@ propwashfpv.com/docs liest diese Datei.
   hintereinander, alle abgelehnt), „… Videokanäle begrenzt die Sender“
   (`tryStart` → `DENIED`), „… unendliche Reichweite je Videosystem“ (im Überleben, analog/digital getrennt),
   „… Crash-Schaden aus verhindert Verschleiß“ (echtes `ImpactC2S`, aus = neu, an mit 300 % = abgenutzt) und
-  „drone: Welt-Regel Schwerkraft wirkt im Flug“ (130 %, Schwebegas steigt, Server kennt veränderte Physik); die drei
+  „drone: Welt-Regel Schwerkraft wirkt im Flug“ (130 %, Schwebegas steigt, der Server rechnet die Drohne des Piloten mit
+  130 %, Serverregeln zählen seit den persönlichen Regeln nicht als Abweichung); die drei
   Schritte „teile-freiheit: …“ für `part_compatibility` (`docs/design/part-freedom.md` §9).
 - JUnit `RulePresetTest` (Realistisch = Standard bitgleich, Training ohne Folgen bei gleichem Flugverhalten, Arcade ⊇
   Training, gültige Werte für jede Regel, eindeutiger Abgleich, eine geänderte Regel = eigene Regeln, Texte de/en),

@@ -1,16 +1,24 @@
 package de.lardtom.propwash.rescue;
 
+import de.lardtom.propwash.drone.collision.ContactResponse;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.StabMode;
 import de.lardtom.propwash.sim.MoveReport;
 import de.lardtom.propwash.sim.PilotInput;
 import de.lardtom.propwash.sim.SimEnvironment;
 import de.lardtom.propwash.sim.StepResult;
+import de.lardtom.propwash.sim.SurfaceResponse;
+import org.jspecify.annotations.Nullable;
+
+import java.util.List;
 
 public final class VoxelFlight {
     private static final double EPS = 1e-7;
     private static final double RAYCAST_RANGE = 5.0;
     private static final double SUPPORT_PROBE = 0.05;
+    private static final double BELOW_REACH = 1.0;
+    private static final double FACE_REACH = 0.25;
+    private static final double STICKY_GAP = 0.03;
 
     public final DroneSim sim;
     public final PilotInput input = new PilotInput();
@@ -24,6 +32,9 @@ public final class VoxelFlight {
     private final double[] min = new double[3];
     private final double[] max = new double[3];
     private final int[] cell = new int[3];
+    private final SurfaceResponse.Mix mix = new SurfaceResponse.Mix();
+    private @Nullable SurfaceCells surfaces;
+    private List<? extends ContactResponse.Step> contacts = List.of();
     private double x;
     private double y;
     private double z;
@@ -48,6 +59,14 @@ public final class VoxelFlight {
         this.x = bottomX;
         this.y = bottomY - this.foot;
         this.z = bottomZ;
+    }
+
+    public void surfaces(@Nullable SurfaceCells cells) {
+        this.surfaces = cells;
+    }
+
+    public void contacts(List<? extends ContactResponse.Step> steps) {
+        this.contacts = List.copyOf(steps);
     }
 
     public double x() {
@@ -141,7 +160,96 @@ public final class VoxelFlight {
         r.hitZ = Math.abs(az - dz) > 1e-7;
         this.updateBox();
         r.supportGap = -this.clip(1, -SUPPORT_PROBE);
+        if (this.surfaces != null) {
+            this.fillSurface(r, this.surfaces);
+            r.stickySides = this.stickySides(this.surfaces);
+            if (!this.contacts.isEmpty()) {
+                ContactResponse.chain(ContactResponse.of(r), this.sim.params().restitution, this.contacts).writeTo(r);
+            }
+        }
         this.sim.afterMove(r);
+    }
+
+    private void fillSurface(MoveReport r, SurfaceCells cells) {
+        int sx = r.hitX ? (int) Math.signum(r.requestedX) : 0;
+        int sy = r.hitY ? (int) Math.signum(r.requestedY) : 0;
+        int sz = r.hitZ ? (int) Math.signum(r.requestedZ) : 0;
+        if (sy == 0 && (this.sim.telemetry().grounded || sx == 0 && sz == 0)) {
+            sy = -1;
+        }
+        this.mix.clear();
+        this.face(cells, 0, sx, FACE_REACH);
+        this.face(cells, 1, sy, sy < 0 ? BELOW_REACH : FACE_REACH);
+        this.face(cells, 2, sz, FACE_REACH);
+        SurfaceResponse response = this.mix.result();
+        if (response != null) {
+            response.writeTo(r);
+        }
+    }
+
+    private void face(SurfaceCells cells, int axis, int side, double reach) {
+        if (side == 0) {
+            return;
+        }
+        int a1 = (axis + 1) % 3;
+        int a2 = (axis + 2) % 3;
+        int first = side > 0 ? (int) Math.ceil(this.max[axis] - EPS) : WorldProbe.floor(this.min[axis] + EPS) - 1;
+        int last = side > 0 ? (int) Math.ceil(this.max[axis] + reach) - 1 : WorldProbe.floor(this.min[axis] - reach);
+        for (int i = WorldProbe.floor(this.min[a1] + EPS); i <= WorldProbe.floor(this.max[a1] - EPS); i++) {
+            double d1 = Math.min(this.max[a1], i + 1.0) - Math.max(this.min[a1], i);
+            for (int j = WorldProbe.floor(this.min[a2] + EPS); j <= WorldProbe.floor(this.max[a2] - EPS); j++) {
+                double d2 = Math.min(this.max[a2], j + 1.0) - Math.max(this.min[a2], j);
+                this.cell[a1] = i;
+                this.cell[a2] = j;
+                for (int c = first; side > 0 ? c <= last : c >= last; c += side) {
+                    this.cell[axis] = c;
+                    if (this.world.solid(this.cell[0], this.cell[1], this.cell[2])) {
+                        SurfaceResponse response = cells.at(this.cell[0], this.cell[1], this.cell[2]);
+                        this.mix.add(response == null ? SurfaceResponse.NORMAL : response, d1 * d2);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private int stickySides(SurfaceCells cells) {
+        int sides = 0;
+        for (int axis = 0; axis < 3; axis++) {
+            for (int side = -1; side <= 1; side += 2) {
+                if (this.stickyFace(cells, axis, side)) {
+                    sides |= MoveReport.stickyBit(axis, side > 0);
+                }
+            }
+        }
+        return sides;
+    }
+
+    private boolean stickyFace(SurfaceCells cells, int axis, int side) {
+        double plane = side > 0 ? this.max[axis] : this.min[axis];
+        int c = side > 0 ? (int) Math.ceil(plane - EPS) : WorldProbe.floor(plane + EPS) - 1;
+        double gap = side > 0 ? c - plane : plane - (c + 1);
+        if (gap > STICKY_GAP) {
+            return false;
+        }
+        int a1 = (axis + 1) % 3;
+        int a2 = (axis + 2) % 3;
+        this.cell[axis] = c;
+        for (int i = WorldProbe.floor(this.min[a1] + EPS); i <= WorldProbe.floor(this.max[a1] - EPS); i++) {
+            this.cell[a1] = i;
+            for (int j = WorldProbe.floor(this.min[a2] + EPS); j <= WorldProbe.floor(this.max[a2] - EPS); j++) {
+                this.cell[a2] = j;
+                if (this.world.solid(this.cell[0], this.cell[1], this.cell[2])
+                        && SurfaceResponse.STICKY.equals(cells.at(this.cell[0], this.cell[1], this.cell[2]))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public interface SurfaceCells {
+        @Nullable SurfaceResponse at(int x, int y, int z);
     }
 
     private void updateBox() {

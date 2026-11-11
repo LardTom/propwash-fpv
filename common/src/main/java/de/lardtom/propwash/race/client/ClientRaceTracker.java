@@ -5,6 +5,7 @@ import de.lardtom.propwash.audio.client.Beep;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.race.ArmEdge;
 import de.lardtom.propwash.race.AssistReasons;
 import de.lardtom.propwash.race.CourseData;
 import de.lardtom.propwash.race.CourseElement;
@@ -19,8 +20,11 @@ import de.lardtom.propwash.race.LapTracker;
 import de.lardtom.propwash.race.RaceClock;
 import de.lardtom.propwash.race.RaceFormat;
 import de.lardtom.propwash.race.RacePayloads;
+import de.lardtom.propwash.race.StandingStart;
+import de.lardtom.propwash.server.client.ClientPersonalRules;
 import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
+import de.lardtom.propwash.stats.client.StatsClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -30,6 +34,7 @@ import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
 import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -42,15 +47,17 @@ public final class ClientRaceTracker {
     public static final long LOBBY_STALE_NANOS = 2_500_000_000L;
     private static final Quaternionfc LEVEL = new Quaternionf();
     private static final int HUD_DECIMALS = 2;
+    private static final String VERDICT = "propwash.race.verdict.";
+    private static final int MAX_VERDICTS = 64;
 
     private final LapTracker tracker = new LapTracker();
     private final GhostRecorder recorder = new GhostRecorder();
     private final GhostLibrary ghosts = new GhostLibrary();
     private final RaceClock clock = new RaceClock();
+    private final Quaternionf attitude = new Quaternionf();
     private @Nullable Consumer<LapTracker.Event> eventListener;
-    private boolean wasArmed;
+    private final ArmEdge armEdge = new ArmEdge();
     private @Nullable Vec3 lastPosition;
-    private boolean resetStart;
     private AssistReasons lapAssist = AssistReasons.NONE;
     private AssistReasons assistNow = AssistReasons.NONE;
     private AssistReasons lastLapAssist = AssistReasons.NONE;
@@ -65,8 +72,10 @@ public final class ClientRaceTracker {
     private long lobbyDeadline;
     private long lobbyUpdated;
     private int startPilots;
+    private final List<RacePayloads.LapVerdictS2C> verdicts = new ArrayList<>();
 
     private ClientRaceTracker() {
+        this.tracker.setOpenings(ClientGateOpenings.following(this.tracker));
     }
 
     public LapTracker tracker() {
@@ -192,15 +201,56 @@ public final class ClientRaceTracker {
         this.tracker.drainEvents();
         this.recorder.reset();
         this.ghosts.clear();
-        this.wasArmed = false;
-        this.resetStart = false;
+        this.armEdge.clear();
         this.lapAssist = AssistReasons.NONE;
         this.lastLapAssist = AssistReasons.NONE;
         this.referenceVersion = -1;
         this.goAt = Long.MIN_VALUE;
         this.clearLobby();
         this.lastPosition = null;
+        this.verdicts.clear();
         RaceHud.clear();
+    }
+
+    public List<RacePayloads.LapVerdictS2C> verdicts() {
+        return List.copyOf(this.verdicts);
+    }
+
+    void onVerdict(Minecraft minecraft, RacePayloads.LapVerdictS2C payload) {
+        if (this.verdicts.size() >= MAX_VERDICTS) {
+            this.verdicts.removeFirst();
+        }
+        this.verdicts.add(payload);
+        Component text = verdictText(payload, ClientCourses.get(payload.courseId()));
+        if (text == null) {
+            return;
+        }
+        RaceHud.message(text, payload.result() == RacePayloads.LapResult.RACE ? RaceHud.YELLOW : RaceHud.RED, 6_000_000_000L);
+        if (minecraft.player != null) {
+            minecraft.player.sendSystemMessage(text.copy().withStyle(payload.result() == RacePayloads.LapResult.RACE ? ChatFormatting.YELLOW : ChatFormatting.RED));
+        }
+    }
+
+    public static @Nullable Component verdictText(RacePayloads.LapVerdictS2C payload, @Nullable CourseData course) {
+        boolean pointToPoint = course != null && course.pointToPoint();
+        switch (payload.result()) {
+            case COUNTED -> {
+                return null;
+            }
+            case RACE -> {
+                return pointToPoint || payload.counted() >= payload.lap() ? null : Component.translatable(VERDICT + "summary", payload.counted(), payload.lap());
+            }
+            case MISSED -> {
+                if (course != null && payload.element() >= 0 && payload.element() < course.gates().size()) {
+                    Component name = GateMounting.elementName(course.gates().get(payload.element()).kind());
+                    return pointToPoint ? Component.translatable(VERDICT + "run_missed", name, payload.element() + 1)
+                            : Component.translatable(VERDICT + "missed", payload.lap(), name, payload.element() + 1);
+                }
+            }
+            case REJECTED -> {
+            }
+        }
+        return pointToPoint ? Component.translatable(VERDICT + "run_rejected") : Component.translatable(VERDICT + "rejected", payload.lap());
     }
 
     private void clearLobby() {
@@ -224,7 +274,7 @@ public final class ClientRaceTracker {
                 this.tracker.abort(now, LapTracker.AbortReason.SESSION_ENDED);
             }
             this.tracker.resetPosition();
-            this.wasArmed = false;
+            this.armEdge.clear();
             this.assistNow = AssistReasons.NONE;
             if (this.lobbyMember) {
                 this.leaveLobby();
@@ -239,20 +289,18 @@ public final class ClientRaceTracker {
         if (this.look == null || !this.look.matches(drone.build(), drone.paint())) {
             this.look = GhostLook.of(drone.build(), drone.paint());
         }
-        this.assistNow = AssistText.evaluate(session, drone);
+        AssistReasons evaluated = AssistText.evaluate(session, drone);
         RaceConfig config = RaceConfig.CONFIG.get();
         this.selectCourse(minecraft, position, now);
+        this.assistNow = ClientCreativeFc.apply(evaluated, this.tracker.courseId());
         this.applyLapTarget();
         this.syncGhosts(minecraft);
         LapTracker.Phase phase = this.tracker.phase();
         boolean active = phase == LapTracker.Phase.RACING || phase == LapTracker.Phase.COUNTDOWN;
-        if (armed && !this.wasArmed) {
-            if (this.standingStart(config) && !active && !this.lobbyMember && this.nearStart(position)) {
-                this.requestStart(now, config);
-            }
-            this.resetStart = false;
+        boolean edge = this.armEdge.update(drone.getId(), armed) && !session.autoArmed();
+        if (StandingStart.request(edge, config.countdown, this.lobbyOpenAtStart(), active, this.lobbyMember, edge && this.nearStart(position))) {
+            this.requestStart(now, config);
         }
-        this.wasArmed = armed;
         if (this.tracker.racing() && this.assistNow.any()) {
             AssistReasons fresh = this.assistNow.without(this.lapAssist.mask());
             this.lapAssist = this.lapAssist.plus(this.assistNow);
@@ -263,7 +311,7 @@ public final class ClientRaceTracker {
         }
         this.lastPosition = position;
         this.tracker.update(now, position.x, position.y, position.z);
-        this.recorder.sample(now, drone.getX(), drone.getY(), drone.getZ(), drone.orientation());
+        this.recorder.sample(now, drone.getX(), drone.getY(), drone.getZ(), drone.renderAttitude(1.0F, this.attitude));
         this.dispatch();
     }
 
@@ -343,7 +391,7 @@ public final class ClientRaceTracker {
         if (phase == LapTracker.Phase.RACING || phase == LapTracker.Phase.COUNTDOWN) {
             this.tracker.abort(now, LapTracker.AbortReason.RESTART);
         }
-        this.tracker.setCourse(course.id(), ClientCourses.geometry(course), now);
+        this.tracker.setCourse(course.id(), ClientCourses.geometry(course), course.pointToPoint(), now);
         this.applyLapTarget();
         this.syncGhosts(minecraft);
         this.beginCountdown(now, payload.countdownNanos(), payload.pilots());
@@ -363,9 +411,8 @@ public final class ClientRaceTracker {
         this.tracker.setLapTarget(CourseLaps.resolve(course == null ? CourseLaps.UNSET : course.laps(), RaceConfig.CONFIG.get().laps));
     }
 
-    private boolean standingStart(RaceConfig config) {
-        boolean lobbyOpen = !this.lobbyPilots.isEmpty() && this.lobbyCourse == this.tracker.courseId();
-        return config.countdown || this.resetStart || lobbyOpen;
+    private boolean lobbyOpenAtStart() {
+        return !this.lobbyPilots.isEmpty() && this.lobbyCourse == this.tracker.courseId();
     }
 
     void onHomeReset(QuadcopterEntity drone) {
@@ -379,13 +426,12 @@ public final class ClientRaceTracker {
         }
         this.tracker.resetPosition();
         this.lastPosition = null;
-        this.wasArmed = false;
-        this.resetStart = true;
+        this.armEdge.afterReset();
         this.dispatch();
     }
 
-    public boolean resetStartPending() {
-        return this.resetStart;
+    public boolean armedBefore() {
+        return this.armEdge.armedBefore();
     }
 
     public boolean nearStart(Vec3 position) {
@@ -409,7 +455,7 @@ public final class ClientRaceTracker {
             if (data == null || !data.dimension().equals(dimension) || data.gates().isEmpty()) {
                 this.tracker.clearCourse(now);
             } else {
-                this.tracker.setCourse(current, ClientCourses.geometry(data), now);
+                this.tracker.setCourse(current, ClientCourses.geometry(data), data.pointToPoint(), now);
             }
             this.afterCourseChange(current);
             return;
@@ -434,7 +480,7 @@ public final class ClientRaceTracker {
             this.afterCourseChange(current);
             return;
         }
-        this.tracker.setCourse(best.id(), ClientCourses.geometry(best), now);
+        this.tracker.setCourse(best.id(), ClientCourses.geometry(best), best.pointToPoint(), now);
         this.afterCourseChange(current);
     }
 
@@ -464,6 +510,7 @@ public final class ClientRaceTracker {
         boolean newGhost = false;
         switch (event.type()) {
             case START, GO -> {
+                this.verdicts.clear();
                 this.recorder.onLapStart(this.tracker.courseId(), event.nanos());
                 this.lapAssist = this.assistNow;
                 this.ghosts.useAssisted(this.lapAssist.any() && savesAssisted());
@@ -472,7 +519,7 @@ public final class ClientRaceTracker {
                 }
                 CourseData course = this.course();
                 if (course != null) {
-                    this.ghosts.requestRecord(course, false);
+                    this.ghosts.refreshBoard(course);
                 }
             }
             case LAP -> {
@@ -481,6 +528,13 @@ public final class ClientRaceTracker {
                 GhostTrack track = this.recorder.onLapComplete(event.valueNanos(), event.nanos(), this.frame, layout);
                 if (track != null && this.look != null && this.look.build().frame().key().equals(this.frame)) {
                     track = track.withLook(this.look);
+                }
+                if (track != null) {
+                    track = track.withRules(ClientPersonalRules.INSTANCE.standard());
+                }
+                GhostTrack rival = this.ghosts.shown();
+                if (rival != null && assisted.none() && event.valueNanos() > 0L && event.valueNanos() < rival.lapNanos()) {
+                    StatsClient.ghostBeaten(this.tracker.courseId());
                 }
                 if (track != null && course != null
                         && this.ghosts.offerLap(Minecraft.getInstance(), course, track, assisted.any(), savesAssisted())) {
@@ -538,7 +592,7 @@ public final class ClientRaceTracker {
             }
             case LAP -> {
                 AudioHooks.beep(Beep.LAP);
-                Component text = event.hasDelta()
+                Component text = this.tracker.pointToPoint() ? finishLine(event) : event.hasDelta()
                         ? Component.translatable("propwash.race.msg.lap_delta", event.lap(), RaceFormat.time(event.valueNanos(), HUD_DECIMALS),
                         RaceFormat.delta(event.deltaNanos(), HUD_DECIMALS))
                         : Component.translatable("propwash.race.msg.lap", event.lap(), RaceFormat.time(event.valueNanos(), HUD_DECIMALS));
@@ -555,6 +609,10 @@ public final class ClientRaceTracker {
                 }
             }
             case FINISH -> {
+                if (this.tracker.pointToPoint()) {
+                    this.presentFinish(event, course);
+                    return;
+                }
                 AudioHooks.beep(Beep.FINISH);
                 String total = RaceFormat.time(event.valueNanos());
                 String best = RaceFormat.time(this.tracker.bestLapNanos());
@@ -615,7 +673,29 @@ public final class ClientRaceTracker {
         return gate >= 0 && gate < gates.size() ? gates.get(gate).variant() : 0;
     }
 
+    private static Component finishLine(LapTracker.Event event) {
+        return event.hasDelta()
+                ? Component.translatable("propwash.race.p2p.msg.finish_delta", RaceFormat.time(event.valueNanos(), HUD_DECIMALS),
+                RaceFormat.delta(event.deltaNanos(), HUD_DECIMALS))
+                : Component.translatable("propwash.race.p2p.msg.finish_time", RaceFormat.time(event.valueNanos(), HUD_DECIMALS));
+    }
+
+    private void presentFinish(LapTracker.Event event, int course) {
+        AudioHooks.beep(Beep.FINISH);
+        long best = this.tracker.sessionBestNanos();
+        RaceHud.big(Component.translatable("propwash.race.p2p.msg.finish_big"), RaceHud.GOLD, 2_500_000_000L);
+        RaceHud.message(Component.translatable("propwash.race.p2p.msg.best", RaceFormat.time(best, HUD_DECIMALS)), RaceHud.GOLD, 6_000_000_000L);
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null) {
+            minecraft.player.sendSystemMessage(Component.translatable("propwash.race.p2p.msg.summary", CourseEditScreen.ref(course),
+                    RaceFormat.time(event.valueNanos()), RaceFormat.time(best)).withStyle(ChatFormatting.GOLD));
+        }
+    }
+
     private Component lapLabel() {
+        if (this.tracker.pointToPoint()) {
+            return Component.translatable("propwash.race.p2p.mode");
+        }
         int laps = this.tracker.lapTarget();
         return laps <= 0 ? Component.translatable("propwash.race.msg.endless") : Component.translatable("propwash.race.msg.laps", laps);
     }

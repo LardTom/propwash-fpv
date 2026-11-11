@@ -3,10 +3,16 @@
   "minVersion": "0.8",
   "package": "de.lardtom.propwash.mixin.dev",
   "compatibilityLevel": "JAVA_25",
-  "mixins": [],
+  "mixins": [
+    "SwitchFunctionExtraInvoker",
+    "SwitchFunctionExtraMixin"
+  ],
   "client": [
     "client.InputConstantsMixin",
-    "client.MouseHandlerMixin"
+    "client.MouseHandlerMixin",
+    "client.GlCommandEncoderFaultMixin",
+    "client.ClientPacketListenerMixin",
+    "client.SoundEngineAccessor"
   ],
   "server": [],
   "injectors": {

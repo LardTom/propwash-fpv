@@ -4,7 +4,7 @@
   "spawn_overrides": {},
   "step": "surface_structures",
   "terrain_adaptation": "beard_thin",
-  "template": "propwash:world_course/drone_arena",
+  "template": "propwash:world_course/v2/drone_arena",
   "biome_templates": [],
   "max_slope": 9,
   "chance": 0.35

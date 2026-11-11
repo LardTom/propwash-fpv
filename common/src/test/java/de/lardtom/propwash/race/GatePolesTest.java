@@ -94,9 +94,11 @@ class GatePolesTest {
     void standingGatesOfferTheirTopCornersAsSeats() {
         GateGeometry gate = GateGeometry.of(0.5, 64.0, 0.5, 0.0F, GateSize.MEDIUM);
         List<GatePoles.Seat> seats = GatePoles.seats(gate);
-        assertEquals(2, seats.size());
+        assertEquals(3, seats.size());
         assertEquals(0.5 - 1.75, seats.get(0).x(), 1.0E-9);
         assertEquals(0.5 + 1.75, seats.get(1).x(), 1.0E-9);
+        assertEquals(0.5, seats.get(2).x(), 1.0E-9);
+        assertEquals(GatePoles.CENTER_SEAT, seats.get(2).corner());
         for (GatePoles.Seat seat : seats) {
             assertEquals(68.0, seat.y(), 1.0E-9);
             assertEquals(0.5, seat.z(), 1.0E-9);
@@ -131,7 +133,7 @@ class GatePolesTest {
         assertTrue(GatePoles.seats(dive).isEmpty());
         assertTrue(GatePoles.seats(flat).isEmpty());
         assertTrue(GatePoles.seats(pitched).isEmpty());
-        assertEquals(2, GatePoles.seats(side).size());
+        assertEquals(3, GatePoles.seats(side).size());
         GateGeometry flag = GateGeometry.element(0.5, 64.0, 0.5, 0.0F, CourseElement.FLAG, 0, 5.0, 4.0, GateTilt.NONE);
         assertTrue(GatePoles.seats(flag).isEmpty());
     }

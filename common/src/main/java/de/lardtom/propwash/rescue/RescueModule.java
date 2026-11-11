@@ -6,6 +6,7 @@ public final class RescueModule {
 
     public static void init() {
         AutonomousReturns.init();
+        AddonAutonomy.init();
         HomePoints.init();
         HomeResets.init();
     }

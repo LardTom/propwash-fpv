@@ -8,9 +8,411 @@ stehen in den Tages-Changelogs unter `changelogs/`.
 
 ---
 
+## 0.6.0
+
+Großes Update nach 0.5.2. **Netzprotokoll 20** (0.5.2: 16): neue Pakete für RX-Block, Add-on-Schalter und -Achsen,
+Operator und Gimbal, autonomen Flug, Zonen-Freigaben, Rennstandard und persönliche Regeln, Rundenurteil und
+Fortschritte, erweiterte Abgleiche für Welt-Regeln (mit `allow_freecam` und den Regeln der Add-ons), Kurse (Kurs-ID,
+Modus, Wertung), Zeilen der Bestenliste mit den Serverregeln und Add-on-Daten an Drohnen – Client und Server brauchen
+beide 0.6.0, ältere Versionen trennt der Handshake mit klarer Meldung, auch die Release-Kandidaten bis 0.6.0-rc.3 (bis
+rc.2 mit Protokoll 17, rc.3 mit 18; Gründe der Erhöhungen in [`api/changes.md`](api/changes.md), Abschnitt 0.6.0
+unter den Protokollnummern 19 und 18). **Add-on-API 1.8.0** (additiv; Add-ons für 1.0 bis 1.7 laufen weiter,
+Add-ons für 1.7 und 1.8 nennen Propwash mit `>=0.6.0-` bzw. `[0.6.0-alpha,)`). Welten, Drohnen,
+Kurse, Bestenlisten, Geister und Einstellungen aus 0.5.x laden unverändert. **Just More Parts 1.2.0 ist Pflicht**:
+Propwash 0.6.0 startet nicht mit Just More Parts 1.1.x (Abschnitt „Honig und Just More Parts ab 1.2.0“). Für
+Add-on-Autoren steht alles Weitere in [`api/changes.md`](api/changes.md) (Abschnitt 0.6.0) und
+[`addon-api-1.7.md`](addon-api-1.7.md).
+
+### Sharecodes PW3 für alle Add-ons
+
+- Sharecodes gehören jetzt Propwash und funktionieren mit jedem Add-on. Das neue Format **PW3** nennt jedes Add-on mit
+  der Version, die der Bauplan braucht, und warnt, wenn ein Code nicht zur installierten Version passt. Propwash
+  schreibt nur noch PW3; PW1- und PW2-Codes werden weiter gelesen und lassen sich umrechnen („Als PW3 kopieren“,
+  `/propwash code convert`, auf der Website unter `/convert/`). Propwash 0.5.2 liest PW3 nicht.
+- Oberfläche: Knopf „Sharecode“ in der Werkbank (kürzt für Add-on-Knöpfe auf „Code“ und dann auf das Symbol </>), Tab
+  „Sharecode“ im Konfigurator, Flugschul-Kapitel „Builds teilen“ und `/propwash code export|import|info|give|convert`
+  (`give` für Operatoren). Der Import zeigt, welche Add-ons ein Code braucht (Version, Link zu Modrinth bzw.
+  CurseForge, immer mit Bestätigung), sperrt die Teile, wenn der Code nicht zur Add-on-Version passt, bietet
+  Ersatzteile an und zeigt im Überleben eine Einkaufsliste. Nur Lack, Tuning oder OSD übernehmen klappt auch, wenn die
+  Teile des Codes aus einem fehlenden Add-on stammen; die Drohne behält dann ihre Teile.
+- OSD-Layouts im Code nehmen die OSD-Elemente von Add-ons mit (Platz, an/aus, Farbe, Größe), auch wenn der Empfänger
+  das Add-on noch nicht installiert hat. Eine Drohne mit einem Teil aus einer neueren Version von Propwash oder Just
+  More Parts lässt sich mit dem ursprünglichen Code weitergeben.
+- **Sharecodes im Chat** sind klickbar, auch in Nachrichten anderer Spieler: Darüberfahren zeigt eine Vorschau mit
+  gerenderter Drohne, Teilen, Gewicht, Schub/Gewicht und nötigen Add-ons, ein Klick öffnet den Import (übernommen wird
+  erst nach Bestätigung), Umschalt-Klick kopiert. Abschaltbar unter Konfiguration → Chat. Erkannt werden nur Codes mit
+  gültiger Prüfsumme; die gespeicherte Nachricht und ihre Signatur bleiben unverändert.
+- Add-ons liefern eine kleine Teile-Tabelle (`data/<mod-id>/propwash_share/table.json`), geprüft vom mitgelieferten
+  Werkzeug `ShareTableCheck`; Tabellen werden nur hinten erweitert.
+- Einzelheiten: [`sharecode-ui.md`](sharecode-ui.md), [`sharecode-chat.md`](sharecode-chat.md), Formate in
+  [`sharecode/pw3.md`](sharecode/pw3.md) und [`sharecode/tables.md`](sharecode/tables.md), Design
+  [`design/0.6.0/sharecodes-pw3.md`](design/0.6.0/sharecodes-pw3.md).
+
+### Freecam-Drohne
+
+- Eine Kamera-Drohne, die es nur auf dem eigenen Bildschirm gibt: kein Modell, keine Kollision, kein Akku, kein
+  Crash-Schaden, kein Paket an den Server. Erlaubt über die neue Welt-Regel „Freecam-Drohne erlauben“
+  (`propwash:allow_freecam`, **standardmäßig aus**, auch in alten Welten); ohne Welt-Regeln vom Server gibt es keine
+  Freecam.
+- Start mit F6 („Toggle freecam drone“) oder „Freecam starten“ in der Fußzeile der Übersicht im K-Menü (ausgegraut mit
+  Grund, daneben „Zur Welt-Regel“ für alle, die sie ändern dürfen). Größen Whoop, 3,5″, 5″ und 7″ mit eigenen Rates
+  und eigenem Kamerawinkel im Tab „Freecam“, Wind, Propwash und Bodeneffekt wie bei der echten Drohne. Unscharf parkt
+  sie waagerecht in der Luft, sie fliegt durch Wände und hält an der Sichtweite („SICHTWEITE ENDE“). Sie endet bei
+  Schaden, Tod, Dimensionswechsel, Trennung oder wenn die Regel ausgeschaltet wird.
+- Runden zählen in der Freecam nie. Einzelheiten: [`freecam.md`](freecam.md).
+
+### RX-Block
+
+- Mit der Funke an dich gebunden, macht der RX-Block einen Kanal (Gas, Knüppel, AUX-Schalter oder Taste) zum
+  Redstone-Signal 0–15. Kanal und 0-/100-%-Punkte lernst du im Fenster an, die Reichweite geht bis 128 Blöcke (Standard
+  64). Außer Reichweite hält er das letzte Signal; er arbeitet auch während des Flugs.
+- Rezept aus Blitzableiter, Kupferbarren, Platine und Redstone; neues Flugschul-Kapitel „RX-Block: Redstone per Funke“.
+  Der Block wertet nur in Chunks mit Block-Ticks aus und lädt nie selbst Chunks.
+- Einzelheiten: [`rx-block.md`](rx-block.md), Design [`design/rx-block.md`](design/rx-block.md).
+
+### Flugbahn-Marker und Kamerawinkel im K-Menü
+
+- Neues OSD-Element **Flugbahn-Marker**: zeigt, wohin sich die Drohne im Kamerabild wirklich bewegt, auch mit Fisheye
+  und beim Zuschauen per F7; er folgt dem verzögerten Videobild, ist unter 1 m/s ausgeblendet und steht gestrichelt am
+  Rand, wenn die Bewegung außerhalb des Bilds liegt. Standardmäßig aus, in der Vorlage „Voll / Telemetrie“ an; im
+  OSD-Editor steht seine Vorschau ruhig unter der Mitte, der Tooltip der Elementliste zeigt die Beschreibung.
+  Einzelheiten: [`flight-path-marker.md`](flight-path-marker.md).
+- **Kamerawinkel im K-Menü:** Der Tab Video hat den Abschnitt „Kamera dieser Drohne“ für den Uptilt der gehaltenen oder
+  geflogenen Drohne (Regler im Bereich des Kamerahalters, −/+ mit Shift in 5°-Schritten, ↺ zurück auf den Standard des
+  Rahmens). Im Einzelspieler gilt der Winkel beim Schließen des K-Menüs (das Menü pausiert das Spiel), auf Servern
+  sofort. Das Wartungsmenü bleibt; die Suche nach „Kamerawinkel“ oder „uptilt“ führt hin. Einzelheiten:
+  [`camera-angle.md`](camera-angle.md).
+
+### Gate-Hinweis und Kapitel „Gate-Menü“
+
+- Beim ersten Gate in einer Welt erklärt ein kleines Fenster das Gate-Menü (Schleichen + Rechtsklick: Größe, Drehung,
+  Redstone-Signal). Es erscheint einmal je Welt und Spieler; „Nicht wieder anzeigen“ oder „Kapitel in der Flugschule
+  öffnen“ schaltet es für alle Welten ab. „Hinweise zurücksetzen“ im Tab Flugschule holt alle Erstnutzungs-Hinweise
+  zurück, nicht nur diesen.
+- Neues Flugschul-Kapitel „Gate-Menü: Größe, Drehung, Redstone“ (vier Schritte). Einzelheiten:
+  [`gate-hint.md`](gate-hint.md).
+
+### Rennsystem: Rennstart, Wertung, Flächen und Verschieben
+
+- Reset und GPS-Rescue bringen die Drohne zum Homepoint, starten aber nie einen Countdown. Ein stehender Start beginnt
+  wie in 0.5.2 nur, wenn du nahe am Start-Gate selbst scharf schaltest und „Start beim Scharfschalten“ an ist, oder
+  wenn dort eine Aufstellung offen ist (Meldung aus Discord).
+- Flaggen und Slalomstangen haben die Menüseite „Wertung“: nach unten bis 32 Blöcke (eine hohe Flagge auf einer Säule
+  oder einem Gate zählt bis zum Boden) und über die Spitze. Gate-Stangen kommen als Vorbeiflug- oder Wendemarke in
+  Kurse. Freiform-Gates können Lücken im Rand ignorieren (Schleichen + Rechtsklick oder „Rand“ im Menü).
+- Das aktive Gate zeigt seine Durchflugfläche, Flaggen und Stangen ihre Wertungsflächen (dezent, mit Shaderpacks
+  lesbar, Schalter im Tab Rennen). Die neue Seite „Position“ verschiebt Gates in Schritten von 1/16, 1/4 oder 1 Block auf
+  allen drei Achsen (höchstens 8 Blöcke), auch mit Pfeiltasten und Bild↑/↓.
+- Behoben: Farben der Gate-Stange ab der fünften gingen im Gate-Menü verloren.
+- Kurse werden im Format 2 gespeichert; alte Kurse, Bestenlisten und Geister bleiben gültig. Einzelheiten:
+  [`race-system.md`](race-system.md), Design [`design/0.6.0/race-system.md`](design/0.6.0/race-system.md).
+
+### Rennsystem: Schleifen, Reihen, Würfel und Stapeln
+
+- Ein Gate darf mehrmals in einem Kurs vorkommen, auch rückwärts: mit dem Kurs-Werkzeug noch einmal anklicken (von
+  hinten = rückwärts) oder im Kurs-Fenster mit ⇄ umdrehen. Gate-Tafeln zeigen alle Nummern (z. B. „1 · 3←“), das
+  richtige Gate in falscher Richtung meldet „falsche Richtung“. **Geändert:** Ein zweiter Klick mit dem Kurs-Werkzeug
+  auf ein Gate im Kurs meldet nicht mehr „schon im Kurs“, sondern hängt einen Durchgang an.
+- Gates kennen ihre Nachbarn: Ein stehendes Gate rastet neben einem anderen Pfosten auf Pfosten ein (Reihen und Ecken
+  ohne doppelt dicke Pfosten), vier Gates mit einem liegend daraufgeklickten Gate ergeben einen Tauchwürfel, und
+  Flaggen, Slalomstangen und Gate-Stangen sitzen auf Ecken und Balkenmitte von Gates und auf Tauchwürfeln. Ein Klick
+  nahe der Balkenmitte setzt eine Gate-Stange jetzt in die Mitte statt auf die nächste Ecke.
+- Einzelheiten: [`race-topology.md`](race-topology.md).
+
+### Punkt-zu-Punkt-Rennen und Rechte am Kurs
+
+- Kurse fahren Runden oder **von Punkt zu Punkt**: erstes Element Start, letztes Ziel, keine Runden, Zwischenzeiten an
+  jedem Element. Umschalten im Kurs-Fenster („Runden“, „Punkt zu Punkt“) oder per `/propwash race mode <kurs>
+  laps|point_to_point`; ein Wechsel archiviert die Bestenliste wie ein Umbau.
+- **Geändert für Server:** Einen Kurs ändern nur noch Besitzer und Operatoren (der Gastgeber zählt mit); alle anderen
+  sehen „Kurs ansehen“ und können weiter Bestenliste und Kurs-ID nutzen. Kurse ohne Besitzer – Weltkurse und alte
+  Kurse – ändern nur Operatoren; bis 0.5.2 durfte das, wer höchstens 256 Blöcke von einem Gate stand. Der Server prüft
+  jede Änderung. Einzelheiten: [`race-p2p.md`](race-p2p.md).
+
+### Kurs-ID und Renndaten für Server und Bots
+
+- Jeder Rennkurs hat eine eindeutige Kurs-ID (UUID, beim Anlegen vergeben, alte Kurse bekommen sie beim ersten Laden),
+  die beim Umbenennen und Umbauen gleich bleibt: im Kurs-Fenster mit Knopf „Kopieren“ oder über
+  `/propwash course id [Nummer|Name]`.
+- **Renndaten für Server und Bots:** Kurse und Bestenlisten sind über die Kurs-ID abrufbar – für Mods über die nur
+  lesende Renndaten-API (`PropwashApi.race()`, Ereignisse `RaceEvents`), für Skripte und Discord-Bots als JSON-Spiegel
+  unter `<welt>/propwash/race-data/` (Schema 1), ohne eigenen Mod. Einzelheiten: [`race-data.md`](race-data.md), für
+  Entwickler [`api/race-data.md`](api/race-data.md).
+
+### Rennwertung: Rennstandard und freies Platzieren
+
+- Jede Welt-Regel ist rennrelevant oder neutral. Neutrale Regeln wie „Disarm on crash“, Reset erlauben, Freecam
+  erlauben oder Drohnen-Spuren machen eine Runde nie zur Runde mit Flughilfe; Crash-Schaden, Wind, Schwerkraft und die
+  anderen rennrelevanten Regeln zählen weiter. **Geändert gegenüber 0.5.2:** Dort machte jede Regel, die die Simulation
+  verändert, eine Runde zur Runde mit Flughilfe.
+- Operatoren legen den **Rennstandard** der Welt fest: im Tab „Welt-Regeln“ („Aktuelle Regeln übernehmen“,
+  „Propwash-Standard“) oder per `/propwash race standard [adopt|reset|set <regel> <wert>]`. Jede Zeit merkt sich ihre
+  Regeln und wird bei einem Wechsel des Standards neu eingeordnet; Bestenlisten alter Welten bleiben gültig. Add-on-Regeln
+  zählen standardmäßig als rennrelevant.
+- Neue Welt-Regel „Kurs-Elemente frei platzieren“ (`propwash:free_course_placement`, Standard aus): Gates, Fahnen und
+  Stangen dürfen sich überlappen (Gate in Gate). Einzelheiten: [`race-rules.md`](race-rules.md).
+
+### Gestapelte Gates: Öffnung bis zum Boden
+
+- Das unterste Gate eines Stapels zählt bis zum Boden – wo sein unterer Balken fehlt, zählt der Durchflug, beim Client
+  auch gleich nach dem Stapeln. Einzelne Gates und Gates darüber zählen wie bisher ab Rahmenstärke. Kursdaten und
+  `layoutHash` ändern sich nicht: Kurse, Rekorde und Ghosts bleiben, wie sie sind, die Öffnung wird nur größer.
+  Einzelheiten: [`gate-legs.md`](gate-legs.md), Design [`design/0.6.0/fixes-polish.md`](design/0.6.0/fixes-polish.md)
+  §3.A.
+
+### Zonen für alle
+
+- Neuer **Zonen-Markierer** (`propwash:zone_marker`): Rechtsklick auf zwei Ecken (grüner Vorschau-Rahmen), danach öffnet
+  sich der Zonen-Editor. Jeder Spieler kann Zonen anlegen und auch rennfrei machen; seine Zonen gehören ihm. Besitzer
+  und Operatoren ändern oder löschen sie, Zonen aus älteren Welten und `/propwash zone create` bleiben Admin-Zonen.
+- **Für Server-Admins:** Die neue Welt-Regel „Spieler dürfen Zonen anlegen“ (`propwash:players_create_zones`, Standard
+  an) schaltet das ab; vorhandene Zonen von Spielern wirken dann weiter, ändern können sie nur Operatoren. Bis 0.5.2
+  legte nur an, wer die Welt-Regeln ändern durfte.
+- Im Tab „Welt-Regeln“ legt ein Häkchen „Zonen“ an jeder Regel fest, ob Zonen sie ändern dürfen. Bedienbar ist es bei den
+  elf Simulationsregeln, die Zonen schon in 0.5.2 ändern konnten; alle anderen Regeln und Add-on-Regeln stehen
+  ausgegraut. Gesperrte Regeln behalten ihren Wert in der Zone, wirken aber nicht; der Zonen-Editor zeigt sie
+  ausgegraut. Einzelheiten: [`zones-open.md`](zones-open.md).
+- Welt-Regeln: In kleinen Fenstern (ab 320 GUI-Punkten Breite) steht der Zonenname allein in der ersten Zeile, Art und
+  Details darunter; der Name bleibt ganz lesbar. Breite Fenster sehen aus wie bisher. Einzelheiten:
+  [`zone-row.md`](zone-row.md).
+
+### Slime, Wolle, Heuballen und Honig
+
+- Slime-Blöcke federn die geflogene Drohne an allen Seiten zurück, ohne Absturz, Prop-Schlag oder Verschleiß; Wolle und
+  Heuballen fangen sie weich ab, ohne Absturz und Schaden, und von Wolle startet sie wie gewohnt. Der autonome Heimflug
+  folgt denselben Regeln. Woll-Stufen und Woll-Platten zählen nicht als Kissen.
+- Honig wirkt auf Drohnen wie auf Vanilla-Mobs (Besitzer-Entscheidung vom 21.10.): Kontakt bremst stark, ohne Abprall
+  und ohne Absturz, an Honigwänden rutscht die Drohne langsam herunter, und beim Start klebt sie etwa eine Sekunde, wenn
+  man nicht deutlich mehr Gas gibt.
+- Die Flächen stehen in den Block-Tags `propwash:drone_bouncy`, `propwash:drone_cushion` und `propwash:drone_sticky` und
+  lassen sich per Datenpaket erweitern. Mit Anteil 1,0 rechnet das Flugmodell wie bisher. Design:
+  [`design/surface-blocks.md`](design/surface-blocks.md).
+
+### Druckplatten und Stolperdraht
+
+Drohnen drücken Holz- und Wägeplatten und lösen Stolperdrähte aus, wie fallengelassene Items; Stein-Druckplatten
+bleiben aus. Andere Blockwirkungen kommen nicht dazu: Feuer, Lava, Kakteen, Portale und Blasensäulen wirken weiter nicht
+auf Drohnen, Spinnweben bremsen nur über die eigene Spinnweben-Physik aus 0.5.2. Server-Betreiber steuern das über den
+Block-Tag `propwash:drone_triggers`. Danke an bluepanee (Pull Request #1). Einzelheiten und Beispiele für Datenpakete:
+[`drone-triggers.md`](drone-triggers.md).
+
+### Motor-Hitze: der ESC regelt ab
+
+- Abgeregelt wird nur noch im ESC nach seiner Temperatur, mit einer Kennlinie wie BLHeli_32: ab 140 °C linear bis 25 %
+  bei 155 °C, neue OSD-Warnung „ESC ÜBERHITZT“. Heiße Motoren drosseln nicht mehr selbst, sie verlieren etwas
+  Drehmoment (bis −10 %) und verschleißen. Die Welt-Regel „Hardware-Grenzen“ schaltet beides ab.
+- Whoops werden bei Dauervollgas richtig heiß. Mit eingebauten Teilen zeigt sich Hitze am 7″ mit 20-A-AIO und
+  6S-1300-LiPo bei Dauervollgas; die 1404-Motoren des eingebauten Cinewhoops kühlen wie echte (nach einer Minute
+  Vollgas etwa 60 °C statt 147 °C), das Preset warnt nicht mehr vor Hitze. Fahrtwind kühlt Motoren und ESCs jetzt auch
+  im Flugmodell.
+- Texte in Meldung, Werkbank-Warnung, Teile-Tooltip und Welt-Regel sagen jetzt „verliert Leistung und verschleißt“.
+  Für Add-on-Autoren: neue Bedeutung von `thermal.derate_start_c` und `max_temp_c` in
+  [`api/changes.md`](api/changes.md). Prüfung und Umbau: [`design/realism/motor-heat.md`](design/realism/motor-heat.md).
+
+### Akku gesteckt
+
+- Gesteckte Akkus zeigen keine Stecker und Kabel mehr: Sitzt der Akku, blendet die Drohne Stecker, Strom- und
+  Balancer-Kabel des Akkus und die Stromkabel des Stacks aus, statt zwei lose Stecker nebeneinander zu zeigen – an jedem
+  Rahmen, mit dem Akku oben oder unten, auch an skalierten Rahmen (etwa der X-Class von Just More Parts), in Welt, GUI,
+  Werkbank, bei Ghosts, in der Flugschule und im Web-Konfigurator. Ohne Akku und am einzelnen Akku (Hand, Regal, Boden)
+  bleiben Stecker und Kabel wie bisher.
+- Rein clientseitig, keine Daten. Ressourcenpakete, die nur das Grundmodell eines Stacks ersetzen, behalten ihr Bild.
+  Für Add-on-Autoren: optionale Stack-Variante `_mounted` (ohne Stecker, die beiden Stromkabel heißen `pigtail`), Regeln
+  in [`ASSETS.md`](ASSETS.md) „Akku gesteckt“. Einzelheiten: [`battery-plug.md`](battery-plug.md).
+
+### Signal: Gelände-Gedächtnis
+
+- Gelände, das du schon gesehen hast, das aber nicht mehr geladen ist (weit weg von dir), schirmt Video und Steuerung
+  jetzt ab, statt als freie Luft zu zählen. Propwash merkt sich je Welt bis zu 4 096 Chunks im Speicher, nichts auf der
+  Platte.
+- Grenzen: Nie gesehenes Gelände zählt weiter als Luft, ein gemerktes Haus schirmt meist etwas weniger ab als geladen,
+  Höhlen und Überhänge zählen als fest, Repeater zählen weiter nur in geladenen Chunks. Einzelheiten:
+  [`signal-memory.md`](signal-memory.md).
+
+### Drohnen aufräumen: `/propwash clear`
+
+- `/propwash clear [<ziele>]` für Operatoren (Rechtestufe 2): ohne Ziele alle Drohnen in geladenen Bereichen aller
+  Dimensionen, mit Entity-Auswahl nur die Drohnen darin, ohne Drops. Piloten entfernter Drohnen kehren in die eigene
+  Sicht zurück und lesen „Deine Drohne wurde entfernt.“, auch der Besitzer eines laufenden Heimflugs; autonome
+  Heimflüge, Chunk-Tickets und Zuschauer enden sauber, die Ansicht eines Kamera-Operators sofort.
+- Der Absender sieht die Anzahl je Dimension, das Server-Log nennt, wer den Befehl ausgeführt hat. „Keine Drohnen
+  gefunden“ ist eine Fehlermeldung (Ergebnis 0); Chunk-Tickets fallen mit dem nächsten Server-Tick weg. Einzelheiten:
+  [`clear-command.md`](clear-command.md).
+
+### Drohnen-Barrieren, Drohnen skalieren, Auto-Arm
+
+- **Drohnen-Barrieren** (nur Kreativmodus): Die Drohnen-durchlässige Barriere lässt Drohnen durchfliegen und hält
+  Spieler, Mobs, Items und Pfeile auf; die Drohnen-Sperre hält nur Drohnen auf (sie prallen ab oder stürzen wie an jedem
+  Block). Beide sind unsichtbar wie die Vanilla-Barriere: Im Kreativmodus zeigen sie den Auswahlrahmen, sobald man auf
+  sie zielt, auch mit leerer Hand, und mit einer Barriere in der Hand zusätzlich Symbole; im Überleben bleiben sie
+  unsichtbar. Licht, Redstone und Videosignal gehen durch. Einzelheiten: [`barriers.md`](barriers.md).
+- **Drohnen skalieren:** Drohnen nehmen das Vanilla-Attribut `minecraft:scale` an (0,0625–16), etwa
+  `/attribute @e[type=propwash:drone,limit=1,sort=nearest] minecraft:scale base set 3`. Modell, Propeller, LEDs,
+  Hitbox, Kollision mit Blöcken und Gates, FPV-Kamera und Staubwirbel wachsen mit, das Flugmodell bleibt gleich. Runden
+  mit skalierter Drohne zählen als mit Flughilfe (Grund „Skalierung“). Einzelheiten: [`drone-scale.md`](drone-scale.md).
+- **Auto-Arm nach Reset** (geändertes Standardverhalten): Setzt du die Drohne per Reset auf den Homepoint zurück und
+  steht Arm noch an, wird sie scharf, sobald das Gas unten ist – ohne den Schalter erst aus- und wieder einzuschalten
+  (OSD „AUTO-ARM: GAS RUNTER“, im 3D-Modus „GAS MITTE“). Gilt für Funke, Gamepad und Tastatur, nur nach einem Reset;
+  alle übrigen Arm-Sperren gelten weiter, und ein Reset startet keinen Renn-Countdown. Abschaltbar im K-Menü → Modi →
+  Scharf schalten → „Auto-Arm“. Einzelheiten: [`auto-arm.md`](auto-arm.md).
+
+### Namensraum `propwash` und Prüfung beim Start
+
+- Der Namensraum `propwash` und das Paket `de.lardtom.propwash` gehören allein Propwash; Add-ons nutzen ihren eigenen
+  ([`../ADDONS.md`](../ADDONS.md), NOTICE). Die API lehnt neue Anmeldungen im Namensraum `propwash` ab.
+- Propwash prüft beim Start und beim Neuladen, ob andere Mods den Namensraum nutzen (Registry-Ids, Übersetzungsschlüssel,
+  Tastenbelegungen, Netzwerk-Pakete, Enum-Werte, Datendateien, Assets, `/propwash`-Unterbefehle). Funde lassen das Spiel
+  nie abstürzen: Sie stehen im Log, beim ersten Betreten einer Welt kommt eine Chat-Zeile mit Knopf „Details“,
+  Operatoren am dedizierten Server bekommen eine Zeile je Serverstart. Absturzberichte haben einen Abschnitt „Propwash
+  add-ons“. Neue Dateien aus eigenen Ressourcen- und Datenpaketen stehen nur als Info-Zeile im Log. Einzelheiten:
+  [`namespace-guard.md`](namespace-guard.md).
+- Neues Formular für Fehlerberichte, das nach den installierten Add-ons fragt und ob der Fehler auch ohne sie auftritt.
+
+### Add-on-API 1.7
+
+Eine Nebenversion für alle Ergänzungen von 0.6.0; neue Methoden an Schnittstellen aus 1.6 sind `default`. Für Spieler
+sichtbar wird sie, sobald Add-ons sie nutzen:
+
+- **Schalter und Achsen:** neue Seite „Add-ons“ im Tab Modi – Schalter und analoge Kanäle von Add-ons werden wie
+  eingebaute Funktionen belegt (Kanal und Bereich, Gamepad-Tasten, Tasten) und bleiben erhalten, wenn ein Add-on fehlt.
+  Zubehör-Aktionen tragen Namen („Zubehör-Aktion 1 – Blinken“), der erste Flug mit einem solchen Zubehör nennt einmal,
+  was jede Aktion tut. [`addon-switches.md`](addon-switches.md)
+- **OSD:** eigene Anzeigen und Warnungen unter „Add-ons“ im OSD-Editor, verschieb-, färb- und skalierbar wie eingebaute,
+  ihr Platz bleibt auch ohne das Add-on. [`addon-osd.md`](addon-osd.md)
+- **Welt-Regeln:** ein Abschnitt je Add-on im Tab „Welt-Regeln“ (Überschrift über den optionalen Schlüssel
+  `<modid>.world_rules.section`), gilt für alle Spieler und folgt den Voreinstellungen. Welt-Regeln eines fehlenden
+  Add-ons bleiben erhalten. [`addon-world-rules.md`](addon-world-rules.md)
+- **Daten an der Drohne und Knöpfe in der Wartung:** bleiben am Item und in der Welt, auch ohne das Add-on. Grenzen:
+  Zerlegen in der Werkbank verliert die Add-on-Daten, 0.5.x liest ein Drohnen-Item mit solchen Daten nicht.
+  [`drone-data.md`](drone-data.md)
+- **Kollisionsregeln (Geistflug):** Drohnen fliegen durch Blöcke, Flüssigkeiten, Entities oder Ranken; der Server
+  entscheidet selbst und setzt ohne Recht zurück. Regeln wirken nur, wenn der Server sie kennt. Wird eine Drohne in
+  Blöcken wieder fest, bleibt sie durchlässig, bis sie frei ist (OSD „IM BLOCK“). Runden mit abgeschalteter Kollision
+  zählen als Runden mit Hilfe. [`addon-collision.md`](addon-collision.md)
+- **Zubehör:** werfen wie ein Werfer (Bau-Rechte geprüft, Eimer mit Flüssigkeit standardmäßig verweigert, eigene
+  Geschosse treffen die eigene Drohne nicht), Inhalt sichtbar an der Drohne, Stöße durch Explosionen und Windkugeln
+  (aus, solange kein Add-on es einschaltet), gerade hängendes Zubehör, echte Beladung ohne die stille Grenze von 2 kg
+  („überladen“ über 20 kg je Zubehör), abgestellte Drohnen feuern mit dem Werfer vorn, Geschosse erben im Pilotenflug
+  das Tempo der Drohne. [`accessory-gaps.md`](accessory-gaps.md), [`accessory-hang.md`](accessory-hang.md),
+  [`accessory-fix.md`](accessory-fix.md)
+- **Kompass, autonomer Flug, Operator und Gimbal:** Flughilfen lesen Kompasskurs und -güte
+  ([`api-compass.md`](api-compass.md)); Add-ons lassen Drohnen am Server selbst fliegen – halten, folgen, starten und
+  landen, bis der Akku schwach wird, höchstens 60 Minuten, mit Vorrang des Heimflugs
+  ([`addon-autonomy.md`](addon-autonomy.md)); ein zweiter Spieler steuert mit seiner Funke den Gimbal einer Drohne,
+  Action-Cams auch auf der Halterung vorn ([`operator-gimbal.md`](operator-gimbal.md)).
+- **Renndaten** (siehe oben) und **Sharecodes** über `PropwashApi.shareCodes()`.
+- Wird ein Add-on entfernt, verlieren Drohnen und Drohnen-Items ihr Zubehör nicht mehr: Fehlende Teile vorn, oben und
+  unten werden Platzhalter mit gleicher Id, mit dem Add-on kehren die Originalteile zurück; ein kaputtes Zubehör nimmt
+  die anderen nicht mehr mit. [`addon-placeholders.md`](addon-placeholders.md)
+- **Für Add-on-Autoren und die Website:** `/propwash webexport [<namensraum>|all]` (Rechtestufe 4) schreibt die Daten
+  für den Web-Konfigurator im Format 2, ein Ordner je Namensraum, samt Sharecode-Spezifikation und Teile-Tabellen
+  ([`web-export.md`](web-export.md)).
+- Handbuch [`api/addon-guide.md`](api/addon-guide.md) §21 mit Umstiegsbeispiel „Noclip ohne Mixins“, Übersicht
+  [`addon-api-1.7.md`](addon-api-1.7.md), Änderungen [`api/changes.md`](api/changes.md).
+
+### Honig und Just More Parts ab 1.2.0
+
+Besitzer-Entscheidungen vom 21.10.2026 nach der Prüfrunde:
+
+- **Just More Parts 1.2.0 ist Pflicht.** Propwash 0.6.0 trägt für Just More Parts unter 1.2.0 eine Unverträglichkeit ein:
+  Mit 1.1.x startet das Spiel nicht, der Loader nennt den Grund. Der zuvor geplante Altmodus für 1.1.x entfällt. JMP
+  1.2.0 bringt seine Teile-Tabelle für PW3 statt eines eigenen Codecs; alte PW1-/PW2-Codes bleiben lesbar.
+- Honig: siehe „Slime, Wolle, Heuballen und Honig“.
+
+### Ergänzungen aus den Release-Kandidaten und dem Owner-Test
+
+Was zwischen `0.6.0-rc.1` und dem Release dazukam, kurz; Einzelheiten in den genannten Dokumenten.
+
+- **Bestenliste und Replays** (`race-ghosts.md`): keine Begrenzung auf die besten Zeiten mehr, jede Zeit mit Sharecode,
+  Replay aus der Ich-Sicht und Geist; „Alle“ zeigt je Pilot und Klasse eine Zeile. Replays beginnen bis zu 1 s vor dem
+  Start-Gate (Uhr bis zum Durchflug auf 0:00.000), die Leiste zählt Start- und Ziel-Gate mit, „Als Video aufnehmen“
+  speichert das Replay mit 1× als MP4 im Ordner der Action-Cam (braucht ffmpeg). Seit dem Owner-Test rc.4 schickt der
+  Client des Piloten nach jeder gespeicherten Zeit seine eigene Spur im 10-ms-Raster in Stücken an den Server; der
+  Server nimmt sie nur, wenn sie zu seinen Gate-Zeiten und Positionen passt (Toleranz aus Ping, höchstens 300 ms), Zeit
+  und Bestenliste bleiben beim Server. Fremde Drohnen laufen über einen Puffer mit 100 bis 200 ms Verzögerung,
+  Interpolation und kurzer Extrapolation (`remote-motion.md`); Teleports ab 16 Blöcken springen sofort.
+- **Kurs-Einstellungen** in einem Menü (Name, Kurs-ID, Runden, Besitzer und Rechte, Bestenliste, Geister, Löschen,
+  Ideallinie je Kurs abschaltbar). Runden-Urteil vom Server („Runde 1 nicht gezählt: Slalom-Stange 25 verpasst“) ohne
+  Rücksetzen der folgenden Runden; Client und Server sortieren gleichzeitige Durchflüge gleich. Der Kurs-Editor warnt,
+  wenn die Wertungszone einer Stange oder Flagge die Öffnung eines Nachbarn abdeckt, und bietet „Reichweite kürzen“.
+- **Gestapelte Gates:** nie breiter als das Gate darunter, höchstens vier übereinander, drehbar wie am Boden; seit dem
+  Owner-Test rc.4 teilen sich gestapelte Gates mit einem gleich hohen Nachbarn den Pfosten in jeder Stapelhöhe, in
+  beide Richtungen und über Eck, ohne freie Kurs-Platzierung.
+- **Persönliche Regeln** (`personal-rules.md`): Freigabestufe je Physik-Regel (Fest, Zonen, Spieler), Tab „Meine
+  Regeln“, Voreinstellung „Race Legal“; eigene rennrelevante Werte machen Runden assistiert. Welt-Regel „Kreativ-FC
+  rennlegal“, je Kurs überschreibbar (nur Admins).
+- **Werkbank, Tab „Recycling“:** Material des Rezepts zurück, 100 % Zustand alles, 60 bis 99 % die Hälfte, darunter ein
+  Viertel. **Kreativ-RX-Block** ohne Reichweitengrenze in seiner Dimension.
+- **Repeater:** jeder Sprung reicht so weit wie eine direkte Verbindung (Videosender für das Bild, Funke für die
+  Steuerung), vier LED-Balken am Block, Signalmesser in der Hand, *RPT* in den Voreinstellungen Minimal, Standard und
+  Race. **Zuschauen (F7)** zeigt das OSD des Piloten mit Knüppeln, Akku, Modus, Warnungen und Rennanzeige; das Banner
+  sucht sich eine freie OSD-Zeile neben dem Warnfeld.
+- **Absturz ohne Abschalten:** kein Wegfahren mit Gas 0, kein Hochwerfen nach Abprallern, Props im Block verlieren den
+  Großteil ihres Schubs. Steckt eine fliegende Drohne in einem Block, kommt sie auf dem kürzesten Weg heraus (Fehler
+  mit Ranken am Balken behoben). Turtle-Modus an Kanten kippt die Drohne ab.
+- **Hören an der Drohne:** Pilot im FPV, Zuschauer, Videokanal und Kameramann hören Geräusche und Explosionen an der
+  Drohne. **Fortschritte:** Tab „Propwash FPV“ mit 27 Fortschritten; Endermen weichen Drohnentreffern per Teleport aus.
+- **Sculk** (`drone-sculk.md`): scharfe Drohne über Leerlauf vibriert wie Elytra-Gleiten, Absturz wie Bodenkontakt,
+  Welt-Regel „Drohnen lösen Sculk aus“ (an). Nach der Landung eines Server-Flugs lösen Sensoren nicht mehr dauernd aus.
+- **Bosse kämpfen gegen Drohnen** (`drone-bosses.md`, Welt-Regel `propwash:drones_boss_interactions`, an): Wärter hören
+  Drohnen (35 je Vibration, wütend ab 80) und treffen sie mit dem Schallschlag, ihre Dunkelheit pulsiert im FPV-Bild;
+  der Enderdrache schleudert Drohnen mit Flügelschlag weg, rammt sie und stürzt sich in 48 Blöcken auf scharfe Drohnen,
+  sein Atem verschleißt Video, Flugcontroller, Akku, Motoren und Props; die Seitenköpfe des Withers schießen auf
+  geflogene Drohnen.
+- **Trick-Tutorials** im Tab Freestyle (Vorschau beim Darüberfahren, Schritt-für-Schritt-Spieler, 0,5×, Stick-Cam) und
+  0,5× in der Flugschule, „Alle freischalten“ ohne Sterne. Drohnen in Trick-Videos und Flugschul-Szenen fliegen mit
+  der Kamera voraus (vorher rückwärts). Der Kopf des Tabs Freestyle bleibt nach einem Klick in die gescrollte Liste an
+  seiner Stelle.
+- **FPV-Bild:** Props mit Motor und Arm gezeichnet; drehende Props behalten Nabe, Mutter und Motorglocke scharf in der
+  Mitte, nur die Blattfläche wird zur Unschärfe-Scheibe. Zonen-Umrisse auch im Flug.
+- **NeoForge-Spieler auf Fabric-Servern** (Beitrag von ETHG, Pull-Request #2) öffnen auch Wartungs- und Zubehör-Menü
+  der Drohne (Fabrics `fabric-menu-api-v1:open_screen` wird im NeoForge-Build gelesen).
+
+### Weitere Fixes
+
+- GPS Rescue landet genau auf dem Homepoint, auch wenn eine Tür oder Mauer daneben steht; vorher setzte die Drohne einen
+  Block daneben auf, etwa neben einer Druckplatte vor einer Tür (5″ und 7″, auch mit Pilot). Design:
+  [`design/autonomous-rescue.md`](design/autonomous-rescue.md) §3.
+- Eine Drohne, die einen Bruchteil eines Millimeters in einem Block steckt (etwa wenn unter der liegenden Drohne ein
+  Block entsteht), gilt als gelandet und kommt zur Ruhe, statt ständig zwischen „am Boden“ und „in der Luft“ zu
+  wechseln.
+- Der Empfänger-Assistent stürzt mit Add-ons, die per Mixin eine eigene Schalterfunktion anhängen (etwa Noclip 0.1.x),
+  nicht mehr ab, wenn die Maus über deren Zeile steht oder sie zugewiesen wird. Solche Funktionen stehen nach den
+  eingebauten, nur solange Platz ist (bei GUI 427×240 nur im Tab Modi), und überdecken den Arm-Hinweis nicht mehr.
+- Die Meldung für eine schon beim Spielstart eingesteckte Funke zeigte manchmal rohe Sprachschlüssel statt des Textes.
+- Neu erzeugte Bandos haben keine Löcher mehr im Hof, wo eine Höhle oder Schlucht unter dem Bauplatz verläuft, und
+  Blätter, die ein Bando von ihrem Baum abgeschnitten hat, hängen nicht mehr an seinen Balken (nur neue Chunks;
+  bestehende Bandos bleiben, wie sie sind). Einzelheiten: [`bando-placement.md`](bando-placement.md).
+
+### Kompatibilität und Rückweg
+
+- **Welten:** neue Blöcke (RX-Block, Drohnen-Barrieren), optional Add-on-Daten an Drohnen, neue Welt-Regeln
+  `allow_freecam` (aus), `players_create_zones` (an) und `free_course_placement` (aus), Kursdateien im Format 2 mit
+  Kurs-ID, Rennstandard in den Weltdaten. Alte Welten laden unverändert. Eine mit 0.6.0 gespielte Welt öffnet 0.5.2
+  ohne Absturz; RX-Blöcke werden dort Luft, Add-on-Daten werden ignoriert.
+- **Client-Configs:** `freecam.json`, `share_chat.json` und `gate_hint.json` neu, `input.json` mit `autoArmAfterReset`
+  und den Belegungen der Add-on-Schalter (Schlüssel `<namensraum>:<pfad>`); 0.5.2 liest die von 0.6.0 gespeicherte
+  `input.json` weiter, das Geräteprofil bleibt erhalten.
+- **Noclip 0.1.2** (Add-on mit Mixins) startet mit 0.6.0 auf Fabric und NeoForge, im Client und am dedizierten Server,
+  ohne Mixin-Fehler und ohne Absturz; geschaltet wird es über einen Schalter der Funke, auch am Server. Die
+  Namensraum-Prüfung meldet einmal, dass es den reservierten Namensraum `propwash` nutzt. Mit der Add-on-API 1.7 geht
+  derselbe Geistflug ohne Mixins (Handbuch §21).
+
+### LED-Pfad für Zubehör
+
+- Zubehör aus Add-ons kann seine LEDs entlang einer eigenen Linie anordnen (`led_path`, 2–256 Punkte): ein Ring, ein
+  Bogen oder eine Leiste entlang der Arme leuchtet LED für LED entlang der Form, gleichmäßig nach Länge verteilt, in
+  jedem LED-Modus (der Regenbogen läuft um den Ring), mit Leuchthof, „LEDs aus“, Scheinwerfer und LambDynamicLights wie
+  beim geraden Streifen. Ohne eigenes Modell zeichnet Propwash eine schmale Leiterplatte entlang der Linie. Teile mit
+  Pfad werden nicht auf die Streifenlänge des Rahmens gestreckt. Der eingebaute LED-Streifen bleibt unverändert.
+- Behoben: Ein Zubehör mit mehr als 16 LEDs (erlaubt sind 64) zeigte nur die ersten 16 Plätze, bei 32 LEDs also nur die
+  halbe Leiste, und der Regenbogen rechnete mit 16 statt mit allen LEDs.
+- Für Add-on-Autoren: Feld, Prüfregeln und Kompatibilität in [`docs/api/changes.md`](api/changes.md) Abschnitt 0.6.0,
+  Darstellung in [`design/led-strip.md`](design/led-strip.md) „LED-Pfad“.
+
 ## 0.5.2
 
-Großes Update auf 0.5.1. **Netzprotokoll 16** (0.5.0/0.5.1: 15): neue Pakete und synchronisierte Daten (Homepoint,
+Großes Update nach 0.5.1. **Netzprotokoll 16** (0.5.0/0.5.1: 15): neue Pakete und synchronisierte Daten (Homepoint,
 Ranken und Glocken, Bando-Karte, Zonen, VTX-Leistung, Beschichtung, Zubehör der Add-on-API) – Client und Server
 brauchen beide 0.5.2, ältere Versionen trennt der Handshake mit klarer Meldung. **Parts-API 1.6.0** (additiv: Halterung
 vorne, Zubehör-Verhalten, Flughilfen, Kräfte, Events, `vtx_levels_mw`); Addons für 1.0 bis 1.5 laufen weiter. Welten,

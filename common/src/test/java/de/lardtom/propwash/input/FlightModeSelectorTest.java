@@ -179,15 +179,15 @@ class FlightModeSelectorTest {
 
     @Test
     void switchModeNeedsAReadableModeSwitch() {
-        int angle = SwitchEvaluator.bit(SwitchFunction.ANGLE);
-        int horizon = SwitchEvaluator.bit(SwitchFunction.HORIZON);
+        long angle = SwitchEvaluator.bit(SwitchFunction.ANGLE);
+        long horizon = SwitchEvaluator.bit(SwitchFunction.HORIZON);
         assertNull(FlightModeSelector.fromSwitches(0, 0));
         assertNull(FlightModeSelector.fromSwitches(angle, SwitchEvaluator.bit(SwitchFunction.ARM)));
         assertEquals(StabMode.ACRO, FlightModeSelector.fromSwitches(0, horizon));
         assertEquals(StabMode.ANGLE, FlightModeSelector.fromSwitches(angle | horizon, angle | horizon));
         assertEquals(StabMode.HORIZON, FlightModeSelector.fromSwitches(horizon, angle | horizon));
         DeviceProfile radio = ProfileDefaults.radio("R", 8);
-        int readable = SwitchEvaluator.readable(radio, new float[8], new boolean[0]);
+        long readable = SwitchEvaluator.readable(radio, new float[8], new boolean[0]);
         assertTrue(SwitchEvaluator.isSet(readable, SwitchFunction.ANGLE));
         assertTrue(SwitchEvaluator.isSet(readable, SwitchFunction.HORIZON));
         assertTrue(SwitchEvaluator.isSet(readable, SwitchFunction.ARM));
@@ -199,7 +199,7 @@ class FlightModeSelectorTest {
     @Test
     void modeFromTheSwitchIsNotAKeyOverride() {
         FlightModeSelector modes = new FlightModeSelector();
-        int angle = SwitchEvaluator.bit(SwitchFunction.ANGLE);
+        long angle = SwitchEvaluator.bit(SwitchFunction.ANGLE);
         assertTrue(modes.observe(true, angle, angle));
         assertFalse(modes.keyOverridesSwitch(true, angle, angle));
         modes.select(StabMode.ACRO);
@@ -228,8 +228,8 @@ class FlightModeSelectorTest {
         private final KeyRepeatFilter angle = new KeyRepeatFilter();
         private final KeyRepeatFilter horizon = new KeyRepeatFilter();
         private boolean device;
-        private int bits;
-        private int readable;
+        private long bits;
+        private long readable;
 
         private Pilot(DeviceProfile profile, int axisCount, int buttonCount, boolean keyboardOnly, boolean startInAngle) {
             this.profile = profile;

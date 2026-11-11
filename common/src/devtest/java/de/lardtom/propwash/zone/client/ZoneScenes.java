@@ -5,7 +5,6 @@ import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.client.Screenshots;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.input.StickPositions;
-import de.lardtom.propwash.server.client.WorldRulesTab;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.sim.StabMode;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
@@ -17,6 +16,7 @@ import de.lardtom.propwash.zone.ZoneBox;
 import de.lardtom.propwash.zone.ZoneDraft;
 import de.lardtom.propwash.zone.ZoneServer;
 import de.lardtom.propwash.zone.ZoneShape;
+import de.lardtom.propwash.zone.ZoneView;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -61,7 +61,7 @@ public final class ZoneScenes {
         Screenshots.step("bildschirmfotos: Zonen – Rand in der Welt" + label, "zones_border" + suffix, 20, border(names));
         Screenshots.step("bildschirmfotos: Zonen – Editor im HUD" + label, "zones_editor_hud" + suffix, 10, editorHud(names));
         Screenshots.step("bildschirmfotos: Zonen – Editor mit Mauszeiger" + label, "zones_editor_cursor" + suffix, 10, editorCursor(names));
-        Screenshots.step("bildschirmfotos: Zonen – Welt-Regeln-Tab" + label, "configurator_world_rules_zones" + suffix, 20, tab(names));
+        Screenshots.step("bildschirmfotos: Zonen – Tab Zonen" + label, "configurator_zones" + suffix, 20, tab(names));
         Screenshots.step("bildschirmfotos: Zonen – OSD-Hinweis im FPV" + label, "zones_fpv_notice" + suffix, 10, fpv(names));
         SelfTest.clientStep("bildschirmfotos: Zonen – Aufräumen" + label, 400, ctx -> cleanup(ctx, names));
     }
@@ -139,7 +139,7 @@ public final class ZoneScenes {
         String dimension = ZoneServer.dimension(level);
         if (ZoneSelfTests.zone(server, names.field).isEmpty()) {
             ZoneSelfTests.save(server, Zone.create(dimension, names.field, ZoneShape.BOX, new ZoneBox(x - 22.0, y - 1.0, z - 30.0, x - 2.0, y + 9.0, z + 6.0))
-                    .withOverride(WorldRuleSpecs.BATTERY_SCALE, 0).withOverride(WorldRuleSpecs.CRASH_TOLERANCE, 200));
+                    .withOverride(WorldRuleSpecs.BATTERY_SCALE, 0).withOverride(WorldRuleSpecs.CRASH_TOLERANCE, 200).withOwner(ZoneServer.owner(player)));
         }
         if (ZoneSelfTests.zone(server, names.tunnel).isEmpty()) {
             ZoneSelfTests.save(server, Zone.create(dimension, names.tunnel, ZoneShape.CYLINDER, ZoneBox.cylinder(x + 7.5, y, z - 20.5, 5.0, 11.0))
@@ -175,8 +175,14 @@ public final class ZoneScenes {
             if (waiting != null) {
                 return waiting;
             }
+            ZoneViewConfig.set(ZoneView.Show.ALWAYS);
             Screenshots.parkMouse(Minecraft.getInstance());
             return ZoneRenderer.drawn() >= 2 ? StepResult.pass() : StepResult.pending();
+        }
+
+        @Override
+        public void finish(SelfTest.StepContext ctx) {
+            ZoneViewConfig.set(ZoneView.DEFAULT_SHOW);
         }
     }
 
@@ -254,18 +260,18 @@ public final class ZoneScenes {
             this.names = names;
         }
 
-        private static @Nullable WorldRulesTab tab() {
+        private static @Nullable ZonesTab tab() {
             Minecraft mc = Minecraft.getInstance();
             if (!(mc.gui.screen() instanceof ConfiguratorScreen screen)) {
-                ConfigTabs.open(null, WorldRulesTab.ID);
+                ConfigTabs.open(null, ZonesTab.ID);
                 return null;
             }
             ConfigTab active = screen.activeTab();
-            if (active == null || !WorldRulesTab.ID.equals(active.id())) {
-                screen.selectTab(WorldRulesTab.ID);
+            if (active == null || !ZonesTab.ID.equals(active.id())) {
+                screen.selectTab(ZonesTab.ID);
                 return null;
             }
-            return active instanceof WorldRulesTab tab ? tab : null;
+            return active instanceof ZonesTab tab ? tab : null;
         }
 
         @Override
@@ -274,18 +280,17 @@ public final class ZoneScenes {
             if (waiting != null) {
                 return waiting;
             }
-            WorldRulesTab tab = tab();
+            ZonesTab tab = tab();
             if (tab == null || tab.zones().entries().size() < 2) {
                 return ctx.tick() > 300 ? StepResult.fail("Tab zeigt die Zonen nicht") : StepResult.pending();
             }
             for (ZoneSection.Entry entry : tab.zones().entries()) {
-                if (entry.edit() == null) {
-                    return StepResult.fail("Zone ohne Knopf Bearbeiten trotz Rechten");
+                if (entry.edit() == null || entry.delete() == null || entry.show() == null || !entry.owner()) {
+                    return StepResult.fail("Zone ohne Knöpfe oder Besitzer trotz Operator-Recht: " + entry.zone().name());
                 }
             }
             FlatButton create = tab.zones().newButton();
-            if (!tab.atTop() || tab.rows().isEmpty() || tab.zonesTop() < tab.viewTop() || tab.zonesTop() >= tab.screenY(tab.rows().getFirst())
-                    || create == null || create.getY() + create.getHeight() > tab.clipBottom()) {
+            if (!tab.atTop() || tab.zonesTop() < tab.viewTop() || create == null || create.getY() + create.getHeight() > tab.clipBottom()) {
                 return StepResult.fail("Zonen stehen nicht ohne Scrollen oben im Tab");
             }
             return StepResult.pass();

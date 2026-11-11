@@ -125,6 +125,7 @@ public final class RelaySelfTests {
         SelfTest.clientStep("relay: Betonbau mit sechs Etagen – Bild nur über Repeater, Grenze aus der Welt-Regel", 6000, RelaySelfTests::buildingStep);
         SelfTest.clientStep("relay: Runde mit Kreativ-Brille zählt, Latenz unter dem Sender nennt den Grund", 2400, RelaySelfTests::creativeLapStep);
         SelfTest.clientStep("relay: Aufräumen", 600, RelaySelfTests::cleanupStep);
+        RelayFieldSelfTests.register();
     }
 
     private static Probe[] probes() {
@@ -650,7 +651,6 @@ public final class RelaySelfTests {
         for (GateEntity gate : placed) {
             CourseToolItem.useOnGate(tool, player, gate);
         }
-        CourseToolItem.useOnGate(tool, player, placed.get(1));
         int course = CourseToolItem.courseOf(tool);
         CourseRegistry.Course data = registry.course(course);
         if (data == null || data.gates.size() != GATE_COUNT) {

@@ -13,7 +13,6 @@
   "propwash.drone.arm_blocker.rebooting": "Flugcontroller startet neu",
   "propwash.drone.arm_blocker.throttle_not_low": "Gas nicht ganz unten",
   "propwash.drone.esc_burned": "ESC durchgebrannt: %1$sS-Akku an einem ESC für höchstens %2$sS",
-  "propwash.drone.motor_derate": "Motoren überhitzt – Leistung wird gedrosselt",
   "propwash.drone.arm_blocker.hardware_fault": "Flugcontroller oder Akku kaputt",
   "propwash.drone.failsafe": "FAILSAFE – Funkverbindung verloren",
   "propwash.drone.flip.armed": "Zum Aufrichten zuerst entschärfen",

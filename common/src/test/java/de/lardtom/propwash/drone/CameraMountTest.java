@@ -4,9 +4,11 @@ import de.lardtom.propwash.api.part.AirframeGeometry;
 import de.lardtom.propwash.api.part.FrameRole;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.FrameType;
+import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.sim.AirframeSpec;
 import de.lardtom.propwash.sim.CameraOcclusion;
 import de.lardtom.propwash.sim.FpvRig;
+import de.lardtom.propwash.ui.TuneEdits;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -88,5 +90,73 @@ class CameraMountTest {
         Map<String, Float> tune = CameraMount.withUptilt(Map.of(), build.frame(), 45.0F);
         AirframeSpec spec = AirframeSpec.of(build);
         assertEquals(TuneMapping.fromConfig(TuneMapping.toConfig(Map.of(), spec)), TuneMapping.fromConfig(TuneMapping.toConfig(tune, spec)));
+    }
+
+    private static final String RC_RATE = "rates.roll.rcRate";
+
+    private static Map<String, Float> menuDefaults(DroneBuild build) {
+        Map<String, Float> defaults = new TreeMap<>(TuneMapping.defaults(AirframeSpec.of(build)));
+        defaults.put(TuneMapping.CAMERA_UPTILT, CameraMount.defaultUptilt(build.frame()));
+        return defaults;
+    }
+
+    private static Map<String, Float> menuWorking(DroneBuild build, Map<String, Float> stored) {
+        Map<String, Float> working = TuneMapping.effective(stored, AirframeSpec.of(build));
+        working.putIfAbsent(TuneMapping.CAMERA_UPTILT, CameraMount.defaultUptilt(build.frame()));
+        return working;
+    }
+
+    private static Map<String, Float> server(DroneBuild build, Map<String, Float> stored, Map<String, Float> edited) {
+        return DronePiloting.sanitize(new FlightTune(stored), new FlightTune(edited), build).values();
+    }
+
+    @Test
+    void theConfiguratorPathStoresTheAngleWithoutTouchingTheRest() {
+        DroneBuild build = DroneBuild.FREESTYLE;
+        Map<String, Float> stored = Map.of(RC_RATE, 1.2F);
+        Map<String, Float> defaults = menuDefaults(build);
+        Map<String, Float> edited = TuneEdits.set(menuWorking(build, stored), defaults, TuneMapping.CAMERA_UPTILT, 40.0);
+        assertEquals(40.0F, edited.get(TuneMapping.CAMERA_UPTILT));
+        Map<String, Float> client = TuneMapping.applyEdit(stored, edited, AirframeSpec.of(build));
+        assertEquals(40.0F, client.get(TuneMapping.CAMERA_UPTILT), "Client wendet den Winkel sofort an");
+        Map<String, Float> result = server(build, stored, edited);
+        assertEquals(40.0F, CameraMount.uptilt(build, result));
+        assertEquals(1.2F, result.get(RC_RATE), "Rates bleiben beim Ändern des Kamerawinkels erhalten");
+        assertTrue(CameraMount.custom(build, result));
+    }
+
+    @Test
+    void theServerClampsAngleFromTheConfiguratorToTheCameraMount() {
+        for (DroneBuild build : DroneBuild.PRESETS) {
+            CameraMount.Range range = CameraMount.range(build);
+            Map<String, Float> working = menuWorking(build, Map.of());
+            Map<String, Float> defaults = menuDefaults(build);
+            Map<String, Float> steep = TuneEdits.set(working, defaults, TuneMapping.CAMERA_UPTILT, TuneMapping.CAMERA_UPTILT_MAX + 15.0);
+            assertEquals(range.maxDeg(), CameraMount.uptilt(build, server(build, Map.of(), steep)), build.frame().key());
+            Map<String, Float> flat = TuneEdits.set(working, defaults, TuneMapping.CAMERA_UPTILT, -20.0);
+            assertEquals(range.minDeg(), CameraMount.uptilt(build, server(build, Map.of(), flat)), build.frame().key());
+            Map<String, Float> inside = TuneEdits.set(working, defaults, TuneMapping.CAMERA_UPTILT, range.minDeg() + 1.0);
+            assertEquals(range.minDeg() + 1.0F, CameraMount.uptilt(build, server(build, Map.of(), inside)), build.frame().key());
+        }
+    }
+
+    @Test
+    void defaultAndResetInTheConfiguratorRemoveTheStoredAngle() {
+        DroneBuild build = DroneBuild.RACER;
+        CameraMount.Range range = CameraMount.range(build);
+        Map<String, Float> stored = Map.of(TuneMapping.CAMERA_UPTILT, 52.0F, RC_RATE, 1.1F);
+        Map<String, Float> defaults = menuDefaults(build);
+        Map<String, Float> working = menuWorking(build, stored);
+        assertEquals(52.0F, working.get(TuneMapping.CAMERA_UPTILT));
+        Map<String, Float> standard = TuneEdits.set(working, defaults, TuneMapping.CAMERA_UPTILT, range.defaultDeg());
+        assertNull(standard.get(TuneMapping.CAMERA_UPTILT), "Standardwert wird im K-Menü nicht gespeichert");
+        Map<String, Float> afterStandard = server(build, stored, standard);
+        assertNull(afterStandard.get(TuneMapping.CAMERA_UPTILT));
+        assertEquals(range.defaultDeg(), CameraMount.uptilt(build, afterStandard));
+        assertEquals(1.1F, afterStandard.get(RC_RATE));
+        Map<String, Float> reset = TuneEdits.reset(working, defaults, TuneMapping.CAMERA_UPTILT);
+        assertNull(server(build, stored, reset).get(TuneMapping.CAMERA_UPTILT), "↺ setzt auf den Standard des Rahmens zurück");
+        Map<String, Float> untouched = TuneEdits.set(working, defaults, RC_RATE, 1.3);
+        assertEquals(52.0F, server(build, stored, untouched).get(TuneMapping.CAMERA_UPTILT), "andere Änderungen im K-Menü behalten den Winkel");
     }
 }

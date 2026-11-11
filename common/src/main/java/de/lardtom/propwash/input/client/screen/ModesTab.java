@@ -24,6 +24,7 @@ import de.lardtom.propwash.input.client.TransmitterInput;
 import de.lardtom.propwash.sim.StabMode;
 import de.lardtom.propwash.ui.FlowWrap;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
+import de.lardtom.propwash.ui.client.search.SearchTags;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
@@ -86,6 +87,7 @@ public final class ModesTab extends InputTab {
     private static final long ADOPT_NANOS = 250_000_000L;
 
     private final SwitchEvaluator evaluator = new SwitchEvaluator();
+    private final AddonSwitchRows addons = new AddonSwitchRows(this);
     private final List<MicrosField> rangeFields = new ArrayList<>();
     private Row selected = Row.ARM;
     private Row otherSelected = Row.COMMAND_1;
@@ -94,17 +96,23 @@ public final class ModesTab extends InputTab {
     private @Nullable SwitchDetector detector;
     private int dragRow = -1;
     private boolean dragHigh;
-    private int liveBits;
-    private int liveReadable;
+    private long liveBits;
+    private long liveReadable;
     private @Nullable String liveGuid;
     private boolean liveOverride;
     private long liveNanos;
     private int minLabelX = -1;
     private int maxLabelX = -1;
+    private @Nullable CycleButton<Boolean> autoArmButton;
 
     @Override
     public String id() {
         return ID;
+    }
+
+    @Override
+    public boolean freecam() {
+        return true;
     }
 
     @Override
@@ -123,6 +131,10 @@ public final class ModesTab extends InputTab {
 
     public boolean acroSelected() {
         return this.selected == Row.ACRO;
+    }
+
+    public @Nullable CycleButton<Boolean> autoArmButton() {
+        return this.autoArmButton;
     }
 
     public List<String> rowNames() {
@@ -149,6 +161,20 @@ public final class ModesTab extends InputTab {
         this.showPage(commands ? Page.COMMANDS : Page.FLIGHT);
     }
 
+    public boolean addonsShown() {
+        return this.page == Page.ADDONS;
+    }
+
+    public void showAddons() {
+        if (AddonSwitchRows.available()) {
+            this.showPage(Page.ADDONS);
+        }
+    }
+
+    public AddonSwitchRows addons() {
+        return this.addons;
+    }
+
     private void showPage(Page next) {
         if (this.page == next) {
             return;
@@ -159,9 +185,11 @@ public final class ModesTab extends InputTab {
         }
         this.dragRow = -1;
         this.page = next;
-        Row previous = this.selected;
-        this.selected = this.otherSelected;
-        this.otherSelected = previous;
+        if (next != Page.ADDONS && this.selected.page() != next) {
+            Row previous = this.selected;
+            this.selected = this.otherSelected;
+            this.otherSelected = previous;
+        }
         this.rebuild();
     }
 
@@ -195,7 +223,7 @@ public final class ModesTab extends InputTab {
     }
 
     private List<String> descriptionLines(Font font, Row row) {
-        int buttons = this.page == Page.COMMANDS || row == Row.MODE_3D ? 2 : 1;
+        int buttons = this.page == Page.COMMANDS || row == Row.MODE_3D || row == Row.ARM ? 2 : 1;
         int beside = FlowWrap.linesBeside(buttons * WIDGET + (buttons - 1) * GAP, 2, Metrics.LINE_HEIGHT);
         return FlowWrap.lines(row.description().getString(), font::width, this.descriptionWidth(), beside, Math.max(20, this.width));
     }
@@ -265,7 +293,8 @@ public final class ModesTab extends InputTab {
         int half = (this.width - GAP) / 2;
         int controls = font.width(Component.translatable("propwash.input.modes.open_controls")) + 8;
         int other = command ? font.width(Component.translatable("propwash.input.command.edit")) + 8
-                : toggleNeed(font, Component.translatable("propwash.input.modes.mode_3d.unlock"));
+                : Math.max(toggleNeed(font, Component.translatable("propwash.input.modes.mode_3d.unlock")),
+                toggleNeed(font, Component.translatable("propwash.input.modes.auto_arm")));
         return half >= Math.max(controls, other) ? half : -1;
     }
 
@@ -301,7 +330,7 @@ public final class ModesTab extends InputTab {
         for (Component candidate : candidates) {
             statusWidth = Math.max(statusWidth, font.width(candidate));
         }
-        if (font.width(Component.translatable(function.translationKey())) + 8 + statusWidth > width) {
+        if (font.width(title(row)) + 8 + statusWidth > width) {
             for (Component candidate : candidates) {
                 statusLines = Math.max(statusLines, font.split(candidate, width).size());
             }
@@ -349,7 +378,7 @@ public final class ModesTab extends InputTab {
             }
         }
 
-        int buttons = command || function == SwitchFunction.MODE_3D ? 2 : 1;
+        int buttons = command || function == SwitchFunction.MODE_3D || function == SwitchFunction.ARM ? 2 : 1;
         int buttonWidth = buttons == 2 ? this.pairWidth(font, command) : Math.min(CONTROLS, this.width);
         boolean stacked = buttonWidth < 0;
         if (stacked) {
@@ -507,10 +536,17 @@ public final class ModesTab extends InputTab {
         this.rememberSignature();
         this.minLabelX = -1;
         this.maxLabelX = -1;
+        this.autoArmButton = null;
         this.rangeFields.clear();
         RawInput raw = this.raw();
         DeviceProfile profile = this.profile(raw);
         Font font = this.host.font();
+        if (this.page == Page.ADDONS) {
+            this.panel = null;
+            this.buildPageTabs(font);
+            this.reportBottom(this.addons.build(this.host, this.x, this.y, this.width));
+            return;
+        }
         this.measureEffects(font, raw != null && profile != null);
         this.measureDetail(font, raw, profile);
         int right = this.x + this.width;
@@ -547,6 +583,16 @@ public final class ModesTab extends InputTab {
                                 this.markChanged();
                                 this.rebuild();
                             }));
+        }
+        if (this.selected == Row.ARM) {
+            this.autoArmButton = SearchTags.label(this.host.addWidget(CycleButton.onOffBuilder(this.working().autoArmAfterReset)
+                    .withTooltip(v -> Tooltip.create(Component.translatable("propwash.input.modes.auto_arm.tooltip")))
+                    .create(!detailControls ? right - CONTROLS : stacked ? this.x : right - 2 * pair - GAP, detailControls ? row3 : row2, pair, WIDGET,
+                            Component.translatable("propwash.input.modes.auto_arm"), (b, v) -> {
+                                this.working().autoArmAfterReset = v;
+                                this.markChanged();
+                            })), Component.translatable("propwash.input.modes.auto_arm.search"), Component.translatable("propwash.input.modes.auto_arm"),
+                    Component.translatable("propwash.input.switch.arm"));
         }
         if (raw != null && profile != null) {
             this.buildInvertToggles(profile);
@@ -614,18 +660,38 @@ public final class ModesTab extends InputTab {
                 }));
     }
 
+    private static Component title(Row row) {
+        return AddonSwitchRows.title(row.function, row.title());
+    }
+
+    private static Component listTitle(Font font, Row row, int room) {
+        Component named = title(row);
+        return font.width(named) <= room ? named : row.title();
+    }
+
     private void buildPageTabs(Font font) {
         Component flight = Component.translatable("propwash.input.modes.page.flight");
         Component commands = Component.translatable("propwash.input.modes.page.commands");
         int available = Math.max(40, this.keyX(font) - 4 - this.x);
         int flightWidth = font.width(flight) + 12;
         int commandsWidth = font.width(commands) + 12;
-        int total = flightWidth + PAGE_TAB_GAP + commandsWidth;
-        if (total > available) {
-            flightWidth = Math.max(16, flightWidth * (available - PAGE_TAB_GAP) / (total - PAGE_TAB_GAP));
-            commandsWidth = Math.max(16, available - PAGE_TAB_GAP - flightWidth);
+        int addonWidth = 0;
+        boolean addonTab = AddonSwitchRows.available();
+        Component shownFlight = flight;
+        if (addonTab) {
+            int[] widths = AddonSwitchRows.pageTabWidths(font, available, 2 * PAGE_TAB_GAP);
+            shownFlight = AddonSwitchRows.flightTabTitle(font, available, 2 * PAGE_TAB_GAP);
+            flightWidth = widths[0];
+            commandsWidth = widths[1];
+            addonWidth = widths[2];
+        } else {
+            int total = flightWidth + PAGE_TAB_GAP + commandsWidth;
+            if (total > available) {
+                flightWidth = Math.max(16, flightWidth * (available - PAGE_TAB_GAP) / (total - PAGE_TAB_GAP));
+                commandsWidth = Math.max(16, available - PAGE_TAB_GAP - flightWidth);
+            }
         }
-        FlatButton flightTab = new FlatButton(this.x, this.y, flightWidth, HEADER - 1, flight, FlatButton.Style.TAB,
+        FlatButton flightTab = AddonSwitchRows.pageTab(this.x, this.y, flightWidth, HEADER - 1, flight, shownFlight,
                 () -> this.page == Page.FLIGHT, () -> this.showPage(Page.FLIGHT));
         flightTab.setTooltip(Tooltip.create(Component.translatable("propwash.input.modes.page.flight.tooltip")));
         this.host.addWidget(flightTab);
@@ -633,6 +699,12 @@ public final class ModesTab extends InputTab {
                 () -> this.page == Page.COMMANDS, () -> this.showPage(Page.COMMANDS));
         commandsTab.setTooltip(Tooltip.create(Component.translatable("propwash.input.modes.page.commands.tooltip")));
         this.host.addWidget(commandsTab);
+        if (addonTab) {
+            FlatButton addonsTab = new FlatButton(this.x + flightWidth + commandsWidth + 2 * PAGE_TAB_GAP, this.y, addonWidth, HEADER - 1,
+                    AddonSwitchRows.pageTitle(), FlatButton.Style.TAB, () -> this.page == Page.ADDONS, () -> this.showPage(Page.ADDONS));
+            addonsTab.setTooltip(Tooltip.create(Component.translatable("propwash.input.modes.page.addons.tooltip")));
+            this.host.addWidget(addonsTab);
+        }
     }
 
     public void editCommand(SwitchFunction function) {
@@ -769,6 +841,9 @@ public final class ModesTab extends InputTab {
         if (this.listening != null) {
             TransmitterInput.INSTANCE.requestCapture();
         }
+        if (this.page == Page.ADDONS) {
+            this.addons.tick();
+        }
         super.tick();
     }
 
@@ -780,6 +855,10 @@ public final class ModesTab extends InputTab {
 
     @Override
     public void extract(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        if (this.page == Page.ADDONS) {
+            this.reportBottom(this.addons.extract(g, this.host.font(), mouseX, mouseY));
+            return;
+        }
         int bottom = this.detailTop() + this.detailHeight() + (this.hintsBelow() ? this.hintBlock() : 0);
         this.reportBottom(bottom);
         g.enableScissor(this.x, this.y, this.x + this.width, Math.max(this.y + this.height, bottom));
@@ -845,7 +924,7 @@ public final class ModesTab extends InputTab {
                 g.fill(this.x + 1, rowY, stacked ? this.x + this.width - 1 : areaX0 - 3, rowY + rowHeight - 1, Palette.withAlpha(Palette.SUCCESS, 0x28));
             }
             InputGui.led(g, this.x + 2, nameTy, active);
-            ThemeText.fitted(g, font, entry.title().getString(), this.x + NAME_INSET, nameTy, nameWidth - 4,
+            ThemeText.fitted(g, font, listTitle(font, entry, nameWidth - 4).getString(), this.x + NAME_INSET, nameTy, nameWidth - 4,
                     active || entry == this.selected ? InputGui.TEXT : InputGui.DIM);
             Component key = entry.keyLabel();
             KeyMapping mapping = entry.mapping();
@@ -913,7 +992,7 @@ public final class ModesTab extends InputTab {
                 : session.keyOverridesMode3dSwitch());
         this.liveOverride = override || override3d;
         Component hint = override
-                ? Component.translatable("propwash.input.modes.key_override", PilotSession.modeName(session.flightMode()))
+                ? Component.translatable("propwash.input.modes.key_override", session.flightModeName(session.flightMode()))
                 : override3d ? Component.translatable(session.mode3dSelected() ? "propwash.input.modes.key_override_3d_on"
                 : "propwash.input.modes.key_override_3d_off")
                 : Component.translatable(this.page == Page.COMMANDS ? "propwash.input.modes.commands.hint"
@@ -993,8 +1072,8 @@ public final class ModesTab extends InputTab {
         Row entry = this.selected;
         SwitchFunction function = entry.function;
         if (raw == null || profile == null || function == null) {
-            g.text(font, entry.title(), this.x, top + 1, InputGui.HIGHLIGHT, false);
             Component keyText = Component.translatable("propwash.input.modes.key_short", entry.keyLabel());
+            g.text(font, listTitle(font, entry, this.width - font.width(keyText) - 6), this.x, top + 1, InputGui.HIGHLIGHT, false);
             g.text(font, keyText, this.x + this.width - font.width(keyText), top + 1, InputGui.ACCENT, false);
             boolean keyboard = raw != null || RadioState.INSTANCE.source() == RadioSource.KEYBOARD;
             boolean command = function != null && function.command();
@@ -1015,7 +1094,7 @@ public final class ModesTab extends InputTab {
         Panel panel = this.panel != null ? this.panel : this.panel(font, raw, profile, entry);
         row2 = top + panel.row2();
         row3 = top + panel.row3();
-        g.text(font, Component.translatable(function.translationKey()), this.x, top + 1, InputGui.HIGHLIGHT, false);
+        g.text(font, title(entry), this.x, top + 1, InputGui.HIGHLIGHT, false);
         if (function.command()) {
             SwitchCommand current = profile.command(function);
             int summaryColor = current.empty() ? InputGui.FAINT : InputGui.TEXT;
@@ -1111,7 +1190,7 @@ public final class ModesTab extends InputTab {
         return deviceActive(row, this.liveBits);
     }
 
-    public static boolean modeLit(StabMode mode, boolean device, int bits) {
+    public static boolean modeLit(StabMode mode, boolean device, long bits) {
         for (Row row : FLIGHT_ROWS) {
             if (row.mode() == mode) {
                 return lit(row, device, bits);
@@ -1120,11 +1199,11 @@ public final class ModesTab extends InputTab {
         return false;
     }
 
-    public static boolean mode3dLit(boolean device, int bits) {
+    public static boolean mode3dLit(boolean device, long bits) {
         return lit(Row.MODE_3D, device, bits);
     }
 
-    private static boolean lit(Row row, boolean device, int bits) {
+    private static boolean lit(Row row, boolean device, long bits) {
         StabMode mode = row.mode();
         PilotSession session = PilotSession.INSTANCE;
         if (mode != null && session.isActive()) {
@@ -1153,7 +1232,7 @@ public final class ModesTab extends InputTab {
         };
     }
 
-    private static boolean deviceActive(Row row, int bits) {
+    private static boolean deviceActive(Row row, long bits) {
         if (row.function != null) {
             return SwitchEvaluator.isSet(bits, row.function);
         }
@@ -1182,6 +1261,9 @@ public final class ModesTab extends InputTab {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (this.page == Page.ADDONS) {
+            return this.addons.mouseClicked(event);
+        }
         if (event.button() != 1) {
             return false;
         }
@@ -1258,6 +1340,9 @@ public final class ModesTab extends InputTab {
 
     @Override
     public boolean cancelAction() {
+        if (this.page == Page.ADDONS) {
+            return this.addons.cancelAction();
+        }
         for (MicrosField field : this.rangeFields) {
             if (field.isEditing()) {
                 field.cancelEdit();
@@ -1275,6 +1360,10 @@ public final class ModesTab extends InputTab {
     public void resetDefaults() {
         RawInput raw = this.raw();
         DeviceProfile profile = this.profile(raw);
+        if (this.page == Page.ADDONS) {
+            this.addons.resetDefaults();
+            return;
+        }
         if (this.page == Page.COMMANDS) {
             this.resetCommands(profile);
             return;
@@ -1287,6 +1376,7 @@ public final class ModesTab extends InputTab {
         profile.copySwitchesFrom(defaults);
         profile.moveSwitchesOffSticks(defaults.stickAxes());
         profile.keepCommandsFrom(saved);
+        profile.keepAddonsFrom(saved);
         this.listening = null;
         this.detector = null;
         this.evaluator.reset();
@@ -1312,7 +1402,8 @@ public final class ModesTab extends InputTab {
 
     private enum Page {
         FLIGHT,
-        COMMANDS
+        COMMANDS,
+        ADDONS
     }
 
     private enum Row {

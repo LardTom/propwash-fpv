@@ -3,7 +3,9 @@ package de.lardtom.propwash.race.client;
 import de.lardtom.propwash.race.AssistChecklist;
 import de.lardtom.propwash.race.GateMounting;
 import de.lardtom.propwash.race.GatePlacement;
+import de.lardtom.propwash.race.GhostChoice;
 import de.lardtom.propwash.race.RaceLine;
+import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.config.StepSlider;
 import de.lardtom.propwash.ui.client.theme.Metrics;
@@ -53,6 +55,7 @@ public final class RaceConfigTab extends ConfigTab {
     private AssistPreflight.@Nullable Result check;
     private long checkAt;
     private int checkRows;
+    private @Nullable FlatButton raceLegal;
 
     @Override
     public String id() {
@@ -104,8 +107,15 @@ public final class RaceConfigTab extends ConfigTab {
         display.add(this.toggle(columnWidth, "start_hint", config.startHint, v -> this.working().startHint = v));
         display.add(this.toggle(columnWidth, "messages", config.showMessages, v -> this.working().showMessages = v));
         race.add(this.toggle(columnWidth, "start_lights", config.startLights, v -> this.working().startLights = v));
-        display.add(this.toggle(columnWidth, "ghost", config.ghost, v -> this.working().ghost = v));
-        display.add(this.toggle(columnWidth, "record_ghost", config.recordGhost, v -> this.working().recordGhost = v));
+        CycleButton<GhostChoice.Mode> ghostMode = CycleButton.<GhostChoice.Mode>builder(
+                        v -> Component.translatable("propwash.race.config.ghost_mode." + v.key()), config.ghostMode())
+                .withValues(List.of(GhostChoice.Mode.values()))
+                .create(0, 0, columnWidth, WIDGET_HEIGHT, Component.translatable("propwash.race.config.ghost_mode"), (b, v) -> {
+                    this.working().ghostMode = v;
+                    this.host.changed();
+                });
+        ghostMode.setTooltip(Tooltip.create(Component.translatable("propwash.race.config.ghost_mode.tooltip")));
+        display.add(ghostMode);
         StepSlider lineGates = this.slider(columnWidth, RaceLine.MIN_AHEAD, RaceLine.MAX_AHEAD, config.raceLineGates,
                 v -> Component.translatable(v == 1 ? "propwash.race.config.race_line_gates.one" : "propwash.race.config.race_line_gates", v),
                 v -> this.working().raceLineGates = v);
@@ -117,6 +127,7 @@ public final class RaceConfigTab extends ConfigTab {
         }));
         race.add(lineGates);
         display.add(this.toggle(columnWidth, "report", config.reportResults, v -> this.working().reportResults = v));
+        display.add(this.toggle(columnWidth, "score_areas", config.scoreAreas, v -> this.working().scoreAreas = v));
         List<Float> steps = new ArrayList<>();
         for (float step : GatePlacement.STEPS) {
             steps.add(step);
@@ -142,6 +153,13 @@ public final class RaceConfigTab extends ConfigTab {
         int left = this.x;
         this.checkTop = top + widgetsHeight + 2 * GAP;
         this.reportBottom(this.checkTop + HEADER_HEIGHT + LINE_HEIGHT);
+        Component legal = Component.translatable(AssistPreflight.RACE_LEGAL_KEY);
+        int legalWidth = Math.min(this.innerWidth() / 2, this.host.font().width(legal) + 12);
+        this.raceLegal = new FlatButton(left, this.checkTop + HEADER_HEIGHT, legalWidth, WIDGET_HEIGHT, legal, FlatButton.Style.PRIMARY,
+                this::applyRaceLegal);
+        this.raceLegal.setTooltip(Tooltip.create(Component.translatable(AssistPreflight.RACE_LEGAL_KEY + ".tooltip")));
+        this.raceLegal.visible = AssistPreflight.raceLegalOffered();
+        this.host.addWidget(this.raceLegal);
         if (columns == 2) {
             this.column(race, left, top, row);
             this.column(display, left + columnWidth + GAP, top, row);
@@ -226,6 +244,26 @@ public final class RaceConfigTab extends ConfigTab {
         return this.checkTop;
     }
 
+    public @Nullable FlatButton raceLegalButton() {
+        return this.raceLegal;
+    }
+
+    public void applyRaceLegal() {
+        boolean sent = AssistPreflight.applyRaceLegal();
+        this.check = null;
+        if (this.host instanceof ConfiguratorScreen screen) {
+            screen.flash(Component.translatable(sent ? AssistPreflight.RACE_LEGAL_KEY + ".done" : "propwash.rules.my.not_sent"),
+                    sent ? Palette.SUCCESS : Palette.ERROR);
+        }
+    }
+
+    @Override
+    public void tick() {
+        if (this.raceLegal != null) {
+            this.raceLegal.visible = AssistPreflight.raceLegalOffered();
+        }
+    }
+
     public int checkRowsDrawn() {
         return this.checkRows;
     }
@@ -236,6 +274,10 @@ public final class RaceConfigTab extends ConfigTab {
         int y = this.checkTop;
         ThemeDraw.sectionTitle(graphics, font, Component.translatable("propwash.race.preflight.title"), left, y, width);
         y += HEADER_HEIGHT;
+        FlatButton legal = this.raceLegal;
+        if (legal != null && legal.visible) {
+            y += WIDGET_HEIGHT + GAP / 2;
+        }
         y += ThemeText.wrapped(graphics, font, Component.translatable("propwash.race.preflight.intro"), left, y, width, Palette.TEXT_FAINT) + 2;
         y += ThemeText.wrapped(graphics, font, result.summary(), left, y, width, result.clean() ? Palette.SUCCESS : Palette.WARNING) + GAP / 2;
         int labelWidth = 0;

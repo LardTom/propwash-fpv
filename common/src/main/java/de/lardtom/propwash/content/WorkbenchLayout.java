@@ -36,6 +36,32 @@ public final class WorkbenchLayout {
     public static final int ISSUE_BULLET = 4;
     public static final int ISSUE_BULLET_GAP = 5;
 
+    public static final int TAB_HEIGHT = 13;
+    public static final int TAB_X = 6;
+    public static final int TAB_GAP = 2;
+    public static final int TAB_PADDING = 16;
+
+    public static final int RECYCLE_X0 = BLUEPRINT_X0;
+    public static final int RECYCLE_Y0 = BLUEPRINT_Y0;
+    public static final int RECYCLE_X1 = BLUEPRINT_X1;
+    public static final int RECYCLE_Y1 = BLUEPRINT_Y1;
+    public static final int RECYCLE_LABEL_Y = 28;
+    public static final int RECYCLE_INPUT_X = 30;
+    public static final int RECYCLE_INPUT_Y = 40;
+    public static final int RECYCLE_BUTTON_X0 = 10;
+    public static final int RECYCLE_BUTTON_X1 = 66;
+    public static final int RECYCLE_BUTTON_Y = 62;
+    public static final int RECYCLE_ARROW_X = 72;
+    public static final int RECYCLE_ARROW_Y = 40;
+    public static final int RECYCLE_OUTPUT_X = 100;
+    public static final int RECYCLE_OUTPUT_Y = 40;
+    public static final int RECYCLE_STATUS_Y = 98;
+    public static final int RECYCLE_INFO_X0 = PREVIEW_X0;
+    public static final int RECYCLE_INFO_Y0 = PREVIEW_Y0;
+    public static final int RECYCLE_INFO_X1 = PREVIEW_X1;
+    public static final int RECYCLE_INFO_Y1 = ISSUES_Y1;
+    public static final int RECYCLE_ROW = 17;
+
     private static final int[] PART_X = {80, 80, 34, 126, 34, 126, 10, 150, 10, 150, 80, 80, 52, 108, 30};
     private static final int[] PART_Y = {64, 42, 30, 30, 98, 98, 30, 30, 98, 98, 20, 87, 64, 64, 64};
 
@@ -48,6 +74,19 @@ public final class WorkbenchLayout {
 
     public static int issueTextWidth() {
         return STATS_X1 - STATS_PAD - (STATS_X0 + STATS_PAD + ISSUE_BULLET + ISSUE_BULLET_GAP);
+    }
+
+    public static int panelTop(int screenHeight) {
+        int tabs = TAB_HEIGHT - 1;
+        return Math.max(tabs, (screenHeight - HEIGHT - tabs) / 2 + tabs);
+    }
+
+    public static int recycleOutputX(int index) {
+        return RECYCLE_OUTPUT_X + (index % 3) * 18;
+    }
+
+    public static int recycleOutputY(int index) {
+        return RECYCLE_OUTPUT_Y + (index / 3) * 18;
     }
 
     public static int partX(int slot) {

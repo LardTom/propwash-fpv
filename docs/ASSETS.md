@@ -15,7 +15,8 @@ zwischen den Agenten.
   - Prop: Nabenmitte (Unterseite der Nabe).
   - Stack: Mitte der Unterseite.
   - Akku: Mitte der Unterseite; die hängende Variante `<key>_under` (Akku unter dem Rahmen): Mitte der Oberseite.
-  - Video-Einheit: Mitte der Kamera-Befestigung (Kamera zeigt nach −Z).
+  - Video-Einheit: Mitte der Kamera-Befestigung (Kamera zeigt nach −Z); ohne Antennen, die zeichnet Propwash am
+    Antennenhalter des Rahmens (Abschnitt „VTX-Antennen hinten am Rahmen“).
   - Zubehör oben (Action-Cams) und der Sockel `mount_top`: Drehachse des Kameragelenks (Achse entlang X), siehe „Zubehör“.
   - Zubehör unten (LED-Streifen): Mitte der Oberseite des Streifens.
 - Der Renderer skaliert `8 mm / 62,5 mm = 0,128` pro Einheit (16 Einheiten = 1 Block) und zusätzlich mit
@@ -30,9 +31,9 @@ zwischen den Agenten.
 | Rahmen | `propwash:part/frame/<key>` | `assets/propwash/items/<key>.json` |
 | Stack | `propwash:part/stack/<key>` | dito |
 | Motor | `propwash:part/motor/<key>` | dito |
-| Prop | `propwash:part/prop/<key>` (Drehrichtung cw), `propwash:part/prop/<key>_ccw` (gespiegelte Blattsteigung für ccw-Motoren), `propwash:part/prop/<key>_blur` (Scheibe für hohe Drehzahl: 20–30 % deckend, zur Mitte etwas dichter, Farbe zu 55 % entsättigt, ohne Randring und Linien – `BLUR_ALPHA`, `BLUR_SATURATION`; Rahmen und Motoren bleiben lesbar) sowie die Schadensstufen `<key>_worn`/`<key>_worn_ccw` (angeknackst: Spitzen 4–10 % gekürzt und an der Vorderkante abgesplittert, Kerben in den Blättern), `<key>_damaged`/`<key>_damaged_ccw` (ein Blatt verliert fast die Hälfte, die anderen angeknackst) und `<key>_broken`/`<key>_broken_ccw` (ein Blatt an der Nabe abgebrochen, eines um 32° nach unten verbogen, das dritte stark gekürzt); Bruch- und Knickkanten hell (`prop_break`), Schäden je Blatt in `BLADE_DAMAGE` (`tools/assets/parts/props.py`) | dito; das Item-Symbol wählt die Stufe über `minecraft:range_dispatch` auf `propwash:prop_damage` (0 neu, 1 angeknackst, 2 beschädigt, 3 kaputt, aus `propwash:part_condition`); Schadensstufen zusätzlich als `items/drone_render/prop/<key>_<stufe>[_ccw].json` |
+| Prop | `propwash:part/prop/<key>` (Drehrichtung cw), `propwash:part/prop/<key>_ccw` (gespiegelte Blattsteigung für ccw-Motoren), `propwash:part/prop/<key>_blur` (Scheibe für hohe Drehzahl: 20–30 % deckend, zur Mitte etwas dichter, Farbe zu 55 % entsättigt, ohne Randring und Linien – `BLUR_ALPHA`, `BLUR_SATURATION`; Rahmen und Motoren bleiben lesbar; Nabe, Mutter und Schraube stehen darin unverändert und deckend wie im stehenden Modell, nur die Scheibe ist durchscheinend) sowie die Schadensstufen `<key>_worn`/`<key>_worn_ccw` (angeknackst: Spitzen 4–10 % gekürzt und an der Vorderkante abgesplittert, Kerben in den Blättern), `<key>_damaged`/`<key>_damaged_ccw` (ein Blatt verliert fast die Hälfte, die anderen angeknackst) und `<key>_broken`/`<key>_broken_ccw` (ein Blatt an der Nabe abgebrochen, eines um 32° nach unten verbogen, das dritte stark gekürzt); Bruch- und Knickkanten hell (`prop_break`), Schäden je Blatt in `BLADE_DAMAGE` (`tools/assets/parts/props.py`) | dito; das Item-Symbol wählt die Stufe über `minecraft:range_dispatch` auf `propwash:prop_damage` (0 neu, 1 angeknackst, 2 beschädigt, 3 kaputt, aus `propwash:part_condition`); Schadensstufen zusätzlich als `items/drone_render/prop/<key>_<stufe>[_ccw].json` |
 | Akku | `propwash:part/battery/<key>`; Akkus mit Riemen zusätzlich `propwash:part/battery/<key>_under` (hängend unter dem Rahmen, Abschnitt „Akku unter dem Rahmen“) | dito; `_under` nur als `items/drone_render/battery/<key>_under.json` samt `_under_paint`, kein Inventar-Item |
-| Video | `propwash:part/video/<key>` | dito |
+| Video | `propwash:part/video/<key>` (Kamera und Sender, ohne Antennen; Abschnitt „VTX-Antennen hinten am Rahmen“) | dito |
 | Zubehör | `propwash:part/accessory/<key>` (`led_strip`, `action_cam_light`, `action_cam_heavy`, `action_cam_flashback`) und der Kamera-Sockel `propwash:part/accessory/mount_top` (kein Item) | dito (nicht für `mount_top`) |
 
 `<key>` = der stabile `key()` des eingebauten Bauteils (z. B. `freestyle_5`, `m2207_1750`, `p51_3b`). Item-IDs der Teile sind
@@ -40,7 +41,9 @@ ebenfalls `propwash:<key>`. Das Drohnen-Item `propwash:drone` zeichnet seinen Ba
 `propwash:drone_build` (`items/drone.json`, Typ `minecraft:special`, im Item-Rahmen mit `"wall": true`, Abschnitt
 „Item-Rahmen und Regal“, am Boden mit `"ground": true` und der Basis `propwash:item/drone_ground`, Abschnitt
 „Größenregel der Items“); das Icon-Modell `propwash:item/drone` (Freestyle-Drohne) liefert nur noch die
-Anzeige-Transformationen (GUI, Hand, Rahmen, Regal, Kopf) und das Partikel.
+Anzeige-Transformationen (GUI, Hand, Rahmen, Regal, Kopf) und das Partikel. Steht im `minecraft:custom_model_data` des
+Items der String `blur`, zeichnet der Renderer in jeder Ansicht die `_blur`-Props wie im Flug (je Prop nur mit
+`_blur`-Modell, gebrochene Props statisch; Deko-Drohnen, `docs/accessory-gaps.md` §7).
 
 Die drei X-Rahmen tragen farbige TPU-Armschützer an den Armspitzen (`arm_guard`) und Motorpads mit Schrauben in derselben
 Farbe, damit ihre Item-Icons unterscheidbar sind: `freestyle_5` rot (passend zu den roten Abstandshaltern), `race_5` blau,
@@ -85,7 +88,8 @@ Grundfarbe darüber liegen (`check_references`, sonst bricht `generate.py` ab). 
 (`channel`, `base`) für den Renderer. `propwash:item/drone_paint` (Tint 0–11 = Lack-Platz, weitere Ebenen fest) wird weiter erzeugt,
 das Drohnen-Item benutzt es aber nicht mehr: `items/drone.json` ist ein `minecraft:select` auf `minecraft:display_context`,
 Fall `fixed` → `{"type": "minecraft:special", "base": "propwash:item/drone", "model": {"type": "propwash:drone_build",
-"wall": true}}`, sonst dasselbe ohne `wall` (von `generate.py` geschrieben, `validate.py` prüft Auswahl und Typ), Lackierung,
+"wall": true}}`, Fall `gui` → dasselbe mit `"icon": true` statt `wall` (Symbolform nur im Slot), sonst dasselbe ohne beide
+(von `generate.py` geschrieben, `validate.py` prüft Auswahl, Typ und Schalter), Lackierung,
 Zubehör und Prop-Schäden zeichnet der Renderer aus dem Bauplan.
 
 ## Anbaupunkte je Rahmen: `assets/propwash/drone_layout.json`
@@ -129,6 +133,8 @@ Rahmen-Anbaupunkt; X nach rechts, Y nach oben, Z nach hinten (Nase = −Z).
   (`on_top: false`, Whoop und Race): **Aufhängepunkt** = Mitte der Oberseite des Packs an der Unterseite von Platte und Pad
   (`race_5` (0, −2,8, 4) = Bodenplatte −2 mm + Gummipad 0,8 mm, `whoop_65` (0, −3,7, 1)). Welche Seite gilt, entscheidet
   immer die Teile-Definition wie im Flugmodell, nicht das Vorzeichen in dieser Datei.
+- `antenna` (optional, nur für Ressourcenpakete): verschiebt den Antennenhalter des Rahmens auf diesen Punkt. Die Kern-Rahmen
+  tragen keinen Eintrag; ihr Halter steht als `antenna_anchor` in den Teile-Daten (Abschnitt „VTX-Antennen hinten am Rahmen“).
 - `accessories`: Anbaupunkte der Zubehör-Halterungen, genau die Halterungen aus `FrameType#accessoryMounts` (Whoop nur `bottom`).
   `position` = Anbaupunkt (oben: Drehachse des Kameragelenks, 9–15 mm über dem Kamerakäfig vor dem Akku; unten: Oberseite des Streifens),
   `tilt` = Neigung um X in Grad (−45…90, positiv = Vorderkante hoch; unten 30° = LEDs strahlen schräg nach vorn unten, beim Whoop 90° =
@@ -150,7 +156,7 @@ Eingebaute Teile benutzen weiter genau ihre bisherigen Dateien.
 |---|---|---|
 | `assets/ns/items/drone_render/k/<pfad>.json` | Render-Definition an der Drohne (`{"model": {"type": "minecraft:model", "model": "ns:part/k/<pfad>"}}`) | nein |
 | `assets/ns/models/part/k/<pfad>.json` + Textur `assets/ns/textures/item/part/k/<pfad>.png` | das Modell (Maßstab, Anbaupunkt und Achsen wie oben unter „Maßstab“) | nein |
-| Props zusätzlich `<pfad>_ccw`, `<pfad>_blur`, `<pfad>_worn`, `<pfad>_damaged`, `<pfad>_broken` (Schäden auch `_ccw`) | Drehrichtung, Scheibe, Schadensstufen | nein (fehlt `_ccw` → cw-Modell, fehlt `_blur` → prozedurale Scheibe, fehlt eine Schadensstufe → unbeschädigt) |
+| Props zusätzlich `<pfad>_ccw`, `<pfad>_blur`, `<pfad>_worn`, `<pfad>_damaged`, `<pfad>_broken` (Schäden auch `_ccw`) | Drehrichtung, Scheibe, Schadensstufen | nein (fehlt `_ccw` → cw-Modell, fehlt `_blur` → prozedurale Scheibe mit deckender Nabe und Mutter, fehlt eine Schadensstufe → unbeschädigt) |
 | Akkus mit Riemen zusätzlich `<pfad>_under` (+ `_under_paint`) | hängende Variante für Rahmen mit dem Akku unten (Pack von y = −Höhe bis 0, Riemen um den Boden und bis 3,3 mm über den Anbaupunkt durch die Platte, Schnalle unten) | nein (fehlt sie, hängt Propwash das normale Modell mit seiner Oberkante an den Aufhängepunkt – bei Packs ohne Riemen sieht das gleich aus) |
 | `<modell>_paint` (Render-Definition mit `tints`) + Eintrag in `assets/ns/drone_paint.json` | Lack-Variante | nein (ohne Variante bleibt ein Teil **mit Modell** in Originalfarbe; Teile ohne Modell färbt Propwash selbst, unten) |
 | `assets/ns/items/<pfad>.json` | Inventar-Symbol | ja (entweder eigenes Modell oder Sonder-Renderer `propwash:part`, unten) |
@@ -193,6 +199,7 @@ Gilt für jeden Rahmen ohne Eintrag in einer `drone_layout.json` (eingebaute Rah
 | Stack | Mitte, Höhe der Motorauflage (mit `arms`: mittlere Arm-Höhe, mindestens 0) |
 | Akku | oben: `battery.plate_mm` + 2 mm, 4 % des Radstands nach hinten; unten: hängt mit der Oberseite an der Platte (Packhöhe aus `pack_mm`, Modell oder Dichte) |
 | Video | `camera.pos` + 10 mm nach hinten (Mitte der Kamera hinter der Linse), sonst (0, `electronics_mm`, −0,21 × Radstand) |
+| Antennen | `antenna_anchor`, sonst Rückfall `AntennaRules.fallbackAnchor` (Abschnitt „VTX-Antennen hinten am Rahmen“) |
 | Kamera-Uptilt | `camera.tilt_deg` (eingebaute: 12/10/28/38/20° = Werte der `drone_layout.json`; `drone.CameraMount` liest ihn ebenfalls aus der Definition; der Winkel der Drohne steht im Tuning und ist im Wartungsmenü einstellbar) |
 | Zubehör | `accessory_anchors`, sonst Ersatzformel `AccessoryAnchor.fallback` |
 | Prop-Höhe | eingebaute Rahmen: Glockenhöhe + 3 mm des Vorlagenmotors; fremde: je Motor (siehe oben) |
@@ -265,10 +272,15 @@ Form aus der Definition“ (Stretched-X-Rahmen blau, X-Class des Beispiels mit g
 Alle zeichnen dieselbe Baugruppe (`DroneAssembly`) und funktionieren damit mit jedem Bauplan. Drohnen-Items bleiben
 zwischen 72 und 100 % der Freestyle-Größe; in Flugschul-Szenen werden Drohnen, deren Hülle mehr als 1,6 × so groß ist wie
 die der Freestyle-Drohne, auf diese Größe verkleinert (`DroneVisuals.sceneFit`, X-Class). Werkbank-Vorschau und
-Lackierung passen jede Hülle ein. Wird ein Drohnen-Item im Slot unter die halbe Größe verkleinert (X-Class), zeichnet
-es prozedurale Rahmen und Props in der Symbolform (`frameIcon`, `propWide`: Blätter 30 % breiter), sonst wären Arme und
-Props nur ein Pixel breit. `PropwashClientApi.renderPreview(…, pixelsPerMillimetre)` zeichnet ohne Einpassen im festen
-Maßstab (`DronePreview.renderAtScale`).
+Lackierung passen jede Hülle ein. Wird ein Drohnen-Item im Slot (Anzeige `gui`, `"icon": true`) unter die halbe Größe
+verkleinert (X-Class), zeichnet es Props in der Symbolform (`propWide`: Blätter 30 % breiter) und einen Rahmen ohne Modell
+in der kräftigeren Symbolform (`frameIcon`), sonst wären Arme und Props nur ein Pixel breit. Ein Rahmen mit eigenem Modell
+(etwa die X-Class 13″ und 13″ H von Just More Parts oder ein Kino-Rahmen eines Add-ons) bleibt auch im Slot sein Modell:
+Kamera, Stack, Akku und Zubehör sitzen auf ihm und hingen an der Symbolform in der Luft (Befund OWNP-1). In der Hand
+(erste und dritte Person), auf dem Kopf und im Regal zeichnet das Drohnen-Item immer die Baugruppe wie in der Welt, nur auf
+72–100 % der Freestyle-Größe eingepasst; die Symbolform gehört allein in den Slot.
+`PropwashClientApi.renderPreview(…, pixelsPerMillimetre)` zeichnet ohne Einpassen im festen Maßstab
+(`DronePreview.renderAtScale`).
 
 Große Modelle: Render-Definitionen dürfen die Vanilla-`transformation` benutzen (Propwash wendet sie über
 `ItemModel.update` an); ein verkleinertes X-Class-Modell erscheint so in echter Größe. Die Hülle eines Teils wird erst
@@ -428,11 +440,58 @@ Prop-Kreisen gar nichts. Drehende Props zeichnet das FPV-Bild nicht mit der `_bl
 sondern als eigene weiche Scheibe (`FpvProps.buildBlur`, 64 Segmente) in der Prop-Farbe (Lackierung → Grundfarbe der
 Lack-Ebene aus `drone_paint.json` → `visual.accent`/Material) mit 85 % Helligkeit: Deckkraft 35 % an der Nabe, 25 % bei
 85 % des Radius, am Rand 11 % (knapp über der Alpha-Schwelle 0,1 von `entityTranslucent`), damit die Spitzen weich
-auslaufen und das Bild nicht aufhellen. Schalter „Props im FPV-Bild“ im Tab „Darstellung“ (Standard an); kein Einfluss
-auf das Flugmodell.
+auslaufen und das Bild nicht aufhellen. Die Mitte über der Motorachse bleibt dabei wie beim stehenden Prop (seit 0.6.0,
+Befund OT4-1): über der Scheibe zeichnet das FPV-Bild Nabe, Mutter und Schraube aus den deckenden Flächen des
+`_blur`-Modells (`BlurItemCollector#center` lässt die durchscheinende Scheibe weg, `DroneVisuals#submitCenter`) am Platz,
+im Drehwinkel und mit der Vergrößerung des stehenden Props; ohne `_blur`-Modell die deckende Ersatzform
+(`FallbackShapes#propCenter`, dieselbe Nabe und Mutter wie in `FallbackShapes#buildProp`). Vorher fehlte die Mitte und unter
+der Scheibe stand nur die Motorglocke mit Welle. Ein `_blur`-Modell eines Add-ons muss die Scheibe deshalb durchscheinend
+machen (`force_translucent`) und Nabe und Mutter wie im stehenden Modell enthalten; ein `_blur`-Modell ganz ohne
+durchscheinende Flächen zeigt im FPV-Bild keine Mitte. Genau (Befund G-OT4-1-1): Scheibe = jedes Element, dessen Flächen
+alle eine Textur mit `force_translucent` tragen; Mitte = alle übrigen Elemente, jedes unverändert wie im stehenden Modell
+(`from`/`to`, `rotation`, UV, Sprite). Was zur Mitte gehört, legt allein das stehende Modell fest (Befund G-OT6-1-1): Der
+Radius der Mitte ist der weiteste Abstand von der Motorachse (x 8, z 8), den die nicht angestellten Elemente des stehenden
+Modells erreichen (ohne Drehung um x oder z, also flach oder nur um y gedreht: Nabe, Mutter, Schrauben). Jedes Element
+bis zu diesem Radius gehört zur Mitte und muss im `_blur`-Modell stehen, auch ein angestelltes; Blattteile sind angestellt
+(Drehung um x oder z), reichen weiter hinaus und fehlen im `_blur`-Modell. Ein Blatt ohne Anstellwinkel zählt deshalb als
+Mitte. Fehlt im `_blur`-Modell die ganze Nabe oder fehlen alle Schrauben, meldet der Selbsttest jedes fehlende Element.
+Element-Namen zählen nicht (`blade_tip` eines Klapp-Props ist ebenso Blatt wie `blade`); so prüft es der Selbsttest
+„drehende Props behalten die Mitte“ für Propwash-, Just-More-Parts- und Add-on-Props gleich. Schalter „Props im FPV-Bild“ im Tab „Darstellung“ (Standard an); kein
+Einfluss auf das Flugmodell.
 Hinweis für Addon-Rahmen: Damit ein Deadcat wirklich keine Props zeigt, muss `camera.pos` vor den vorderen Prop-Kreisen
 liegen (z. B. Kamera z −92 mm bei Vordermotoren z −30 mm und 5″-Props); liegt sie auf Höhe der Vordermotoren, sieht man bei
 weitem Sichtfeld die Blattspitzen seitlich.
+
+### Arme und Motoren im FPV-Bild (`FpvArmZone`, `FpvGuards#arms`, `FpvGuards#part`, seit 0.6.0)
+
+Mit den Props zeichnet das FPV-Bild die Arme und Motoren, an denen sie hängen. Bis rc.3 schwebten Props mit sichtbarer Nabe
+frei in der Luft (Befund FB1-1, Rahmen „5-Zoll-Race-Rahmen (Slim)“). Alle Rahmen gehen denselben Weg wie die Ducts:
+
+- `QuadCapture` fängt die Flächen des Rahmen-Items samt Lackierung ab, ohne Modell die Form aus `FallbackShapes`. Die Motoren
+  kommen vollständig dazu (`FpvGuards#part`, je Motor an seinem Platz im Layout).
+- `FpvArmZone` wählt vom Rahmen allein nach der Lage aus, Namen der Modell-Elemente gibt es zur Laufzeit nicht. Eine Fläche
+  zählt zum Arm, wenn sie (1) nicht über die höchste Motorachse plus 0,6 mm ragt, (2) nicht über die Mittelebene reicht
+  (Eckpunkte links und rechts von ±3 mm: Platten, Nase, Akkupolster) und (3) mindestens den halben seitlichen
+  Motorabstand erreicht. Flächen der Ducts bleiben beim Schalter „Ducts im FPV-Bild“ (`FpvGuardZone` geht vor). So bleiben
+  Kamerawangen, Canopy, Standoffs und Platten draußen; die Wangen lägen sonst als Wand mit 25–55 % des Bildes vor der Linse.
+- Gezeichnet wird wie bei den Ducts (`FpvProps.emitGuards`): an der Linse, ohne Bild-Latenz, was vor der Linse liegt, wird
+  abgeschnitten (`CLIP_DEPTH_MM`), der Rest fällt über `FpvPropGeometry.pushScale` nie durch die Near-Plane. Die Arme ändern
+  `nearScale` nicht, Props und Ducts bleiben also auf den Pixel gleich. Sichtprüfung `FpvPropGeometry#armsVisible` je
+  Fläche, weil ein langer Arm das Bild kreuzen kann, ohne dass eine Ecke darin liegt.
+- Es gilt der Schalter „Props im FPV-Bild“, ein eigener Schalter ist nicht nötig. Nicht in den Messungen `FpvProps.maskColor`
+  und `guardMaskColor`, die Warnung „Props im Bild“ zählt weiter nur Prop-Scheiben. Die Selbsttests messen Arme und Motoren
+  allein über `FpvProps.armMaskColor`.
+- Hat ein Motor keinen Arm (keine ausgewählte Fläche im Umkreis von 25 % seines Abstands zur Rahmenmitte,
+  `FpvArmZone#attached`, etwa bei einem Add-on-Rahmen aus Spezialmodell oder mit Armen über den Motoren), zeichnet das
+  FPV-Bild für diesen Platz weder Prop noch Motor (`FpvPropGeometry#attached`). So schwebt nie ein Prop; die Messung der
+  Prop-Abdeckung bleibt davon unberührt.
+- Kreativ-FC: Basis-Rahmen und Arm-Werte des Drohnen-Editors gelten nur fürs Flugmodell (`DroneBuild#flight`). Props, Motoren,
+  Arme und Linse im FPV-Bild kommen wie die Drohne in der Welt vom eingebauten Rahmen (`DroneBuild#frame`), die Props sitzen
+  also auf den sichtbaren Armen.
+- Ohne Kreativ-Änderung liegen die Naben seitlich und längs auf den Motoren der Flugphysik (`AirframeSpec#motorX`, `#motorZ`,
+  bezogen auf die Linse; größte Abweichung siehe Selbsttest, Grenze 0,6 mm).
+- Hinweis für Addon-Rahmenmodelle: Arme und Motorplatten auf Höhe der Motorachse oder darunter erscheinen ohne weiteres im
+  FPV-Bild. Ein Teil, das ein Arm ist und über die Motorachse ragt, fehlt dort; fehlt alles an einem Motor, fehlt auch der Prop.
 
 ### Ducts im FPV-Bild (`FpvGuards`, `FpvGuardZone`, seit 0.5.0)
 
@@ -639,6 +698,118 @@ eingebaut tragen ihn `whoop_65` (Halteschiene, kein Riemen) und `race_5` unten, 
   `race_battery_side.png`, `race_battery_front.png`, `race_battery_closeup.png`, `race_battery_hover_below.png` (im
   Schwebeflug von unten, `race_battery_hover_below_freestyle.png` zum Vergleich), `race_battery_jmp_slim.png` (Race-Rahmen
   5″ Slim aus Just More Parts, nur mit dessen Jar in `fabric/runs/selftest-client/mods`) und `workbench_racer.png`.
+
+## Akku gesteckt: Stecker und Stromkabel ausgeblendet (seit 0.6.0)
+
+Sitzt ein Akku in der Drohne, zeichnet Propwash weder die Buchse des Akkus mit ihrem Kabel noch Stecker und Stromkabel des
+Stacks. Das gilt für alle Rahmen, mit dem Akku oben und unten, in der Welt, im Item, in der Werkbank, bei Ghosts und in
+der Flugschule; der Web-Konfigurator lässt dieselben Elemente weg (Design `docs/design/0.6.0/fixes-polish.md` §3.B). Ein
+gestecktes Paar am Akku-Ende mit Kabel zum Stack wurde mit Befund PLUG-1 verworfen: An 7-Zoll- und X-Class-Rahmen
+stehen GPS-Mast und Puck direkt hinter dem Akku, an Race- und 5-Zoll-Rahmen hätte das Kabel um Platte und Heck-Halter
+herum eine Schleife gebildet, am Whoop über die Duct-Brücke geführt werden müssen.
+
+- **Akku-Modelle bleiben unverändert.** An der Drohne fehlen die Elemente `connector`, `connector_grip`, `bt_connector`
+  und `balance_plug` und jedes Element `wire`, das eines davon berührt – das Kabel vom Pack zur Buchse und das
+  Balancer-Kabel. Pack, Riemen und alles andere bleiben. Ohne `connector` bzw. `bt_connector` fehlt nichts. Gilt auch für
+  `_under`. Das einzelne Akku-Item (Hand, Regal, Boden, Werkbank-Slot) zeigt Kabel und Stecker wie bisher.
+- **Stacks mit Stecker bekommen `<key>_mounted`** (und `<key>_mounted_paint`): das Grundmodell ohne `connector`,
+  `connector_grip`, `bt_connector`; die beiden Stromkabel heißen `pigtail`. Gleiche Textur wie das Grundmodell, nur
+  `items/drone_render/stack/<key>_mounted[_paint].json`, kein Inventar-Item. Erzeugt von `stacks.mounted` in
+  `generate.py`, Lack-Gruppen in `drone_paint.json` wie beim Grundmodell. An der Drohne fehlen zusätzlich die beiden
+  `pigtail`; das Stack-Item in Hand, Regal und am Boden bleibt das Grundmodell mit Stecker.
+- **Weglassen beim Zeichnen** (`PlugMask`, `MaskedItemCollector`): `DroneRenderResources` liest beim Neuladen die Kästen
+  dieser Elemente (gedrehte Ecken, Drohnen-mm um den Modellpunkt (8, 8, 8): (Modellkoordinate − 8) × 8). Beim Zeichnen
+  fällt jede Fläche weg, deren vier Ecken in einem dieser Kästen liegen (Toleranz 0,01 mm). Gemessen wird im Modell,
+  nicht nach der `transformation` des Render-Items, weil Minecraft die Flächen vor der `transformation` übergibt; ein
+  skalierter Rahmen oder Akku braucht deshalb nichts Eigenes. Lack-Varianten (`_paint`) haben dieselben Elemente.
+- **Rückfall auf das bisherige Bild** (Grundmodell des Stacks mit Stecker, Akku mit Buchse und Kabel): `_mounted` fehlt;
+  Render-Item oder Modell von `_mounted` kommen aus einem anderen Ressourcenpaket als die des Grundmodells
+  (`Resource#sourcePackId`, ein Paket, das nur das Grundmodell ersetzt, behält sein Bild); das Akku-Modell hat kein
+  `connector`/`bt_connector` oder `_mounted` nicht genau zwei `pigtail`; die Drohne zeigt keinen Akku; Stack oder Akku
+  werden als Ersatzform gezeichnet.
+- **Renderer**: `DroneRenderResources` liest die Masken (`PlugAnchors#batteryPlug`, `#pigtails`), `DroneAssembly#powerLead`
+  hält je Bauplan den `_mounted`-Stack und beide Masken (`PowerLead`), `DroneRenderState#powerLead` trägt sie,
+  `DroneVisuals` und `SceneDroneVisual` zeichnen Stack und Akku damit, solange ein Akku sitzt (in Flugschul-Szenen nur,
+  wenn Akku und Stack angebaut sind). Das Lackier-Bild wählt den Stack ohne Stecker wie den Stack.
+- **`power_lead.bend_mm`** in `drone_layout.json` gibt es nicht mehr; ein vorhandener Eintrag wird wie jeder unbekannte
+  Schlüssel ignoriert.
+- **Prüfungen**: `validate.py` (`check_stack_mounts`: Variante, Lack, Quelle, kein Inventar-Item, kein Stecker, genau zwei
+  `pigtail`, sonst Element für Element wie das Grundmodell, gleiche Textur), JUnit `PlugAnchorsTest`, Selbsttests
+  „drone-render: Akku gesteckt – Stecker und Kabel an der Drohne ausgeblendet“ (alle gültigen Kombinationen und
+  Voreinstellungen: keine Fläche von Buchse, Akkukabel oder `pigtail` gezeichnet, keine Zusatzform, Rest des Akkus
+  vollständig), „… – Varianten und Masken aller eingebauten Teile auflösbar“ und „… – Rückfall ohne _mounted“.
+  Bildschirmfotos `battery_plugged_<rahmen>.png` (je Rahmen schräg von hinten oben),
+  `battery_plugged_closeup_freestyle_5.png`, `battery_plugged_closeup_race_5.png`, `battery_plugged_item_gui.png` und
+  `battery_plugged_scaled_frame.png`.
+
+## VTX-Antennen hinten am Rahmen (seit 0.6.0)
+
+Echte Drohnen tragen die Antennen des Videosenders gut sichtbar hinten am Rahmen, schräg nach oben und hinten. Propwash
+zeichnet sie deshalb getrennt vom VTX-Gehäuse am **Antennenhalter des Rahmens** und dreht sie nicht mit dem Kamerawinkel:
+Das Video-Modell sitzt an der Kamera und kippt mit dem Uptilt, und der Abstand von der Kamera bis zum Heck reicht je Rahmen
+von etwa 20 bis 280 mm. Kein VTX-Modell trägt Antennen; Art und Maß kommen aus den Daten des VTX (Befund ANTENNA3-1).
+
+- **Antennenhalter** (`antenna_anchor` in der Rahmen-Datei bzw. `FrameDefinition.Builder#antennaAnchor(AnchorSpec)`):
+  `pos` = Fuß der Antennen, mittig, auf Höhe der Oberseite des Top-Plates (Whoop: Oberkante der Canopy), ganz hinten
+  hinter der Rahmenkante und hinter dem Akku, damit Akku und Strap nichts verdecken (Befund ANTENNA4-1); X nach rechts,
+  Y nach oben, Z nach hinten in mm; `tilt_deg` = Neigung der Antennen aus der Senkrechten nach hinten (Standard 45°).
+  Kern-Rahmen, alle 45°: `whoop_65` (0, 23,2, 11,5), `cinewhoop_3` (0, 24, 46), `freestyle_5` (0, 28,5, 64),
+  `race_5` (0, 20, 54), `long_range_7` (0, 32,5, 72) – je 4–8 mm hinter der Unterplatte bzw. dem hinteren TPU-Teil und
+  mindestens 5 mm hinter jedem passenden Kern-Akku.
+- **Rückfall** ohne Angabe (Rahmen aus Add-ons, `AntennaRules.fallbackAnchor`): x = 0; z = 0,22 × Radstand + 12 mm bis
+  300 mm Radstand, darüber 66 mm + 0,065 × (Radstand − 300) + 12 mm (X-Class-Rahmen haben im Verhältnis kurze Platten);
+  Whoop mit Duct und Akku unten 0,18 × Radstand (hinter der Canopy); y = `battery.plate_mm` bei Akku oben, sonst das
+  Größere aus 2,4 × `electronics_mm` und der Linsenhöhe (mit Duct + 6 mm); Neigung 45°. Die 0,22 × Radstand treffen die
+  gemessenen Top-Plates der Rahmen von Just More Parts auf 4 mm in z und 0,5 mm in y (JUnit).
+- **Hinter überstehenden Akkus**: Ragt der Akku eines Baus (Pack ohne Kabel und Stecker, `DroneRenderResources#packRear`)
+  weiter nach hinten als der Fuß, rückt der Fuß 5 mm hinter ihn, der Halter wird entsprechend länger
+  (`DroneAssembly#behindPackMm`). Bei Akku unten bleibt der Fuß, wo er ist.
+- **Antennen aus den VTX-Daten** (`AntennaRules.antenna`, Reihenfolge der Klassen): Reichweite ab 700 Blöcken
+  **Long-Range** (Pagoda, 120 + 0,15 × (Reichweite − 700) mm, höchstens 150, digital zwei); Masse bis 6 g **Whoop**
+  (Peitsche 30–35 mm nach Leistung 25–200 mW); digital mit Bildqualität ab 0,95 **HD** (zwei Lollipops im V, 90–100 mm nach
+  Reichweite 520–650); analog oder Latenz bis 16 ms **Race** (50 + (Reichweite − 380) / 14 mm, 45–60 mm, analog Lollipop,
+  digital Stubby); sonst **Lite** (ein Lollipop, 60 mm). Kern-VTX: `analog_nano` Peitsche 35 mm, `analog_race` Lollipop
+  50 mm, `digital_lite` Lollipop 60 mm, `digital_hd` 2 × 90 mm im V. An der Drohne höchstens 1,2 × Radstand
+  (`AntennaRules.antenna(video, frame)`, `maxLengthMm`): Whoop 65 mm höchstens 78 mm, 2″-Toothpick 108 mm.
+- **Vorgabe eines Add-ons** (optional): `"antenna": {"count": 2, "length_mm": 95, "cap": "pagoda"}` in der VTX-Datei bzw.
+  `VideoDefinition.Builder#antenna(new VideoAntenna(2, 95.0, AntennaCap.PAGODA))`; Kappen `whip`, `stubby`, `lollipop`,
+  `pagoda`, `patch`, Anzahl 1–2, Länge 10–250 mm.
+- **Keine externen Antennen** (optional, Befund RC3P-6): `"antenna": "none"` in der VTX-Datei bzw.
+  `VideoDefinition.Builder#antenna(VideoAntenna.none())` (Anzahl 0). Dann zeichnet Propwash an der Drohne weder Antennen
+  noch Halter (`AntennaGeometry` liefert keine Teile, `DroneAssembly#antenna` bleibt leer), und Werkbank und Share-Vorschau
+  bieten den Lack-Platz „Antennenspitzen“ nicht an. Masse, Reichweite und Videolink des VTX bleiben unverändert; eigene
+  Antennen-Elemente im VTX-Modell lässt der Renderer wie immer aus. Gedacht für Kamera-Drohnen mit eingebauter
+  Funkstrecke. Der Web-Export schreibt dafür `antenna` mit `count` 0 (`length_mm` 0, `cap` ohne Bedeutung, `derived`
+  falsch). Bild: `docs/screenshots/antenna_none_test_drone.png` (Freestyle-5″ mit `digital_hd`, links abgeleitet mit
+  2 × 90 mm, rechts `"antenna": "none"`).
+- **Antennen in Modellen von Add-ons**: Elemente, deren Name mit `antenna` beginnt (`antenna`, `antenna_tip`,
+  `antenna_socket`, `antenna_tee`, `antenna_joint`, `antenna_lead` …), lässt der Renderer im VTX-Modell an der Drohne aus
+  (`AntennaMask`, auch in der Lack-Variante und in Hülle und Vorschau-Rahmen), Flächen anderer Elemente bleiben. So zeigt
+  eine Drohne nie doppelte Antennen, und ein Add-on muss seine Modelle nicht ändern. Das Inventar-Symbol des VTX bleibt
+  unverändert.
+- **Form** (`AntennaGeometry`): TPU-Halter auf Höhe der Platte vom Fuß 12 % des Radstands (höchstens 16 mm) nach vorn
+  bis an die Deckplatte und 3,5 mm nach hinten, je Antenne eine Messing-SMA-Buchse am Fuß, Hülse, Stab und Kappe. Eine
+  Antenne steht mittig gerade nach hinten oben; zwei stehen aus einem Punkt im V mit je 15° nach außen (Spreizung 30°,
+  `AntennaRules.pairLeanDeg`); an offenen Rahmen unter 200 mm Radstand wird das V schmaler (5° bei 100 mm, linear bis
+  15° bei 200 mm), damit die Antennen im Bereich der Blätter aus den hinteren Prop-Kreisen bleiben. Peitschen mit
+  3-mm-Hülse und 2-mm-Stab. Kappen rot (Lollipop, Stubby, Patch) oder hell (Peitschenspitze, Pagoda) nehmen den Lack-Platz
+  „Antennenspitzen“ an, Stab, Halter und Buchse bleiben in Originalfarbe.
+- **Renderer**: `DroneAssembly#antenna` (Form am Halter, `DroneLayout#antenna(frame)` und `#antennaTilt(frame)`),
+  `DroneRenderState#antenna`, gezeichnet von `DroneVisuals` und `SceneDroneVisual`: in der Welt, in Werkbank und
+  Share-Vorschau, im Item, bei Geistern und Replays und in der Flugschule; nie im FPV-Bild der eigenen Drohne. Die Hülle
+  (`VisualHull`) nimmt die Antennen für Größe und Vorschau-Rahmen auf, nicht für den Bodenkontakt. Kollisionsbox und
+  Flugmodell kennen die Antennen nicht.
+- **Web-Export**: Rahmen tragen `antenna_anchor` (`pos`, `tilt_deg`, `explicit`, `max_length_mm` = 1,2 × Radstand,
+  `pair_lean_deg` = Neigung je Antenne im V), VTX tragen `antenna` (`count`, `length_mm`, `cap`, `kind`, `derived`); der
+  Konfigurator setzt die Antennen damit wie Propwash zusammen und kürzt sie auf `max_length_mm`.
+- **Prüfungen**: `validate.py` (`check_antennas`: keine Antennen-Elemente in Kern-VTX-Modellen, keine `_antenna`-Dateien,
+  `antenna_anchor` je Kern-Rahmen), JUnit `build.antenna.AntennaDataTest` (Ableitung, Vorgabe, Rückfall, JSON) und
+  `build.antenna.AntennaNoneTest` und `drone.client.render.AntennaNoneRenderTest` (keine Antennen: JSON hin und zurück,
+  Masse, keine Teile und leere Form an jedem Rahmen),
+  `VtxAntennaAssetsTest` (Kern-Modelle ohne Antennen, Maße, 35–45° nach hinten, V mit etwa 30°, höchstens 1,2 × Radstand,
+  Fuß hinter Rahmenkante und jedem passenden Akku, Halter reicht bis an die Deckplatte, Sichtbarkeit 3/4 von hinten und
+  seitlich vor freiem Grund, Freiraum jeder Kern-Kombination gegen Akkus samt Stecker, Prop-Kreise, Kamera bei 0–80°,
+  Sender, Zubehör und Rahmen, Auslassen gedrehter Elemente), Selbsttests `antenne:` (`docs/testing.md`).
 
 ## Race-Preset: True-X-Rahmen und Race-Prop (seit 0.5.0)
 
@@ -849,7 +1020,7 @@ Achse) und drei Teile aus `generate.py` (`gen_gate_pole`, Textur `item/gate/fram
 |---|---|---|
 | `pole_end` | quadratischer Verbinder 0,625 × 0,5 × 0,625 an jedem freien Ende | Seiten `conn_ew`, Deckflächen neues Feld `conn_cap` (10 × 10) |
 | `pole_tee` | 3-Wege-Verbinder 0,6875 × 0,5625 × 0,6875 unter dem Fußende (umschließt den Verbinder des Trägers) | wie `pole_end` |
-| `pole_foot` | Kreuzfuß aus zwei Platten 1 × 0,375 (quer 3/32 niedriger gegen Z-Fighting), an Wand und Decke als Flansch | `foot_top` (quer um 90° gedreht), `foot_ns`, `foot_ew` |
+| `pole_foot` | Kreuzfuß aus vier gleichen Armen 0,375 × 0,3125 von der Mitte des Verbinders nach außen (keine Überlappung, kein Z-Fighting; bei 0°, 90°, 180° und 270° gleich, JUnit `GatePoleFootTest`), an Wand und Decke als Flansch | `foot_top` (äußeres Stück, je Arm um 0°/90°/180°/270° gedreht), `foot_ns`, `foot_ew` |
 
 Item-Definitionen `items/race/gate_piece_pole_*.json`; die LED-Leisten bekommen die Farbe der Stange über den
 `custom_model_data`-Tint. Inventar-Symbol `item/gate_pole` (16 × 16, `gate_pole_icon`): dunkles Rohr mit grüner
@@ -918,8 +1089,14 @@ dass `remote.json` genau `switch_0..3` hat.
 **Bewegte Teile im Special-Modell** (`RemoteGimbalModel`, seit 0.5.0 für den Empfänger-Assistenten): die Knüppel wie
 bisher, die vier Schalter an derselben Stelle wie im Item-Modell (Drehpunkt am Fuß (x, 10, 9.25), Fuß 0,5 px Metall
 `#5F6770`, Spitze 0,5 px Amber, ±40° gekippt; in Ruhe senkrecht wie im Item-Modell) und drei Tasten über den gemalten
-Tasten unter dem Display ((7, 4.5), (8.5, 4.5), (10, 4.5), 1×1 px, 0,25 px vor der Front, 0,22 px Hub; die rechte Amber).
+Tasten unter dem Display ((6.5, 4.5), (8, 4.5), (9.5, 4.5), 1×1 px, 0,25 px vor der Front, 0,22 px Hub; die rechte Amber).
 In der Hand und in der Flugschule stehen Schalter und Tasten in Ruhe, nur der Assistent bewegt sie.
+Die Tasten stehen mittig unter dem Display mit 0,25 px Abstand zu beiden Gimbal-Tellern (`remote.py` `BUTTON_X`, gemalte
+Tasten und rote LED auf der Gehäusefront folgen daraus). Vor 0.6.0 saßen sie bei x 7, 8.5 und 10: Die Amber-Taste
+ragte 0,25 × 0,25 px in den rechten Teller, beide Vorderflächen lagen bei z 10.25 und flimmerten in der Hand (Z-Fighting,
+Playtest 23.10.). JUnit `drone.client.render.RemoteFacesTest` sucht in `remote.json` und in `remote_body.json` mit dem
+bewegten Modell (Knüppel in Ruhe, auf den Achsen und diagonal am Anschlag, Tasten oben, halb und ganz gedrückt)
+deckungsgleiche Flächen gleicher Richtung.
 Element-Gruppen (`groups`, Blockbench-Format, von Vanilla beim Laden ignoriert): `body` in beiden Modellen,
 `gimbal_left`/`gimbal_right` nur in `remote.json` mit `origin` = Drehpunkt und je Schaft + Kappe als Kinder.
 

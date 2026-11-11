@@ -16,7 +16,7 @@ import java.util.UUID;
 
 public final class ServerModule {
     public static final RegHolder<TicketType> DRONE_TICKET = PropwashRegistries.ticketType("drone",
-            TicketLedger.TIMEOUT_TICKS, TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION);
+            TicketLedger.TIMEOUT_TICKS, TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
     public static final RegHolder<TicketType> DRONE_VIEW_TICKET = PropwashRegistries.ticketType("drone_view",
             TicketLedger.TIMEOUT_TICKS, TicketType.FLAG_LOADING);
     public static final RegHolder<TicketType> DRONE_LOOKAHEAD_TICKET = PropwashRegistries.ticketType("drone_lookahead",
@@ -59,6 +59,7 @@ public final class ServerModule {
         ServerBus.REGISTER_COMMANDS.register(ServerCommands::register);
         RangeManager.init();
         WorldRules.init();
+        PersonalRulesServer.init();
     }
 
     private static void carryOverPartWear(MinecraftServer server) {

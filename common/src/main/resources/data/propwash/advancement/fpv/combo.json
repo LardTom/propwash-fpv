@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/power_loop",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:trick",
+      "conditions": {
+        "combo": {
+          "min": 5
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:blaze_powder"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.combo.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.combo.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

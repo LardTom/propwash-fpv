@@ -1,0 +1,8 @@
+{
+  "propwash.content.mount.prop.universal": "Universell (passt auf jede Welle)",
+  "propwash.webexport.command.crash": "Web-Export abgebrochen: %s",
+  "propwash.webexport.command.fail": "Web-Export mit %s Fehlern beendet – Einzelheiten in problems.json in %s",
+  "propwash.webexport.command.pass": "Web-Export fertig: %s Teile (%s), %s Warnungen – %s",
+  "propwash.webexport.command.start": "Web-Export (%s) läuft – der Server hält dafür einige Sekunden an …",
+  "propwash.webexport.command.unknown": "Unbekannter Namensraum %s – vorhanden: all, %s"
+}

@@ -72,6 +72,8 @@ final class RenderExampleParts {
             .basics(PartBasics.of(128.0).withVisual(PartVisual.accent(0xC83A5C))).build());
     static final PropType P13 = (PropType) PartIndex.detached(PropDefinition.builder(id("p13_2b_carbon")).mass(22.0).size(330, 7.0, 2)
             .coefficients(0.09, 0.04).material(PropMaterial.CARBON).build());
+    static final PropType P13_STILL = (PropType) PartIndex.detached(PropDefinition.builder(id("p13_still")).mass(22.0).size(330, 7.0, 2)
+            .coefficients(0.09, 0.04).material(PropMaterial.CARBON).build());
     static final BatteryType B8S = (BatteryType) PartIndex.detached(BatteryDefinition.builder(id("b8s_4500_lion")).cells(8).capacity(4500)
             .cellResistance(0.014).cRating(12).chemistry(BatteryDefinition.LION).packSize(new PackSize(140.0, 45.0, 70.0)).connector("XT60")
             .basics(PartBasics.of(560.0).withVisual(PartVisual.accent(0x1A8F8B))).build());
@@ -83,6 +85,7 @@ final class RenderExampleParts {
     static final DroneBuild DEADCAT_BUILD = new DroneBuild(DEADCAT, STACK_8S, MotorType.M2207_1750, PropType.P51_3B, HD_PRO,
             BatteryType.B6S_1300);
     static final DroneBuild X_CLASS_BUILD = new DroneBuild(X_CLASS, STACK_8S, M4214, P13, HD_PRO, B8S);
+    static final DroneBuild STILL_PROP_BUILD = new DroneBuild(X_CLASS, STACK_8S, M4214, P13_STILL, HD_PRO, B8S);
     static final DroneBuild X_CLASS_SCALED_BUILD = new DroneBuild(X_CLASS_SCALED, STACK_8S, M4214, P13, HD_PRO, B8S);
     static final DroneBuild STRETCHED_BUILD = new DroneBuild(STRETCHED, StackType.STACK_30, M2806, PropType.P51_3B, VideoType.ANALOG_RACE,
             BatteryType.B6S_1100);

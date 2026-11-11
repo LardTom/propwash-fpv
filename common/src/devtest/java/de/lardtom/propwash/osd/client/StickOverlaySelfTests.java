@@ -18,6 +18,9 @@ import de.lardtom.propwash.sim.SimEnvironment;
 import de.lardtom.propwash.sim.SimTuning;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -29,6 +32,8 @@ public final class StickOverlaySelfTests {
     private static final float YAW = 1.0F;
     private static final float PITCH = -0.5F;
     private static final float ROLL = -0.5F;
+    private static final float SKY_YAW = 180.0F;
+    private static final float SKY_PITCH = -25.0F;
     private static final Map<StickMode, int[]> EXPECTED = new EnumMap<>(StickMode.class);
 
     static {
@@ -125,6 +130,8 @@ public final class StickOverlaySelfTests {
         return new Screenshots.Scene() {
             private StickMode saved = StickMode.DEFAULT;
             private int frames = -1;
+            private int since;
+            private float @Nullable [] view;
 
             @Override
             public StepResult prepare(SelfTest.StepContext ctx) {
@@ -138,16 +145,26 @@ public final class StickOverlaySelfTests {
                         minecraft.gui.setScreen(null);
                     }
                     this.saved = InputConfig.get().stickMode;
+                    this.view = new float[]{player.getYRot(), player.getXRot()};
+                    aim(player, SKY_YAW, SKY_PITCH);
                     begin(player, mode);
                     this.frames = OsdHud.renderedFrames();
+                    this.since = ctx.tick();
                     return StepResult.pending();
                 }
-                if (OsdHud.renderedFrames() - this.frames < 3) {
+                aim(player, SKY_YAW, SKY_PITCH);
+                if (OsdHud.renderedFrames() - this.frames < 3 || ctx.tick() - this.since < 2) {
                     return StepResult.pending();
                 }
                 int[] shown = OsdHud.renderer().shownSticks();
                 if (!Arrays.equals(shown, EXPECTED.get(mode))) {
                     return StepResult.fail("Stick-Overlay in Mode " + mode.number() + " zeigt " + Arrays.toString(shown));
+                }
+                if (player.getXRot() > SKY_PITCH / 2.0F) {
+                    return StepResult.fail("Blick nicht in den Himmel: Neigung " + player.getXRot() + "°");
+                }
+                if (minecraft.hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK) {
+                    return StepResult.fail("Blockrahmen im OSD: Fadenkreuz auf " + hit.getBlockPos().toShortString());
                 }
                 float[] bounds = OsdHud.renderer().bounds(OsdElement.STICK_OVERLAY);
                 if (bounds != null) {
@@ -157,11 +174,34 @@ public final class StickOverlaySelfTests {
             }
 
             @Override
+            public void hold(SelfTest.StepContext ctx) {
+                Player player = Minecraft.getInstance().player;
+                if (player != null) {
+                    aim(player, SKY_YAW, SKY_PITCH);
+                }
+            }
+
+            @Override
             public void finish(SelfTest.StepContext ctx) {
                 end(this.saved);
+                Player player = Minecraft.getInstance().player;
+                float[] old = this.view;
+                if (player != null && old != null) {
+                    aim(player, old[0], old[1]);
+                }
+                this.view = null;
                 this.frames = -1;
             }
         };
+    }
+
+    private static void aim(Player player, float yaw, float pitch) {
+        player.setYRot(yaw);
+        player.setXRot(pitch);
+        player.yRotO = yaw;
+        player.xRotO = pitch;
+        player.setYHeadRot(yaw);
+        player.yHeadRotO = yaw;
     }
 
     private static final class StickSource implements OsdSampler.Source {

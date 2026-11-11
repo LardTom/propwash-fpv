@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/drone_built",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "drone_painted"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:magenta_dye"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.painted.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.painted.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

@@ -22,12 +22,14 @@ import de.lardtom.propwash.compat.iris.client.IrisCompat;
 import de.lardtom.propwash.video.EffectParams;
 import de.lardtom.propwash.video.FisheyeLens;
 import de.lardtom.propwash.video.ImageArea;
+import de.lardtom.propwash.video.VideoCheck;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MappableRingBuffer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import org.joml.Vector4f;
+import org.joml.Vector4fc;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
@@ -49,6 +51,17 @@ public final class VideoPass {
             .withColorTargetState(ColorTargetState.DEFAULT)
             .build();
 
+    public static final BindGroupLayout SIMPLE_LAYOUT = BindGroupLayout.builder()
+            .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
+            .build();
+    public static final RenderPipeline SIMPLE_PIPELINE = RenderPipeline.builder(RenderPipelines.POST_PROCESSING_SNIPPET)
+            .withLocation(Constants.id("pipeline/video_feed_simple"))
+            .withVertexShader(Identifier.withDefaultNamespace("core/screenquad"))
+            .withFragmentShader(Constants.id("post/video_feed_simple"))
+            .withBindGroupLayout(SIMPLE_LAYOUT)
+            .withColorTargetState(ColorTargetState.DEFAULT)
+            .build();
+
     public static final String LENS_BLOCK = "PropwashLens";
     public static final BindGroupLayout LENS_LAYOUT = BindGroupLayout.builder()
             .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
@@ -62,10 +75,11 @@ public final class VideoPass {
             .withColorTargetState(ColorTargetState.DEFAULT)
             .build();
 
-    private static final int LENS_UBO_SIZE = new Std140SizeCalculator().putVec4().putVec4().putVec4().putVec4().get();
-    private static final int UBO_SIZE = new Std140SizeCalculator()
+    static final int LENS_UBO_SIZE = new Std140SizeCalculator().putVec4().putVec4().putVec4().putVec4().get();
+    static final int UBO_SIZE = new Std140SizeCalculator()
             .putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().putVec4().get();
     private static final long HOOK_TIMEOUT_NANOS = 1_000_000_000L;
+    private static final Vector4fc BLACK = new Vector4f(0.0F, 0.0F, 0.0F, 1.0F);
 
     private @Nullable MappableRingBuffer ubo;
     private @Nullable MappableRingBuffer lensUbo;
@@ -82,6 +96,11 @@ public final class VideoPass {
     private boolean hookWarningLogged;
     private @Nullable Failure lensFailure;
     private @Nullable String lensFailureDetail;
+    private final VideoSelfCheck check = new VideoSelfCheck();
+    private Fault fault = Fault.NONE;
+    private long copies;
+    private long simpleFramesDrawn;
+    private VideoCheck.Level shownLevel = VideoCheck.Level.FULL;
 
     private VideoPass() {
     }
@@ -92,12 +111,28 @@ public final class VideoPass {
         this.lastHookNanos = now;
         VideoState state = VideoState.INSTANCE;
         EffectParams params = state.params();
-        FisheyeLens lens = this.lensFailure == null ? FpvLens.INSTANCE.rendered() : null;
-        boolean effects = state.active() && this.failure == null && this.overlayReason(now) == null;
-        if (!effects && lens == null) {
+        boolean shaderPack = IrisCompat.shaderPackActive(now);
+        if (state.active() && !shaderPack) {
+            this.check.maybeRun(this, now);
+        }
+        VideoCheck.Level level = this.level();
+        if (level != this.shownLevel) {
+            this.shownLevel = level;
+            this.release();
+        }
+        FisheyeLens lens = this.lensFailure == null && level == VideoCheck.Level.FULL ? FpvLens.INSTANCE.rendered() : null;
+        Failure reason = this.overlayReason(now);
+        boolean effects = state.active() && this.failure == null && reason == null;
+        boolean hold = !effects && !shaderPack && state.active() && this.failure == null && level == VideoCheck.Level.SIMPLE && !params.continuous
+                && (reason == Failure.CONFIG || reason == Failure.CHECK);
+        if (!effects && lens == null && !hold) {
             if (this.holdsResources()) {
                 this.release();
             }
+            return;
+        }
+        if (hold) {
+            this.hold(main, params);
             return;
         }
         boolean pass = effects && params.needsPass();
@@ -123,7 +158,39 @@ public final class VideoPass {
     }
 
     public boolean lensReady(long now) {
-        return this.lensFailure == null && this.hookSeen && now - this.lastHookNanos <= HOOK_TIMEOUT_NANOS;
+        return this.lensFailure == null && this.hookSeen && now - this.lastHookNanos <= HOOK_TIMEOUT_NANOS && this.level() == VideoCheck.Level.FULL;
+    }
+
+    public VideoCheck.Level level() {
+        return VideoSettings.get().renderer.level(this.check.outcome());
+    }
+
+    public VideoCheck.Outcome checkOutcome() {
+        return this.check.outcome();
+    }
+
+    public @Nullable String checkDetail() {
+        return this.check.detail();
+    }
+
+    public int checkRuns() {
+        return this.check.runs();
+    }
+
+    public boolean checkRunning() {
+        return this.check.running();
+    }
+
+    public boolean checkSimplified() {
+        return this.check.outcome().simplifies() && this.level() != VideoCheck.Level.FULL;
+    }
+
+    public long copies() {
+        return this.copies;
+    }
+
+    public long simpleFramesDrawn() {
+        return this.simpleFramesDrawn;
     }
 
     public @Nullable Failure lensFailure() {
@@ -182,6 +249,19 @@ public final class VideoPass {
         this.hookWarningLogged = false;
     }
 
+    public void retryAll() {
+        this.retry();
+        this.check.restart();
+    }
+
+    void recheck() {
+        this.check.restart();
+    }
+
+    void simulateFault(Fault value) {
+        this.fault = value;
+    }
+
     void retryAfterCompileFailure() {
         if (this.failure == Failure.COMPILE || this.lensFailure == Failure.COMPILE) {
             this.retry();
@@ -214,11 +294,15 @@ public final class VideoPass {
     }
 
     @Nullable Failure overlayReason(long now) {
-        if (VideoSettings.get().renderer == VideoConfig.EffectRenderer.OVERLAY) {
+        VideoConfig.EffectRenderer renderer = VideoSettings.get().renderer;
+        if (renderer == VideoConfig.EffectRenderer.OVERLAY) {
             return Failure.CONFIG;
         }
         if (IrisCompat.shaderPackActive(now)) {
             return Failure.SHADER_PACK;
+        }
+        if (renderer.level(this.check.outcome()) != VideoCheck.Level.FULL) {
+            return Failure.CHECK;
         }
         VideoState state = VideoState.INSTANCE;
         if (state.active() && now - state.activeSinceNanos() > HOOK_TIMEOUT_NANOS
@@ -246,6 +330,7 @@ public final class VideoPass {
                 pass = false;
             }
         }
+        CompiledRenderPipeline simple = RenderSystem.getCompiledPipelineNullable(SIMPLE_PIPELINE);
         FisheyeLens lens = wanted;
         CompiledRenderPipeline dewarp = null;
         if (lens != null) {
@@ -263,7 +348,7 @@ public final class VideoPass {
             return;
         }
         if (!pass) {
-            this.frame.copyColorFrom(main);
+            this.copy(simple, main, this.frame);
             this.frameStale = true;
             this.historyValid = false;
             GpuTextureView raw = this.frame.getColorTextureView();
@@ -274,14 +359,14 @@ public final class VideoPass {
         }
         try {
             if (fresh || this.frameStale) {
-                this.capture(main, this.frame, dewarp, lens);
+                this.capture(main, this.frame, simple, dewarp, lens);
                 this.historyValid = false;
                 this.frameStale = false;
             } else if (params.frameAdvanced) {
                 TextureTarget shown = this.frame;
                 this.frame = this.history;
                 this.history = shown;
-                this.capture(main, this.frame, dewarp, lens);
+                this.capture(main, this.frame, simple, dewarp, lens);
                 this.historyValid = true;
             }
             this.feed(main, output, feed, params);
@@ -291,14 +376,77 @@ public final class VideoPass {
         }
     }
 
-    private void capture(RenderTarget main, TextureTarget into, @Nullable CompiledRenderPipeline dewarp, @Nullable FisheyeLens lens) {
+    private void capture(RenderTarget main, TextureTarget into, @Nullable CompiledRenderPipeline simple, @Nullable CompiledRenderPipeline dewarp,
+                         @Nullable FisheyeLens lens) {
         GpuTextureView source = main.getColorTextureView();
         GpuTextureView target = into.getColorTextureView();
         if (lens == null || dewarp == null || source == null || target == null) {
-            into.copyColorFrom(main);
+            this.copy(simple, main, into);
             return;
         }
         this.dewarp(dewarp, source, target, lens, main.width, main.height);
+    }
+
+    private void hold(RenderTarget main, EffectParams params) {
+        if (params.frameAdvanced) {
+            this.frameStale = true;
+            return;
+        }
+        GpuTextureView output = main.getColorTextureView();
+        CompiledRenderPipeline simple = RenderSystem.getCompiledPipelineNullable(SIMPLE_PIPELINE);
+        if (output == null || simple == null || main.width <= 0 || main.height <= 0) {
+            return;
+        }
+        boolean fresh = this.ensureTargets(main.width, main.height);
+        TextureTarget held = this.frame;
+        if (held == null) {
+            return;
+        }
+        try {
+            if (fresh || this.frameStale) {
+                this.copy(simple, main, held);
+                this.frameStale = false;
+                this.historyValid = false;
+            }
+            GpuTextureView view = held.getColorTextureView();
+            if (view != null) {
+                simple(simple, view, output, "propwash video feed simple");
+                this.simpleFramesDrawn++;
+            }
+        } catch (RuntimeException exception) {
+            this.fail(Failure.ERROR, exception);
+            this.release();
+        }
+    }
+
+    private void copy(@Nullable CompiledRenderPipeline simple, RenderTarget source, TextureTarget into) {
+        GpuTextureView from = source.getColorTextureView();
+        GpuTextureView to = into.getColorTextureView();
+        if (simple == null || from == null || to == null) {
+            if (this.fault != Fault.COPY_NOOP) {
+                into.copyColorFrom(source);
+            }
+            return;
+        }
+        this.copy(simple, from, to);
+    }
+
+    void copy(CompiledRenderPipeline simple, GpuTextureView from, GpuTextureView to) {
+        if (this.fault == Fault.COPY_NOOP) {
+            return;
+        }
+        simple(simple, from, to, "propwash video copy");
+        this.copies++;
+    }
+
+    public static void simple(CompiledRenderPipeline pipeline, GpuTextureView source, GpuTextureView target, String label) {
+        GpuSampler sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+        try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> label, target, Optional.empty())) {
+            pass.setPipeline(pipeline);
+            RenderSystem.bindDefaultUniforms(pass);
+            pass.setUniform("InSampler", source, sampler);
+            pass.draw(3, 1, 0, 0);
+        }
     }
 
     private void dewarp(@Nullable CompiledRenderPipeline pipeline, GpuTextureView source, GpuTextureView target, @Nullable FisheyeLens lens,
@@ -318,26 +466,33 @@ public final class VideoPass {
             ImageArea area = FpvImage.area(width, height);
             GpuBuffer uniforms = buffer.currentBuffer();
             try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
-                Std140Builder.intoBuffer(view.data())
-                        .putVec4(width, height, 1.0F / width, 1.0F / height)
-                        .putVec4((float) area.x() / area.screenWidth(), (float) area.y() / area.screenHeight(), (float) area.widthShare(),
-                                (float) area.heightShare())
-                        .putVec4((float) lens.focal(), (float) lens.circleRadius(), (float) tanX, (float) tanY)
-                        .putVec4((float) FisheyeLens.EDGE_PX, (float) lens.bend(), 0.0F, 0.0F);
+                lensUniforms(Std140Builder.intoBuffer(view.data()), lens, width, height, area, tanX, tanY);
             }
-            GpuSampler sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
-            try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
-                    .createRenderPass(() -> "propwash fpv lens", target, Optional.empty())) {
-                pass.setPipeline(pipeline);
-                RenderSystem.bindDefaultUniforms(pass);
-                pass.setUniform("InSampler", source, sampler);
-                pass.setUniform(LENS_BLOCK, uniforms);
-                pass.draw(3, 1, 0, 0);
-            }
+            drawLens(pipeline, source, target, uniforms);
             buffer.rotate();
             this.lensFramesDrawn++;
         } catch (RuntimeException exception) {
             this.failLens(Failure.ERROR, exception);
+        }
+    }
+
+    static Std140Builder lensUniforms(Std140Builder builder, FisheyeLens lens, int width, int height, ImageArea area, double tanX, double tanY) {
+        return builder.putVec4(width, height, 1.0F / width, 1.0F / height)
+                .putVec4((float) area.x() / area.screenWidth(), (float) area.y() / area.screenHeight(), (float) area.widthShare(),
+                        (float) area.heightShare())
+                .putVec4((float) lens.focal(), (float) lens.circleRadius(), (float) tanX, (float) tanY)
+                .putVec4((float) FisheyeLens.EDGE_PX, (float) lens.bend(), 0.0F, 0.0F);
+    }
+
+    static void drawLens(CompiledRenderPipeline pipeline, GpuTextureView source, GpuTextureView target, GpuBuffer uniforms) {
+        GpuSampler sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+        try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
+                .createRenderPass(() -> "propwash fpv lens", target, Optional.empty())) {
+            pass.setPipeline(pipeline);
+            RenderSystem.bindDefaultUniforms(pass);
+            pass.setUniform("InSampler", source, sampler);
+            pass.setUniform(LENS_BLOCK, uniforms);
+            pass.draw(3, 1, 0, 0);
         }
     }
 
@@ -362,30 +517,44 @@ public final class VideoPass {
         ImageArea area = FpvImage.area(main.width, main.height);
         GpuBuffer uniforms = buffer.currentBuffer();
         try (GpuBufferSlice.MappedView view = uniforms.map(false, true)) {
-            Std140Builder.intoBuffer(view.data())
-                    .putVec4(params.timeSeconds, params.seed, main.width, main.height)
-                    .putVec4(params.mode, params.brightness, params.noSignal, params.noSignalBlack)
-                    .putVec4(params.bleedPx, params.scanlines, params.vignette, params.noiseContrast)
-                    .putVec4(params.glitch, params.glitchSeed, params.sparkle, params.lineJitter)
-                    .putVec4(params.desaturation, params.chromaBands, params.bandPhase, params.chromaNoise)
-                    .putVec4(params.noise, params.syncShift, params.shiftTop, params.shiftBottom)
-                    .putVec4(params.roll, params.blockSeed, params.resolution, 0.0F)
-                    .putVec4(params.blockiness, params.blockPx, params.blurPx, params.posterize)
-                    .putVec4((float) area.x() / area.screenWidth(), (float) area.y() / area.screenHeight(), (float) area.widthShare(),
-                            (float) area.heightShare());
+            feedUniforms(Std140Builder.intoBuffer(view.data()), params, main.width, main.height, area);
+        }
+        this.drawFeed(compiled, currentView, previousView, uniforms, output, this.fault != Fault.UNBOUND_HISTORY);
+        buffer.rotate();
+        this.framesDrawn++;
+    }
+
+    static Std140Builder feedUniforms(Std140Builder builder, EffectParams params, int width, int height, ImageArea area) {
+        return builder.putVec4(params.timeSeconds, params.seed, width, height)
+                .putVec4(params.mode, params.brightness, params.noSignal, params.noSignalBlack)
+                .putVec4(params.bleedPx, params.scanlines, params.vignette, params.noiseContrast)
+                .putVec4(params.glitch, params.glitchSeed, params.sparkle, params.lineJitter)
+                .putVec4(params.desaturation, params.chromaBands, params.bandPhase, params.chromaNoise)
+                .putVec4(params.noise, params.syncShift, params.shiftTop, params.shiftBottom)
+                .putVec4(params.roll, params.blockSeed, params.resolution, 0.0F)
+                .putVec4(params.blockiness, params.blockPx, params.blurPx, params.posterize)
+                .putVec4((float) area.x() / area.screenWidth(), (float) area.y() / area.screenHeight(), (float) area.widthShare(),
+                        (float) area.heightShare());
+    }
+
+    void drawFeed(CompiledRenderPipeline compiled, GpuTextureView current, GpuTextureView previous, GpuBuffer uniforms, GpuTextureView output,
+                  boolean bindHistory) {
+        if (this.fault == Fault.FEED_BLACK) {
+            RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "propwash video feed black", output, Optional.of(BLACK)).close();
+            return;
         }
         GpuSampler sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
         try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder()
                 .createRenderPass(() -> "propwash video feed", output, Optional.empty())) {
             pass.setPipeline(compiled);
             RenderSystem.bindDefaultUniforms(pass);
-            pass.setUniform("InSampler", currentView, sampler);
-            pass.setUniform("HistorySampler", previousView, sampler);
+            pass.setUniform("InSampler", current, sampler);
+            if (bindHistory) {
+                pass.setUniform("HistorySampler", previous, sampler);
+            }
             pass.setUniform(UNIFORM_BLOCK, uniforms);
             pass.draw(3, 1, 0, 0);
         }
-        buffer.rotate();
-        this.framesDrawn++;
     }
 
     private boolean ensureTargets(int width, int height) {
@@ -414,7 +583,7 @@ public final class VideoPass {
 
     private void clear(TextureTarget target) {
         if (target.getColorTexture() != null) {
-            RenderSystem.getDevice().createCommandEncoder().clearColorTexture(target.getColorTexture(), new Vector4f(0.0F, 0.0F, 0.0F, 1.0F));
+            RenderSystem.getDevice().createCommandEncoder().clearColorTexture(target.getColorTexture(), BLACK);
         }
     }
 
@@ -436,6 +605,13 @@ public final class VideoPass {
         } else {
             Constants.LOG.error("Fisheye-Objektiv: Fehler im Render-Pass, zeichne das FPV-Bild flach", cause);
         }
+    }
+
+    enum Fault {
+        NONE,
+        COPY_NOOP,
+        FEED_BLACK,
+        UNBOUND_HISTORY
     }
 
     public enum Status {

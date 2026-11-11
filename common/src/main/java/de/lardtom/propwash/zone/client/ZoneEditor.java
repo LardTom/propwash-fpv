@@ -5,10 +5,13 @@ import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.race.client.GateEditor;
 import de.lardtom.propwash.server.client.ClientWorldRules;
+import de.lardtom.propwash.server.rules.PhysicsRules;
 import de.lardtom.propwash.zone.Zone;
+import de.lardtom.propwash.zone.ZoneBox;
 import de.lardtom.propwash.zone.ZoneCheck;
 import de.lardtom.propwash.zone.ZoneDraft;
 import de.lardtom.propwash.zone.ZoneEditC2S;
+import de.lardtom.propwash.zone.ZoneResolver;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
@@ -35,7 +38,7 @@ public final class ZoneEditor {
     private long deleteArmedUntil;
 
     private ZoneEditor(Zone zone, String dimension) {
-        this.draft = new ZoneDraft(zone);
+        this.draft = new ZoneDraft(zone, ClientZones.INSTANCE.release());
         this.dimension = dimension;
     }
 
@@ -49,7 +52,7 @@ public final class ZoneEditor {
 
     public static boolean start(Zone zone) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null || !ClientZones.INSTANCE.editable()) {
+        if (minecraft.player == null || minecraft.level == null || !ClientZones.INSTANCE.mayChange(zone)) {
             return false;
         }
         GateEditor.stop();
@@ -110,12 +113,24 @@ public final class ZoneEditor {
         return ZoneCheck.problem(this.draft.zone(), ClientZones.INSTANCE.zones());
     }
 
+    public boolean mayDelete() {
+        return ClientZones.INSTANCE.mayDelete(this.draft.original());
+    }
+
     public boolean deleteArmed() {
         return this.deleteArmedUntil > Util.getNanos();
     }
 
     public void change(ZoneDraft.Row row, int notches) {
-        this.draft.change(row, notches, Minecraft.getInstance().hasControlDown(), ClientWorldRules.INSTANCE.physics());
+        PhysicsRules world = ClientWorldRules.INSTANCE.physics();
+        this.draft.change(row, notches, Minecraft.getInstance().hasControlDown(), world, this.below());
+    }
+
+    public PhysicsRules below() {
+        Zone zone = this.draft.zone();
+        ZoneBox box = zone.box();
+        return ZoneResolver.below(ClientZones.INSTANCE.zones(), zone, ClientWorldRules.INSTANCE.physics(), box.centerX(), box.minY() + box.sizeY() / 2.0,
+                box.centerZ()).rules();
     }
 
     public void scroll(int notches) {
@@ -197,10 +212,11 @@ public final class ZoneEditor {
             editor.end(null);
             return;
         }
-        if (!ClientZones.INSTANCE.editable()) {
+        if (!ClientZones.INSTANCE.mayChange(editor.draft.original())) {
             editor.end(Component.translatable("propwash.zone.edit.closed.rights").withStyle(ChatFormatting.GRAY));
             return;
         }
+        editor.draft.release(ClientZones.INSTANCE.release());
         if (!editor.draft.isNew() && ClientZones.INSTANCE.get(editor.draft.original().id()) == null) {
             editor.end(Component.translatable("propwash.zone.edit.closed.removed").withStyle(ChatFormatting.GRAY));
             return;

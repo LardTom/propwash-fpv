@@ -32,14 +32,20 @@ public final class DronePhysique {
     static DronePhysique derive(DroneBuild build) {
         try {
             AirframeSpec params = AirframeSpec.of(build);
-            int count = params.hullCount();
+            int hull = params.hullCount();
+            int count = hull + params.standPointCount();
             float[] x = new float[count];
             float[] y = new float[count];
             float[] z = new float[count];
-            for (int k = 0; k < count; k++) {
+            for (int k = 0; k < hull; k++) {
                 x[k] = (float) -params.hullX(k);
                 y[k] = (float) params.hullY(k);
                 z[k] = (float) -params.hullZ(k);
+            }
+            for (int k = hull; k < count; k++) {
+                x[k] = (float) -params.accessoryX(k - hull);
+                y[k] = (float) params.accessoryY(k - hull);
+                z[k] = (float) -params.accessoryZ(k - hull);
             }
             float com = (float) (params.comHeight * 1000.0);
             float foot = (float) -params.hitboxFootOffset;

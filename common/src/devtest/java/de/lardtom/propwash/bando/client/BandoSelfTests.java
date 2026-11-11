@@ -34,6 +34,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.RandomizableContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -48,6 +49,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -71,6 +73,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -84,6 +87,8 @@ public final class BandoSelfTests {
     static final double MAX_DISTANCE = 2200.0;
     private static final int LOOT_ROLLS = 600;
     private static final int FLAT_OFFSET = 400;
+    private static final int AWAY = 640;
+    private static final int UNLOAD_TICKS = 400;
     private static final String FUTURE = "future";
     private static final String OK = "ok";
     static final AtomicReference<Map<BandoFamily, List<ChunkPos>>> FOUND = new AtomicReference<>(Map.of());
@@ -342,30 +347,87 @@ public final class BandoSelfTests {
         return found.size() == BandoFamily.values().length;
     }
 
+    private record Spot(ServerLevel level, Vec3 pos, float yaw, float pitch) {
+    }
+
+    @SuppressWarnings("unchecked")
     private static StepResult placeStep(SelfTest.StepContext ctx) {
+        Map<String, Object> state = ctx.state();
         if (ctx.tick() == 0) {
-            AtomicReference<String> result = new AtomicReference<>();
-            ctx.state().put("result", result);
-            ctx.state().put(FUTURE, ctx.onServer(server -> result.set(placeAll(server))));
+            AtomicReference<Spot> spot = new AtomicReference<>();
+            state.put("spot", spot);
+            state.put(FUTURE, ctx.onServer(server -> spot.set(leaveSpawn(server))));
             return StepResult.pending();
         }
         StepResult waiting = waitFor(ctx);
         if (waiting != null) {
             return waiting;
         }
-        @SuppressWarnings("unchecked")
-        String result = ((AtomicReference<String>) ctx.state().get("result")).get();
-        if (!result.startsWith(OK)) {
-            return StepResult.fail(result);
+        Spot spot = ((AtomicReference<Spot>) state.get("spot")).get();
+        AtomicReference<String> result = (AtomicReference<String>) state.get("result");
+        if (result == null) {
+            AtomicReference<Boolean> loaded = (AtomicReference<Boolean>) state.get("loaded");
+            if (loaded == null || loaded.get() && ctx.tick() < UNLOAD_TICKS) {
+                AtomicReference<Boolean> probe = new AtomicReference<>(true);
+                state.put("loaded", probe);
+                state.put(FUTURE, ctx.onServer(server -> probe.set(spawnLoaded(server.overworld()))));
+                return StepResult.pending();
+            }
+            AtomicReference<String> placed = new AtomicReference<>();
+            state.put("result", placed);
+            state.put("unloaded", !loaded.get());
+            state.put(FUTURE, ctx.onServer(server -> {
+                try {
+                    placed.set(placeAll(server));
+                } finally {
+                    returnTo(server, spot);
+                }
+            }));
+            return StepResult.pending();
         }
-        ctx.log(result.substring(OK.length()).trim());
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null || !mc.level.hasChunkAt(mc.player.blockPosition())
+                || Math.abs(mc.player.getX() - spot.pos().x) > 2.0 || Math.abs(mc.player.getZ() - spot.pos().z) > 2.0) {
+            return StepResult.pending();
+        }
+        String message = result.get();
+        if (!message.startsWith(OK)) {
+            return StepResult.fail(message);
+        }
+        ctx.log(message.substring(OK.length()).trim()
+                + ((boolean) state.get("unloaded") ? ", Spawn-Spalte beim Setzen nicht geladen" : ", Spawn-Spalte blieb geladen"));
         return StepResult.pass();
+    }
+
+    private static Spot leaveSpawn(MinecraftServer server) {
+        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+        Spot spot = new Spot(player.level(), player.position(), player.getYRot(), player.getXRot());
+        ServerLevel level = server.overworld();
+        BlockPos spawn = level.getRespawnData().pos();
+        int x = spawn.getX() - AWAY;
+        int z = spawn.getZ() - AWAY;
+        int y = level.getChunk(x >> 4, z >> 4).getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15) + 1;
+        player.teleportTo(level, x + 0.5, y, z + 0.5, Set.of(), spot.yaw(), spot.pitch(), true);
+        return spot;
+    }
+
+    private static boolean spawnLoaded(ServerLevel level) {
+        BlockPos spawn = level.getRespawnData().pos();
+        return level.hasChunk(spawn.getX() >> 4, spawn.getZ() >> 4);
+    }
+
+    private static void returnTo(MinecraftServer server, @Nullable Spot spot) {
+        if (spot == null) {
+            return;
+        }
+        server.getPlayerList().getPlayers().getFirst()
+                .teleportTo(spot.level(), spot.pos().x, spot.pos().y, spot.pos().z, Set.of(), spot.yaw(), spot.pitch(), true);
     }
 
     private static String placeAll(MinecraftServer server) {
         ServerLevel level = server.overworld();
         BlockPos spawn = level.getRespawnData().pos();
-        int ground = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, spawn.getX(), spawn.getZ()) - 1;
+        int ground = level.getChunk(spawn.getX() >> 4, spawn.getZ() >> 4).getHeight(Heightmap.Types.WORLD_SURFACE, spawn.getX() & 15, spawn.getZ() & 15);
         List<String> problems = new ArrayList<>();
         int x = spawn.getX() + FLAT_OFFSET;
         int z = spawn.getZ() + FLAT_OFFSET;

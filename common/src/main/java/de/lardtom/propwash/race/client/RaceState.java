@@ -48,6 +48,10 @@ public final class RaceState {
         return tracker().lapTarget();
     }
 
+    public boolean pointToPoint() {
+        return tracker().pointToPoint();
+    }
+
     public int courseId() {
         return tracker().courseId();
     }

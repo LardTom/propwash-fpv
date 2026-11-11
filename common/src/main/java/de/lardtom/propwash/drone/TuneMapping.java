@@ -9,6 +9,7 @@ import de.lardtom.propwash.sim.FlightControllerConfig;
 import de.lardtom.propwash.sim.ItermRelaxMode;
 import de.lardtom.propwash.sim.PidAutoTune;
 import de.lardtom.propwash.sim.PidLoopRate;
+import de.lardtom.propwash.sim.PidProfile;
 import de.lardtom.propwash.sim.PidSource;
 import de.lardtom.propwash.sim.RatesType;
 import de.lardtom.propwash.sim.ThrottleLimitType;
@@ -28,6 +29,7 @@ public final class TuneMapping {
     public static final String PID_SOURCE = "pid.source";
     public static final String CAMERA_UPTILT = "camera.uptiltDeg";
     public static final String ARM_MAX_ANGLE = "pid.armMaxAngleDeg";
+    public static final String ANGLE_LIMIT = "pid.angleLimitDeg";
     public static final float CAMERA_UPTILT_MIN = 0.0F;
     public static final float CAMERA_UPTILT_MAX = 80.0F;
 
@@ -80,6 +82,16 @@ public final class TuneMapping {
         config.pid.derivedForBuild = params.buildKey;
         config.sanitize();
         return config;
+    }
+
+    public static double angleLimitDeg(Map<String, Float> tune) {
+        PidProfile pid = new PidProfile();
+        Float value = tune.get(ANGLE_LIMIT);
+        if (value != null && Float.isFinite(value)) {
+            pid.angleLimitDeg = value;
+        }
+        pid.sanitize();
+        return pid.angleLimitDeg;
     }
 
     public static Map<String, Float> fromConfig(FlightControllerConfig config) {
@@ -261,7 +273,7 @@ public final class TuneMapping {
             number(m, p + "ff", c -> pid.apply(c).ff, (c, v) -> pid.apply(c).ff = v);
         }
         number(m, "pid.angleStrength", c -> c.pid.angleStrength, (c, v) -> c.pid.angleStrength = v);
-        number(m, "pid.angleLimitDeg", c -> c.pid.angleLimitDeg, (c, v) -> c.pid.angleLimitDeg = v);
+        number(m, ANGLE_LIMIT, c -> c.pid.angleLimitDeg, (c, v) -> c.pid.angleLimitDeg = v);
         number(m, "pid.horizonStrength", c -> c.pid.horizonStrength, (c, v) -> c.pid.horizonStrength = v);
         enumEntry(m, "pid.itermRelax", ItermRelaxMode.values(), c -> c.pid.itermRelax, (c, v) -> c.pid.itermRelax = v);
         number(m, "pid.antiGravityGain", c -> c.pid.antiGravityGain, (c, v) -> c.pid.antiGravityGain = v);

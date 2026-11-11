@@ -10,6 +10,8 @@ import de.lardtom.propwash.network.PropwashNet;
 import de.lardtom.propwash.network.ServerPayloadContext;
 import de.lardtom.propwash.server.ServerRules;
 import de.lardtom.propwash.server.SpectatorLinks;
+import de.lardtom.propwash.stats.advancement.FpvAdvancements;
+import de.lardtom.propwash.stats.advancement.Milestone;
 import de.lardtom.propwash.video.net.ChannelListS2C;
 import de.lardtom.propwash.video.net.SpectateC2S;
 import de.lardtom.propwash.video.net.SpectateS2C;
@@ -55,6 +57,7 @@ public final class SpectateServer {
         ServerBus.PLAYER_LEAVE.register(SpectateServer::onLeave);
         ServerBus.STARTED.register(server -> reset());
         ServerBus.STOPPED.register(server -> reset());
+        PilotFeedServer.init();
     }
 
     public static boolean transmitting(QuadcopterEntity drone) {
@@ -88,6 +91,16 @@ public final class SpectateServer {
 
     public static int watcherCount() {
         return WATCHERS.size();
+    }
+
+    public static List<UUID> watchersOf(QuadcopterEntity drone) {
+        List<UUID> out = new ArrayList<>();
+        for (Map.Entry<UUID, QuadcopterEntity> entry : WATCHERS.entrySet()) {
+            if (entry.getValue() == drone) {
+                out.add(entry.getKey());
+            }
+        }
+        return out;
     }
 
     public static void simulateTransmitter(QuadcopterEntity drone, @Nullable String pilotName) {
@@ -179,6 +192,10 @@ public final class SpectateServer {
         WATCHERS.put(player.getUUID(), target);
         SpectatorLinks.watch(player, target);
         PropwashNet.sendToPlayer(player, new SpectateS2C(SpectateS2C.Result.STARTED, target.getUUID(), target.getId()));
+        PilotFeedServer.onWatchStarted(player, target);
+        if (target.pilot().filter(pilot -> !pilot.equals(player.getUUID())).isPresent()) {
+            FpvAdvancements.milestone(player, Milestone.SPECTATED);
+        }
         Constants.LOG.debug("{} schaut Kanal {} von Drohne {}", player.getName().getString(), channelOf(target), target.getId());
     }
 

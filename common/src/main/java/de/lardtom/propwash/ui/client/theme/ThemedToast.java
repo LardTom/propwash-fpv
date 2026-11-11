@@ -9,8 +9,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.jspecify.annotations.Nullable;
 
-import java.util.List;
-
 public final class ThemedToast implements Toast {
     private static final int MIN_WIDTH = 160;
     private static final int MAX_TEXT_WIDTH = 200;
@@ -22,12 +20,8 @@ public final class ThemedToast implements Toast {
 
     private final Object token;
     private final long displayMillis;
-    private Component title;
-    private @Nullable Component message;
+    private final ToastText text;
     private int accent;
-    private List<FormattedCharSequence> titleLines = List.of();
-    private List<FormattedCharSequence> messageLines = List.of();
-    private int width = MIN_WIDTH;
     private long lastChanged;
     private boolean changed;
     private boolean forceHide;
@@ -36,9 +30,8 @@ public final class ThemedToast implements Toast {
     private ThemedToast(Object token, Component title, @Nullable Component message, int accent, long displayMillis) {
         this.token = token;
         this.displayMillis = displayMillis;
-        this.title = title;
+        this.text = new ToastText(title, message);
         this.accent = accent;
-        this.layout(title, message);
     }
 
     public static ThemedToast show(ToastManager manager, Object token, Component title, @Nullable Component message, int accent, long displayMillis) {
@@ -57,11 +50,11 @@ public final class ThemedToast implements Toast {
     }
 
     public Component title() {
-        return this.title;
+        return this.text.title();
     }
 
     public @Nullable Component message() {
-        return this.message;
+        return this.text.message();
     }
 
     public int accent() {
@@ -73,27 +66,16 @@ public final class ThemedToast implements Toast {
     }
 
     private void reset(Component title, @Nullable Component message, int accent) {
-        this.title = title;
+        this.text.set(title, message);
         this.accent = accent;
         this.forceHide = false;
-        this.layout(title, message);
         this.changed = true;
     }
 
-    private void layout(Component title, @Nullable Component message) {
-        this.message = message;
-        Font font = Minecraft.getInstance().font;
-        int room = textWidth(Minecraft.getInstance().getWindow().getGuiScaledWidth());
-        this.titleLines = font.split(title, room);
-        this.messageLines = message == null ? List.of() : ThemeText.balanced(font, message, room);
-        int text = 0;
-        for (FormattedCharSequence line : this.titleLines) {
-            text = Math.max(text, font.width(line));
-        }
-        for (FormattedCharSequence line : this.messageLines) {
-            text = Math.max(text, font.width(line));
-        }
-        this.width = Math.max(MIN_WIDTH, TEXT_X + text + PAD_RIGHT);
+    private ToastText.Layout layout(Font font) {
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean settled = minecraft.gui == null || minecraft.gui.overlay() == null;
+        return this.text.layout(font, textWidth(minecraft.getWindow().getGuiScaledWidth()), settled);
     }
 
     public static int textWidth(int screenWidth) {
@@ -107,12 +89,12 @@ public final class ThemedToast implements Toast {
 
     @Override
     public int width() {
-        return this.width + MARGIN;
+        return boxWidth(this.layout(Minecraft.getInstance().font)) + MARGIN;
     }
 
     @Override
     public int height() {
-        return Math.max(Toast.SLOT_HEIGHT, this.boxHeight() + MARGIN);
+        return Math.max(Toast.SLOT_HEIGHT, boxHeight(this.layout(Minecraft.getInstance().font)) + MARGIN);
     }
 
     @Override
@@ -120,12 +102,12 @@ public final class ThemedToast implements Toast {
         return firstSlotIndex * Toast.SLOT_HEIGHT;
     }
 
-    private int boxHeight() {
-        return Math.max(Toast.SLOT_HEIGHT - MARGIN, PAD_Y * 2 + this.lines() * LINE - (LINE - Metrics.TEXT_HEIGHT));
+    static int boxWidth(ToastText.Layout layout) {
+        return Math.max(MIN_WIDTH, TEXT_X + layout.widest() + PAD_RIGHT);
     }
 
-    private int lines() {
-        return Math.max(1, this.titleLines.size() + this.messageLines.size());
+    private static int boxHeight(ToastText.Layout layout) {
+        return Math.max(Toast.SLOT_HEIGHT - MARGIN, PAD_Y * 2 + layout.lines() * LINE - (LINE - Metrics.TEXT_HEIGHT));
     }
 
     @Override
@@ -145,16 +127,17 @@ public final class ThemedToast implements Toast {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, Font font, long fullyVisibleForMs) {
-        int w = this.width;
-        int h = this.boxHeight();
+        ToastText.Layout layout = this.layout(font);
+        int w = boxWidth(layout);
+        int h = boxHeight(layout);
         int top = MARGIN;
         ThemeDraw.notice(graphics, 0, top, w, top + h, this.accent, 1.0F);
-        int y = top + (h - this.lines() * LINE + (LINE - Metrics.TEXT_HEIGHT)) / 2;
-        for (FormattedCharSequence line : this.titleLines) {
+        int y = top + (h - layout.lines() * LINE + (LINE - Metrics.TEXT_HEIGHT)) / 2;
+        for (FormattedCharSequence line : layout.titleLines()) {
             ThemeText.text(graphics, font, line, TEXT_X, y, Palette.TEXT);
             y += LINE;
         }
-        for (FormattedCharSequence line : this.messageLines) {
+        for (FormattedCharSequence line : layout.messageLines()) {
             ThemeText.text(graphics, font, line, TEXT_X, y, Palette.TEXT_MUTED);
             y += LINE;
         }

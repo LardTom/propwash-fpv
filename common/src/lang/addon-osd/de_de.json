@@ -1,0 +1,7 @@
+{
+  "propwash.osd.group.addon": "Add-ons",
+  "propwash.osd.editor.addon_source": "Add-on: %s",
+  "propwash.osd.editor.addon_failed": "Nach einem Fehler für diese Sitzung abgeschaltet – siehe Log.",
+  "propwash.osd.element.spectators": "Zuschauer",
+  "propwash.osd.element.spectators.description": "Wie viele Spieler außer dem Piloten gerade das Videobild dieser Drohne sehen: beim Zuschauen mit F7 oder mit einer Brille auf ihrem Kanal. Ein Gimbal-Operator zählt nicht. Nur zu sehen, solange jemand zuschaut."
+}

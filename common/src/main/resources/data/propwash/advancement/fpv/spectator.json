@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/root",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "spectated"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:goggles_digital"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.spectator.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.spectator.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

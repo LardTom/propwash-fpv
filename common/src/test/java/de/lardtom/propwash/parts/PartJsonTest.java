@@ -30,6 +30,7 @@ import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.BuiltinParts;
 import de.lardtom.propwash.build.PartIndex;
 import de.lardtom.propwash.build.PartInfo;
+import de.lardtom.propwash.testutil.TestPaths;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -47,26 +48,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class PartJsonTest {
     private static final String SNAPSHOT = "de/lardtom/propwash/build/builtin_definitions.txt";
     private static final Set<String> ADDED_AFTER_032 = Set.of("gripper", "action_cam_flashback", "creative_fc", "p51_29_3b");
-    private static final List<String> NEUTRAL_ADDITIONS = List.of(", rarity=Optional.empty]", ", reverseThrust=OptionalDouble.empty]", ", FRONT]");
+    private static final List<String> NEUTRAL_ADDITIONS = List.of(", rarity=Optional.empty]", ", reverseThrust=OptionalDouble.empty]", ", FRONT]",
+            ", dropMm=0.0]", ", recessMm=0.0]", ", frames=[]]", ", muzzleMm=Optional.empty]", ", hangsStraight=false]", ", ledPathMm=[]]", ", antenna=Optional.empty]",
+            ", antennaAnchor=Optional.empty]");
     private static final Pattern FRONT_ANCHOR = Pattern.compile(", FRONT=AnchorSpec\\[[^\\]]*\\]");
+    private static final Pattern ANTENNA_ANCHOR = Pattern.compile(", antennaAnchor=Optional\\[AnchorSpec\\[[^\\]]*\\]\\]");
 
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath("justmoreparts", path);
-    }
-
-    private static Path common() {
-        for (Path candidate : List.of(Path.of("common"), Path.of("."))) {
-            if (Files.isDirectory(candidate.resolve("src/main/resources/data/propwash"))) {
-                return candidate;
-            }
-        }
-        fail("common-Modul nicht gefunden (Arbeitsverzeichnis " + Path.of("").toAbsolutePath() + ")");
-        return Path.of(".");
     }
 
     private static PartDefinition roundTrip(PartDefinition definition) {
@@ -99,7 +92,7 @@ class PartJsonTest {
 
     @Test
     void builtinDefinitionsAreIdenticalTo032() throws IOException {
-        List<String> expected = Files.readAllLines(common().resolve("src/test/resources").resolve(SNAPSHOT));
+        List<String> expected = TestPaths.requireLines(SNAPSHOT);
         List<String> actual = new ArrayList<>();
         for (BatteryType.Chemistry chemistry : BatteryType.Chemistry.values()) {
             actual.add(chemistry.name() + " " + chemistry.definition());
@@ -117,7 +110,7 @@ class PartJsonTest {
         for (String addition : NEUTRAL_ADDITIONS) {
             out = out.replace(addition, "]");
         }
-        return FRONT_ANCHOR.matcher(out).replaceAll("");
+        return FRONT_ANCHOR.matcher(ANTENNA_ANCHOR.matcher(out).replaceAll("")).replaceAll("");
     }
 
     @Test
@@ -134,7 +127,7 @@ class PartJsonTest {
 
     @Test
     void everyBuiltinHasItsJsonFileAndNoOtherFileLiesThere() throws IOException {
-        Path root = common().resolve("src/main/resources").resolve(BuiltinParts.ROOT);
+        Path root = TestPaths.mainResources().resolve(BuiltinParts.ROOT);
         List<String> files = new ArrayList<>();
         try (Stream<Path> walk = Files.walk(root)) {
             walk.filter(Files::isRegularFile).forEach(file -> files.add(root.relativize(file).toString().replace('\\', '/')));

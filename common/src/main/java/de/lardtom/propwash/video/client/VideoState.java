@@ -7,6 +7,9 @@ import de.lardtom.propwash.content.ContentIds;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.drone.operator.client.GimbalFov;
+import de.lardtom.propwash.freecam.client.FreecamConfig;
+import de.lardtom.propwash.freecam.client.FreecamSession;
 import de.lardtom.propwash.video.EffectParams;
 import de.lardtom.propwash.video.DigitalProfile;
 import de.lardtom.propwash.video.FeedInput;
@@ -22,6 +25,7 @@ import de.lardtom.propwash.video.LinkBudget;
 import de.lardtom.propwash.video.VtxTables;
 import de.lardtom.propwash.video.Multipath;
 import de.lardtom.propwash.video.link.ObstructionScan;
+import de.lardtom.propwash.relay.RelayLinks;
 import de.lardtom.propwash.relay.client.RelayClient;
 import de.lardtom.propwash.relay.client.RelayVideo;
 import de.lardtom.propwash.server.client.ClientWorldRules;
@@ -145,6 +149,13 @@ public final class VideoState {
         }
         this.sampleNanos = frameNanos - applied;
         return this.poses.sample(this.sampleNanos, outPos, outOrientation);
+    }
+
+    public boolean sampleDisplayedAt(long offsetNanos, Vector3d outPos, Quaternionf outOrientation) {
+        if (this.sampleNanos == 0L || offsetNanos < 0L) {
+            return false;
+        }
+        return this.poses.sample(this.sampleNanos - offsetNanos, outPos, outOrientation);
     }
 
     public long lastSampleNanos() {
@@ -295,7 +306,8 @@ public final class VideoState {
     }
 
     private float fov(boolean latch) {
-        if (!PilotSession.INSTANCE.isFpv() && !FpvView.spectating()) {
+        boolean freecam = FreecamSession.active();
+        if (!freecam && !PilotSession.INSTANCE.isFpv() && !FpvView.spectating()) {
             if (latch) {
                 FpvLens.INSTANCE.latch(null);
             }
@@ -304,7 +316,7 @@ public final class VideoState {
         Minecraft minecraft = Minecraft.getInstance();
         int width = minecraft.getWindow().getWidth();
         int height = minecraft.getWindow().getHeight();
-        double horizontal = this.horizontalFov();
+        double horizontal = freecam ? FreecamConfig.get().fov() : this.horizontalFov();
         if (width <= 0 || height <= 0) {
             if (latch) {
                 FpvLens.INSTANCE.latch(null);
@@ -326,7 +338,7 @@ public final class VideoState {
             profile = ContentIds.wornGogglesSystem(minecraft.player).orElse(null);
         }
         QuadcopterEntity drone = this.resolveSource();
-        return VideoSettings.get().horizontalFov(profile, drone != null ? drone.build().flight().video() : this.videoType());
+        return GimbalFov.horizontal(drone, VideoSettings.get().horizontalFov(profile, drone != null ? drone.build().flight().video() : this.videoType()));
     }
 
     public @Nullable VideoType camera() {
@@ -499,6 +511,7 @@ public final class VideoState {
         in.reduceFlicker = config.reduceFlicker;
         in.extraNoise = config.extraNoise(goggles);
         in.cameraCondition = drone.wear().video();
+        in.darkness = BossDarkness.INSTANCE.blend();
         in.multipath = forced || !this.obstructs(config) ? 0.0F : this.multipath;
         this.feed.update(now, in);
     }
@@ -515,6 +528,7 @@ public final class VideoState {
     void onTick(Minecraft minecraft) {
         QuadcopterEntity drone = this.source;
         LocalPlayer player = minecraft.player;
+        BossDarkness.INSTANCE.tick(this.status == LinkStatus.INACTIVE ? null : drone, minecraft.level);
         if (this.status == LinkStatus.INACTIVE || drone == null || player == null || minecraft.level == null) {
             return;
         }
@@ -527,7 +541,7 @@ public final class VideoState {
             this.publishScan();
         }
         if (this.status == LinkStatus.CONNECTED && !Double.isInfinite(this.range(VideoSettings.get(), drone.build().video()))) {
-            this.relay.tick(minecraft.level, player.getEyePosition(), antenna(drone), this.blockLoss, RelayClient.relayLimit());
+            this.relay.tick(minecraft.level, player.getEyePosition(), antenna(drone), this.blockLoss, RelayClient.relayLimit(), this.relayReach(drone));
         } else {
             this.relay.clear();
         }
@@ -661,6 +675,18 @@ public final class VideoState {
             return Double.POSITIVE_INFINITY;
         }
         return type.rangeBlocks;
+    }
+
+    private double relayReach(QuadcopterEntity drone) {
+        VideoType type = drone.build().video();
+        VideoSystem transmitter = this.testTransmitter != null ? this.testTransmitter : type.system;
+        double range = this.range(VideoSettings.get(), type);
+        double gain = this.creative ? 0.0 : VtxRuntime.INSTANCE.gainDb(drone);
+        return RelayLinks.videoHopReach(transmitter, gain == 0.0 ? range : range * Math.pow(10.0, gain / 20.0));
+    }
+
+    public @Nullable RelayVideo relayFor(@Nullable QuadcopterEntity drone) {
+        return drone != null && drone == this.source && this.status == LinkStatus.CONNECTED ? this.relay : null;
     }
 
     private boolean obstructs(VideoConfig config) {

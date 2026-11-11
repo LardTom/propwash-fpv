@@ -52,6 +52,7 @@ public final class ExtensionTabs {
         if (namespace.isEmpty() || !Identifier.isValidNamespace(namespace)) {
             throw new IllegalArgumentException("Kreativ-Tab: ungültiger Namensraum '" + namespace + "' (nur [a-z0-9_.-])");
         }
+        NamespaceRules.requireForeign(namespace + ":creative_tab", "creative tab");
         if (RESERVED.contains(namespace)) {
             throw new IllegalArgumentException("Kreativ-Tab: der Namensraum " + namespace + " hat schon seinen Tab");
         }

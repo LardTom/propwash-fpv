@@ -81,9 +81,9 @@ public final class SnagEffects {
                     if (state == null) {
                         continue;
                     }
-                    for (AABB part : state.getShape(level, cursor).toAabbs()) {
+                    for (AABB part : SnagBlocks.shape(level, cursor, state).toAabbs()) {
                         if (part.move(cursor).intersects(box)) {
-                            return new Contact(cursor.immutable(), state);
+                            return new Contact(cursor.immutable(), SnagBlocks.look(state));
                         }
                     }
                 }

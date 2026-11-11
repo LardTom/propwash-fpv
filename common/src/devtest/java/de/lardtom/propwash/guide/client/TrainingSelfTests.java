@@ -1,5 +1,8 @@
 package de.lardtom.propwash.guide.client;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.InputConstants;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.content.ContentIds;
@@ -56,6 +59,9 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.jspecify.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +89,7 @@ public final class TrainingSelfTests {
     public static void register() {
         SelfTest.clientStep("guide: Flugtraining – Lehrplan, Texte und Freischaltung", 1, TrainingSelfTests::textsStep);
         SelfTest.clientStep("guide: Flugtraining – Fenster mit Kapiteln und Lektionen", 300, TrainingSelfTests::screenStep);
+        SelfTest.clientStep("guide: Flugtraining – alle Lektionen freischalten mit Rückfrage", 400, TrainingSelfTests::unlockAllStep);
         SelfTest.clientStep("guide: Flugtraining – Drohne an einem freien Ort starten", 600, TrainingSelfTests::startStep);
         SelfTest.clientStep("guide: Flugtraining – Kurs erscheint an der Drohne", 800, ctx -> placeStep(ctx, "hover"));
         SelfTest.clientStep("guide: Flugtraining – Schweben im Kasten mit echter Drohne", 900, TrainingSelfTests::hoverStep);
@@ -260,6 +267,155 @@ public final class TrainingSelfTests {
                 }
                 mc.gui.setScreen(null);
                 return StepResult.pass();
+            }
+        }
+    }
+
+    private static boolean allOpen(TrainingProgress progress) {
+        for (Chapter chapter : Curriculum.chapters()) {
+            if (!Curriculum.chapterUnlocked(chapter, progress)) {
+                return false;
+            }
+            for (Lesson lesson : chapter.lessons()) {
+                if (!Curriculum.unlocked(lesson, progress)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static String savedMark() {
+        try {
+            JsonObject players = JsonParser.parseString(Files.readString(TrainingStore.CONFIG.path(), StandardCharsets.UTF_8))
+                    .getAsJsonObject().getAsJsonObject("players");
+            JsonObject own = players == null ? null : players.getAsJsonObject(TrainingStore.playerKey());
+            JsonElement mark = own == null ? null : own.get("unlockAll");
+            return mark == null ? "fehlt" : mark.getAsBoolean() ? "an" : "aus";
+        } catch (IOException | RuntimeException e) {
+            return "nicht lesbar: " + e.getMessage();
+        }
+    }
+
+    private static StepResult unlockAllStep(SelfTest.StepContext ctx) {
+        Minecraft mc = Minecraft.getInstance();
+        Chapter advanced = Curriculum.chapter(Curriculum.ADVANCED);
+        Lesson dive = Curriculum.lesson("dive_gate");
+        switch (phase(ctx)) {
+            case 0 -> {
+                for (String key : List.of("propwash.guide.training.unlock_all", "propwash.guide.training.unlock_all.tooltip",
+                        "propwash.guide.training.unlock_all.confirm", "propwash.guide.training.unlock_all.confirm.tooltip",
+                        "propwash.guide.training.keep_order", "propwash.guide.training.keep_order.tooltip")) {
+                    if (!Language.getInstance().has(key)) {
+                        return StepResult.fail("Text fehlt: " + key);
+                    }
+                }
+                TrainingStore.forget();
+                TrainingProgress fresh = TrainingStore.progress();
+                if (advanced == null || dive == null || Curriculum.chapterUnlocked(advanced, fresh) || Curriculum.unlocked(dive, fresh)) {
+                    return StepResult.fail("neue Spielerdatei: Kapitel „Fortgeschritten“ schon offen");
+                }
+                mc.gui.setScreen(new TrainingScreen(null));
+                phase(ctx, 1);
+                return StepResult.pending();
+            }
+            case 1 -> {
+                if (!(mc.gui.screen() instanceof TrainingScreen screen) || screen.frames() < 2) {
+                    return since(ctx) > 100 ? StepResult.fail("Training-Fenster nicht offen: " + mc.gui.screen()) : StepResult.pending();
+                }
+                FlatButton unlock = button(screen.children(), "propwash.guide.training.unlock_all");
+                if (unlock == null || !unlock.active) {
+                    return StepResult.fail("Knopf „Alle freischalten“ fehlt oder ist gesperrt");
+                }
+                unlock.press();
+                if (!screen.confirmingUnlock() || button(screen.children(), "propwash.guide.training.unlock_all.confirm") == null) {
+                    return StepResult.fail("erster Klick fragt nicht nach");
+                }
+                if (Curriculum.unlocked(dive, TrainingStore.progress()) || TrainingStore.allUnlocked()) {
+                    return StepResult.fail("erster Klick schaltet ohne Rückfrage frei");
+                }
+                phase(ctx, 2);
+                return StepResult.pending();
+            }
+            case 2 -> {
+                if (!(mc.gui.screen() instanceof TrainingScreen screen)) {
+                    return StepResult.fail("Training-Fenster zu: " + mc.gui.screen());
+                }
+                if (screen.confirmingUnlock()) {
+                    return since(ctx) > 140 ? StepResult.fail("Rückfrage läuft nicht ab") : StepResult.pending();
+                }
+                FlatButton unlock = button(screen.children(), "propwash.guide.training.unlock_all");
+                if (unlock == null || Curriculum.unlocked(dive, TrainingStore.progress())) {
+                    return StepResult.fail("nach Ablauf der Rückfrage nicht wieder „Alle freischalten“ oder schon frei");
+                }
+                unlock.press();
+                FlatButton confirm = button(screen.children(), "propwash.guide.training.unlock_all.confirm");
+                if (confirm == null) {
+                    return StepResult.fail("Rückfrage „Wirklich alle freischalten?“ fehlt");
+                }
+                confirm.press();
+                TrainingProgress progress = TrainingStore.progress();
+                if (!TrainingStore.allUnlocked() || !allOpen(progress)) {
+                    return StepResult.fail("nach der Rückfrage nicht alle Kapitel und Lektionen frei");
+                }
+                if (Curriculum.totalStars(progress) != 0) {
+                    return StepResult.fail("Freischalten schenkt Sterne: " + Curriculum.totalStars(progress));
+                }
+                String mark = savedMark();
+                if (!mark.equals("an")) {
+                    return StepResult.fail("Markierung in " + TrainingStore.CONFIG.path().getFileName() + " " + mark);
+                }
+                ScreenRectangle row = screen.showRow(advanced);
+                if (row == null) {
+                    return StepResult.fail("Kapitel „Fortgeschritten“ steht nicht in der Liste");
+                }
+                MouseButtonInfo left = new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0);
+                screen.mouseClicked(new MouseButtonEvent(row.left() + row.width() / 2.0, row.top() + row.height() / 2.0, left), false);
+                if (screen.chapter() != advanced || screen.selected() != dive) {
+                    return StepResult.fail("Klick auf „Fortgeschritten“ wählt " + screen.chapter().id() + "/" + screen.selected().id());
+                }
+                FlatButton fly = button(screen.children(), "propwash.guide.training.fly");
+                if (fly == null || !fly.active) {
+                    return StepResult.fail("„Fliegen“ in „Fortgeschritten“ gesperrt");
+                }
+                FlatButton order = button(screen.children(), "propwash.guide.training.keep_order");
+                if (order == null || !order.active) {
+                    return StepResult.fail("Knopf „Reihenfolge wieder einhalten“ fehlt");
+                }
+                fly.press();
+                if (TrainingSession.INSTANCE.lesson() != dive || mc.gui.screen() != null) {
+                    return StepResult.fail("„Fliegen“ startet „" + dive.id() + "“ nicht: " + TrainingSession.INSTANCE.lesson());
+                }
+                TrainingSession.INSTANCE.stop();
+                mc.gui.setScreen(new TrainingScreen(null));
+                phase(ctx, 3);
+                return StepResult.pending();
+            }
+            case 3 -> {
+                if (!(mc.gui.screen() instanceof TrainingScreen screen) || screen.frames() < 2) {
+                    return since(ctx) > 100 ? StepResult.fail("Training-Fenster nicht wieder offen") : StepResult.pending();
+                }
+                FlatButton order = button(screen.children(), "propwash.guide.training.keep_order");
+                if (order == null) {
+                    return StepResult.fail("Markierung nach dem erneuten Öffnen vergessen");
+                }
+                order.press();
+                TrainingProgress progress = TrainingStore.progress();
+                if (TrainingStore.allUnlocked() || Curriculum.unlocked(dive, progress) || Curriculum.unlocked(Curriculum.lesson("hover"), progress)) {
+                    return StepResult.fail("„Reihenfolge wieder einhalten“ sperrt nicht wieder");
+                }
+                if (Curriculum.totalStars(progress) != 0 || !savedMark().equals("aus")) {
+                    return StepResult.fail("nach der Rücknahme Sterne " + Curriculum.totalStars(progress) + ", Markierung " + savedMark());
+                }
+                if (button(screen.children(), "propwash.guide.training.unlock_all") == null) {
+                    return StepResult.fail("nach der Rücknahme kein „Alle freischalten“");
+                }
+                mc.gui.setScreen(null);
+                TrainingStore.forget();
+                return StepResult.pass();
+            }
+            default -> {
+                return StepResult.fail("Phase " + phase(ctx));
             }
         }
     }

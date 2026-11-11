@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/drone_built",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "takeoff"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:remote"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.takeoff.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.takeoff.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

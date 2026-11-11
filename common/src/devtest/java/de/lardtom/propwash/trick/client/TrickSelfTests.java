@@ -61,6 +61,7 @@ public final class TrickSelfTests {
         SelfTest.clientStep("tricks: Repertoire-Tab mit Erklärungen", 100, TrickSelfTests::repertoireStep);
         SelfTest.clientStep("tricks: OSD-Meldung für jeden Trick des Katalogs", 900, TrickSelfTests::catalogOsdStep);
         ProTrickSelfTests.register();
+        TrickTutorialSelfTests.register();
         SelfTest.afterLeaveStep("tricks: Zustand nach dem Verlassen", 40, ctx -> {
             if (TrickTracker.INSTANCE.active()) {
                 return StepResult.fail("Trick-Erkennung nach dem Verlassen noch aktiv");

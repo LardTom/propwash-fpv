@@ -242,10 +242,24 @@ class OsdModelTest {
 
     @Test
     void everyTextHasAGermanAndEnglishTranslation() throws IOException {
-        Path dir = Files.isDirectory(Path.of("common/src/lang/osd")) ? Path.of("common/src/lang/osd") : Path.of("src/lang/osd");
-        JsonObject de = new Gson().fromJson(Files.readString(dir.resolve("de_de.json"), StandardCharsets.UTF_8), JsonObject.class);
-        JsonObject en = new Gson().fromJson(Files.readString(dir.resolve("en_us.json"), StandardCharsets.UTF_8), JsonObject.class);
-        assertEquals(de.keySet(), en.keySet());
+        Path root = Files.isDirectory(Path.of("common/src/lang")) ? Path.of("common/src/lang") : Path.of("src/lang");
+        JsonObject de = new JsonObject();
+        JsonObject en = new JsonObject();
+        for (String module : List.of("osd", "fpm", "heat-b", "addon-collision", "freecam", "api-acc-fix", "auto-arm", "addon-osd")) {
+            Path dir = root.resolve(module);
+            if (!Files.isDirectory(dir)) {
+                continue;
+            }
+            JsonObject moduleDe = new Gson().fromJson(Files.readString(dir.resolve("de_de.json"), StandardCharsets.UTF_8), JsonObject.class);
+            JsonObject moduleEn = new Gson().fromJson(Files.readString(dir.resolve("en_us.json"), StandardCharsets.UTF_8), JsonObject.class);
+            assertEquals(moduleDe.keySet(), moduleEn.keySet(), module);
+            boolean shared = module.equals("heat-b") || module.equals("addon-collision") || module.equals("freecam") || module.equals("api-acc-fix")
+                    || module.equals("auto-arm");
+            moduleDe.entrySet().stream().filter(entry -> !shared || entry.getKey().startsWith("propwash.osd."))
+                    .forEach(entry -> de.add(entry.getKey(), entry.getValue()));
+            moduleEn.entrySet().stream().filter(entry -> !shared || entry.getKey().startsWith("propwash.osd."))
+                    .forEach(entry -> en.add(entry.getKey(), entry.getValue()));
+        }
         List<String> keys = new ArrayList<>();
         for (OsdElement element : OsdElement.values()) {
             keys.add(element.translationKey());

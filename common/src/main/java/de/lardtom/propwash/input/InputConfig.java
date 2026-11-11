@@ -27,6 +27,7 @@ public final class InputConfig {
     public boolean keyboardFallback = true;
     public boolean appleGameController = false;
     public boolean mode3dUnlocked = false;
+    public boolean autoArmAfterReset = true;
     public boolean invertPitch = false;
     public StickMode stickMode = StickMode.DEFAULT;
     public int profileVersion = 0;
@@ -188,6 +189,7 @@ public final class InputConfig {
         copy.keyboardFallback = this.keyboardFallback;
         copy.appleGameController = this.appleGameController;
         copy.mode3dUnlocked = this.mode3dUnlocked;
+        copy.autoArmAfterReset = this.autoArmAfterReset;
         copy.invertPitch = this.invertPitch;
         copy.stickMode = this.stickMode;
         copy.profileVersion = this.profileVersion;
@@ -221,6 +223,7 @@ public final class InputConfig {
 
     public void mergeSwitchesFrom(InputConfig source) {
         this.mode3dUnlocked = source.mode3dUnlocked;
+        this.autoArmAfterReset = source.autoArmAfterReset;
         for (Map.Entry<String, DeviceProfile> e : source.profiles.entrySet()) {
             DeviceProfile target = this.profiles.get(e.getKey());
             if (target == null) {

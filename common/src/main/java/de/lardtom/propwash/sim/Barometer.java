@@ -46,6 +46,14 @@ final class Barometer {
         return DYNAMIC_PRESSURE_GAIN * v * v;
     }
 
+    double settle(double trueY, double airspeed, double heightAboveGround, double thrustRatio) {
+        double h = Double.isFinite(heightAboveGround) ? Math.max(0.0, heightAboveGround) : Double.POSITIVE_INFINITY;
+        this.raw = trueY + DRIFT_METERS * this.drift.value + groundError(h, thrustRatio) + dynamicPressureError(airspeed);
+        this.altitude = this.raw;
+        this.primed = true;
+        return this.altitude;
+    }
+
     double update(SimRandom rng, double trueY, double airspeed, double heightAboveGround, double thrustRatio, double propWash) {
         double h = Double.isFinite(heightAboveGround) ? Math.max(0.0, heightAboveGround) : Double.POSITIVE_INFINITY;
         double nearGround = Double.isFinite(h) ? Math.exp(-h / 1.0) * SimMath.clamp01(thrustRatio) : 0.0;

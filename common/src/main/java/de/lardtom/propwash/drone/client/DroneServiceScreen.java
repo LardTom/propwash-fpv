@@ -2,6 +2,7 @@ package de.lardtom.propwash.drone.client;
 
 import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.accessory.AccessoryBehaviors;
+import de.lardtom.propwash.apiimpl.client.ServiceExtensions;
 import de.lardtom.propwash.build.BatteryFit;
 import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
@@ -171,6 +172,7 @@ public class DroneServiceScreen extends AbstractContainerScreen<DroneServiceMenu
         this.bindConfirm = this.addRenderableWidget(new FlatButton(this.leftPos + RX_X0, this.topPos + RX_Y0, RX_SIZE, RX_SIZE, Component.empty(),
                 FlatButton.Style.DANGER, this::confirmBindReset));
         this.updateBindButtons();
+        int headerRight = this.leftPos + WIDTH - 3;
         if (AccessoryBehaviors.INSTANCE.hasInventory(drone.build())) {
             Component label = Component.translatable("propwash.accessory.service.button");
             int width = this.font.width(label) + 12;
@@ -178,7 +180,10 @@ public class DroneServiceScreen extends AbstractContainerScreen<DroneServiceMenu
                     FlatButton.Style.NORMAL, this::openAccessories);
             accessories.setTooltip(Tooltip.create(Component.translatable("propwash.accessory.service.tooltip")));
             this.addRenderableWidget(accessories);
+            headerRight = accessories.getX() - ServiceExtensions.GAP;
         }
+        ServiceExtensions.header(this, this.font, drone, ThemeDraw.brandedTitleX(this.font, this.leftPos + 2) + this.font.width(this.title) + 6,
+                headerRight, this.topPos + 3, HEADER_HEIGHT - 2).forEach(this::addRenderableWidget);
     }
 
     private void openAccessories() {

@@ -53,6 +53,7 @@ public final class ExampleAddon {
     public static final Identifier STACK_8S = id("stack_30_8s");
     public static final Identifier MOTOR_4214 = id("m4214_400");
     public static final Identifier BATTERY_8S = id("b8s_4500_lion");
+    public static final Identifier LED_RING = id("led_ring");
     public static final Identifier CHEMISTRY_LIHV = id("lihv_445");
     public static final Identifier MOUNT_M42 = id("m42");
     public static final Identifier PRESET_XCLASS = id("xclass");
@@ -65,7 +66,7 @@ public final class ExampleAddon {
     public static final List<TabSection> TAB_ORDER = List.of(TabSection.PRESETS, TabSection.ENTRIES, TabSection.FRAMES, TabSection.MOTORS,
             TabSection.PROPS);
     public static final List<Identifier> JAVA_PARTS = List.of(MOTOR_2806, PROP_13, FRAME_STRETCH);
-    public static final List<Identifier> JSON_PARTS = List.of(FRAME_DEADCAT, FRAME_XCLASS, STACK_8S, MOTOR_4214, BATTERY_8S);
+    public static final List<Identifier> JSON_PARTS = List.of(FRAME_DEADCAT, FRAME_XCLASS, STACK_8S, MOTOR_4214, BATTERY_8S, LED_RING);
 
     public static final AtomicInteger PARTS_SEEN = new AtomicInteger();
     public static final AtomicInteger FROZEN = new AtomicInteger();
@@ -106,6 +107,15 @@ public final class ExampleAddon {
                 .order(TAB_ORDER.toArray(TabSection[]::new))
                 .add(ExampleAddon::creativeEntries);
         ExampleAccessories.init();
+        ExampleSwitches.init();
+        ExampleOsd.init();
+        ExampleMission.init();
+        ExampleRules.register();
+        ExampleGhost.init();
+        ExampleDispenser.init();
+        ExampleFollow.init();
+        ExampleRaceListener.init();
+        ExampleOperator.init();
     }
 
     public static boolean showcase() {

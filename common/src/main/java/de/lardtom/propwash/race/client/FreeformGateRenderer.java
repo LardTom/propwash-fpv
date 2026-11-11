@@ -47,7 +47,7 @@ public final class FreeformGateRenderer {
     private static final Map<GateEntity, Cached> ENTITY_VIEWS = new WeakHashMap<>();
     private static final Map<FreeformRegion, FreeformView> PLAIN_VIEWS = new WeakHashMap<>();
 
-    private record Cached(FreeformRegion region, long checkedAt, FreeformView view) {
+    private record Cached(FreeformRegion region, boolean open, long checkedAt, FreeformView view) {
     }
 
     private FreeformGateRenderer() {
@@ -64,7 +64,8 @@ public final class FreeformGateRenderer {
         long now = level.getGameTime();
         synchronized (ENTITY_VIEWS) {
             Cached cached = ENTITY_VIEWS.get(entity);
-            if (cached != null && cached.region().equals(region) && now - cached.checkedAt() < CHECK_INTERVAL_TICKS && now >= cached.checkedAt()) {
+            if (cached != null && cached.region().equals(region) && cached.open() == entity.score().open() && now - cached.checkedAt() < CHECK_INTERVAL_TICKS
+                    && now >= cached.checkedAt()) {
                 return cached.view();
             }
             GateGeometry geometry = entity.geometry();
@@ -73,9 +74,10 @@ public final class FreeformGateRenderer {
             int minA = FreeformBlocks.minA(geometry);
             int minB = FreeformBlocks.minB(geometry);
             FreeformFill.Integrity integrity = FreeformFill.check(probe, region, plane, minA, minB);
-            FreeformView view = FreeformView.of(region, (oa, ob) -> FreeformFill.outsideOpen(probe, region, plane, minA, minB, oa, ob),
-                    integrity.blockedCells());
-            ENTITY_VIEWS.put(entity, new Cached(region, now, view));
+            boolean gapsIgnored = entity.score().open();
+            FreeformView view = FreeformView.of(region,
+                    (oa, ob) -> !gapsIgnored && FreeformFill.outsideOpen(probe, region, plane, minA, minB, oa, ob), integrity.blockedCells());
+            ENTITY_VIEWS.put(entity, new Cached(region, gapsIgnored, now, view));
             return view;
         }
     }
@@ -208,7 +210,7 @@ public final class FreeformGateRenderer {
             collector.order(1).submitCustomGeometry(poseStack, GateRenderer.glowType(), (pose, buffer) -> {
                 for (int i = 0; i < GateRenderer.CHEVRONS; i++) {
                     float z = -(0.55F + 0.7F * i);
-                    int shade = ARGB.color(CourseElementRenderer.brightness(GateRenderer.CHEVRONS - 1 - i, age), color);
+                    int shade = ARGB.color(CourseElementRenderer.brightness(ChevronWave.approach(i), age), color);
                     chevron(pose, buffer, z, half, shade);
                 }
             });
@@ -219,7 +221,7 @@ public final class FreeformGateRenderer {
             collector.order(1).submitCustomGeometry(poseStack, GateRenderer.glowType(), (pose, buffer) -> {
                 for (int i = 0; i < GateRenderer.CHEVRONS; i++) {
                     float z = -(0.7F + 0.75F * i);
-                    int shade = ARGB.color(CourseElementRenderer.brightness(GateRenderer.CHEVRONS - 1 - i, age), color);
+                    int shade = ARGB.color(CourseElementRenderer.brightness(ChevronWave.approach(i), age), color);
                     CourseElementRenderer.chevron(pose, buffer, 0.0F, FLOOR_LIFT, z, 0.0F, 1.0F, shade, half);
                 }
             });

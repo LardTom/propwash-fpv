@@ -7,6 +7,7 @@ import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.PartIndex;
 import de.lardtom.propwash.build.PartInfo;
 import de.lardtom.propwash.build.PropType;
+import de.lardtom.propwash.build.StackType;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
@@ -29,6 +30,7 @@ public final class PartModel {
     public static final String BROKEN_SUFFIX = PropDamage.BROKEN.suffix();
     public static final String PAINT_SUFFIX = "_paint";
     public static final String UNDER_SUFFIX = "_under";
+    public static final String MOUNTED_SUFFIX = "_mounted";
     public static final String MODEL_PREFIX = "part/";
 
     private static final Map<Identifier, PartModel> INTERNED = new ConcurrentHashMap<>();
@@ -99,6 +101,10 @@ public final class PartModel {
 
     public static PartModel batteryUnder(BatteryType battery) {
         return of(battery).variant(UNDER_SUFFIX);
+    }
+
+    public static PartModel stackMounted(StackType stack) {
+        return of(stack).variant(MOUNTED_SUFFIX);
     }
 
     public static PartModel blur(PropType prop) {

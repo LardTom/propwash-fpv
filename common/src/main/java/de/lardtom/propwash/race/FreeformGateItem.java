@@ -30,7 +30,15 @@ public class FreeformGateItem extends GateItem {
         super(properties, GateSize.MEDIUM);
     }
 
-    public record Plan(FreeformFill.Aim aim, FreeformFill.Result result, @Nullable GateEntity occupant) {
+    public record Plan(FreeformFill.Aim aim, FreeformFill.Result result, @Nullable GateEntity occupant, boolean gapsIgnored, float yaw) {
+        public Plan(FreeformFill.Aim aim, FreeformFill.Result result, @Nullable GateEntity occupant) {
+            this(aim, result, occupant, false);
+        }
+
+        public Plan(FreeformFill.Aim aim, FreeformFill.Result result, @Nullable GateEntity occupant, boolean gapsIgnored) {
+            this(aim, result, occupant, gapsIgnored, 0.0F);
+        }
+
         public boolean ok() {
             return this.result.ok() && this.occupant == null;
         }
@@ -40,7 +48,8 @@ public class FreeformGateItem extends GateItem {
             if (region == null) {
                 return null;
             }
-            return GateGeometry.freeform(this.result.anchorX(), this.result.anchorY(), this.result.anchorZ(), region, this.aim.variant());
+            return GateGeometry.freeform(this.result.anchorX(), this.result.anchorY(), this.result.anchorZ(), region, this.aim.variant(),
+                    ScoreArea.DEFAULT.withOpen(this.gapsIgnored), this.yaw);
         }
     }
 
@@ -56,10 +65,24 @@ public class FreeformGateItem extends GateItem {
     }
 
     public static Plan plan(Level level, BlockPos clicked, Direction face, Vec3 look, boolean reverse) {
+        return plan(level, clicked, face, look, reverse, false);
+    }
+
+    public static Plan plan(Level level, BlockPos clicked, Direction face, Vec3 look, boolean reverse, boolean ignoreGaps) {
         FreeformFill.Aim aim = FreeformBlocks.aim(level, clicked, face, look, reverse);
-        FreeformFill.Result result = FreeformBlocks.fill(level, aim);
+        FreeformFill.Result strict = FreeformBlocks.fill(level, aim);
+        FreeformFill.Result result = ignoreGaps && strict.status() == FreeformFill.Status.OPEN ? FreeformBlocks.fill(level, aim, true) : strict;
+        boolean ignored = result != strict && result.ok();
         GateEntity occupant = result.ok() ? FreeformBlocks.occupant(level, aim.seedX(), aim.seedY(), aim.seedZ(), null) : null;
-        return new Plan(aim, result, occupant);
+        return new Plan(aim, result, occupant, ignored, facing(look));
+    }
+
+    public static float facing(Vec3 look) {
+        return FreeformFill.facing(look.x, look.z);
+    }
+
+    public static boolean ignoresGaps(@Nullable Player player) {
+        return player != null && player.isSecondaryUseActive();
     }
 
     public static MutableComponent problem(Plan plan) {
@@ -96,10 +119,15 @@ public class FreeformGateItem extends GateItem {
             return InteractionResult.FAIL;
         }
         Direction face = context.getClickedFace();
-        Plan plan = plan(level, context.getClickedPos(), face, look(player, face), reversed(player, level.isClientSide()));
+        Plan plan = plan(level, context.getClickedPos(), face, look(player, face), reversed(player, level.isClientSide()), ignoresGaps(player));
         if (!plan.ok()) {
             if (player != null && !level.isClientSide()) {
-                player.sendOverlayMessage(problem(plan).withStyle(ChatFormatting.RED));
+                MutableComponent problem = problem(plan).withStyle(ChatFormatting.RED);
+                if (plan.result().status() == FreeformFill.Status.OPEN && !ignoresGaps(player)) {
+                    problem = Component.translatable("propwash.race.freeform.open_hint", problem,
+                            Component.keybind("key.sneak")).withStyle(ChatFormatting.RED);
+                }
+                player.sendOverlayMessage(problem);
             }
             return InteractionResult.FAIL;
         }
@@ -110,8 +138,8 @@ public class FreeformGateItem extends GateItem {
                 return InteractionResult.FAIL;
             }
             if (player != null) {
-                player.sendOverlayMessage(Component.translatable("propwash.race.freeform.placed", GateMounting.describe(gate.geometry()))
-                        .withStyle(ChatFormatting.GREEN));
+                player.sendOverlayMessage(Component.translatable(plan.gapsIgnored() ? "propwash.race.freeform.placed_open" : "propwash.race.freeform.placed",
+                        GateMounting.describe(gate.geometry())).withStyle(ChatFormatting.GREEN));
             }
         }
         stack.consume(1, player);
@@ -130,6 +158,7 @@ public class FreeformGateItem extends GateItem {
         }
         gate.setSize(GateSize.MEDIUM);
         gate.setFreeform(region, plan.aim().variant());
+        gate.setScore(ScoreArea.DEFAULT.withOpen(plan.gapsIgnored()));
         gate.setCourse(GateEntity.NO_COURSE, GateEntity.NO_INDEX);
         gate.snapTo(geometry.x(), geometry.y(), geometry.z(), geometry.yawDegrees(), 0.0F);
         if (stack.has(DataComponents.CUSTOM_NAME)) {

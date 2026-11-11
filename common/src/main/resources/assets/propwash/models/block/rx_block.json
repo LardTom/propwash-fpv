@@ -1,0 +1,167 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "propwash:block/rx_block_body_side",
+    "base": "propwash:block/rx_block_base",
+    "body_side": "propwash:block/rx_block_body_side",
+    "body_top": "propwash:block/rx_block_body_top",
+    "antenna": "propwash:block/rx_block_antenna",
+    "led": "propwash:block/rx_block_led_off"
+  },
+  "elements": [
+    {
+      "name": "base",
+      "from": [
+        2.0,
+        0.0,
+        2.0
+      ],
+      "to": [
+        14.0,
+        1.0,
+        14.0
+      ],
+      "faces": {
+        "down": {
+          "texture": "#base",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#base"
+        },
+        "north": {
+          "texture": "#base"
+        },
+        "south": {
+          "texture": "#base"
+        },
+        "east": {
+          "texture": "#base"
+        },
+        "west": {
+          "texture": "#base"
+        }
+      }
+    },
+    {
+      "name": "housing",
+      "from": [
+        3.0,
+        1.0,
+        3.0
+      ],
+      "to": [
+        13.0,
+        6.0,
+        13.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#body_top"
+        },
+        "north": {
+          "texture": "#body_side"
+        },
+        "south": {
+          "texture": "#body_side"
+        },
+        "east": {
+          "texture": "#body_side"
+        },
+        "west": {
+          "texture": "#body_side"
+        }
+      }
+    },
+    {
+      "name": "antenna_0",
+      "from": [
+        4.0,
+        6.0,
+        11.0
+      ],
+      "to": [
+        5.0,
+        12.5,
+        12.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#antenna"
+        },
+        "north": {
+          "texture": "#antenna"
+        },
+        "south": {
+          "texture": "#antenna"
+        },
+        "east": {
+          "texture": "#antenna"
+        },
+        "west": {
+          "texture": "#antenna"
+        }
+      }
+    },
+    {
+      "name": "antenna_1",
+      "from": [
+        11.0,
+        6.0,
+        11.0
+      ],
+      "to": [
+        12.0,
+        12.5,
+        12.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#antenna"
+        },
+        "north": {
+          "texture": "#antenna"
+        },
+        "south": {
+          "texture": "#antenna"
+        },
+        "east": {
+          "texture": "#antenna"
+        },
+        "west": {
+          "texture": "#antenna"
+        }
+      }
+    },
+    {
+      "name": "led",
+      "from": [
+        7.0,
+        6.0,
+        4.5
+      ],
+      "to": [
+        9.0,
+        6.75,
+        6.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#led"
+        },
+        "north": {
+          "texture": "#led"
+        },
+        "south": {
+          "texture": "#led"
+        },
+        "east": {
+          "texture": "#led"
+        },
+        "west": {
+          "texture": "#led"
+        }
+      }
+    }
+  ]
+}

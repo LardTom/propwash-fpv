@@ -94,6 +94,8 @@ public final class ActionCamSelfTests {
         SelfTest.clientStep("video: Kamera-Akku der Heavy sinkt beim Aufnehmen", 200, ActionCamSelfTests::drainStep);
         SelfTest.clientStep("video: Action-Cam mit Fisheye-Objektiv – gleicher Ausschnitt wie flach, Aufnahme läuft weiter", 1200,
                 ActionCamSelfTests::fisheyeStep);
+        ActionCamImageSelfTests.register();
+        CompatActionCamSelfTests.register();
         SelfTest.clientStep("video: Heavy-Cam lädt abgestellt per USB aus dem Flugakku", 400, ActionCamSelfTests::usbStep);
         SelfTest.afterLeaveStep("video: Action-Cam nach dem Verlassen aufgeräumt", 200, ActionCamSelfTests::afterLeaveStep);
     }

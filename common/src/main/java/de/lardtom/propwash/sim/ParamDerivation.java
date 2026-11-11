@@ -10,6 +10,7 @@ import de.lardtom.propwash.api.part.MassSplit;
 import de.lardtom.propwash.api.part.MotorArm;
 import de.lardtom.propwash.api.part.MotorDefinition;
 import de.lardtom.propwash.api.part.MotorThermal;
+import de.lardtom.propwash.api.part.Mounts;
 import de.lardtom.propwash.api.part.PackSize;
 import de.lardtom.propwash.api.part.StackDefinition;
 import de.lardtom.propwash.api.part.Vec3Mm;
@@ -26,8 +27,10 @@ import de.lardtom.propwash.build.PartIndex;
 import de.lardtom.propwash.build.PartWear;
 import de.lardtom.propwash.build.PropType;
 import de.lardtom.propwash.video.FovMath;
+import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +39,8 @@ final class ParamDerivation {
     private static final ConcurrentHashMap<DroneBuild, AirframeSpec> CACHE = new ConcurrentHashMap<>();
     private static final BoundedCache<DroneBuild, AirframeSpec> CREATIVE = new BoundedCache<>(128);
     private static final double SQRT2 = Math.sqrt(2.0);
+    static final double ACCESSORY_STAND_MIN = 0.005;
+    static final int FOOT_CORNERS = 4;
     private static final double BATTERY_VOLUME_RATIO = ModelConstants.BATTERY_LENGTH * ModelConstants.BATTERY_WIDTH;
     static final double PLATE_FRACTION = 0.8;
     static final double MIN_THROTTLE_WEIGHT = 0.2;
@@ -138,6 +143,8 @@ final class ParamDerivation {
         double motorCoolingBase;
         double motorCoolingPerOmega;
         double motorCoolingScale;
+        double motorEddyLoss;
+        double escCooling;
         double motorDerateStartC;
         double motorMaxTempC;
         double motorHeatWearPerSecond;
@@ -172,6 +179,10 @@ final class ParamDerivation {
         final double[] groundX = new double[AirframeSpec.GROUND_POINTS];
         final double[] groundY = new double[AirframeSpec.GROUND_POINTS];
         final double[] groundZ = new double[AirframeSpec.GROUND_POINTS];
+        int standCount;
+        final double[] standX = new double[AirframeSpec.ACCESSORY_POINTS];
+        final double[] standY = new double[AirframeSpec.ACCESSORY_POINTS];
+        final double[] standZ = new double[AirframeSpec.ACCESSORY_POINTS];
     }
 
     static double[] statorSize(MotorType motor) {
@@ -254,10 +265,14 @@ final class ParamDerivation {
         double accessoryTop = Double.NEGATIVE_INFINITY;
         double accessoryTopX = 0.0;
         double accessoryTopZ = 0.0;
+        double[][][] accessoryFeet = new double[accessoryCount][][];
         int index = 0;
         for (AccessoryMount mount : accessories.mounts()) {
             AccessoryType type = accessories.at(mount).orElseThrow();
             AccessoryAnchor anchor = AccessoryAnchor.of(frame, mount);
+            if (mount != AccessoryMount.TOP) {
+                accessoryFeet[index] = feet(anchor.corners(type));
+            }
             double[] center = anchor.centerOf(type);
             accessoryMass[index] = type.massGrams() / 1000.0;
             accessoryCenter[index] = new double[]{-center[0] / 1000.0, center[1] / 1000.0, -center[2] / 1000.0};
@@ -346,7 +361,7 @@ final class ParamDerivation {
         d.escMinCells = b.stack().minCells;
         d.escMaxCells = b.stack().maxCells;
 
-        thermal(d, motor.definition());
+        thermal(d, motor.definition(), stackDef, b.stack().massGrams());
 
         FrameAero aero = frameDef.aero();
         double accessoryArea = accessories.frontalAreaM2();
@@ -365,7 +380,7 @@ final class ParamDerivation {
 
         Body body = new Body(batteryMass, batteryY, bw, bh, bl, electronicsMass, electronicsY, motorMass, propMass, frameMass, rotorY,
                 accessoryCount, accessoryMass, accessoryCenter, accessorySize, accessoryMoment, accessoryTop, accessoryTopX, accessoryTopZ,
-                geo.batteryOnTop());
+                accessoryFeet, geo.batteryOnTop());
         if (geometry.hasExplicitArms()) {
             geometric(d, frameDef, body);
         } else {
@@ -419,26 +434,80 @@ final class ParamDerivation {
     private record Body(double batteryMass, double batteryY, double bw, double bh, double bl, double electronicsMass, double electronicsY,
                         double motorMass, double propMass, double frameMass, double rotorY, int accessoryCount, double[] accessoryMass,
                         double[][] accessoryCenter, double[][] accessorySize, double accessoryMoment, double accessoryTop,
-                        double accessoryTopX, double accessoryTopZ, boolean batteryOnTop) {
+                        double accessoryTopX, double accessoryTopZ, double[][][] accessoryFeet, boolean batteryOnTop) {
     }
 
-    static void thermal(Draft d, MotorDefinition motor) {
+    private static double[][] feet(double[][] corners) {
+        Integer[] order = new Integer[corners.length];
+        for (int c = 0; c < corners.length; c++) {
+            order[c] = c;
+        }
+        Arrays.sort(order, (a, b) -> Double.compare(corners[a][1], corners[b][1]));
+        double[][] out = new double[FOOT_CORNERS][];
+        for (int c = 0; c < FOOT_CORNERS; c++) {
+            double[] corner = corners[order[c]];
+            out[c] = new double[]{-corner[0] / 1000.0, corner[1] / 1000.0, -corner[2] / 1000.0};
+        }
+        return out;
+    }
+
+    private static void standOnAccessories(Draft d, Body body, double cx, double cy, double cz, double bottom) {
+        d.standCount = 0;
+        for (double[][] feet : body.accessoryFeet) {
+            if (feet == null || d.standCount + feet.length > AirframeSpec.ACCESSORY_POINTS) {
+                continue;
+            }
+            double lowest = Double.POSITIVE_INFINITY;
+            for (double[] foot : feet) {
+                lowest = Math.min(lowest, foot[1] - cy);
+            }
+            if (!(lowest < bottom - ACCESSORY_STAND_MIN)) {
+                continue;
+            }
+            for (double[] foot : feet) {
+                d.standX[d.standCount] = foot[0] - cx;
+                d.standY[d.standCount] = foot[1] - cy;
+                d.standZ[d.standCount] = foot[2] - cz;
+                d.standCount++;
+            }
+        }
+    }
+
+    static double escBoardMm(StackDefinition stack, double stackGrams) {
+        Identifier mount = stack.mount();
+        if (mount.equals(Mounts.STACK_S30)) {
+            return Thermal.ESC_REFERENCE_BOARD_MM;
+        }
+        if (mount.equals(Mounts.STACK_S20)) {
+            return Thermal.ESC_BOARD_20_MM;
+        }
+        if (mount.equals(Mounts.STACK_WHOOP_AIO)) {
+            return Thermal.ESC_BOARD_WHOOP_MM;
+        }
+        return Thermal.boardFromMass(stackGrams);
+    }
+
+    static void thermal(Draft d, MotorDefinition motor, StackDefinition stack, double stackGrams) {
+        d.escCooling = Thermal.escStillAir(escBoardMm(stack, stackGrams));
         MotorThermal thermal = motor.thermal();
         double motorGrams = d.motorMassKg * 1000.0;
         d.motorHeatCapacity = thermal.heatCapacityJPerK().isPresent() ? thermal.heatCapacityJPerK().getAsDouble()
                 : Thermal.MOTOR_HEAT_CAPACITY * motorGrams;
         double sizeFactor = StrictMath.pow(motorGrams / 33.0, 2.0 / 3.0);
+        double statorDiameter = motor.statorDiameterMm() / 1000.0;
+        double perOmega = Thermal.MOTOR_CONDUCTANCE_PER_SPEED * Thermal.bellRadius(statorDiameter);
         boolean baseSet = thermal.coolingWPerK().isPresent();
         boolean omegaSet = thermal.coolingWPerKPerRadS().isPresent();
         if (!baseSet && !omegaSet) {
             d.motorCoolingBase = Thermal.MOTOR_CONDUCTANCE_BASE;
-            d.motorCoolingPerOmega = Thermal.MOTOR_CONDUCTANCE_PER_OMEGA;
+            d.motorCoolingPerOmega = perOmega;
             d.motorCoolingScale = sizeFactor;
         } else {
             d.motorCoolingBase = baseSet ? thermal.coolingWPerK().getAsDouble() : Thermal.MOTOR_CONDUCTANCE_BASE * sizeFactor;
-            d.motorCoolingPerOmega = omegaSet ? thermal.coolingWPerKPerRadS().getAsDouble() : Thermal.MOTOR_CONDUCTANCE_PER_OMEGA * sizeFactor;
+            d.motorCoolingPerOmega = omegaSet ? thermal.coolingWPerKPerRadS().getAsDouble() : perOmega * sizeFactor;
             d.motorCoolingScale = 1.0;
         }
+        d.motorEddyLoss = Thermal.eddyLoss(statorDiameter, motor.statorHeightMm() / 1000.0);
         d.motorDerateStartC = thermal.derateStartC();
         d.motorMaxTempC = thermal.maxTempC();
         d.motorHeatWearPerSecond = thermal.wearPerSecondAtMax() / motor.basics().durability();
@@ -555,6 +624,7 @@ final class ParamDerivation {
         d.hullX[11] = 0.0;
         d.hullY[11] = bottom;
         d.hullZ[11] = 0.0;
+        standOnAccessories(d, body, 0.0, yCom, 0.0, bottom);
         groundPoints(d, 0.0, batteryFace, bw, bl, 0.0, frame.ducted, bottom);
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
@@ -746,6 +816,7 @@ final class ParamDerivation {
         d.hullX[11] = -cx;
         d.hullY[11] = bottom;
         d.hullZ[11] = -cz;
+        standOnAccessories(d, body, cx, cy, cz, bottom);
         groundPoints(d, -cx, batteryFace, body.bw, body.bl, -cz, d.ducted, bottom);
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
@@ -786,6 +857,31 @@ final class ParamDerivation {
                 if (d.groundY[n] <= d.hullY[4 + i]) {
                     mask &= ~(1 << (4 + i));
                 }
+                n++;
+            }
+        }
+        if (d.standCount > 0) {
+            for (; n < AirframeSpec.ACCESSORY_GROUND; n++) {
+                int copy = n - AirframeSpec.HULL_POINTS;
+                d.groundX[n] = d.hullX[copy];
+                d.groundY[n] = d.hullY[copy];
+                d.groundZ[n] = d.hullZ[copy];
+            }
+            double plane = Double.POSITIVE_INFINITY;
+            for (int k = 0; k < d.standCount; k++) {
+                d.groundX[n] = d.standX[k];
+                d.groundY[n] = d.standY[k];
+                d.groundZ[n] = d.standZ[k];
+                plane = Math.min(plane, d.standY[k]);
+                mask |= 1 << n;
+                n++;
+            }
+            for (int i = 0; i < AirframeSpec.STAND_LEGS; i++) {
+                int corner = ducted ? AirframeSpec.HULL_POINTS + 4 + i : 4 + i;
+                d.groundX[n] = ducted ? d.groundX[corner] : d.hullX[corner];
+                d.groundY[n] = plane;
+                d.groundZ[n] = ducted ? d.groundZ[corner] : d.hullZ[corner];
+                mask |= 1 << n;
                 n++;
             }
         }

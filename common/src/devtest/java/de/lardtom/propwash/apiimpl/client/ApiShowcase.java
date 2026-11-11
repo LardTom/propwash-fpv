@@ -16,8 +16,10 @@ import de.lardtom.propwash.dev.example.client.ExampleAddonClient;
 import de.lardtom.propwash.dev.example.client.ExampleConfigTab;
 import de.lardtom.propwash.dev.example.client.ExampleImportScreen;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
+import de.lardtom.propwash.ui.client.widget.FlatButton;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,6 +29,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -63,6 +66,7 @@ public final class ApiShowcase {
             Map<String, Object> state = ctx.state();
             if (!state.containsKey(FUTURE)) {
                 ExampleAddon.showcase(true);
+                ExampleAddonClient.sizeButton(false);
                 SERVER_IMPORT.set(null);
                 state.put(FUTURE, ctx.onServer(server -> {
                     ServerPlayer player = player(server);
@@ -98,7 +102,13 @@ public final class ApiShowcase {
                 return ctx.tick() > 300 ? StepResult.fail("Werkbank mit Beispiel-Knopf erscheint nicht: " + mc.gui.screen()) : StepResult.pending();
             }
             if (!this.child) {
-                return StepResult.pass();
+                List<String> header = new ArrayList<>();
+                for (FlatButton button : screen.extensionButtons()) {
+                    header.add(button.getMessage().getString());
+                }
+                boolean shown = header.contains(Component.translatable("propwash_example.workbench.button").getString())
+                        || header.contains(Component.translatable("propwash_example.workbench.button.short").getString());
+                return shown ? StepResult.pass() : StepResult.fail("Knopf des Beispiel-Add-ons nicht im Werkbank-Kopf: " + header);
             }
             if (!state.containsKey(CHILD)) {
                 state.put(CHILD, Boolean.TRUE);
@@ -119,6 +129,7 @@ public final class ApiShowcase {
                 mc.gui.setScreen(null);
             }
             ExampleAddon.showcase(false);
+            ExampleAddonClient.sizeButton(true);
             ctx.onServer(server -> {
                 ServerPlayer player = player(server);
                 if (player.containerMenu instanceof DroneWorkbenchMenu menu) {

@@ -23,6 +23,8 @@ public final class FpvGuards {
     private static final int MAX_CACHED = 32;
     private static final int WHITE = 0xFFFFFFFF;
     private static final Map<Key, FpvGuardMesh> MESHES = new HashMap<>();
+    private static final Map<Key, FpvGuardMesh> ARMS = new HashMap<>();
+    private static final Map<Key, FpvGuardMesh> PARTS = new HashMap<>();
     private static int generation = Integer.MIN_VALUE;
 
     private FpvGuards() {
@@ -48,25 +50,83 @@ public final class FpvGuards {
         if (!type.ducted) {
             return FpvGuardMesh.EMPTY;
         }
-        DroneRenderResources res = DroneVisuals.resources();
-        if (res.generation() != generation) {
-            generation = res.generation();
-            MESHES.clear();
-        }
+        DroneRenderResources res = fresh();
         Key key = new Key(item != null ? item : solid, type);
         FpvGuardMesh mesh = MESHES.get(key);
         if (mesh == null) {
             FpvGuardZone zone = zone(type, res.layout(type));
             mesh = zone == null ? FpvGuardMesh.EMPTY : item != null ? fromItem(item, zone) : fromShape(solid, zone);
-            if (MESHES.size() >= MAX_CACHED) {
-                MESHES.clear();
-            }
-            MESHES.put(key, mesh);
+            remember(MESHES, key, mesh);
         }
         return mesh;
     }
 
-    static FpvGuardMesh fromItem(ItemStackRenderState item, FpvGuardZone zone) {
+    private static DroneRenderResources fresh() {
+        DroneRenderResources res = DroneVisuals.resources();
+        if (res.generation() != generation) {
+            generation = res.generation();
+            MESHES.clear();
+            ARMS.clear();
+            PARTS.clear();
+        }
+        return res;
+    }
+
+    private static void remember(Map<Key, FpvGuardMesh> cache, Key key, FpvGuardMesh mesh) {
+        if (cache.size() >= MAX_CACHED) {
+            cache.clear();
+        }
+        cache.put(key, mesh);
+    }
+
+    public static FpvArmZone armZone(FrameType frame, DroneLayout layout) {
+        Vector3fc[] motors = new Vector3fc[DroneLayout.SLOTS];
+        for (int slot = 0; slot < DroneLayout.SLOTS; slot++) {
+            motors[slot] = layout.motor(slot);
+        }
+        return new FpvArmZone(motors, zone(frame, layout));
+    }
+
+    public static FpvGuardMesh arms(DroneRenderState.PartSlot frame, FrameType type) {
+        return arms(frame.useItem ? frame.item : null, frame.solid, type);
+    }
+
+    public static FpvGuardMesh arms(DroneAssembly.Part frame, FrameType type) {
+        return arms(frame.item(), frame.solid(), type);
+    }
+
+    public static FpvGuardMesh part(DroneRenderState.PartSlot part) {
+        return part(part.useItem ? part.item : null, part.solid);
+    }
+
+    public static FpvGuardMesh part(DroneAssembly.Part part) {
+        return part(part.item(), part.solid());
+    }
+
+    static synchronized FpvGuardMesh arms(@Nullable ItemStackRenderState item, Shape solid, FrameType type) {
+        DroneRenderResources res = fresh();
+        Key key = new Key(item != null ? item : solid, type);
+        FpvGuardMesh mesh = ARMS.get(key);
+        if (mesh == null) {
+            FpvArmZone zone = armZone(type, res.layout(type));
+            mesh = item != null ? fromItem(item, zone) : fromShape(solid, zone);
+            remember(ARMS, key, mesh);
+        }
+        return mesh;
+    }
+
+    static synchronized FpvGuardMesh part(@Nullable ItemStackRenderState item, Shape solid) {
+        fresh();
+        Key key = new Key(item != null ? item : solid, null);
+        FpvGuardMesh mesh = PARTS.get(key);
+        if (mesh == null) {
+            mesh = item != null ? fromItem(item, FpvQuadSelector.ALL) : fromShape(solid, FpvQuadSelector.ALL);
+            remember(PARTS, key, mesh);
+        }
+        return mesh;
+    }
+
+    static FpvGuardMesh fromItem(ItemStackRenderState item, FpvQuadSelector zone) {
         QuadCapture.Result captured = QuadCapture.of(item);
         if (captured.special()) {
             return FpvGuardMesh.EMPTY;
@@ -107,7 +167,7 @@ public final class FpvGuards {
         return build(candidates, zone);
     }
 
-    static FpvGuardMesh fromShape(Shape shape, FpvGuardZone zone) {
+    static FpvGuardMesh fromShape(Shape shape, FpvQuadSelector zone) {
         if (shape.isEmpty()) {
             return FpvGuardMesh.EMPTY;
         }
@@ -132,7 +192,7 @@ public final class FpvGuards {
         return build(candidates, zone);
     }
 
-    private static FpvGuardMesh build(List<Candidate> candidates, FpvGuardZone zone) {
+    private static FpvGuardMesh build(List<Candidate> candidates, FpvQuadSelector zone) {
         if (candidates.isEmpty()) {
             return FpvGuardMesh.EMPTY;
         }
@@ -171,7 +231,7 @@ public final class FpvGuards {
     private record Candidate(RenderType type, float[] quad, float[] uv, int[] argb, Vector3f normal) {
     }
 
-    private record Key(Object source, FrameType frame) {
+    private record Key(Object source, @Nullable FrameType frame) {
         @Override
         public boolean equals(Object other) {
             return other instanceof Key key && key.source == this.source && key.frame == this.frame;

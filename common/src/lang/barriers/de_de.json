@@ -1,0 +1,20 @@
+{
+  "block.propwash.drone_block_barrier": "Drohnen-Sperre",
+  "block.propwash.drone_pass_barrier": "Drohnen-durchlässige Barriere",
+  "propwash.help.drone_block_barrier.fits": "Alle Drohnenarten, auch aus Add-ons",
+  "propwash.help.drone_block_barrier.summary": "Unsichtbare Wand, die nur Drohnen aufhält",
+  "propwash.help.drone_block_barrier.use.1": "Drohnen prallen ab oder stürzen wie am Block.",
+  "propwash.help.drone_block_barrier.use.2": "Spieler, Mobs, Items und Pfeile gehen durch.",
+  "propwash.help.drone_block_barrier.use.3": "Kreativ: Auswahlrahmen, in der Hand Symbole.",
+  "propwash.help.drone_block_barrier.use.4": "Licht, Redstone und Video gehen durch.",
+  "propwash.help.drone_block_barrier.what.1": "Nur kreativ: kein Rezept, nicht abbaubar.",
+  "propwash.help.drone_block_barrier.what.2": "Keine Wirkung auf Rennen und Wertung.",
+  "propwash.help.drone_pass_barrier.fits": "Alle Drohnenarten, auch aus Add-ons",
+  "propwash.help.drone_pass_barrier.summary": "Unsichtbare Wand, nur Drohnen kommen durch",
+  "propwash.help.drone_pass_barrier.use.1": "Hält Spieler, Mobs, Items und Pfeile auf.",
+  "propwash.help.drone_pass_barrier.use.2": "Drohnen jeder Art fliegen frei hindurch.",
+  "propwash.help.drone_pass_barrier.use.3": "Kreativ: Auswahlrahmen, in der Hand Symbole.",
+  "propwash.help.drone_pass_barrier.use.4": "Licht, Redstone und Video gehen durch.",
+  "propwash.help.drone_pass_barrier.what.1": "Nur kreativ: kein Rezept, nicht abbaubar.",
+  "propwash.help.drone_pass_barrier.what.2": "Keine Wirkung auf Rennen und Wertung."
+}

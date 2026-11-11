@@ -2,10 +2,12 @@ package de.lardtom.propwash.trick.client;
 
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.race.AssistCheck;
 import de.lardtom.propwash.race.client.RaceState;
 import de.lardtom.propwash.rescue.client.RescueState;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.Telemetry;
+import de.lardtom.propwash.stats.client.StatsClient;
 import de.lardtom.propwash.trick.TrickSample;
 import de.lardtom.propwash.trick.TrickSession;
 import net.minecraft.client.DeltaTracker;
@@ -48,10 +50,15 @@ public final class TrickTracker {
             return;
         }
         this.fill(sim);
-        this.sample.assisted = RescueState.INSTANCE.active() || RaceState.INSTANCE.racing();
+        this.sample.assisted = RescueState.INSTANCE.active() || RaceState.INSTANCE.racing() || personalRules(pilot);
         this.probe.probe(minecraft.level, this.sample);
         this.session.update(this.sample);
+        StatsClient.tricks(drone, this.session.score());
         this.frames++;
+    }
+
+    static boolean personalRules(PilotSession pilot) {
+        return !AssistCheck.relevant(pilot.zoneField().personalDetails()).isEmpty();
     }
 
     private void fill(DroneSim sim) {

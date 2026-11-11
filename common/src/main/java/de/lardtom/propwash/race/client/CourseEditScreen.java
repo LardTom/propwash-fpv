@@ -1,5 +1,6 @@
 package de.lardtom.propwash.race.client;
 
+import de.lardtom.propwash.api.race.CourseMode;
 import de.lardtom.propwash.network.client.ClientNet;
 import de.lardtom.propwash.race.CourseAccess;
 import de.lardtom.propwash.race.CourseData;
@@ -57,6 +58,11 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
     private static final int LAPS_REPLY_TICKS = 40;
     private static final int CONFIRM_TICKS = 80;
     private static final int NO_LAPS = -2;
+    private static final int COPIED_TICKS = 40;
+    private static final String ID_KEY = "propwash.race.course_edit.id";
+    private static final String P2P = "propwash.race.p2p.";
+    private static final int CHIP_PAD = 12;
+    private static final String MENU = "propwash.race.course_menu.";
 
     private final @Nullable Screen parent;
     private final int courseId;
@@ -65,12 +71,21 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
     private boolean nameDirty;
     private int nameIdle;
     private int pendingLaps = NO_LAPS;
+    private @Nullable CourseMode pendingMode;
+    private int modeIdle;
+    private int modeLeft;
+    private @Nullable FlatButton lapsModeButton;
+    private @Nullable FlatButton pointModeButton;
     private int lapsIdle;
     private boolean lapsSent;
     private int firstRow;
     private int visibleRows = MIN_ROWS;
     private int lapsHintHeight;
     private int confirmDelete;
+    private int copiedTicks;
+    private int idY;
+    private @Nullable FlatButton copyButton;
+    private @Nullable FlatButton settingsButton;
     private int seenVersion = -1;
     private int windowLeft;
     private int windowTop;
@@ -118,12 +133,12 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         if (player == null || minecraft.level == null || !ClientNet.canSend(RacePayloads.CourseEditC2S.TYPE)) {
             return CourseAccess.NO_BUILD;
         }
-        boolean near = false;
-        for (CourseData.Gate gate : course.gates()) {
-            near |= CourseAccess.near(player.distanceToSqr(gate.x(), gate.y(), gate.z()), RaceCommands.NEAREST_COURSE_RANGE);
-        }
         return CourseAccess.edit(build(player), sameDimension(minecraft, course), course.owner() == null, player.getUUID().equals(course.owner()),
-                player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER), near);
+                operator(minecraft, player));
+    }
+
+    public static boolean operator(Minecraft minecraft, LocalPlayer player) {
+        return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || minecraft.hasSingleplayerServer();
     }
 
     public static boolean canEdit(Minecraft minecraft, CourseData course) {
@@ -143,7 +158,7 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         if (player == null || !ClientNet.canSend(RacePayloads.CourseEditC2S.TYPE)) {
             return false;
         }
-        boolean operator = player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || minecraft.hasSingleplayerServer();
+        boolean operator = operator(minecraft, player);
         return CourseAccess.delete(build(player), sameDimension(minecraft, course), player.getUUID().equals(course.owner()), operator, false).allowed();
     }
 
@@ -177,6 +192,46 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
     public boolean editable() {
         CourseData course = this.course();
         return course != null && canEdit(this.minecraft, course);
+    }
+
+    public Component shownTitle() {
+        return this.editable() ? this.title : Component.translatable("propwash.race.board.view");
+    }
+
+    @Override
+    public Component getTitle() {
+        return this.minecraft == null ? this.title : this.shownTitle();
+    }
+
+    public CourseMode shownMode() {
+        if (this.pendingMode != null) {
+            return this.pendingMode;
+        }
+        CourseData course = this.course();
+        return course == null ? CourseMode.LAPS : course.mode();
+    }
+
+    public void setMode(CourseMode mode) {
+        if (mode == this.shownMode()) {
+            return;
+        }
+        this.flush();
+        this.pendingMode = mode;
+        this.modeIdle = 0;
+        this.send(new RacePayloads.CourseEditC2S(this.courseId, CourseEdits.Action.MODE, mode.ordinal(), 0));
+        this.rebuildWidgets();
+    }
+
+    public @Nullable FlatButton lapsModeButton() {
+        return this.lapsModeButton;
+    }
+
+    public @Nullable FlatButton pointModeButton() {
+        return this.pointModeButton;
+    }
+
+    private boolean shownPointToPoint() {
+        return this.shownMode() == CourseMode.POINT_TO_POINT;
     }
 
     public int shownLaps() {
@@ -239,6 +294,10 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         this.firstRow = 0;
     }
 
+    public void reverse(int index) {
+        this.send(new RacePayloads.CourseEditC2S(this.courseId, CourseEdits.Action.REVERSE, index, 0));
+    }
+
     public void remove(int index) {
         this.send(new RacePayloads.CourseEditC2S(this.courseId, CourseEdits.Action.REMOVE, index, 0));
     }
@@ -265,6 +324,45 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         return this.confirmDelete > 0;
     }
 
+    public @Nullable String courseKey() {
+        CourseData course = this.course();
+        return course == null || course.key() == null ? null : course.key().toString();
+    }
+
+    public boolean copyKey() {
+        String key = this.courseKey();
+        if (key == null) {
+            return false;
+        }
+        this.minecraft.keyboardHandler.setClipboard(key);
+        this.copiedTicks = COPIED_TICKS;
+        if (this.copyButton != null) {
+            this.copyButton.setMessage(Component.translatable(ID_KEY + ".copied"));
+        }
+        return true;
+    }
+
+    public boolean copied() {
+        return this.copiedTicks > 0;
+    }
+
+    public @Nullable FlatButton copyButton() {
+        return this.copyButton;
+    }
+
+    public @Nullable FlatButton settingsButton() {
+        return this.settingsButton;
+    }
+
+    public void openSettings() {
+        this.flush();
+        if (this.parent instanceof CourseMenuScreen menu && menu.courseId() == this.courseId) {
+            this.minecraft.gui.setScreen(menu);
+            return;
+        }
+        this.minecraft.gui.setScreen(new CourseMenuScreen(this, this.courseId));
+    }
+
     private Component rowText(CourseData.Gate gate) {
         CourseElement kind = gate.kind();
         Component name = GateMounting.elementName(kind);
@@ -275,6 +373,19 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
             return Component.translatable(KEY + "row.gate", name, blocks(gate.width()), blocks(gate.height()));
         }
         return Component.translatable(KEY + "row.element", name, GateMounting.variantName(kind, gate.variant()));
+    }
+
+    private Component rowLabel(CourseData course, int index) {
+        CourseData.Gate gate = course.gates().get(index);
+        Component text = this.rowText(gate);
+        int first = course.firstPass(index);
+        if (first != index && first >= 0) {
+            text = Component.translatable(KEY + "row.repeat", text, first + 1);
+        }
+        if (gate.reverse()) {
+            text = Component.translatable(KEY + "row.reverse", text);
+        }
+        return text;
     }
 
     private static String blocks(double value) {
@@ -288,6 +399,9 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         }
         if (!access(this.minecraft, course).allowed()) {
             return denied(access(this.minecraft, course), course);
+        }
+        if (course.mode() == CourseMode.POINT_TO_POINT) {
+            return Component.translatable(P2P + "edit.hint");
         }
         return Component.translatable(KEY + "hint.layout");
     }
@@ -314,7 +428,7 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
             this.lapsHintHeight = hintLines * Metrics.LINE_HEIGHT + 2;
         }
         int helpLines = Math.max(HINT_LINES, this.font.split(this.hint(course), Math.max(20, w - 2 * PAD)).size());
-        int fixed = HEADER + PAD + 2 * FORM_ROW + this.lapsHintHeight + 4 + LIST_HEAD + 4 + helpLines * Metrics.LINE_HEIGHT + PAD + FOOTER;
+        int fixed = HEADER + PAD + 3 * FORM_ROW + this.lapsHintHeight + 4 + LIST_HEAD + 4 + helpLines * Metrics.LINE_HEIGHT + PAD + FOOTER;
         int room = Math.max(MIN_ROWS * ROW, this.height - 12 - fixed);
         this.visibleRows = Math.max(MIN_ROWS, Math.min(Math.min(MAX_ROWS, room / ROW), gates));
         int h = Math.min(this.height - 4, fixed + this.visibleRows * ROW);
@@ -343,24 +457,37 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         this.nameField = this.addRenderableWidget(name);
         y += FORM_ROW;
         int lapsY = y + (FORM_ROW - Metrics.CONTROL_HEIGHT) / 2;
-        FlatButton minus = new FlatButton(left + LABEL, lapsY, SMALL, Metrics.CONTROL_HEIGHT, Component.literal("−"), FlatButton.Style.NORMAL,
-                () -> this.stepLaps(-1));
-        minus.active = editable;
-        minus.setTooltip(Tooltip.create(Component.translatable(KEY + "laps.tooltip")));
-        this.addRenderableWidget(minus);
-        FlatButton plus = new FlatButton(left + LABEL + SMALL + LAPS_VALUE, lapsY, SMALL, Metrics.CONTROL_HEIGHT, Component.literal("+"),
-                FlatButton.Style.NORMAL, () -> this.stepLaps(1));
-        plus.active = editable;
-        plus.setTooltip(Tooltip.create(Component.translatable(KEY + "laps.tooltip")));
-        this.addRenderableWidget(plus);
-        y += FORM_ROW + this.lapsHintHeight + 4 + LIST_HEAD;
+        if (!this.shownPointToPoint()) {
+            FlatButton minus = new FlatButton(left + LABEL, lapsY, SMALL, Metrics.CONTROL_HEIGHT, Component.literal("−"), FlatButton.Style.NORMAL,
+                    () -> this.stepLaps(-1));
+            minus.active = editable;
+            minus.setTooltip(Tooltip.create(Component.translatable(KEY + "laps.tooltip")));
+            this.addRenderableWidget(minus);
+            FlatButton plus = new FlatButton(left + LABEL + SMALL + LAPS_VALUE, lapsY, SMALL, Metrics.CONTROL_HEIGHT, Component.literal("+"),
+                    FlatButton.Style.NORMAL, () -> this.stepLaps(1));
+            plus.active = editable;
+            plus.setTooltip(Tooltip.create(Component.translatable(KEY + "laps.tooltip")));
+            this.addRenderableWidget(plus);
+        }
+        y += FORM_ROW + this.lapsHintHeight;
+        this.idY = y;
+        Component copy = Component.translatable(this.copiedTicks > 0 ? ID_KEY + ".copied" : ID_KEY + ".copy");
+        int copyWidth = Math.max(this.font.width(Component.translatable(ID_KEY + ".copy")), this.font.width(Component.translatable(ID_KEY + ".copied")))
+                + 16;
+        FlatButton copyKey = new FlatButton(right - copyWidth, y + (FORM_ROW - Metrics.CONTROL_HEIGHT) / 2, copyWidth, Metrics.CONTROL_HEIGHT, copy,
+                FlatButton.Style.NORMAL, this::copyKey);
+        copyKey.active = course != null && course.key() != null;
+        copyKey.setTooltip(Tooltip.create(Component.translatable(ID_KEY + ".copy.tooltip")));
+        this.copyButton = this.addRenderableWidget(copyKey);
+        this.addModeButtons(y + FORM_ROW + 4 - 3, right, editable);
+        y += FORM_ROW + 4 + LIST_HEAD;
         this.listTop = y;
         this.gateScroll.layout(right - Metrics.SCROLLBAR_WIDTH, this.listTop, ROW, gates, this.visibleRows);
         if (course != null) {
             List<CourseElement> kinds = course.kinds();
             Component startLabel = Component.translatable(KEY + "start");
             int startWidth = this.font.width(startLabel) + 10;
-            int buttons = 3 * SMALL + startWidth + 3 * 2;
+            int buttons = 4 * SMALL + startWidth + 4 * 2;
             int bx = right - Metrics.CONTENT_INSET - buttons;
             int last = Math.min(gates, this.firstRow + this.visibleRows);
             for (int i = this.firstRow; i < last; i++) {
@@ -376,15 +503,20 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
                 down.active = editable && CourseOrder.canMove(kinds, index, index + 1);
                 down.setTooltip(Tooltip.create(Component.translatable(KEY + "down.tooltip")));
                 this.addRenderableWidget(down);
+                FlatButton reverse = new FlatButton(bx + 2 * (SMALL + 2), by, SMALL, Metrics.CONTROL_HEIGHT, Component.literal("⇄"),
+                        FlatButton.Style.NORMAL, () -> this.reverse(index));
+                reverse.active = editable;
+                reverse.setTooltip(Tooltip.create(Component.translatable(KEY + "reverse.tooltip")));
+                this.addRenderableWidget(reverse);
                 if (index > 0) {
-                    FlatButton start = new FlatButton(bx + 2 * (SMALL + 2), by, startWidth, Metrics.CONTROL_HEIGHT, startLabel, FlatButton.Style.NORMAL,
+                    FlatButton start = new FlatButton(bx + 3 * (SMALL + 2), by, startWidth, Metrics.CONTROL_HEIGHT, startLabel, FlatButton.Style.NORMAL,
                             () -> this.makeStart(index));
                     start.active = editable && CourseOrder.canStart(kinds, index);
                     start.setTooltip(Tooltip.create(Component.translatable(start.active || !editable ? KEY + "start.tooltip"
                             : KEY + "start.blocked.tooltip")));
                     this.addRenderableWidget(start);
                 }
-                FlatButton remove = new FlatButton(bx + 2 * (SMALL + 2) + startWidth + 2, by, SMALL, Metrics.CONTROL_HEIGHT, Component.literal("×"),
+                FlatButton remove = new FlatButton(bx + 3 * (SMALL + 2) + startWidth + 2, by, SMALL, Metrics.CONTROL_HEIGHT, Component.literal("×"),
                         FlatButton.Style.DANGER, () -> this.remove(index));
                 remove.active = editable && CourseOrder.canRemove(kinds, index);
                 remove.setTooltip(Tooltip.create(Component.translatable(KEY + "remove.tooltip")));
@@ -410,6 +542,31 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         deleteButton.active = course != null && canDelete(this.minecraft, course);
         deleteButton.setTooltip(Tooltip.create(Component.translatable(KEY + "delete.tooltip")));
         this.addRenderableWidget(deleteButton);
+        Component settings = Component.translatable(MENU + "open");
+        int settingsWidth = this.font.width(settings) + CHIP_PAD;
+        FlatButton settingsButton = new FlatButton(right - settingsWidth, this.windowTop + (HEADER - 1 - Metrics.CONTROL_HEIGHT) / 2, settingsWidth,
+                Metrics.CONTROL_HEIGHT, settings, FlatButton.Style.NORMAL, this::openSettings);
+        settingsButton.setTooltip(Tooltip.create(Component.translatable(MENU + "open.tooltip")));
+        this.settingsButton = this.addRenderableWidget(settingsButton);
+    }
+
+    private void addModeButtons(int top, int right, boolean editable) {
+        Component laps = Component.translatable(P2P + "mode.laps");
+        Component point = Component.translatable(P2P + "mode");
+        int lapsWidth = this.font.width(laps) + CHIP_PAD;
+        int pointWidth = this.font.width(point) + CHIP_PAD;
+        int x = right - pointWidth - 2 - lapsWidth;
+        FlatButton lapsButton = new FlatButton(x, top, lapsWidth, Metrics.CONTROL_HEIGHT, laps, FlatButton.Style.TAB,
+                () -> !this.shownPointToPoint(), () -> this.setMode(CourseMode.LAPS));
+        lapsButton.active = editable;
+        lapsButton.setTooltip(Tooltip.create(Component.translatable(P2P + "mode.laps.tooltip")));
+        this.lapsModeButton = this.addRenderableWidget(lapsButton);
+        FlatButton pointButton = new FlatButton(x + lapsWidth + 2, top, pointWidth, Metrics.CONTROL_HEIGHT, point, FlatButton.Style.TAB,
+                this::shownPointToPoint, () -> this.setMode(CourseMode.POINT_TO_POINT));
+        pointButton.active = editable;
+        pointButton.setTooltip(Tooltip.create(Component.translatable(P2P + "mode.tooltip")));
+        this.pointModeButton = this.addRenderableWidget(pointButton);
+        this.modeLeft = x;
     }
 
     @Override
@@ -418,11 +575,15 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         if (course == null) {
             this.nameDirty = false;
             this.pendingLaps = NO_LAPS;
+            this.pendingMode = null;
             this.minecraft.gui.setScreen(null);
             return;
         }
         if (this.confirmDelete > 0 && --this.confirmDelete == 0) {
             this.rebuildWidgets();
+        }
+        if (this.copiedTicks > 0 && --this.copiedTicks == 0 && this.copyButton != null) {
+            this.copyButton.setMessage(Component.translatable(ID_KEY + ".copy"));
         }
         if (this.nameDirty && ++this.nameIdle >= NAME_IDLE_TICKS && this.nameField != null) {
             this.rename(this.nameField.getValue());
@@ -435,6 +596,13 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
                 }
             } else if (course.laps() == this.pendingLaps || this.lapsIdle >= LAPS_REPLY_TICKS) {
                 this.pendingLaps = NO_LAPS;
+            }
+        }
+        if (this.pendingMode != null && (course.mode() == this.pendingMode || ++this.modeIdle >= LAPS_REPLY_TICKS)) {
+            boolean differs = course.mode() != this.pendingMode;
+            this.pendingMode = null;
+            if (differs) {
+                this.rebuildWidgets();
             }
         }
         if (this.seenVersion != ClientCourses.version()) {
@@ -534,24 +702,73 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         int textY = Metrics.textY(this.windowTop, HEADER - 1);
         int titleX = ThemeDraw.brand(g, this.font, this.windowLeft + 8, textY) + 10;
         ThemeDraw.verticalSeparator(g, titleX - 5, this.windowTop + 5, this.windowTop + HEADER - 6);
-        ThemeText.text(g, this.font, this.title, titleX, textY, Palette.TEXT);
+        Component shownTitle = this.shownTitle();
+        int headerRight = this.settingsButton == null ? this.windowRight - 8 : this.settingsButton.getX() - Metrics.GAP;
+        ThemeText.fitted(g, this.font, shownTitle, titleX, textY, Math.max(20, headerRight - titleX), Palette.TEXT);
         int left = this.windowLeft + PAD;
         int right = this.windowRight - PAD;
         if (course != null) {
             Component owner = course.ownerName().isEmpty() ? Component.translatable("propwash.race.server.unknown_owner")
                     : Component.literal(course.ownerName());
             Component info = Component.translatable(KEY + "info", course.id(), course.gates().size(), owner);
-            int infoWidth = this.windowRight - 8 - (titleX + this.font.width(this.title) + 12);
+            int infoWidth = headerRight - (titleX + this.font.width(shownTitle) + 12);
             if (TextFit.mode(this.font.width(info), infoWidth) == TextFit.Mode.CUT) {
                 info = Component.translatable(KEY + "info.short", course.id(), course.gates().size());
             }
             if (TextFit.mode(this.font.width(info), infoWidth) != TextFit.Mode.CUT) {
-                ThemeText.fittedRight(g, this.font, info, this.windowRight - 8, textY, infoWidth, Palette.TEXT_FAINT);
+                ThemeText.fittedRight(g, this.font, info, headerRight, textY, infoWidth, Palette.TEXT_FAINT);
             }
         }
         int y = this.formTop();
         ThemeText.text(g, this.font, Component.translatable(KEY + "name"), left, Metrics.textY(y, FORM_ROW), Palette.TEXT_MUTED);
         y += FORM_ROW;
+        if (this.shownPointToPoint()) {
+            this.extractFinish(g, course, left, right, y);
+        } else {
+            this.extractLaps(g, left, right, y);
+        }
+        y += FORM_ROW + this.lapsHintHeight;
+        this.extractKey(g, course, left, right, mouseX, mouseY);
+        y += FORM_ROW + 4;
+        int gates = course == null ? 0 : course.gates().size();
+        int headRight = this.modeLeft > left ? this.modeLeft - Metrics.GAP : right;
+        ThemeDraw.sectionTitle(g, this.font, Component.translatable(KEY + "gates", gates), left, y, headRight - left);
+        int listBottom = this.listTop + this.visibleRows * ROW;
+        if (course != null) {
+            this.extractRows(g, course, left, right, mouseX, mouseY);
+        }
+        this.gateScroll.extract(g, this.firstRow);
+        ThemeDraw.separator(g, left, right, listBottom + 1);
+        boolean denied = course != null && !access(this.minecraft, course).allowed();
+        ThemeText.wrapped(g, this.font, this.hint(course), left, listBottom + 5, right - left, denied ? Palette.WARNING : Palette.TEXT_FAINT);
+        int footerTop = this.windowBottom - FOOTER;
+        ThemeDraw.footerBar(g, this.windowLeft, footerTop, this.windowRight, this.windowBottom);
+        super.extractRenderState(g, mouseX, mouseY, a);
+        ThemeDraw.windowBorder(g, this.windowLeft, this.windowTop, this.windowRight, this.windowBottom);
+    }
+
+    private void extractFinish(GuiGraphicsExtractor g, @Nullable CourseData course, int left, int right, int y) {
+        ThemeText.text(g, this.font, Component.translatable(P2P + "edit.finish_label"), left, Metrics.textY(y, FORM_ROW), Palette.TEXT_MUTED);
+        int gates = course == null ? 0 : course.gates().size();
+        Component value;
+        boolean ready = gates >= 2;
+        if (ready) {
+            CourseData.Gate finish = course.gates().getLast();
+            value = Component.translatable(P2P + "edit.finish", gates, GateMounting.elementName(finish.kind()));
+        } else {
+            value = Component.translatable(P2P + "edit.finish_missing");
+        }
+        int valueLeft = left + LABEL;
+        int room = Math.max(20, right - valueLeft);
+        ThemeText.fitted(g, this.font, value, valueLeft, Metrics.textY(y, FORM_ROW), room, ready ? Palette.TEXT : Palette.WARNING);
+        Component hint = Component.translatable(P2P + "edit.finish_hint");
+        int hintLeft = valueLeft + this.font.width(value) + 10;
+        if (ready && hintLeft + this.font.width(hint) <= right) {
+            ThemeText.text(g, this.font, hint, hintLeft, Metrics.textY(y, FORM_ROW), Palette.TEXT_FAINT);
+        }
+    }
+
+    private void extractLaps(GuiGraphicsExtractor g, int left, int right, int y) {
         ThemeText.text(g, this.font, Component.translatable(KEY + "laps"), left, Metrics.textY(y, FORM_ROW), Palette.TEXT_MUTED);
         Component laps = lapsLabel(this.shownLaps());
         if (this.personalLaps()) {
@@ -568,21 +785,22 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
         } else {
             ThemeText.text(g, this.font, lapsHint, left + LAPS_HINT_LEFT, Metrics.textY(y, FORM_ROW), Palette.TEXT_FAINT);
         }
-        y += FORM_ROW + this.lapsHintHeight + 4;
-        int gates = course == null ? 0 : course.gates().size();
-        ThemeDraw.sectionTitle(g, this.font, Component.translatable(KEY + "gates", gates), left, y, right - left);
-        int listBottom = this.listTop + this.visibleRows * ROW;
-        if (course != null) {
-            this.extractRows(g, course, left, right, mouseX, mouseY);
+    }
+
+    private void extractKey(GuiGraphicsExtractor g, @Nullable CourseData course, int left, int right, int mouseX, int mouseY) {
+        int y = this.idY;
+        ThemeText.text(g, this.font, Component.translatable(ID_KEY), left, Metrics.textY(y, FORM_ROW), Palette.TEXT_MUTED);
+        int fieldLeft = left + LABEL;
+        int fieldRight = (this.copyButton == null ? right : this.copyButton.getX()) - Metrics.GAP;
+        int top = y + (FORM_ROW - Metrics.CONTROL_HEIGHT) / 2;
+        ThemeDraw.field(g, fieldLeft, top, fieldRight, top + Metrics.CONTROL_HEIGHT, WidgetState.IDLE);
+        String key = course == null || course.key() == null ? null : course.key().toString();
+        Component text = key == null ? Component.translatable(ID_KEY + ".none") : Component.literal(key);
+        ThemeText.fitted(g, this.font, text, fieldLeft + 5, Metrics.textY(y, FORM_ROW), Math.max(20, fieldRight - fieldLeft - 10),
+                key == null ? Palette.TEXT_FAINT : Palette.TEXT);
+        if (mouseX >= left && mouseX < fieldRight && mouseY >= top && mouseY < top + Metrics.CONTROL_HEIGHT) {
+            ThemeText.tooltipWrapped(g, this.font, Component.translatable(ID_KEY + ".tooltip"), 240, mouseX, mouseY);
         }
-        this.gateScroll.extract(g, this.firstRow);
-        ThemeDraw.separator(g, left, right, listBottom + 1);
-        boolean denied = course != null && !access(this.minecraft, course).allowed();
-        ThemeText.wrapped(g, this.font, this.hint(course), left, listBottom + 5, right - left, denied ? Palette.WARNING : Palette.TEXT_FAINT);
-        int footerTop = this.windowBottom - FOOTER;
-        ThemeDraw.footerBar(g, this.windowLeft, footerTop, this.windowRight, this.windowBottom);
-        super.extractRenderState(g, mouseX, mouseY, a);
-        ThemeDraw.windowBorder(g, this.windowLeft, this.windowTop, this.windowRight, this.windowBottom);
     }
 
     private void extractRows(GuiGraphicsExtractor g, CourseData course, int left, int right, int mouseX, int mouseY) {
@@ -592,14 +810,16 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
             return;
         }
         Component startLabel = Component.translatable(KEY + "start");
-        int buttons = 3 * SMALL + this.font.width(startLabel) + 10 + 3 * 2;
+        int buttons = 4 * SMALL + this.font.width(startLabel) + 10 + 4 * 2;
         int textRight = right - Metrics.CONTENT_INSET - buttons - 6;
         int positionWidth = this.font.width("-00000 000 -00000");
         int widestName = 0;
-        for (CourseData.Gate gate : gates) {
-            widestName = Math.max(widestName, this.font.width(this.rowText(gate)));
+        for (int i = 0; i < gates.size(); i++) {
+            widestName = Math.max(widestName, this.font.width(this.rowLabel(course, i)));
         }
-        int badge = this.font.width(Component.translatable(KEY + "start_badge")) + 14;
+        int badge = Math.max(this.font.width(Component.translatable(KEY + "start_badge")),
+                this.font.width(Component.translatable(P2P + "edit.finish_badge"))) + 14;
+        Component startBadge = Component.translatable(this.shownPointToPoint() && gates.size() > 1 ? P2P + "edit.start_badge" : KEY + "start_badge");
         boolean showPosition = textRight - left > 250 && textRight - positionWidth - 8 - (left + 26 + badge) >= widestName;
         int last = Math.min(gates.size(), this.firstRow + this.visibleRows);
         for (int i = this.firstRow; i < last; i++) {
@@ -616,11 +836,13 @@ public final class CourseEditScreen extends Screen implements ThemedScreen {
             ThemeText.textRight(g, this.font, Integer.toString(i + 1), left + 18, ty, i == 0 ? Palette.ACCENT : Palette.TEXT_MUTED);
             int x = left + 26;
             if (i == 0) {
-                x += ThemeDraw.badge(g, this.font, Component.translatable(KEY + "start_badge"), x, rowTop + 2, rowTop + ROW - 2, Palette.ACCENT_DIM,
-                        Palette.TEXT) + 6;
+                x += ThemeDraw.badge(g, this.font, startBadge, x, rowTop + 2, rowTop + ROW - 2, Palette.ACCENT_DIM, Palette.TEXT) + 6;
+            } else if (this.shownPointToPoint() && i == gates.size() - 1) {
+                x += ThemeDraw.badge(g, this.font, Component.translatable(P2P + "edit.finish_badge"), x, rowTop + 2, rowTop + ROW - 2,
+                        Palette.ACCENT_DIM, Palette.TEXT) + 6;
             }
             int nameRight = showPosition ? textRight - positionWidth - 8 : textRight;
-            ThemeText.fitted(g, this.font, this.rowText(gate), x, ty, Math.max(20, nameRight - x), Palette.TEXT);
+            ThemeText.fitted(g, this.font, this.rowLabel(course, i), x, ty, Math.max(20, nameRight - x), Palette.TEXT);
             if (showPosition) {
                 String position = Math.round(gate.x()) + " " + Math.round(gate.y()) + " " + Math.round(gate.z());
                 ThemeText.textRight(g, this.font, position, textRight, ty, Palette.TEXT_FAINT);

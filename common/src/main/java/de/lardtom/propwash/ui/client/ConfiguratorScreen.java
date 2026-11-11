@@ -3,8 +3,12 @@ package de.lardtom.propwash.ui.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.freecam.FreecamRules;
+import de.lardtom.propwash.freecam.client.FreecamSession;
 import de.lardtom.propwash.input.RadioState;
 import de.lardtom.propwash.platform.Services;
+import de.lardtom.propwash.server.client.ClientWorldRules;
+import de.lardtom.propwash.server.client.WorldRulesTab;
 import de.lardtom.propwash.ui.ChromeLayout;
 import de.lardtom.propwash.ui.ScrollMath;
 import de.lardtom.propwash.ui.SettingsSearch;
@@ -14,6 +18,7 @@ import de.lardtom.propwash.ui.client.config.ConfigTabHost;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
 import de.lardtom.propwash.ui.client.search.SearchBar;
 import de.lardtom.propwash.ui.client.search.SettingsIndex;
+import de.lardtom.propwash.ui.client.tab.OverviewTab;
 import de.lardtom.propwash.ui.client.tab.UiTab;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
@@ -88,7 +93,14 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
     private final Map<String, String> tabErrors = new LinkedHashMap<>();
     private final Map<String, String> tabReports = new HashMap<>();
     private final Map<String, Integer> extractedFrames = new HashMap<>();
-    private final TuneModel tune;
+    private TuneModel tune;
+    private final boolean freecam;
+    private @Nullable FlatButton freecamStart;
+    private @Nullable FlatButton freecamRule;
+    private int freecamStartWidth;
+    private int freecamRuleWidth;
+    private boolean freecamSingle;
+    private boolean freecamFooter;
     private DroneContext context;
     private int activeIndex;
     private boolean otherChanges;
@@ -122,7 +134,8 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
         this.parent = parent;
         this.context = DroneContext.resolve(Minecraft.getInstance());
         this.tune = TuneModel.open(this.context);
-        this.tabs = ConfigTabs.create();
+        this.freecam = this.context.freecam();
+        this.tabs = ConfigTabs.create(this.freecam);
         this.activeIndex = this.indexOf(tabId != null ? tabId : UiConfig.get().lastTab);
     }
 
@@ -190,6 +203,22 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
         return this.context;
     }
 
+    public boolean freecam() {
+        return this.freecam;
+    }
+
+    public @Nullable FlatButton freecamStartButton() {
+        return this.freecamStart;
+    }
+
+    public @Nullable FlatButton freecamRuleButton() {
+        return this.freecamRule;
+    }
+
+    public boolean freecamSingleButton() {
+        return this.freecamSingle;
+    }
+
     public List<ConfigTab> tabs() {
         return List.copyOf(this.tabs);
     }
@@ -252,6 +281,10 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
         }
         this.activeIndex = index;
         this.confirmDiscard = false;
+        if (this.offersFreecam() && this.onOverview() != this.freecamFooter) {
+            this.relayout();
+            return;
+        }
         this.layoutSidebar(true);
         this.attachActive();
         this.updateFooterButtons();
@@ -289,6 +322,16 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
                 Component.translatable("propwash.ui.button.defaults"), FlatButton.Style.NORMAL, this::resetActiveTab));
         this.discardButton = this.addRenderableWidget(new FlatButton(sideX, buttonY, this.sideWidth, Metrics.CONTROL_HEIGHT,
                 Component.translatable("propwash.ui.button.discard"), FlatButton.Style.DANGER, this::discardAndClose));
+        this.freecamStart = null;
+        this.freecamRule = null;
+        if (this.offersFreecam()) {
+            int startX = saveX - Metrics.GAP - this.freecamStartWidth;
+            this.freecamStart = this.addRenderableWidget(new FlatButton(startX, buttonY, this.freecamStartWidth, Metrics.CONTROL_HEIGHT,
+                    Component.translatable("propwash.freecam.start"), FlatButton.Style.NORMAL, this::startFreecam));
+            int ruleX = this.freecamSingle ? saveX - Metrics.GAP - this.freecamRuleWidth : startX - Metrics.GAP - this.freecamRuleWidth;
+            this.freecamRule = this.addRenderableWidget(new FlatButton(ruleX, buttonY, this.freecamRuleWidth,
+                    Metrics.CONTROL_HEIGHT, Component.translatable("propwash.freecam.to_rule"), FlatButton.Style.NORMAL, this::jumpToFreecamRule));
+        }
         this.updateFooterButtons();
         this.attachActive();
     }
@@ -389,9 +432,15 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
                 this.font.width(Component.translatable("propwash.ui.button.close"))) + 16);
         this.sideWidth = Math.max(64, Math.max(this.font.width(Component.translatable("propwash.ui.button.defaults")),
                 this.font.width(Component.translatable("propwash.ui.button.discard"))) + 16);
-        this.footerStacked = ChromeLayout.footerStacked(w, this.saveWidth, this.sideWidth, Metrics.PADDING, Metrics.GAP);
+        this.freecamStartWidth = Math.max(64, this.font.width(Component.translatable("propwash.freecam.start")) + 16);
+        this.freecamRuleWidth = Math.max(64, this.font.width(Component.translatable("propwash.freecam.to_rule")) + 16);
+        int both = this.freecamStartWidth + Metrics.GAP + this.freecamRuleWidth;
+        this.freecamFooter = this.offersFreecam() && this.onOverview();
+        int side = this.freecamFooter ? Math.max(this.sideWidth, both) : this.sideWidth;
+        this.footerStacked = ChromeLayout.footerStacked(w, this.saveWidth, side, Metrics.PADDING, Metrics.GAP);
+        this.freecamSingle = this.footerStacked && 2 * Metrics.PADDING + this.saveWidth + Metrics.GAP + both > w;
         this.statusLimit = this.footerStacked ? ChromeLayout.stackedStatusLimit(w)
-                : ChromeLayout.statusLimit(w, this.saveWidth, this.sideWidth, Metrics.PADDING, Metrics.GAP);
+                : ChromeLayout.statusLimit(w, this.saveWidth, side, Metrics.PADDING, Metrics.GAP);
         int statusLines = 1;
         for (Component candidate : this.footerCandidates()) {
             statusLines = Math.max(statusLines, this.font.split(candidate, this.statusLimit).size());
@@ -415,6 +464,13 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
                 "propwash.ui.footer.unsaved", "propwash.ui.footer.read_only", "propwash.ui.footer.mixed", "propwash.ui.footer.game",
                 "propwash.ui.footer.template", "propwash.ui.footer.live", "propwash.ui.footer.held", "propwash.ui.footer.defaults_done")) {
             out.add(Component.translatable(key));
+        }
+        if (this.freecamFooter) {
+            for (FreecamRules.Denial denial : FreecamRules.Denial.values()) {
+                if (!denial.translationKey().isEmpty()) {
+                    out.add(Component.translatable(denial.translationKey()));
+                }
+            }
         }
         for (ConfigTab tab : this.tabs) {
             try {
@@ -462,6 +518,14 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
 
     public ScreenRectangle windowArea() {
         return new ScreenRectangle(this.windowLeft, this.windowTop, this.windowRight - this.windowLeft, this.windowBottom - this.windowTop);
+    }
+
+    public ScreenRectangle footerArea() {
+        return new ScreenRectangle(this.windowLeft, this.windowBottom - this.footerHeight, this.windowRight - this.windowLeft, this.footerHeight);
+    }
+
+    public boolean footerStacked() {
+        return this.footerStacked;
     }
 
     public ScreenRectangle contentView() {
@@ -655,6 +719,66 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
         if (this.discardButton != null) {
             this.discardButton.visible = this.confirmDiscard;
         }
+        if (this.freecamStart != null && this.freecamRule != null) {
+            boolean shown = !this.confirmDiscard && this.onOverview();
+            FreecamRules.Denial denial = FreecamSession.denialFromMenu(this.minecraft);
+            boolean rule = shown && denial.ruleRelated() && ClientWorldRules.INSTANCE.editable();
+            this.freecamStart.visible = shown && !(rule && this.freecamSingle);
+            this.freecamStart.active = denial.allowed();
+            this.freecamRule.visible = rule;
+        }
+    }
+
+    private boolean offersFreecam() {
+        if (this.freecam) {
+            return false;
+        }
+        for (ConfigTab tab : this.tabs) {
+            if (OverviewTab.ID.equals(this.safeId(tab))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean onOverview() {
+        ConfigTab tab = this.activeTab();
+        return tab != null && OverviewTab.ID.equals(this.safeId(tab));
+    }
+
+    private void relayout() {
+        int focused = this.getFocused() instanceof FlatButton button ? this.sidebarButtons.indexOf(button) : -1;
+        this.rebuildWidgets();
+        if (focused >= 0 && focused < this.sidebarButtons.size()) {
+            this.setFocused(this.sidebarButtons.get(focused));
+        }
+    }
+
+    private void startFreecam() {
+        if (!FreecamSession.denialFromMenu(this.minecraft).allowed()) {
+            return;
+        }
+        this.primaryAction();
+        if (this.minecraft.gui.screen() == null) {
+            FreecamSession.INSTANCE.tryStart(this.minecraft);
+        }
+    }
+
+    private void jumpToFreecamRule() {
+        int index = this.exactIndex(WorldRulesTab.ID);
+        if (index < 0) {
+            return;
+        }
+        this.selectTab(index);
+        if (this.activeTab() instanceof WorldRulesTab rules) {
+            AbstractWidget widget = rules.focusRule(FreecamSession.RULE);
+            if (widget != null) {
+                this.highlight = widget;
+                this.highlightTab = null;
+                this.highlightTicks = HIGHLIGHT_TICKS;
+                this.setFocused(widget.active && widget.visible ? widget : null);
+            }
+        }
     }
 
     private void resetActiveTab() {
@@ -710,10 +834,22 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
 
     private void rememberTab() {
         ConfigTab tab = this.activeTab();
-        if (tab != null) {
+        if (tab != null && !this.freecam) {
             UiConfig.get().lastTab = tab.id();
             UiConfig.CONFIG.save();
         }
+    }
+
+    private void closeAfterFreecam() {
+        for (ConfigTab tab : this.tabs) {
+            try {
+                tab.save();
+            } catch (RuntimeException e) {
+                this.recordError(tab, e);
+            }
+        }
+        this.otherChanges = false;
+        this.closeScreen();
     }
 
     private void closeScreen() {
@@ -732,6 +868,7 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
         if (index < 0) {
             return;
         }
+        SettingsIndex.Target target = entry.kind() == SettingsSearch.Kind.TAB ? null : this.searchTarget(entry);
         if (index != this.activeIndex) {
             this.selectTab(index);
         } else if (this.rebuildRequested) {
@@ -745,8 +882,6 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
             this.setFocused(this.highlightTab);
             return;
         }
-        SettingsIndex searchIndex = this.search != null ? this.search.index() : null;
-        SettingsIndex.Target target = searchIndex != null ? searchIndex.target(entry) : null;
         AbstractWidget widget = target != null ? SettingsIndex.locate(target, this.tabWidgets) : null;
         if (widget == null) {
             this.highlightTab = index < this.sidebarButtons.size() ? this.sidebarButtons.get(index) : null;
@@ -756,6 +891,11 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
         this.revealWidget(widget);
         this.highlight = widget;
         this.setFocused(widget.active && widget.visible ? widget : null);
+    }
+
+    private SettingsIndex.@Nullable Target searchTarget(SettingsSearch.Entry entry) {
+        SettingsIndex index = this.search != null ? this.search.index() : null;
+        return (index != null ? index : SettingsIndex.build(this)).target(entry);
     }
 
     private void revealWidget(AbstractWidget widget) {
@@ -853,10 +993,18 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
 
     @Override
     public void tick() {
+        if (this.freecam && !FreecamSession.active()) {
+            this.closeAfterFreecam();
+            return;
+        }
         if (this.rebuildRequested) {
             this.attachActive();
         }
         DroneContext now = DroneContext.resolve(this.minecraft);
+        if (this.freecam && !now.sameDrone(this.context)) {
+            this.tune = TuneModel.open(now);
+            this.rebuildRequested = true;
+        }
         this.context = now;
         this.tune.tick();
         if (this.headerRowsNeeded() != this.headerRows) {
@@ -1240,7 +1388,7 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
 
         HeaderTexts texts = this.headerTexts();
         boolean connected = texts.connected();
-        boolean flying = this.tune.live() && this.context.piloting();
+        boolean flying = this.tune.live() && (this.context.piloting() || this.context.freecam());
         Component badge = Component.translatable(flying ? "propwash.ui.header.live"
                 : this.tune.live() ? "propwash.ui.header.held" : "propwash.ui.header.template");
         int badgeWidth = this.font.width(badge) + 8;
@@ -1295,6 +1443,12 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
             return new Status(Component.translatable(this.tune.live() && this.tune.dirty() ? "propwash.ui.footer.unsaved_live"
                     : "propwash.ui.footer.unsaved"), Palette.ACCENT);
         }
+        if (this.freecamStart != null && !this.confirmDiscard && this.onOverview() && !this.freecamStart.active) {
+            String key = FreecamSession.denialFromMenu(this.minecraft).translationKey();
+            if (!key.isEmpty()) {
+                return new Status(Component.translatable(key), Palette.WARNING);
+            }
+        }
         if (this.tabCall(ConfigTab::readOnly)) {
             return new Status(Component.translatable(this.tabKey(ConfigTab::readOnlyKey, "propwash.ui.footer.read_only")), Palette.TEXT_FAINT);
         }
@@ -1305,7 +1459,7 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
             return new Status(Component.translatable("propwash.ui.footer.game"), Palette.TEXT_FAINT);
         }
         return new Status(Component.translatable(!this.tune.live() ? "propwash.ui.footer.template"
-                : this.context.piloting() ? "propwash.ui.footer.live" : "propwash.ui.footer.held"), Palette.TEXT_FAINT);
+                : this.context.piloting() || this.context.freecam() ? "propwash.ui.footer.live" : "propwash.ui.footer.held"), Palette.TEXT_FAINT);
     }
 
     public List<String> statusLines() {
@@ -1322,7 +1476,8 @@ public final class ConfiguratorScreen extends Screen implements ConfigTabHost, T
     }
 
     private int currentStatusLimit() {
-        boolean sideShown = (this.defaultsButton != null && this.defaultsButton.visible) || (this.discardButton != null && this.discardButton.visible);
+        boolean sideShown = (this.defaultsButton != null && this.defaultsButton.visible) || (this.discardButton != null && this.discardButton.visible)
+                || (this.freecamStart != null && this.freecamStart.visible) || (this.freecamRule != null && this.freecamRule.visible);
         return sideShown || this.footerStacked ? this.statusLimit : this.statusLimit + this.sideWidth + Metrics.GAP;
     }
 

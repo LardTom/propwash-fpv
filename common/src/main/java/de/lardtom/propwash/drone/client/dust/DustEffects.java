@@ -77,19 +77,21 @@ public final class DustEffects {
         drone.renderAttitude(1.0F, ATTITUDE);
         ATTITUDE.transform(UP.set(0.0F, 1.0F, 0.0F));
         double verticality = UP.y;
-        double depth = DustModel.probeDepth(reach, verticality);
+        float scale = drone.scale();
+        double depth = DustModel.probeDepth(reach, verticality) * scale;
         if (!(depth > 0.0)) {
             forget(drone);
             return;
         }
-        double rotorY = drone.getY() + rotorAboveFeet(spec);
+        double rotorY = drone.getY() + rotorAboveFeet(spec) * scale;
         DustSurface.Ground ground = DustSurface.probe(level, drone.getX(), rotorY, drone.getZ(), depth, CURSOR);
         if (ground.surface() == DustModel.Surface.NONE) {
             forget(drone);
             return;
         }
         double height = rotorY - ground.top();
-        DustModel.Wash wash = DustModel.evaluate(height, verticality, thrust, jet, ground.surface(), ground.material(), config.intensity, detail);
+        DustModel.Wash wash = DustModel.evaluate(height / scale, verticality, thrust, jet, ground.surface(), ground.material(), config.intensity,
+                detail);
         Tracked tracked = DRONES.computeIfAbsent(drone, d -> new Tracked());
         tracked.wash = wash;
         tracked.ground = ground;
@@ -101,15 +103,17 @@ public final class DustEffects {
         double offsetX = -UP.x * along;
         double offsetZ = -UP.z * along;
         double offset = Math.sqrt(offsetX * offsetX + offsetZ * offsetZ);
-        if (offset > wash.reach() && offset > 0.0) {
-            offsetX *= wash.reach() / offset;
-            offsetZ *= wash.reach() / offset;
+        double washReach = wash.reach() * scale;
+        if (offset > washReach && offset > 0.0) {
+            offsetX *= washReach / offset;
+            offsetZ *= washReach / offset;
         }
         double centerX = drone.getX() + offsetX;
         double centerZ = drone.getZ() + offsetZ;
-        double radius = DustModel.spawnRadius(jet, wash.distance());
+        double radius = DustModel.spawnRadius(jet, wash.distance()) * scale;
+        float visual = DustModel.visualScale(config.intensity) * (float) Math.sqrt(scale);
         for (int i = 0; i < count; i++) {
-            spawn(minecraft, level, centerX, centerZ, rotorY, depth, radius, wash, jet, DustModel.visualScale(config.intensity));
+            spawn(minecraft, level, centerX, centerZ, rotorY, depth, radius, wash, jet, visual);
         }
     }
 

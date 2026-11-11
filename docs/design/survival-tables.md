@@ -60,8 +60,10 @@ Erzeugt von `tools/data/survival.py` – nicht von Hand bearbeiten. Begründung 
 | pw:dive_cube | 1 | `BGB` / `B·B` / `BBB` | B = iron_bars, G = glowstone_dust | iron_bars, glowstone_dust, jedes Propwash-Item |
 | pw:freeform_gate | 1 | `GRG` / `R·R` / `GRG` | G = glowstone_dust, R = redstone | glowstone_dust, redstone, jedes Propwash-Item |
 | pw:course_tool | 1 | `R` / `P` / `S` | R = redstone, P = paper, S = stick | redstone, paper, stick, jedes Propwash-Item |
+| pw:zone_marker | 1 | `G` / `P` / `S` | G = glowstone_dust, P = paper, S = stick | glowstone_dust, paper, stick, jedes Propwash-Item |
 | pw:waterproof_spray | 1 | `·N·` / `NHN` / `NRN` | N = iron_nugget, H = honeycomb, R = resin_clump | iron_nugget, honeycomb, resin_clump, jedes Propwash-Item |
 | pw:signal_repeater | 2 | `·A·` / `LBL` / `·I·` | A = lightning_rod, L = pw:copper_coil, B = pw:circuit_board, I = iron_ingot | lightning_rod, pw:copper_coil, pw:circuit_board, iron_ingot, jedes Propwash-Item |
+| pw:rx_block | 1 | `·A·` / `CBC` / `·R·` | A = lightning_rod, C = copper_ingot, B = pw:circuit_board, R = redstone | lightning_rod, copper_ingot, pw:circuit_board, redstone, jedes Propwash-Item |
 
 ## Sonderrezepte
 

@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Mode3dInputTest {
     private static final float EPS = 1.0E-4F;
-    private static final int BIT = SwitchEvaluator.bit(SwitchFunction.MODE_3D);
+    private static final long BIT = SwitchEvaluator.bit(SwitchFunction.MODE_3D);
 
     @Test
     void mode3dIsANewSwitchFunctionThatLatchesLikeTheOtherModes() {

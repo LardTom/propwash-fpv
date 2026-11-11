@@ -5,11 +5,14 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.DronePaint;
 import de.lardtom.propwash.build.FrameType;
 import de.lardtom.propwash.build.MotorType;
 import de.lardtom.propwash.build.PaintChannel;
+import de.lardtom.propwash.build.StackType;
+import de.lardtom.propwash.build.VideoType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
@@ -51,6 +54,7 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
     private static final int MAX_ASSEMBLIES = 64;
     private static final int MAX_PAINTED = 512;
     private static final float MAX_PART_HEIGHT_MM = 400.0F;
+    private static final int MAX_MODEL_PARENTS = 4;
 
     private final Set<String> warned = ConcurrentHashMap.newKeySet();
     private final Map<FrameType, DroneLayout> layouts = new ConcurrentHashMap<>();
@@ -59,6 +63,9 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
     private volatile Map<Identifier, Float> motorSeats = Map.of();
     private volatile Map<String, List<TintGroup>> paintGroups = Map.of();
     private volatile Set<PartModel> missingModels = Set.of();
+    private volatile Plugs plugs = Plugs.EMPTY;
+    private final Map<PartModel, AntennaMask> antennaMasks = new ConcurrentHashMap<>();
+    private final Map<PartModel, Float> packRears = new ConcurrentHashMap<>();
     private volatile @Nullable ResourceManager manager;
     private volatile boolean layoutFileFound;
     private volatile boolean loaded;
@@ -66,6 +73,7 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
     private final Map<PartModel, ResolvedPart> resolvedParts = new HashMap<>();
     private final Map<DroneBuild, DroneAssembly> assemblies = new HashMap<>();
     private final Map<PaintedKey, ResolvedPart> paintedParts = new HashMap<>();
+    private final Map<PartModel, ItemStackRenderState> strippedItems = new HashMap<>();
 
     private DroneRenderResources() {
     }
@@ -75,14 +83,19 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
         this.manager = manager;
         this.layouts.clear();
         this.availability.clear();
+        this.packRears.clear();
         try {
             this.reloadLayouts(manager);
             this.reloadModels(manager);
             this.reloadPaint(manager);
+            this.reloadPlugs(manager);
+            this.reloadAntennaMasks(manager);
         } catch (RuntimeException e) {
             Constants.LOG.error("Drohnen-Renderer: Ressourcen konnten nicht geladen werden, benutze eingebaute Maße und Ersatzformen", e);
             this.layoutEntries = Map.of();
             this.layouts.clear();
+            this.plugs = Plugs.EMPTY;
+            this.antennaMasks.clear();
             this.missingModels = Set.copyOf(PartModel.all());
             for (PartModel model : PartModel.known()) {
                 this.availability.put(model, Boolean.FALSE);
@@ -93,6 +106,7 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
             this.resolvedParts.clear();
             this.assemblies.clear();
             this.paintedParts.clear();
+            this.strippedItems.clear();
             this.loaded = true;
             this.generation++;
         }
@@ -230,6 +244,220 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
         this.paintGroups = Map.copyOf(groups);
     }
 
+    private void reloadPlugs(ResourceManager manager) {
+        Plugs read = readPlugs(manager);
+        this.plugs = read;
+        for (Map.Entry<PartModel, String> entry : read.fallbacks().entrySet()) {
+            Constants.LOG.info("Drohnen-Renderer: {} wird nicht benutzt ({}), Stecker bleiben sichtbar", entry.getKey(), entry.getValue());
+        }
+        Constants.LOG.info("Drohnen-Renderer: Akku-Stecker ausgeblendet: {} Akku-Modelle mit Stecker, {} Stacks mit _mounted",
+                read.batteryPlugs().size(), read.cables().size());
+    }
+
+    private void reloadAntennaMasks(ResourceManager manager) {
+        this.antennaMasks.clear();
+        List<String> names = new ArrayList<>();
+        for (VideoType video : VideoType.values()) {
+            PartModel base = PartModel.of(video);
+            AntennaMask mask = readAntennaMask(manager, base);
+            this.antennaMasks.put(base, mask);
+            this.antennaMasks.put(base.paintVariant(), readAntennaMask(manager, base.paintVariant()));
+            if (!mask.isEmpty()) {
+                names.add(base.name());
+            }
+        }
+        if (!names.isEmpty()) {
+            Collections.sort(names);
+            Constants.LOG.info("Drohnen-Renderer: Antennen in {} VTX-Modellen ausgelassen, gezeichnet am Antennenhalter des Rahmens: {}", names.size(), names);
+        }
+    }
+
+    static AntennaMask readAntennaMask(ResourceManager manager, PartModel model) {
+        try {
+            return modelJson(manager, model).map(AntennaMask::of).orElse(AntennaMask.NONE);
+        } catch (RuntimeException e) {
+            return AntennaMask.NONE;
+        }
+    }
+
+    public AntennaMask antennaMask(PartModel model) {
+        AntennaMask known = this.antennaMasks.get(model);
+        if (known != null) {
+            return known;
+        }
+        ResourceManager current = this.manager;
+        if (current == null) {
+            return AntennaMask.NONE;
+        }
+        AntennaMask mask = readAntennaMask(current, model);
+        this.antennaMasks.put(model, mask);
+        this.antennaMasks.put(model.paintVariant(), readAntennaMask(current, model.paintVariant()));
+        return mask;
+    }
+
+    public float packRear(PartModel battery) {
+        Float known = this.packRears.get(battery);
+        if (known != null) {
+            return known;
+        }
+        ResourceManager current = this.manager;
+        float rear = current == null ? Float.NaN : packRear(elements(current, battery).orElse(List.of()));
+        this.packRears.put(battery, rear);
+        return rear;
+    }
+
+    static float packRear(List<PlugAnchors.Element> elements) {
+        List<PlugAnchors.Box> leads = PlugAnchors.batteryPlug(elements);
+        float rear = Float.NaN;
+        for (PlugAnchors.Element element : elements) {
+            if (leads.contains(element.box()) || PlugAnchors.isLead(element.name())) {
+                continue;
+            }
+            rear = Float.isNaN(rear) ? element.box().maxZ() : Math.max(rear, element.box().maxZ());
+        }
+        return rear;
+    }
+
+    public synchronized @Nullable ItemStackRenderState droneItem(PartModel part) {
+        ItemStackRenderState item = this.item(part);
+        AntennaMask mask = this.antennaMask(part);
+        if (item == null || mask.isEmpty()) {
+            return item;
+        }
+        ItemStackRenderState stripped = this.strippedItems.get(part);
+        if (stripped == null) {
+            stripped = mask.strip(item);
+            this.strippedItems.put(part, stripped);
+        }
+        return stripped;
+    }
+
+    static Plugs readPlugs(ResourceManager manager) {
+        Map<PartModel, PlugMask> batteryPlugs = new HashMap<>();
+        Map<PartModel, PlugMask> cables = new HashMap<>();
+        Map<PartModel, String> fallbacks = new TreeMap<>((a, b) -> a.name().compareTo(b.name()));
+        for (BatteryType battery : BatteryType.values()) {
+            for (PartModel model : List.of(PartModel.of(battery), PartModel.batteryUnder(battery))) {
+                List<PlugAnchors.Box> plug = elements(manager, model).map(PlugAnchors::batteryPlug).orElse(List.of());
+                if (!plug.isEmpty()) {
+                    batteryPlugs.put(model, new PlugMask(plug));
+                }
+            }
+        }
+        for (StackType stack : StackType.values()) {
+            PartModel base = PartModel.of(stack);
+            PartModel mounted = PartModel.stackMounted(stack);
+            if (manager.getResource(mounted.itemModelFile()).isEmpty()) {
+                continue;
+            }
+            if (!sameSource(manager, base, mounted)) {
+                fallbacks.put(mounted, "anderes Ressourcenpaket als " + base);
+                continue;
+            }
+            List<PlugAnchors.Box> pigtails = elements(manager, mounted).map(PlugAnchors::pigtails).orElse(List.of());
+            if (!pigtails.isEmpty()) {
+                cables.put(mounted, new PlugMask(pigtails));
+            } else {
+                fallbacks.put(mounted, "Stecker-Element vorhanden oder nicht genau zwei " + PlugAnchors.PIGTAIL);
+            }
+        }
+        return new Plugs(Map.copyOf(batteryPlugs), Map.copyOf(cables), Collections.unmodifiableMap(fallbacks));
+    }
+
+    static boolean sameSource(ResourceManager manager, PartModel base, PartModel mounted) {
+        Optional<String> baseItem = manager.getResource(base.itemModelFile()).map(Resource::sourcePackId);
+        Optional<String> mountedItem = manager.getResource(mounted.itemModelFile()).map(Resource::sourcePackId);
+        if (baseItem.isEmpty() || !baseItem.equals(mountedItem)) {
+            return false;
+        }
+        Optional<String> baseModel = modelFile(manager, base).flatMap(manager::getResource).map(Resource::sourcePackId);
+        Optional<String> mountedModel = modelFile(manager, mounted).flatMap(manager::getResource).map(Resource::sourcePackId);
+        return baseModel.isPresent() && baseModel.equals(mountedModel);
+    }
+
+    static Optional<Identifier> modelFile(ResourceManager manager, PartModel part) {
+        Optional<Resource> item = manager.getResource(part.itemModelFile());
+        if (item.isPresent()) {
+            try (Reader reader = item.get().openAsReader()) {
+                Identifier model = referencedModel(JsonParser.parseReader(reader));
+                if (model != null) {
+                    return Optional.of(model.withPath(path -> "models/" + path + ".json"));
+                }
+            } catch (Exception e) {
+                return Optional.ofNullable(part.modelFile());
+            }
+        }
+        return Optional.ofNullable(part.modelFile());
+    }
+
+    static @Nullable Identifier referencedModel(JsonElement node) {
+        if (node.isJsonObject()) {
+            JsonObject object = node.getAsJsonObject();
+            JsonElement type = object.get("type");
+            JsonElement model = object.get("model");
+            if (type != null && type.isJsonPrimitive() && "minecraft:model".equals(type.getAsString()) && model != null && model.isJsonPrimitive()) {
+                return Identifier.tryParse(model.getAsString());
+            }
+            for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+                Identifier found = referencedModel(entry.getValue());
+                if (found != null) {
+                    return found;
+                }
+            }
+        } else if (node.isJsonArray()) {
+            for (JsonElement element : node.getAsJsonArray()) {
+                Identifier found = referencedModel(element);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    static Optional<List<PlugAnchors.Element>> elements(ResourceManager manager, PartModel part) {
+        return modelJson(manager, part).map(PlugAnchors::elements);
+    }
+
+    static Optional<JsonObject> modelJson(ResourceManager manager, PartModel part) {
+        Optional<Identifier> file = modelFile(manager, part);
+        for (int depth = 0; depth < MAX_MODEL_PARENTS && file.isPresent(); depth++) {
+            Optional<Resource> resource = manager.getResource(file.get());
+            if (resource.isEmpty()) {
+                return Optional.empty();
+            }
+            JsonObject model;
+            try (Reader reader = resource.get().openAsReader()) {
+                JsonElement root = JsonParser.parseReader(reader);
+                if (!root.isJsonObject()) {
+                    return Optional.empty();
+                }
+                model = root.getAsJsonObject();
+            } catch (Exception e) {
+                return Optional.empty();
+            }
+            if (model.has("elements")) {
+                return Optional.of(model);
+            }
+            JsonElement parent = model.get("parent");
+            Identifier id = parent != null && parent.isJsonPrimitive() ? Identifier.tryParse(parent.getAsString()) : null;
+            file = id == null ? Optional.empty() : Optional.of(id.withPath(path -> "models/" + path + ".json"));
+        }
+        return Optional.empty();
+    }
+
+    public PlugMask batteryPlug(PartModel battery) {
+        return this.plugs.batteryPlugs().getOrDefault(battery, PlugMask.NONE);
+    }
+
+    public PlugMask mountedCables(PartModel mounted) {
+        return this.plugs.cables().getOrDefault(mounted, PlugMask.NONE);
+    }
+
+    public Map<PartModel, String> plugFallbacks() {
+        return this.plugs.fallbacks();
+    }
+
     public static Map<String, List<TintGroup>> parsePaint(JsonElement json, String namespace) {
         Map<String, List<TintGroup>> out = new HashMap<>();
         for (Map.Entry<String, List<TintGroup>> entry : parsePaint(json).entrySet()) {
@@ -321,7 +549,8 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
             if (item.isEmpty()) {
                 return ResolvedPart.MISSING;
             }
-            return new ResolvedPart(item, Float.NaN, Float.NaN);
+            AntennaMask mask = this.antennaMasks.containsKey(model) ? this.antennaMask(variant) : AntennaMask.NONE;
+            return new ResolvedPart(mask.strip(item), Float.NaN, Float.NaN);
         } catch (RuntimeException e) {
             this.warnOnce("paint:" + variant, "Drohnen-Renderer: Lack-Modell {} konnte nicht vorbereitet werden ({})", variant, e.toString());
             return ResolvedPart.MISSING;
@@ -474,6 +703,10 @@ public final class DroneRenderResources implements ResourceManagerReloadListener
     }
 
     public record TintGroup(PaintChannel channel, int base) {
+    }
+
+    record Plugs(Map<PartModel, PlugMask> batteryPlugs, Map<PartModel, PlugMask> cables, Map<PartModel, String> fallbacks) {
+        static final Plugs EMPTY = new Plugs(Map.of(), Map.of(), Map.of());
     }
 
     private record PaintedKey(PartModel model, int[] tints) {

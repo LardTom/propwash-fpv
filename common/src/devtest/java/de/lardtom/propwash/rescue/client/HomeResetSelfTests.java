@@ -12,6 +12,7 @@ import de.lardtom.propwash.drone.DronePiloting;
 import de.lardtom.propwash.drone.PilotMode;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.race.CourseRegistry;
 import de.lardtom.propwash.race.CourseToolItem;
@@ -24,6 +25,7 @@ import de.lardtom.propwash.race.RaceModule;
 import de.lardtom.propwash.race.RaceServer;
 import de.lardtom.propwash.race.client.ClientCourses;
 import de.lardtom.propwash.race.client.ClientRaceTracker;
+import de.lardtom.propwash.race.client.RaceConfig;
 import de.lardtom.propwash.rescue.HomeMode;
 import de.lardtom.propwash.rescue.HomePoint;
 import de.lardtom.propwash.rescue.HomePointCodecs;
@@ -74,6 +76,7 @@ final class HomeResetSelfTests {
     private static final AtomicReference<HomePoint> HOME = new AtomicReference<>();
     private static final AtomicReference<Vec3> MOVED = new AtomicReference<>();
     private static final AtomicReference<HomeMode> MODE = new AtomicReference<>();
+    private static final AtomicReference<Boolean> AUTO_ARM = new AtomicReference<>();
     private static final AtomicReference<String> PROBLEM = new AtomicReference<>();
     private static final AtomicReference<String> NOTE = new AtomicReference<>();
     private static final AtomicReference<String> ARRIVAL = new AtomicReference<>();
@@ -89,7 +92,8 @@ final class HomeResetSelfTests {
         SelfTest.clientStep("reset: Homepoint beim Scharfschalten (Vorbereitung)", 600, HomeResetSelfTests::setupStep);
         SelfTest.clientStep("reset: Taste setzt die Drohne gerade und entschärft auf den Homepoint", 400, HomeResetSelfTests::keyStep);
         SelfTest.clientStep("reset: Welt-Regel aus verweigert den Reset, an erlaubt ihn wieder", 400, HomeResetSelfTests::ruleStep);
-        SelfTest.clientStep("reset: Reset bricht den laufenden Lauf ab, danach stehender Start", 900, HomeResetSelfTests::raceStep);
+        SelfTest.clientStep("reset: Reset scharf bricht den laufenden Lauf ab und startet keinen Countdown, stehender Start nur mit Einstellung", 1200,
+                HomeResetSelfTests::raceStep);
         SelfTest.clientStep("reset: weit entfernter Homepoint im FPV hin und zurück, Ziel-Chunk geladen", 900, HomeResetSelfTests::farStep);
         SelfTest.clientStep("reset: alte Tastenbelegung „Rennen neu starten“ wird übernommen", 100, HomeResetSelfTests::migrationStep);
         SelfTest.clientStep("reset: Aufräumen", 200, HomeResetSelfTests::cleanupStep);
@@ -157,7 +161,7 @@ final class HomeResetSelfTests {
         double dx = drone.getX() - home.x;
         double dz = drone.getZ() - home.z;
         Vector3f up = drone.orientation().transform(new Vector3f(0.0F, 1.0F, 0.0F));
-        if (dx * dx + dz * dz > 1.0E-4 || drone.getY() < home.y - 1.0E-3 || drone.getY() > home.y + HomeResetRules.CLEARANCE) {
+        if (dx * dx + dz * dz > 1.0E-4 || drone.getY() < home.y - 1.0E-3 || drone.getY() > home.y + HomeResetRules.RISE) {
             return "Drohne nicht am Homepoint: " + drone.position() + " statt " + home;
         }
         if (up.y < 0.999F) {
@@ -470,12 +474,15 @@ final class HomeResetSelfTests {
             return StepResult.fail("keine Sitzung");
         }
         int phase = phase(ctx);
-        session.setTestInput(StickPositions.IDLE, phase == 7 && since(ctx) >= 10, StabMode.ANGLE);
+        boolean arm = phase == 3 || phase == 4 || phase == 6 && since(ctx) >= 10 || phase == 8 && since(ctx) >= 10 || phase >= 9;
+        session.setTestInput(StickPositions.IDLE, arm, StabMode.ANGLE);
         switch (phase) {
             case 0 -> {
                 if (ctx.tick() == 0) {
                     EVENTS.clear();
                     GATES.clear();
+                    AUTO_ARM.compareAndSet(null, InputConfig.get().autoArmAfterReset);
+                    InputConfig.get().autoArmAfterReset = false;
                 }
                 StepResult wait = once(ctx, "Kurs", HomeResetSelfTests::buildCourse);
                 if (wait != null) {
@@ -529,6 +536,10 @@ final class HomeResetSelfTests {
                 if (since(ctx) < HomeResetRules.COOLDOWN_TICKS + 5) {
                     return StepResult.pending();
                 }
+                QuadcopterEntity armedDrone = sessionDrone();
+                if (armedDrone == null || !armedDrone.isArmed()) {
+                    return since(ctx) > 120 ? StepResult.fail("Drohne lässt sich vor dem Reset nicht scharf schalten") : StepResult.pending();
+                }
                 ctx.state().put("gesendet", HomeResetInput.sent());
                 pressReset();
                 next(ctx, 4);
@@ -565,26 +576,62 @@ final class HomeResetSelfTests {
                     return since(ctx) > 60 ? StepResult.fail(PROBLEM.get()) : StepResult.pending();
                 }
                 if (tracker.tracker().phase() != LapTracker.Phase.IDLE || count(LapTracker.EventType.LAP) != 0
-                        || count(LapTracker.EventType.FINISH) != 0) {
+                        || count(LapTracker.EventType.FINISH) != 0 || tracker.lobbyMember()) {
                     return StepResult.fail("Client nach dem Reset: Phase " + tracker.tracker().phase() + ", Runden "
-                            + count(LapTracker.EventType.LAP));
+                            + count(LapTracker.EventType.LAP) + (tracker.lobbyMember() ? ", in der Startaufstellung" : ""));
                 }
-                if (!tracker.resetStartPending()) {
-                    return StepResult.fail("stehender Start nach dem Reset nicht vorgemerkt");
+                if (since(ctx) < 60) {
+                    return StepResult.pending();
                 }
                 next(ctx, 5);
                 return StepResult.pending();
             }
-            case 5, 6 -> {
+            case 5 -> {
+                if (tracker.lobbyMember() || tracker.countdownActive()) {
+                    return StepResult.fail("Reset scharf startet von selbst einen Countdown");
+                }
+                QuadcopterEntity drone = sessionDrone();
+                if (drone != null && drone.isArmed()) {
+                    return since(ctx) > 60 ? StepResult.fail("Drohne bleibt nach dem Reset scharf") : StepResult.pending();
+                }
+                if (since(ctx) < 10) {
+                    return StepResult.pending();
+                }
+                ctx.state().put("Einstellung", RaceConfig.CONFIG.get().countdown);
+                RaceConfig.CONFIG.get().countdown = false;
+                next(ctx, 6);
+                return StepResult.pending();
+            }
+            case 6 -> {
+                if (tracker.lobbyMember() || tracker.countdownActive()) {
+                    return StepResult.fail("Scharfschalten am Start ohne „Start beim Scharfschalten“ startet nach dem Reset einen Countdown");
+                }
+                if (since(ctx) < 80) {
+                    return StepResult.pending();
+                }
+                QuadcopterEntity drone = sessionDrone();
+                if (drone == null || !drone.isArmed()) {
+                    return StepResult.fail("Drohne lässt sich nach dem Reset nicht wieder scharf schalten");
+                }
                 next(ctx, 7);
                 return StepResult.pending();
             }
             case 7 -> {
+                QuadcopterEntity drone = sessionDrone();
+                if (drone != null && drone.isArmed()) {
+                    return since(ctx) > 60 ? StepResult.fail("Drohne bleibt scharf") : StepResult.pending();
+                }
+                RaceConfig.CONFIG.get().countdown = true;
+                next(ctx, 8);
+                return StepResult.pending();
+            }
+            case 8 -> {
                 if (tracker.lobbyMember() || tracker.countdownActive()) {
-                    next(ctx, 8);
+                    next(ctx, 9);
                     return StepResult.pending();
                 }
-                return since(ctx) > 140 ? StepResult.fail("Scharfschalten am Start nach dem Reset startet keine Aufstellung") : StepResult.pending();
+                return since(ctx) > 140 ? StepResult.fail("Scharfschalten am Start mit „Start beim Scharfschalten“ startet keine Aufstellung")
+                        : StepResult.pending();
             }
             default -> {
                 if (since(ctx) < HomeResetRules.COOLDOWN_TICKS + 5) {
@@ -599,10 +646,20 @@ final class HomeResetSelfTests {
                     return ctx.tick() - (int) ctx.state().get("zweiter Reset") > 60
                             ? StepResult.fail("Reset verlässt die Startaufstellung nicht") : StepResult.pending();
                 }
+                RaceConfig.CONFIG.get().countdown = (boolean) ctx.state().getOrDefault("Einstellung", false);
+                restoreAutoArm();
                 tracker.setEventListener(null);
-                ctx.log("Lauf mit Grund RESET abgebrochen, Server-Runde abgelehnt, stehender Start nach dem Reset");
+                ctx.log("Lauf mit Grund RESET abgebrochen, Server-Runde abgelehnt, Reset scharf ohne Countdown, Scharfschalten am Start nur mit "
+                        + "Einstellung als stehender Start");
                 return StepResult.pass();
             }
+        }
+    }
+
+    private static void restoreAutoArm() {
+        Boolean saved = AUTO_ARM.getAndSet(null);
+        if (saved != null) {
+            InputConfig.get().autoArmAfterReset = saved;
         }
     }
 
@@ -823,6 +880,7 @@ final class HomeResetSelfTests {
         if (mode != null) {
             RescueConfigs.get().homeMode = mode;
         }
+        restoreAutoArm();
         RescueController.INSTANCE.clearHome();
         EVENTS.clear();
         return PilotSession.INSTANCE.isActive() ? (ctx.tick() > 100 ? StepResult.fail("Sitzung endet nicht") : StepResult.pending())

@@ -7,6 +7,7 @@ import de.lardtom.propwash.compat.iris.client.IrisCompat;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.drone.operator.client.GimbalHead;
 import de.lardtom.propwash.video.client.SpectateSession;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -51,7 +52,7 @@ public class QuadcopterRenderer extends EntityRenderer<QuadcopterEntity, DroneRe
             return false;
         }
         if (isOwnFpvDrone(entity)) {
-            return shadowPass || FpvProps.enabled();
+            return shadowPass || FpvProps.enabled() || AccessoryDisplayState.shownInOwnFpv(entity);
         }
         if (ReplayView.hides(entity, camX, camY, camZ, Minecraft.getInstance().gameRenderer.mainCamera().forwardVector())) {
             return false;
@@ -78,7 +79,7 @@ public class QuadcopterRenderer extends EntityRenderer<QuadcopterEntity, DroneRe
     @Override
     protected AABB getBoundingBoxForCulling(QuadcopterEntity entity, float partialTicks) {
         AABB box = super.getBoundingBoxForCulling(entity, partialTicks);
-        float radius = DroneVisuals.estimatedRadiusBlocks(entity.build());
+        float radius = DroneVisuals.estimatedRadiusBlocks(entity.build()) * entity.scale();
         return box.inflate(radius, radius, radius);
     }
 
@@ -91,6 +92,7 @@ public class QuadcopterRenderer extends EntityRenderer<QuadcopterEntity, DroneRe
         state.hidden = own;
         state.fpvGeometry = null;
         state.fpvGuards = FpvGuardMesh.EMPTY;
+        FpvProps.clearArms(state);
         if (own && state.shadowPass && DroneVisuals.placeAtDisplayedPose(state, entity)) {
             state.hidden = false;
             fpvShadowBodies++;
@@ -102,6 +104,8 @@ public class QuadcopterRenderer extends EntityRenderer<QuadcopterEntity, DroneRe
         } else {
             state.cargo.clear();
         }
+        state.accessoryDisplay.extract(entity, state, this.itemModelResolver);
+        GimbalHead.extract(entity, state);
         if (own) {
             state.nameTag = null;
             state.shadowPieces.clear();
@@ -122,7 +126,8 @@ public class QuadcopterRenderer extends EntityRenderer<QuadcopterEntity, DroneRe
         if (!DroneRenderConfig.get().shadow || state.hidden) {
             return 0.0F;
         }
-        return Math.max(0.12F, Math.min(0.7F, state.visualRadius * 0.75F));
+        float scale = state.entityScale;
+        return Math.max(0.12F * scale, Math.min(0.7F * scale, state.visualRadius * 0.75F));
     }
 
     @Override
@@ -130,10 +135,12 @@ public class QuadcopterRenderer extends EntityRenderer<QuadcopterEntity, DroneRe
         if (state.hidden) {
             if (!FpvPropPass.take(state)) {
                 FpvProps.submit(state, poseStack, submitNodeCollector, camera);
+                state.accessoryDisplay.submitAtLens(state, poseStack, submitNodeCollector, camera);
             }
             return;
         }
         DroneVisuals.submit(state, poseStack, submitNodeCollector);
+        state.accessoryDisplay.submit(state, poseStack, submitNodeCollector);
         super.submit(state, poseStack, submitNodeCollector, camera);
     }
 }

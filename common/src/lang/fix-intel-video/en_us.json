@@ -1,0 +1,18 @@
+{
+  "propwash.video.config.renderer.automatic": "Automatic",
+  "propwash.video.config.renderer.automatic.tooltip": "Full image effects. On the first FPV image (and after reloading resources) Propwash sends a test picture through the video shaders once. If your graphics card returns black, Propwash switches to “Simple” on its own and tells you in the chat.",
+  "propwash.video.config.renderer.full": "Full",
+  "propwash.video.config.renderer.full.tooltip": "Always the full image effects with fisheye, even if the image check returned black on this graphics card.",
+  "propwash.video.config.renderer.simple": "Simple",
+  "propwash.video.config.renderer.simple.tooltip": "A simple replacement shader shows the picture without shader effects and without fisheye; interference is drawn as a simple overlay. Lighter on the graphics card and works with shader packs.",
+  "propwash.video.record.hud.image.cpu": "CPU conversion: the graphics card returned empty recording frames",
+  "propwash.video.record.hud.image.read": "Fallback: the graphics card returned empty recording frames",
+  "propwash.video.record.image.aborted": "Action cam: recording aborted. The graphics card returned only empty frames, also through the fallback, so no video was saved. If your computer has two graphics cards, run Minecraft on the more powerful one.",
+  "propwash.video.record.image.aborted.saved": "Action cam: recording aborted. The graphics card now returns only empty frames, also through the fallback; the video up to that point is saved.",
+  "propwash.video.record.image.switched.cpu": "Action cam: the graphics card returned empty recording frames through the fallback as well. Recording continues with CPU conversion (slower).",
+  "propwash.video.record.image.switched.read": "Action cam: the graphics card returned empty recording frames. Recording continues through a fallback (slightly slower).",
+  "propwash.video.record.stop.blank_image": "The graphics card returns only empty frames",
+  "propwash.video.simplified.chat": "Video effects simplified on this graphics card: the image check came back black. You can change this in the Video tab under “%s”.",
+  "propwash.video.status.simplified": "Video effects simplified on this graphics card: the image check came back black. “Retry shader” checks again.",
+  "propwash.video.status.simplified.none": "Video effects without shaders on this graphics card: the image check came back black, even with the simple replacement shader. “Retry shader” checks again."
+}

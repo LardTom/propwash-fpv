@@ -49,6 +49,7 @@ public abstract class LevelExtractorMixin {
                                                   CallbackInfo ci) {
         if (FpvView.active()) {
             FpvView.clearPilotScreenEffects(state);
+            FpvView.coverInsideBlock(camera, state);
         }
     }
 }

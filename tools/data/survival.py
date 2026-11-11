@@ -67,8 +67,8 @@ PARTS = (
 BATTERIES = ("b1s_300_hv", "b4s_650", "b6s_1100", "b6s_1300", "b6s_4000_lion")
 OTHER_ITEMS = ("drone_workbench", "battery_charger", "goggles_analog", "goggles_digital", "remote",
                "gate_small", "gate_medium", "gate_large", "gate_pole", "race_flag", "slalom_pole", "dive_cube", "freeform_gate", "course_tool",
-               "signal_repeater", "waterproof_spray")
-NOT_CRAFTABLE = ("goggles_creative", "creative_fc", "drone")
+               "signal_repeater", "waterproof_spray", "rx_block", "zone_marker")
+NOT_CRAFTABLE = ("goggles_creative", "creative_fc", "drone", "drone_pass_barrier", "drone_block_barrier", "creative_rx_block")
 MAPS = ("bando_map",)
 PROPWASH_ITEMS = set(MATERIALS) | set(PARTS) | set(OTHER_ITEMS) | set(NOT_CRAFTABLE) | set(MAPS)
 
@@ -252,10 +252,14 @@ RECIPES = [
            {"G": mc("glowstone_dust"), "R": mc("redstone")}),
     shaped("course_tool", "equipment", None, ["R", "P", "S"],
            {"R": mc("redstone"), "P": mc("paper"), "S": mc("stick")}),
+    shaped("zone_marker", "equipment", None, ["G", "P", "S"],
+           {"G": mc("glowstone_dust"), "P": mc("paper"), "S": mc("stick")}),
     shaped("waterproof_spray", "equipment", None, [" N ", "NHN", "NRN"],
            {"N": mc("iron_nugget"), "H": mc("honeycomb"), "R": mc("resin_clump")}),
     shaped("signal_repeater", "building", None, [" A ", "LBL", " I "],
            {"A": mc("lightning_rod"), "L": p("copper_coil"), "B": p("circuit_board"), "I": mc("iron_ingot")}, count=2),
+    shaped("rx_block", "equipment", None, [" A ", "CBC", " R "],
+           {"A": mc("lightning_rod"), "C": mc("copper_ingot"), "B": p("circuit_board"), "R": mc("redstone")}),
 ]
 
 

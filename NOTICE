@@ -14,6 +14,11 @@ These terms apply from version 0.5.0 on. Propwash FPV 0.4.0 and older versions s
 If you pass on any part of Propwash FPV, for example in a modpack, pass on LICENSE, LICENSE-MIT and this NOTICE with
 it (or their web addresses), including the "Required Notice" line above.
 
+Reserved namespace. The namespace propwash (registry ids, translation keys, key mappings, game rules, network
+payloads, data and asset paths) and the Java package de.lardtom.propwash are reserved for Propwash. Add-ons must use
+their own namespace. Resource packs and data packs may still override Propwash's existing assets and data. Guidelines
+for add-ons (stable API, naming) are in ADDONS.md.
+
 
 Third-party material in the source repository
 

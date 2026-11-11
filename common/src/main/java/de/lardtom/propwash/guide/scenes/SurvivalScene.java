@@ -131,7 +131,7 @@ public final class SurvivalScene {
                     s.at(14.0F).drop(1, 1, -1, SceneKit.charger("south", "idle"), 10.0F);
                     s.at(20.0F).callout("workshop", Anchor.at(new ScenePos(0.5F, 2.0F, 1.5F)), Cue.Side.RIGHT, 40.0F);
                     s.at(56.0F).camera(new ScenePos(0.6F, 2.2F, 1.3F), 30.0F, 22.0F, 2.0F, 24.0F);
-                    s.at(62.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true), new ScenePos(0.5F, 2.0F, 1.5F), 30.0F, Cue.Appear.POP, 10.0F);
+                    s.at(62.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true), new ScenePos(0.5F, 2.0F, 1.5F), 210.0F, Cue.Appear.POP, 10.0F);
                     s.at(66.0F).callout("whoop", Anchor.on(DRONE, 0.0F, 0.12F, 0.0F), Cue.Side.RIGHT, 0.0F);
                     s.at(90.0F).arm(DRONE, true);
                     s.at(90.0F).throttle(DRONE, 0.6F, 10.0F);

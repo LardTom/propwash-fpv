@@ -16,6 +16,7 @@ public final class BandoSite {
     public static final int LEVEL_PERCENT = 40;
     public static final int CHUNK = 16;
     public static final int MAX_REACH = 128;
+    public static final int LEAF_MARGIN = 4;
     private static final int INSET = 2;
 
     public interface Sampler {
@@ -45,6 +46,12 @@ public final class BandoSite {
         return plan.ground() + 1 + (plan.variant().family().terrain() == BandoFamily.Terrain.SHORE ? SHORE_BANK : 0);
     }
 
+    public static int[] leafArea(BandoPlan plan, BandoTransform t) {
+        int bottom = Math.min(t.worldY(boxBottom(plan)), t.worldY(0));
+        return new int[]{t.originX() - LEAF_MARGIN, bottom - LEAF_MARGIN, t.originZ() - LEAF_MARGIN, t.originX() + t.widthX() - 1 + LEAF_MARGIN,
+                t.worldY(plan.sizeY() - 1) + LEAF_MARGIN, t.originZ() + t.widthZ() - 1 + LEAF_MARGIN};
+    }
+
     public static boolean[] siteColumns(BandoPlan plan) {
         int g = plan.ground();
         boolean[] site = new boolean[plan.sizeX() * plan.sizeZ()];
@@ -59,6 +66,31 @@ public final class BandoSite {
             }
         }
         return site;
+    }
+
+    public static int bottom(BandoPlan plan, int x, int z) {
+        for (int y = 0; y < plan.sizeY(); y++) {
+            Mat mat = plan.mat(x, y, z);
+            if (mat != Mat.EMPTY && mat != Mat.CHEST && mat.holdsUp() && mat != Mat.YARD) {
+                return y;
+            }
+        }
+        return -1;
+    }
+
+    public static boolean underpinned(BandoPlan plan, int x, int z) {
+        if (plan.variant().family().terrain() == BandoFamily.Terrain.SHORE) {
+            return false;
+        }
+        Mat ground = plan.mat(x, plan.ground(), z);
+        if (ground != Mat.YARD && ground != Mat.EMPTY) {
+            return false;
+        }
+        if (plan.fill(x, z) == Mat.EMPTY) {
+            return true;
+        }
+        int bottom = bottom(plan, x, z);
+        return bottom < 0 || bottom > plan.ground() + 1;
     }
 
     public static int[] reachChunks(int minX, int minZ, int maxX, int maxZ, int reach) {

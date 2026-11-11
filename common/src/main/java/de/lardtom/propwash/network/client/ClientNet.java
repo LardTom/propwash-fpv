@@ -16,6 +16,7 @@ public final class ClientNet {
     private static final List<Handler<?>> HANDLERS = new ArrayList<>();
     private static final Set<CustomPacketPayload.Type<?>> HANDLED = new HashSet<>();
     private static boolean frozen;
+    private static int sent;
 
     private ClientNet() {
     }
@@ -34,7 +35,12 @@ public final class ClientNet {
         return Minecraft.getInstance().getConnection() != null && ClientServices.PLATFORM.canSendToServer(type);
     }
 
+    public static int sentCount() {
+        return sent;
+    }
+
     public static boolean sendToServer(CustomPacketPayload payload) {
+        sent++;
         if (!canSend(payload.type())) {
             return false;
         }

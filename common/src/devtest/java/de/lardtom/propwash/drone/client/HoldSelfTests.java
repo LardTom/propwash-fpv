@@ -162,8 +162,8 @@ final class HoldSelfTests {
         profile.setBinding(SwitchFunction.ALT_HOLD, SwitchAssignment.axisMicros(5, 1300, 2100));
         profile.setBinding(SwitchFunction.POS_HOLD, SwitchAssignment.axisMicros(5, 1700, 2100));
         SwitchEvaluator evaluator = new SwitchEvaluator();
-        int mid = evaluator.evaluate(profile, new float[]{0, 0, 0, 0, 0, 0.0F}, new boolean[0]);
-        int high = evaluator.evaluate(profile, new float[]{0, 0, 0, 0, 0, 1.0F}, new boolean[0]);
+        long mid = evaluator.evaluate(profile, new float[]{0, 0, 0, 0, 0, 0.0F}, new boolean[0]);
+        long high = evaluator.evaluate(profile, new float[]{0, 0, 0, 0, 0, 1.0F}, new boolean[0]);
         if (!SwitchEvaluator.isSet(mid, SwitchFunction.ALT_HOLD) || SwitchEvaluator.isSet(mid, SwitchFunction.POS_HOLD)
                 || !SwitchEvaluator.isSet(high, SwitchFunction.POS_HOLD)) {
             return "Dreistufenschalter ALTHOLD/POSHOLD wertet falsch aus";

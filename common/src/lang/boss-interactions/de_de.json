@@ -1,0 +1,4 @@
+{
+  "gamerule.propwash.drones_boss_interactions": "Bosse kämpfen gegen Drohnen",
+  "gamerule.propwash.drones_boss_interactions.description": "An (Standard): Wärter hören fliegende Drohnen und werden wütend wie bei Spielern; ihr Schallschlag trifft die Drohne hart (Schaden wie bei einem harten Absturz, die Drohne wird weggeschleudert), und in der Nähe eines Wärters pulsiert seine Dunkelheit durch das FPV-Bild. Der Enderdrache schleudert Drohnen mit seinen Flügeln und seiner Turbulenz weg, rammt Drohnen in seiner Nähe, und sein Atem beschädigt sie. Die Seitenköpfe des Withers schießen ihre Schädel auch auf geflogene Drohnen. Windkugeln der Breeze stoßen geflogene Drohnen weg (Windkugeln von Spielern wie bisher nur mit einem Add-on). Aus: Bosse und Breezes lassen Drohnen in Ruhe (außer ein Add-on regelt den Rückstoß selbst)."
+}

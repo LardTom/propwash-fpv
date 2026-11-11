@@ -400,8 +400,16 @@ public final class GateFreeSelfTests {
             if (GateMounting.edit(player, diagonal, heading, 10.0F, 0.0F, 3.0, 3.0) != GateMounting.Result.STACK_LOCKED) {
                 return "Gestapeltes Gate ließ sich einstellen";
             }
-            if (GateMounting.rotate(player, diagonal, false, 15.0F) != GateMounting.Result.STACK_LOCKED) {
-                return "Gestapeltes Gate drehte sich in kleinen Schritten";
+            GateEntity upper = column.get(1);
+            float relative = GateTilt.wrap(upper.geometry().heading() - diagonal.geometry().heading());
+            if (GateMounting.rotate(player, diagonal, false, 15.0F) != GateMounting.Result.ROTATED
+                    || Math.abs(GateTilt.wrap(diagonal.geometry().heading() - heading - 15.0F)) > 0.05F
+                    || Math.abs(GateTilt.wrap(upper.geometry().heading() - diagonal.geometry().heading() - relative)) > 0.05F) {
+                return "Gestapeltes Gate dreht nicht mit 15° samt dem Gate darüber: " + diagonal.geometry().heading() + "°/" + upper.geometry().heading() + "°";
+            }
+            if (GateMounting.edit(player, diagonal, heading, 0.0F, 0.0F, 3.0, 3.0) != GateMounting.Result.EDITED
+                    || Math.abs(GateTilt.wrap(diagonal.geometry().heading() - heading)) > 0.05F) {
+                return "Gestapeltes Gate im Gate-Menü nicht zurückgedreht: " + diagonal.geometry().heading();
             }
             column.get(1).discard();
             diagonal.refreshColumn();

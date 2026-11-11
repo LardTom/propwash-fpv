@@ -20,6 +20,11 @@ public final class DeviceChooser {
 
     public static int pick(List<Candidate> devices, @Nullable String preferredGuid, @Nullable String sessionGuid, IntPredicate blocked,
                            ToIntFunction<String> usage) {
+        return pick(devices, preferredGuid, sessionGuid, blocked, usage, i -> false);
+    }
+
+    public static int pick(List<Candidate> devices, @Nullable String preferredGuid, @Nullable String sessionGuid, IntPredicate blocked,
+                           ToIntFunction<String> usage, IntPredicate arrived) {
         if (devices.isEmpty() || InputConfig.withoutDevice(preferredGuid)) {
             return -1;
         }
@@ -27,9 +32,13 @@ public final class DeviceChooser {
         if (preferred >= 0) {
             return preferred;
         }
-        if (sessionGuid != null && !sessionGuid.isEmpty()) {
-            return indexOf(devices, sessionGuid, blocked);
+        if (sessionGuid == null || sessionGuid.isEmpty()) {
+            return best(devices, blocked, usage);
         }
+        return best(devices, i -> blocked.test(i) || !arrived.test(i) && !sessionGuid.equals(devices.get(i).guid()), usage);
+    }
+
+    private static int best(List<Candidate> devices, IntPredicate blocked, ToIntFunction<String> usage) {
         int best = -1;
         int bestUsage = Integer.MIN_VALUE;
         int bestScore = Integer.MIN_VALUE;

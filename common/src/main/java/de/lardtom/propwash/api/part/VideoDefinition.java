@@ -5,11 +5,12 @@ import net.minecraft.resources.Identifier;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalDouble;
 
 public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, int latencyMs, int rangeBlocks, double imageQuality,
                               double cameraWidthMm, OptionalDouble cameraFovDeg, int vtxPowerMw, OptionalDouble powerW,
-                              List<Integer> vtxLevelsMw) implements PartDefinition {
+                              List<Integer> vtxLevelsMw, Optional<VideoAntenna> antenna) implements PartDefinition {
     public static final int MAX_VTX_LEVELS = 8;
 
     public VideoDefinition(Identifier id, PartBasics basics, VideoLink link, int latencyMs, int rangeBlocks, double imageQuality,
@@ -20,6 +21,11 @@ public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, 
     public VideoDefinition(Identifier id, PartBasics basics, VideoLink link, int latencyMs, int rangeBlocks, double imageQuality,
                            double cameraWidthMm, OptionalDouble cameraFovDeg, int vtxPowerMw, OptionalDouble powerW) {
         this(id, basics, link, latencyMs, rangeBlocks, imageQuality, cameraWidthMm, cameraFovDeg, vtxPowerMw, powerW, List.of());
+    }
+
+    public VideoDefinition(Identifier id, PartBasics basics, VideoLink link, int latencyMs, int rangeBlocks, double imageQuality,
+                           double cameraWidthMm, OptionalDouble cameraFovDeg, int vtxPowerMw, OptionalDouble powerW, List<Integer> vtxLevelsMw) {
+        this(id, basics, link, latencyMs, rangeBlocks, imageQuality, cameraWidthMm, cameraFovDeg, vtxPowerMw, powerW, vtxLevelsMw, Optional.empty());
     }
 
     public VideoDefinition {
@@ -50,6 +56,7 @@ public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, 
             throw new IllegalArgumentException(id + ": Leistungsaufnahme muss zwischen 0,1 und 60 W liegen: " + powerW.getAsDouble());
         }
         vtxLevelsMw = vtxLevelsMw == null ? List.of() : List.copyOf(vtxLevelsMw);
+        antenna = Objects.requireNonNullElse(antenna, Optional.empty());
         if (!vtxLevelsMw.isEmpty()) {
             if (vtxPowerMw <= 0) {
                 throw new IllegalArgumentException(id + ": Leistungsstufen brauchen eine Sendeleistung (vtx_power_mw)");
@@ -91,6 +98,7 @@ public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, 
         private int vtxPowerMw;
         private OptionalDouble powerW = OptionalDouble.empty();
         private List<Integer> vtxLevelsMw = List.of();
+        private Optional<VideoAntenna> antenna = Optional.empty();
 
         private Builder(Identifier id) {
             this.id = Objects.requireNonNull(id, "id");
@@ -151,12 +159,17 @@ public record VideoDefinition(Identifier id, PartBasics basics, VideoLink link, 
             return this;
         }
 
+        public Builder antenna(VideoAntenna value) {
+            this.antenna = Optional.of(value);
+            return this;
+        }
+
         public VideoDefinition build() {
             if (this.basics == null || this.link == null || this.latencyMs < 0 || this.rangeBlocks < 0 || this.imageQuality < 0.0) {
                 throw new IllegalArgumentException(this.id + ": Masse, System, Latenz, Reichweite und Bildqualität sind Pflicht");
             }
             return new VideoDefinition(this.id, this.basics, this.link, this.latencyMs, this.rangeBlocks, this.imageQuality,
-                    this.cameraWidthMm, this.cameraFovDeg, this.vtxPowerMw, this.powerW, this.vtxLevelsMw);
+                    this.cameraWidthMm, this.cameraFovDeg, this.vtxPowerMw, this.powerW, this.vtxLevelsMw, this.antenna);
         }
     }
 }

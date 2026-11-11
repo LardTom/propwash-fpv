@@ -32,6 +32,8 @@ public final class RecoveryScene {
     public static final ScenePos AIR_LOW = AIR_START.add(0.2F, -0.6F, 0.1F);
 
     private static final ScenePos OVERVIEW = new ScenePos(0.2F, 2.0F, 0.3F);
+    private static final ScenePos TURTLE_END = WRECK.add(0.25F, 0.0F, 0.0F);
+    private static final ScenePos AIR_END = AIR_START.add(0.3F, 0.15F, 0.0F);
     private static final BlockSpec[] SIGNAL = {
             BlockSpec.of("minecraft:lime_concrete"),
             BlockSpec.of("minecraft:lime_concrete"),
@@ -61,13 +63,13 @@ public final class RecoveryScene {
                     s.at(18.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true), HOVER, crashYaw, Cue.Appear.POP, 8.0F);
                     s.at(18.0F).arm(DRONE, true);
                     s.at(18.0F).throttle(DRONE, 0.6F, 6.0F);
-                    s.at(28.0F).turn(DRONE, crashYaw, -22.0F, 0.0F, 8.0F);
+                    s.at(28.0F).turn(DRONE, crashYaw, 22.0F, 0.0F, 8.0F);
                     s.at(30.0F).move(DRONE, 22.0F, Ease.IN, IMPACT);
                     s.at(52.0F).arm(DRONE, false);
                     s.at(52.0F).throttle(DRONE, 0.0F, 0.0F);
                     s.at(52.0F).move(DRONE, 20.0F, Ease.IN, IMPACT.add(-0.35F, -0.2F, 0.2F), WRECK);
-                    s.at(52.0F).turn(DRONE, crashYaw + 40.0F, 25.0F, 180.0F, 18.0F);
-                    s.at(70.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 180.0F, 6.0F);
+                    s.at(52.0F).turn(DRONE, crashYaw + 40.0F, -25.0F, -180.0F, 18.0F);
+                    s.at(70.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, -180.0F, 6.0F);
                     s.at(56.0F).highlight(IMPACT.add(-0.1F, -0.3F, -0.3F), IMPACT.add(0.22F, 0.3F, 0.3F), 14.0F);
                     s.at(62.0F).callout("crash", onDrone, Cue.Side.RIGHT, 0.0F);
                     s.at(0.0F).camera(new ScenePos(0.1F, 1.9F, 0.2F), 34.0F, 24.0F, 1.3F, 40.0F);
@@ -78,20 +80,21 @@ public final class RecoveryScene {
                     s.at(8.0F).callout("flip", onDrone, Cue.Side.RIGHT, 60.0F);
                     s.at(24.0F).move(DRONE, 10.0F, Ease.OUT, WRECK.add(0.0F, 0.4F, 0.0F));
                     s.at(34.0F).move(DRONE, 10.0F, Ease.IN, WRECK);
-                    s.at(24.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 360.0F, 18.0F);
+                    s.at(24.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, -360.0F, 18.0F);
                     s.at(44.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 0.0F, 0.0F);
                     s.at(76.0F).keysAt("arm", Anchor.on(DRONE, 0.0F, 0.55F, 0.0F), 40.0F, KeyToken.mapping(SceneKit.KEY_ARM));
                     s.at(76.0F).callout("arm", onDrone, Cue.Side.RIGHT, 0.0F);
                     s.at(100.0F).arm(DRONE, true);
                     s.at(100.0F).throttle(DRONE, 0.55F, 12.0F);
                     s.at(110.0F).move(DRONE, 30.0F, Ease.IN_OUT, AIR_START);
+                    s.at(110.0F).turn(DRONE, SceneKit.heading(WRECK, AIR_START), 0.0F, 0.0F, 8.0F);
                 })
                 .step("turtle", 200.0F, s -> {
                     s.at(0.0F).camera(WRECK.add(0.0F, 0.25F, 0.0F), -130.0F, 24.0F, 1.7F, 24.0F);
                     s.at(0.0F).arm(DRONE, false);
                     s.at(0.0F).throttle(DRONE, 0.0F, 0.0F);
                     s.at(0.0F).move(DRONE, 16.0F, Ease.IN, WRECK);
-                    s.at(0.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 180.0F, 16.0F);
+                    s.at(0.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, -180.0F, 16.0F);
                     s.at(20.0F).keys("turtle", 34.0F, KeyToken.mapping(SceneKit.KEY_TURTLE), KeyToken.mapping(SceneKit.KEY_ARM));
                     s.at(22.0F).callout("turtle", onDrone, Cue.Side.RIGHT, 36.0F);
                     s.at(54.0F).arm(DRONE, true);
@@ -99,29 +102,30 @@ public final class RecoveryScene {
                     s.at(62.0F).callout("turtle_stick", onDrone, Cue.Side.RIGHT, 40.0F);
                     s.at(66.0F).throttle(DRONE, 0.35F, 4.0F);
                     s.at(66.0F).move(DRONE, 14.0F, Ease.OUT, WRECK.add(0.12F, 0.22F, 0.0F));
-                    s.at(66.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 90.0F, 14.0F);
+                    s.at(66.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, -90.0F, 14.0F);
                     s.at(80.0F).throttle(DRONE, 0.0F, 2.0F);
-                    s.at(80.0F).move(DRONE, 10.0F, Ease.IN, WRECK.add(0.25F, 0.0F, 0.0F));
+                    s.at(80.0F).move(DRONE, 10.0F, Ease.IN, TURTLE_END);
                     s.at(80.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 0.0F, 10.0F);
                     s.at(104.0F).arm(DRONE, false);
                     s.at(106.0F).callout("turtle_rule", onDrone, Cue.Side.RIGHT, 50.0F);
                     s.at(160.0F).arm(DRONE, true);
                     s.at(160.0F).throttle(DRONE, 0.55F, 12.0F);
                     s.at(166.0F).move(DRONE, 30.0F, Ease.IN_OUT, AIR_START);
+                    s.at(166.0F).turn(DRONE, SceneKit.heading(TURTLE_END, AIR_START), 0.0F, 0.0F, 8.0F);
                 })
                 .step("air", 150.0F, s -> {
                     s.at(0.0F).camera(AIR_LOW.add(0.0F, -0.7F, 0.0F), 30.0F, 12.0F, 1.15F, 24.0F);
                     s.at(10.0F).arm(DRONE, false);
                     s.at(10.0F).throttle(DRONE, 0.0F, 0.0F);
                     s.at(10.0F).move(DRONE, 26.0F, Ease.IN, AIR_LOW);
-                    s.at(10.0F).turn(DRONE, crashYaw + 40.0F, 30.0F, 140.0F, 26.0F);
+                    s.at(10.0F).turn(DRONE, crashYaw + 40.0F, -30.0F, -140.0F, 26.0F);
                     s.at(16.0F).callout("air_off", onDrone, Cue.Side.RIGHT, 30.0F);
                     s.at(40.0F).keysAt("arm", Anchor.on(DRONE, 0.0F, 0.55F, 0.0F), 50.0F, KeyToken.mapping(SceneKit.KEY_ARM));
                     s.at(44.0F).callout("air_arm", onDrone, Cue.Side.RIGHT, 0.0F);
                     s.at(52.0F).arm(DRONE, true);
                     s.at(52.0F).throttle(DRONE, 0.6F, 6.0F);
                     s.at(52.0F).turn(DRONE, crashYaw + 40.0F, 0.0F, 0.0F, 12.0F);
-                    s.at(56.0F).move(DRONE, 40.0F, Ease.OUT, AIR_START.add(0.3F, 0.15F, 0.0F));
+                    s.at(56.0F).move(DRONE, 40.0F, Ease.OUT, AIR_END);
                 })
                 .step("range", 170.0F, s -> {
                     s.at(0.0F).camera(OVERVIEW.add(0.3F, 0.0F, 0.6F), 20.0F, 30.0F, 1.0F, 24.0F);
@@ -130,7 +134,8 @@ public final class RecoveryScene {
                     }
                     ScenePos startLine = new ScenePos(-0.5F, 2.2F, 2.5F);
                     s.at(0.0F).move(DRONE, 24.0F, Ease.IN_OUT, startLine);
-                    s.at(0.0F).turn(DRONE, 90.0F, 0.0F, 0.0F, 20.0F);
+                    s.at(0.0F).turn(DRONE, SceneKit.heading(AIR_END, startLine), 0.0F, 0.0F, 8.0F);
+                    s.at(22.0F).turn(DRONE, -90.0F, 0.0F, 0.0F, 8.0F);
                     SceneKit.fly(s, DRONE, startLine, List.of(new ScenePos(1.5F, 2.3F, 2.5F), new ScenePos(3.5F, 2.4F, 2.5F)), Ease.IN_OUT, 30.0F,
                             110.0F, 12, 12.0F);
                     s.at(34.0F).callout("full", Anchor.at(new ScenePos(0.0F, 1.1F, 2.5F)), Cue.Side.BELOW, 0.0F);
@@ -141,7 +146,7 @@ public final class RecoveryScene {
                     s.at(0.0F).camera(OVERVIEW, 34.0F, 26.0F, 1.0F, 24.0F);
                     SceneKit.fly(s, DRONE, new ScenePos(3.5F, 2.4F, 2.5F), List.of(new ScenePos(3.2F, 2.2F, 0.4F), HIDDEN), Ease.IN_OUT, 0.0F, 50.0F,
                             10, 12.0F);
-                    s.at(50.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 10.0F);
+                    s.at(50.0F).turn(DRONE, 180.0F, 0.0F, 0.0F, 10.0F);
                     s.at(40.0F).highlight(new ScenePos(1.0F, 1.0F, -1.0F), new ScenePos(2.0F, 4.0F, 0.0F), 40.0F);
                     s.at(42.0F).callout("walls", Anchor.at(pillarTop), Cue.Side.ABOVE, 0.0F);
                     s.at(60.0F).callout("video", onDrone, Cue.Side.RIGHT, 0.0F);

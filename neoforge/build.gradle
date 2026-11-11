@@ -38,6 +38,9 @@ neoForge {
             gameDirectory = this.mkdir(this.file(rootProject.propwashRunDirs.selftest))
             systemProperty('propwash.selftest', 'true')
             rootProject.propwashSelftestProperties.each { key, value -> systemProperty(key, value) }
+            if (project.hasProperty('propwashFixtureWorld')) {
+                systemProperty('propwash.selftest.fixtureWorld', rootProject.file(project.property('propwashFixtureWorld').toString()).absolutePath)
+            }
             rootProject.propwashTestWindowEnv.each { key, value -> environment(key, value) }
         }
         // Start-Rauchtest: normaler Client ohne Selbsttest-Modus; Welt anlegen, betreten, verlassen, beenden (:neoforge:runClientSmoke).
@@ -155,6 +158,28 @@ sourceSets.configureEach {
             attributes {
                 attribute(loaderAttribute, 'neoforge')
             }
+        }
+    }
+}
+
+// Probe-Mod nsprobe (docs/namespace-guard.md): eigene Mod-Id, verletzt den Namensraum propwash absichtlich. Nur mit
+// -PpropwashNsProbe=true laden Selbsttest und Rauchtests sie; nie im Release-Jar.
+sourceSets {
+    nsprobe {
+        java.srcDirs(project(':common').file('src/nsprobe/java'), project(':common').file('src/nsprobe/neoforge/java'))
+        resources.srcDirs(project(':common').file('src/nsprobe/resources'), project(':common').file('src/nsprobe/neoforge/resources'))
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+if (findProperty('propwashNsProbe')?.toString() == 'true') {
+    sourceSets.devtest.runtimeClasspath += sourceSets.nsprobe.output
+    neoForge.mods.register('nsprobe') {
+        sourceSet sourceSets.nsprobe
+    }
+    neoForge.runs.configureEach { run ->
+        if (run.name in ['clientSelftest', 'clientSmoke', 'serverSmoke']) {
+            run.loadedMods.add(neoForge.mods.nsprobe)
         }
     }
 }

@@ -93,6 +93,11 @@ public final class ReceiverTab extends InputTab {
     }
 
     @Override
+    public boolean freecam() {
+        return true;
+    }
+
+    @Override
     public Component title() {
         return Component.translatable("propwash.input.tab.receiver");
     }

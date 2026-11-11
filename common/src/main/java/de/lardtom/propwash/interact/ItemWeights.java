@@ -5,8 +5,13 @@ public final class ItemWeights {
     public static final double FEW_GRAMS = 40.0;
     public static final double BLOCK_GRAMS = 50.0;
     public static final double SMALL_GRAMS = 10.0;
+    public static final double TRIDENT_GRAMS = 1500.0;
 
     private ItemWeights() {
+    }
+
+    public static double gramsEach(int maxStackSize, boolean block, boolean trident, double knownGrams) {
+        return trident ? TRIDENT_GRAMS : gramsEach(maxStackSize, block, knownGrams);
     }
 
     public static double gramsEach(int maxStackSize, boolean block, double knownGrams) {

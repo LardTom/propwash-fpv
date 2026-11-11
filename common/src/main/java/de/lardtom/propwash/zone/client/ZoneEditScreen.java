@@ -190,6 +190,10 @@ public final class ZoneEditScreen extends Screen implements ThemedScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         ZoneEditPanel built = this.panel;
+        if (built != null && event.button() == InputConstants.MOUSE_BUTTON_LEFT && built.startDrag(event.x(), event.y())) {
+            this.setFocused(null);
+            return true;
+        }
         if (built != null) {
             ZoneDraft.Row row = built.rowAt(event.x(), event.y());
             if (row != null) {
@@ -213,14 +217,34 @@ public final class ZoneEditScreen extends Screen implements ThemedScreen {
     }
 
     @Override
-    public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
-        int notches = GateEditor.notches(scrollX, scrollY);
-        if (notches == 0) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        ZoneEditPanel built = this.panel;
+        if (built != null && built.drag(event.y())) {
             return true;
         }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
         ZoneEditPanel built = this.panel;
-        ZoneDraft.Row row = built == null ? null : built.rowAt(x, y);
-        this.editor.change(row != null ? row : this.editor.model().selected(), notches);
+        if (built != null) {
+            built.endDrag();
+        }
+        return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
+        ZoneEditPanel built = this.panel;
+        if (built != null && built.over(x, y)) {
+            built.scroll(scrollY);
+            return true;
+        }
+        int notches = GateEditor.notches(scrollX, scrollY);
+        if (notches != 0) {
+            this.editor.change(this.editor.model().selected(), notches);
+        }
         return true;
     }
 

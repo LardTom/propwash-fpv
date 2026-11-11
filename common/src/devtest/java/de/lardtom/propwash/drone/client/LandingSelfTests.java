@@ -1,9 +1,14 @@
 package de.lardtom.propwash.drone.client;
 
+import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.PartWear;
+import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.client.Screenshots;
+import de.lardtom.propwash.drone.DroneInteractions;
+import de.lardtom.propwash.drone.DroneModule;
+import de.lardtom.propwash.drone.DronePiloting;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.sim.DroneSim;
@@ -12,11 +17,20 @@ import de.lardtom.propwash.sim.StabMode;
 import de.lardtom.propwash.sim.Telemetry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
@@ -27,6 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntSupplier;
 
@@ -51,11 +66,17 @@ final class LandingSelfTests {
     private static final String TRACE = "trace";
     private static final String CYCLE = "cycle";
     private static final String PREP = "prep";
+    private static final String OWN = "own";
+    private static final String STOPPED = "stopped";
+    private static final String STEEPEST = "steepest";
+    private static final int OWN_DX = -3;
+    private static final int SESSION_TICKS = 200;
     private static final int FLIP_CYCLES = 6;
     private static final int REST_TICKS = 100;
     private static final double FLIPPED = 150.0;
     private static final Quaternionf UPSIDE_DOWN = new Quaternionf().rotationZ((float) Math.PI);
     private static final AtomicReference<int[]> ARENA = new AtomicReference<>();
+    private static final AtomicInteger OWN_DRONE = new AtomicInteger(-1);
     private static final Map<BlockPos, BlockState> ORIGINAL = new LinkedHashMap<>();
 
     enum Surface {
@@ -75,16 +96,17 @@ final class LandingSelfTests {
     }
 
     static void registerPiloted(IntSupplier droneId) {
-        SelfTest.clientStep("drone: Landungen – Testfeld mit Stein, Gras und Stufe", 100, LandingSelfTests::arenaStep);
+        IntSupplier id = () -> OWN_DRONE.get() >= 0 ? OWN_DRONE.get() : droneId.getAsInt();
+        SelfTest.clientStep("drone: Landungen – Testfeld mit Stein, Gras und Stufe", 300, LandingSelfTests::arenaStep);
         for (Case c : CASES) {
-            SelfTest.clientStep("drone: Landung " + c.name() + " – bleibt aufrecht", 500, ctx -> landStep(ctx, droneId.getAsInt(), c));
+            SelfTest.clientStep("drone: Landung " + c.name() + " – bleibt aufrecht", 500, ctx -> landStep(ctx, id.getAsInt(), c));
         }
         if (Screenshots.enabled()) {
             Screenshots.step("bildschirmfotos: Landung – Drohne an der Kante einer Stufe aufgesetzt", "landing_slab_edge", 15, new RestScene());
         }
         SelfTest.clientStep("drone: Landung nach Kopflage – Rücksetzen erreicht die Simulation", 2400,
-                ctx -> afterFlipStep(ctx, droneId.getAsInt(), CASES.getFirst()));
-        SelfTest.clientStep("drone: Landungen – Testfeld abbauen", 60, LandingSelfTests::cleanupStep);
+                ctx -> afterFlipStep(ctx, id.getAsInt(), CASES.getFirst()));
+        SelfTest.clientStep("drone: Landungen – Testfeld abbauen", 200, LandingSelfTests::cleanupStep);
     }
 
     private static ServerPlayer serverPlayer(MinecraftServer server) {
@@ -169,32 +191,108 @@ final class LandingSelfTests {
         ARENA.set(arena);
     }
 
+    private static int ownDrone(ServerPlayer player) {
+        ServerLevel level = player.level();
+        int x = player.getBlockX() + OWN_DX;
+        int z = player.getBlockZ();
+        int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+        BlockPos ground = new BlockPos(x, top - 1, z);
+        ItemStack stack = new ItemStack(DroneModule.DRONE_ITEM.get());
+        stack.set(CoreComponents.DRONE_BUILD.get(), DroneBuild.FREESTYLE);
+        stack.set(CoreComponents.BATTERY_CHARGE.get(), 1.0F);
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        InteractionResult use = stack.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND,
+                new BlockHitResult(new Vec3(x + 0.5, top, z + 0.5), Direction.UP, ground, false)));
+        List<QuadcopterEntity> drones = level.getEntitiesOfClass(QuadcopterEntity.class, new AABB(ground).inflate(2.0));
+        if (!use.consumesAction() || drones.isEmpty()) {
+            throw new IllegalStateException("eigene Drohne nicht gesetzt: " + use);
+        }
+        QuadcopterEntity drone = drones.getFirst();
+        ItemStack remote = new ItemStack(DroneModule.REMOTE.get());
+        remote.set(CoreComponents.BOUND_DRONE.get(), DroneInteractions.binding(drone));
+        player.setItemInHand(InteractionHand.MAIN_HAND, remote);
+        remote.use(level, player, InteractionHand.MAIN_HAND);
+        if (!drone.isFlownBy(player.getUUID())) {
+            drone.discard();
+            throw new IllegalStateException("Sichtflug mit der eigenen Drohne nicht gestartet: Pilot=" + drone.pilot());
+        }
+        return drone.getId();
+    }
+
     static StepResult arenaStep(SelfTest.StepContext ctx) {
+        PilotSession session = PilotSession.INSTANCE;
         if (ctx.tick() == 0) {
-            input(PilotSession.INSTANCE, 0.0F, false);
-            ctx.state().put(FUTURE, ctx.onServer(server -> build(serverPlayer(server))));
+            input(session, 0.0F, false);
+            ctx.state().put(OWN, session.drone() == null);
+        }
+        boolean own = (boolean) ctx.state().get(OWN);
+        if (!ctx.state().containsKey(FUTURE)) {
+            if (own && ctx.tick() < DronePiloting.REMOTE_DEBOUNCE_TICKS + 2) {
+                return StepResult.pending();
+            }
+            ctx.state().put(FUTURE, ctx.onServer(server -> {
+                ServerPlayer player = serverPlayer(server);
+                if (own) {
+                    OWN_DRONE.set(ownDrone(player));
+                }
+                build(player);
+            }));
             return StepResult.pending();
         }
-        return awaitServer(ctx, "Testfeld bauen");
+        StepResult server = awaitServer(ctx, "Testfeld bauen");
+        if (server.status() != StepResult.Status.PASS || !own) {
+            return server;
+        }
+        QuadcopterEntity drone = session.drone();
+        if (drone == null || drone.getId() != OWN_DRONE.get()) {
+            return ctx.tick() > SESSION_TICKS ? StepResult.fail("keine Sitzung mit der eigenen Drohne") : StepResult.pending();
+        }
+        input(session, 0.0F, false);
+        ctx.log("ohne laufende Sitzung: eigene Drohne " + drone.getId() + " im Sichtflug");
+        return StepResult.pass();
     }
 
     static StepResult cleanupStep(SelfTest.StepContext ctx) {
-        if (ARENA.get() == null) {
+        PilotSession session = PilotSession.INSTANCE;
+        int own = OWN_DRONE.get();
+        if (ARENA.get() == null && own < 0) {
             return StepResult.pass();
         }
-        if (ctx.tick() == 0) {
+        if (!ctx.state().containsKey(STOPPED)) {
+            ctx.state().put(STOPPED, true);
+            if (own >= 0 && session.drone() != null && session.drone().getId() == own) {
+                session.clearTestInput();
+                session.requestStop();
+            }
             ctx.state().put(FUTURE, ctx.onServer(server -> {
-                ServerLevel level = serverPlayer(server).level();
+                ServerPlayer player = serverPlayer(server);
+                ServerLevel level = player.level();
                 List<Map.Entry<BlockPos, BlockState>> entries = List.copyOf(ORIGINAL.entrySet());
                 for (int i = entries.size() - 1; i >= 0; i--) {
                     level.setBlockAndUpdate(entries.get(i).getKey(), entries.get(i).getValue());
                 }
                 ORIGINAL.clear();
                 ARENA.set(null);
+                if (own >= 0) {
+                    Entity entity = level.getEntity(own);
+                    if (entity != null) {
+                        entity.discard();
+                    }
+                    player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                }
             }));
             return StepResult.pending();
         }
-        return awaitServer(ctx, "Testfeld abbauen");
+        StepResult server = awaitServer(ctx, "Testfeld abbauen");
+        if (server.status() != StepResult.Status.PASS || own < 0) {
+            return server;
+        }
+        QuadcopterEntity flown = session.drone();
+        if (flown != null && flown.getId() == own) {
+            return ctx.tick() > SESSION_TICKS ? StepResult.fail("Sitzung mit der eigenen Drohne läuft nach dem Abbau weiter") : StepResult.pending();
+        }
+        OWN_DRONE.set(-1);
+        return StepResult.pass();
     }
 
     private static double surfaceY(int[] arena, Case c) {
@@ -236,8 +334,8 @@ final class LandingSelfTests {
 
     private static String where(QuadcopterEntity drone, DroneSim sim, double surface) {
         Telemetry t = sim.telemetry();
-        return String.format(Locale.ROOT, "tiefster Punkt %.3f m über der Fläche, Box %.3f m, Neigung %.1f°, %.2f m/s, am Boden %s, ruhend %s, scharf %s",
-                lowest(drone, sim) - surface, drone.getY() - surface, t.tiltDeg, t.speed, t.grounded, t.sleeping, t.armed);
+        return String.format(Locale.ROOT, "tiefster Punkt %.3f m über der Fläche, Box %.3f m, Neigung %.1f°, %.2f m/s, am Boden %s, ruhend %s, scharf %s, Rücksetzung %d",
+                lowest(drone, sim) - surface, drone.getY() - surface, t.tiltDeg, t.speed, t.grounded, t.sleeping, t.armed, drone.resetEpoch());
     }
 
     private static void tilt(DroneSim sim, Case c) {
@@ -258,6 +356,7 @@ final class LandingSelfTests {
         snapshot.ly = 0.0;
         snapshot.lz = 0.0;
         snapshot.sleeping = false;
+        snapshot.groundedFrames = 0;
         sim.copyStateFrom(snapshot);
     }
 
@@ -267,6 +366,11 @@ final class LandingSelfTests {
                 t.armed, drone.resetEpoch());
         Object before = ctx.state().get(TRACE);
         ctx.state().put(TRACE, before == null ? entry : before + "; " + entry);
+    }
+
+    private static void steepest(SelfTest.StepContext ctx, DroneSim sim) {
+        double before = (double) ctx.state().getOrDefault(STEEPEST, 0.0);
+        ctx.state().put(STEEPEST, Math.max(before, sim.telemetry().tiltDeg));
     }
 
     static StepResult landStep(SelfTest.StepContext ctx, int droneId, Case c) {
@@ -329,10 +433,12 @@ final class LandingSelfTests {
                 }
                 note(ctx, "über der Fläche", drone, sim);
                 tilt(sim, c);
+                ctx.state().put(STEEPEST, sim.telemetry().tiltDeg);
                 stage(ctx, 4);
                 return StepResult.pending();
             }
             case 4 -> {
+                steepest(ctx, sim);
                 input(session, (float) (0.9 * sim.telemetry().hoverThrottleStick), true);
                 if (!sim.telemetry().grounded) {
                     return since(ctx) > TOUCH_TICKS ? StepResult.fail("setzt nicht auf: " + where(drone, sim, surface)) : StepResult.pending();
@@ -341,6 +447,7 @@ final class LandingSelfTests {
                 return StepResult.pending();
             }
             case 5 -> {
+                steepest(ctx, sim);
                 boolean idle = since(ctx) < IDLE_TICKS;
                 input(session, 0.0F, idle);
                 if (idle) {
@@ -350,6 +457,7 @@ final class LandingSelfTests {
                 return StepResult.pending();
             }
             default -> {
+                steepest(ctx, sim);
                 input(session, 0.0F, false);
                 Telemetry t = sim.telemetry();
                 boolean resting = t.sleeping || (t.grounded && t.speed < 0.02 && since(ctx) > 40);
@@ -357,7 +465,8 @@ final class LandingSelfTests {
                     return since(ctx) > SETTLE_TICKS ? StepResult.fail("kommt nicht zur Ruhe: " + where(drone, sim, surface))
                             : StepResult.pending();
                 }
-                String state = where(drone, sim, surface) + "; " + ctx.state().getOrDefault(TRACE, "");
+                String state = where(drone, sim, surface) + String.format(Locale.ROOT, ", größte Neigung seit dem Kippen %.1f°; ",
+                        (double) ctx.state().getOrDefault(STEEPEST, 0.0)) + ctx.state().getOrDefault(TRACE, "");
                 if (t.tiltDeg > UPRIGHT) {
                     return StepResult.fail("liegt nicht aufrecht: " + state);
                 }

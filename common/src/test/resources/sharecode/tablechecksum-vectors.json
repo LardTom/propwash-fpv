@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "rule": "untere 10 Bit der CRC-32 (IEEE) über die UTF-8-Zeilen <art>:<nummer>:<pfad>\\n, sortiert nach Art (frame, stack, motor, prop, video, battery, accessory) und Nummer, ohne Doppelte; lines ist die ungeordnete Eingabe",
+  "vectors": [
+    {"name":"empty","lines":[],"text":"","crc32":"00000000","checksum":0},
+    {"name":"one_frame","lines":["frame:2:freestyle_5"],"text":"frame:2:freestyle_5\n","crc32":"7d949476","checksum":118},
+    {"name":"freestyle_preset","lines":["frame:2:freestyle_5","stack:3:stack_30","motor:4:m2207_1750","prop:4:p51_3b","video:3:digital_hd","battery:4:b6s_1300"],"text":"frame:2:freestyle_5\nstack:3:stack_30\nmotor:4:m2207_1750\nprop:4:p51_3b\nvideo:3:digital_hd\nbattery:4:b6s_1300\n","crc32":"521c166c","checksum":620},
+    {"name":"unsorted_with_duplicates","lines":["accessory:2:action_cam_light","battery:4:b6s_1300","frame:3:deadcat_5","accessory:2:action_cam_light","accessory:1:action_cam_heavy","motor:16:m22075_1850"],"text":"frame:3:deadcat_5\nmotor:16:m22075_1850\nbattery:4:b6s_1300\naccessory:1:action_cam_heavy\naccessory:2:action_cam_light\n","crc32":"44fcc94b","checksum":331},
+    {"name":"jmp_bash5_6s","lines":["frame:4:fs_5_bash","stack:10:stack_30_6s_80a","motor:21:m2207_1950","prop:30:p51_20_3b_pc","video:2:analog_race_800","battery:17:b6s_1800"],"text":"frame:4:fs_5_bash\nstack:10:stack_30_6s_80a\nmotor:21:m2207_1950\nprop:30:p51_20_3b_pc\nvideo:2:analog_race_800\nbattery:17:b6s_1800\n","crc32":"a97f214d","checksum":333}
+  ]
+}

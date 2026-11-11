@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/takeoff",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "lap"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:gate_medium"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.first_lap.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.first_lap.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

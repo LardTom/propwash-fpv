@@ -74,6 +74,7 @@ public final class RadioHud {
         timer(graphics, font, d, mc.player, x, y + 42);
         status(graphics, font, d, x, y + 54, blinkOn);
         renderedFrames++;
+        OsdHud.extractInSight(graphics, d);
     }
 
     private static void header(GuiGraphicsExtractor g, Font font, OsdData d, int x, int y) {

@@ -1,0 +1,26 @@
+{
+    "schemaVersion": 1,
+    "id": "nsprobe",
+    "version": "1.0.0",
+    "name": "Namespace Probe",
+    "description": "Dev-only probe for the namespace check of Propwash. Never part of a release.",
+    "authors": [
+        "lardtom"
+    ],
+    "license": "LicenseRef-PolyForm-Shield-1.0.0",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "de.lardtom.nsprobe.fabric.NsProbeFabric"
+        ],
+        "client": [
+            "de.lardtom.nsprobe.fabric.NsProbeFabricClient"
+        ]
+    },
+    "mixins": [
+        "nsprobe.mixins.json"
+    ],
+    "depends": {
+        "propwash": "*"
+    }
+}

@@ -6,9 +6,12 @@
   "mixins": [
     "ChunkMapMixin",
     "PlayerChunkSenderMixin",
-    "TrackedEntityMixin"
+    "TrackedEntityMixin",
+    "GameRuleMapMixin",
+    "CameraChunkMapMixin",
+    "CameraTrackedEntityMixin"
   ],
-  "client": [],
+  "client": ["client.CameraClientChunkCacheMixin"],
   "server": [],
   "injectors": {
     "defaultRequire": 1

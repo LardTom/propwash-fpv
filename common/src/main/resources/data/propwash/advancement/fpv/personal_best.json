@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/first_lap",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "personal_best"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:clock"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.personal_best.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.personal_best.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

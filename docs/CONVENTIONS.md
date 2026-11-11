@@ -12,6 +12,7 @@ Orientierung: Aufbau etablierter Multi-Loader-Mods (Sodium, Lithium, Iris, Entit
 - `de.lardtom.propwash.<feature>.client` bzw. `de.lardtom.propwash.client.<feature>` — nur Client (Rendering, GUI, Eingabe, Video, Audio, OSD).
 - `de.lardtom.propwash.api` — kleine, stabile öffentliche API für andere Mods (nur was wirklich extern gebraucht wird).
 - `de.lardtom.propwash.mixin.<feature>` — **alle** Mixins zentral, nach Feature gegliedert; je Feature eine Mixin-Config `propwash.<feature>.mixins.json`.
+  Mixins, die nur ein Loader braucht, liegen im Modul des Loaders mit demselben Paket und derselben Config-Form (`neoforge/src/main/java/…/mixin/<feature>`, `neoforge/src/main/resources/propwash.<feature>.mixins.json`) und stehen nur in dessen Metadaten.
 - `de.lardtom.propwash.platform` — Service-Interfaces (ServiceLoader) für Loader-Unterschiede.
 - `de.lardtom.propwash.fabric` / `de.lardtom.propwash.neoforge` — Loader-Glue in den Loader-Modulen.
 - `de.lardtom.propwash.compat.<mod>` — optionale Integrationen (Iris, Mod Menu, Controlify), nur per Reflection/`compileOnly`.

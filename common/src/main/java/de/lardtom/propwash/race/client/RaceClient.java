@@ -8,6 +8,7 @@ import de.lardtom.propwash.race.CourseLaps;
 import de.lardtom.propwash.race.GateEntity;
 import de.lardtom.propwash.race.RaceModule;
 import de.lardtom.propwash.race.RacePayloads;
+import de.lardtom.propwash.race.RaceStandards;
 import de.lardtom.propwash.registry.client.ClientRegistrar;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
 import net.minecraft.client.Minecraft;
@@ -31,23 +32,37 @@ public final class RaceClient {
         ClientNet.handle(RacePayloads.CourseSyncS2C.TYPE, (payload, context) -> ClientCourses.apply(payload));
         ClientNet.handle(RacePayloads.RaceSettingsS2C.TYPE, (payload, context) -> applyLaps(payload.laps()));
         ClientNet.handle(RacePayloads.LeaderboardS2C.TYPE, (payload, context) -> ClientLeaderboards.apply(context.minecraft(), payload));
-        ClientNet.handle(RacePayloads.GhostS2C.TYPE, (payload, context) -> ClientRaceTracker.INSTANCE.ghosts().accept(payload));
+        ClientNet.handle(RacePayloads.GhostChunkS2C.TYPE, (payload, context) -> GhostDownloads.INSTANCE.accept(payload));
+        ClientNet.handle(RacePayloads.GhostUploadS2C.TYPE, (payload, context) -> GhostUploader.INSTANCE.request(payload));
         ClientNet.handle(RacePayloads.LobbyS2C.TYPE, (payload, context) -> ClientRaceTracker.INSTANCE.onLobby(payload));
         ClientNet.handle(RacePayloads.RaceStartS2C.TYPE, (payload, context) -> ClientRaceTracker.INSTANCE.onStart(context.minecraft(), payload));
+        ClientNet.handle(RaceStandards.SyncS2C.TYPE, (payload, context) -> ClientRaceStandard.INSTANCE.accept(payload));
+        ClientNet.handle(RacePayloads.LeaderboardPageS2C.TYPE, (payload, context) -> ClientLeaderboards.applyPage(payload));
+        ClientNet.handle(RacePayloads.LapVerdictS2C.TYPE, (payload, context) -> ClientRaceTracker.INSTANCE.onVerdict(context.minecraft(), payload));
+        RaceStandards.client(ClientRaceStandard.INSTANCE::standard);
         GateMountKeys.register();
         GateEditor.register();
         GateEntity.setEditor(GateEditor::start);
         ClientBus.TICK_END.register(GateMountKeys::tick);
         ClientBus.TICK_END.register(GateEditor::tick);
         ClientBus.TICK_END.register(RaceClient::syncDefaults);
+        ClientBus.TICK_END.register(minecraft -> GhostDownloads.INSTANCE.tick());
+        ClientBus.TICK_END.register(minecraft -> GhostUploader.INSTANCE.tick());
         ClientBus.LOGIN.register(minecraft -> sentLaps = CourseLaps.UNSET);
         PilotSession.HOME_RESET.register(ClientRaceTracker.INSTANCE::onHomeReset);
         ClientBus.FRAME_START.register((minecraft, deltaTracker) -> ClientRaceTracker.INSTANCE.onFrame(minecraft));
+        ClientBus.FRAME_START.register((minecraft, deltaTracker) -> ReplaySession.INSTANCE.onFrame(minecraft));
+        ClientBus.FRAME_START.register((minecraft, deltaTracker) -> ReplayVideo.INSTANCE.onFrame(minecraft));
         ClientBus.DISCONNECT.register(minecraft -> {
             ClientRaceTracker.INSTANCE.reset();
             sentLaps = CourseLaps.UNSET;
             ClientCourses.clear();
             ClientLeaderboards.clear();
+            GhostDownloads.INSTANCE.clear();
+            GhostUploader.INSTANCE.clear();
+            GhostChoices.INSTANCE.clear();
+            ReplaySession.INSTANCE.stop();
+            ClientRaceStandard.INSTANCE.clear();
             GateMountKeys.reset();
             GateEditor.stop();
             FreeformGateRenderer.forget();
@@ -60,6 +75,7 @@ public final class RaceClient {
         ClientBus.SUBMIT_WORLD_GEOMETRY.register(RaceLineRenderer::submit);
         ClientBus.SUBMIT_WORLD_GEOMETRY.register(GatePreview::submit);
         ClientBus.SUBMIT_WORLD_GEOMETRY.register(GateEditor::submit);
+        ClientBus.SUBMIT_WORLD_GEOMETRY.register(ScoreAreaRenderer::submit);
         ConfigTabs.register(RaceConfigTab::new);
     }
 

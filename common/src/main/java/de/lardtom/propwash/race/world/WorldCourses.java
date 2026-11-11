@@ -40,13 +40,13 @@ public final class WorldCourses {
         if (course == null) {
             int[] board = site.blockToWorld(marker.board().getX(), marker.board().getY(), marker.board().getZ());
             String variant = WorldCourseVariant.byKey(marker.variant()).map(WorldCourseVariant::key).orElse(marker.variant());
-            int id = registry.createWorldCourse(dimension, variant, site.key(), board);
+            int id = registry.createWorldCourse(dimension, variant, site.key(), board, marker.mode());
             course = registry.course(id);
             if (course == null) {
                 return false;
             }
         }
-        if (registry.insertGate(course.id, gate, marker.slot()) == GateEntity.NO_INDEX) {
+        if (registry.insertPasses(course.id, gate, marker.passes()) == GateEntity.NO_INDEX) {
             return false;
         }
         gate.clearWorldCourse();

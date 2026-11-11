@@ -11,3 +11,13 @@ description = '''Meldet die Mixins des Quell-Sets devtest für Selbsttest und Ra
 
 [[mixins]]
 config = "propwash.dev.mixins.json"
+
+[modproperties.propwash_devtest]
+"propwash:client" = "optional"
+
+[[dependencies.propwash_devtest]]
+modId = "propwash"
+type = "optional"
+versionRange = "[0,)"
+ordering = "NONE"
+side = "BOTH"

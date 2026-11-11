@@ -220,7 +220,11 @@ public abstract class UiTab extends ConfigTab {
         for (String key : tuneKeys) {
             widest = Math.max(widest, this.font().width(label(key)));
         }
-        return Math.min(widest + LABEL_PADDING, columnWidth * 5 / 8);
+        return labelColumn(widest, columnWidth);
+    }
+
+    static int labelColumn(int widestLabel, int columnWidth) {
+        return Math.min(widestLabel + LABEL_PADDING, columnWidth * 5 / 8);
     }
 
     protected ValueSlider slider(String key, int x, int y, int width, int labelWidth) {

@@ -6,6 +6,7 @@ import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.drone.client.render.AfterWaterRenderTypes;
 import de.lardtom.propwash.drone.client.render.DroneGhost;
 import de.lardtom.propwash.race.CourseElement;
+import de.lardtom.propwash.race.CourseElementItem;
 import de.lardtom.propwash.race.FreeformGateItem;
 import de.lardtom.propwash.race.GateEntity;
 import de.lardtom.propwash.race.GateGeometry;
@@ -32,6 +33,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -55,10 +57,29 @@ public final class GatePreview {
     private GatePreview() {
     }
 
-    public record Target(GateGeometry geometry, GateItem item, boolean free, GateMount.Surface surface, boolean allowed, boolean seated) {
+    public record Target(GateGeometry geometry, GateItem item, boolean free, GateMount.Surface surface, boolean allowed, boolean seated,
+                         GateStacking.@Nullable Base base, boolean lid, GateStacking.StackRefusal refusal) {
+        public Target(GateGeometry geometry, GateItem item, boolean free, GateMount.Surface surface, boolean allowed, boolean seated,
+                      GateStacking.@Nullable Base base, boolean lid) {
+            this(geometry, item, free, surface, allowed, seated, base, lid, GateStacking.StackRefusal.NONE);
+        }
+
+        public Target(GateGeometry geometry, GateItem item, boolean free, GateMount.Surface surface, boolean allowed, boolean seated,
+                      GateStacking.@Nullable Base base) {
+            this(geometry, item, free, surface, allowed, seated, base, false);
+        }
+
+        public Target(GateGeometry geometry, GateItem item, boolean free, GateMount.Surface surface, boolean allowed, boolean seated) {
+            this(geometry, item, free, surface, allowed, seated, null);
+        }
+
         public Target(GateGeometry geometry, GateItem item, boolean free, GateMount.Surface surface, boolean allowed) {
             this(geometry, item, free, surface, allowed, false);
         }
+    }
+
+    public static boolean stacksGates(Item item) {
+        return item instanceof GateItem && !(item instanceof CourseElementItem) && !(item instanceof FreeformGateItem);
     }
 
     public static boolean visible() {
@@ -86,6 +107,14 @@ public final class GatePreview {
                 && entityHit.getEntity() instanceof GateEntity gate) {
             return seated(player, level, pole, gate, entityHit.getLocation());
         }
+        if (hand != null && player.getItemInHand(hand).getItem() instanceof CourseElementItem element && element.seatable()
+                && minecraft.hitResult instanceof EntityHitResult entityHit && entityHit.getEntity() instanceof GateEntity gate) {
+            return seatedElement(player, level, element, gate, entityHit.getLocation());
+        }
+        if (hand != null && player.getItemInHand(hand).getItem() instanceof GateItem gateItem && stacksGates(gateItem)
+                && minecraft.hitResult instanceof EntityHitResult entityHit && entityHit.getEntity() instanceof GateEntity gate) {
+            return stacked(player, gateItem, gate);
+        }
         if (hand == null || !(minecraft.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) {
             return null;
         }
@@ -96,10 +125,29 @@ public final class GatePreview {
         if (click == null) {
             return null;
         }
-        GateGeometry geometry = item.placement(click, GateMountKeys.preference());
+        GateGeometry geometry = GateItem.snapped(level, item.placement(click, GateMountKeys.preference()));
         boolean allowed = player.mayBuild() && item.allowed(click);
-        boolean free = allowed && GateItem.insideWorld(level, geometry) && GateItem.free(level, geometry, GateStacking.placedBase(geometry), false);
+        boolean free = allowed && GateMounting.stackRefusal(level, geometry, null) == GateStacking.Refusal.NONE
+                && GateItem.insideWorld(level, geometry) && GateItem.free(level, geometry, GateStacking.placedBase(geometry), false);
         return new Target(geometry, item, free, click.surface(), allowed);
+    }
+
+    private static @Nullable Target stacked(LocalPlayer player, GateItem item, GateEntity gate) {
+        boolean allowed = player.mayBuild();
+        if (GateItem.lidPath(gate, player)) {
+            GateStacking.Lid lid = item.lidFor(gate);
+            if (lid.refusal() == GateStacking.LidRefusal.NO_RING) {
+                return null;
+            }
+            return new Target(lid.geometry(), item, allowed && lid.refusal() == GateStacking.LidRefusal.NONE, GateMount.Surface.FLOOR, allowed, false,
+                    null, true);
+        }
+        GateStacking.Stack stack = item.stackFor(gate, player);
+        if (stack.refusal() == GateStacking.StackRefusal.STANDING_ONLY) {
+            return null;
+        }
+        return new Target(stack.geometry(), item, allowed && stack.refusal() == GateStacking.StackRefusal.NONE, GateMount.Surface.FLOOR, allowed,
+                false, stack.base(), false, stack.refusal());
     }
 
     private static @Nullable Target seated(LocalPlayer player, ClientLevel level, GatePoleItem item, GateEntity gate, Vec3 at) {
@@ -109,6 +157,22 @@ public final class GatePreview {
         }
         GatePlacement.Preference preference = GateMountKeys.preference();
         GateGeometry geometry = GatePoles.onSeat(found.seat(), preference.variant(CourseElement.GATE_POLE), GatePoles.DEFAULT_LENGTH);
+        boolean allowed = player.mayBuild();
+        boolean free = allowed && found.refusal() == GatePoles.Refusal.NONE && GatePoleItem.fits(level, geometry);
+        return new Target(geometry, item, free, GateMount.Surface.FLOOR, allowed, true);
+    }
+
+    private static @Nullable Target seatedElement(LocalPlayer player, ClientLevel level, CourseElementItem item, GateEntity gate, Vec3 at) {
+        GatePoleLinks.Target found = GatePoleLinks.target(gate, at.x, at.z);
+        if (found == null) {
+            return null;
+        }
+        GatePoles.Seat seat = found.seat();
+        GateGeometry geometry = CourseElementItem.seated(new GatePoleLinks.Target(seat, found.chain(), GatePoles.Refusal.NONE),
+                GateMountKeys.preference(), item.kind(), player.getYRot());
+        if (geometry == null) {
+            return null;
+        }
         boolean allowed = player.mayBuild();
         boolean free = allowed && found.refusal() == GatePoles.Refusal.NONE && GatePoleItem.fits(level, geometry);
         return new Target(geometry, item, free, GateMount.Surface.FLOOR, allowed, true);
@@ -129,6 +193,11 @@ public final class GatePreview {
         if (target.seated()) {
             submitTinted(renderer, gate, target.item().size(), target.free() ? FREE_TINT : BLOCKED_TINT, 0, GateStacking.Base.STACKED, minecraft.level,
                     collector, poseStack, levelState.cameraRenderState.pos);
+            return;
+        }
+        if (target.base() != null) {
+            submitTinted(renderer, gate, target.item().size(), target.free() ? FREE_TINT : BLOCKED_TINT, target.free() ? FREE_ARROW : BLOCKED_ARROW,
+                    target.base(), minecraft.level, collector, poseStack, levelState.cameraRenderState.pos);
             return;
         }
         submitGhost(renderer, gate, target.item(), target.free(), minecraft.level, collector, poseStack, levelState.cameraRenderState.pos);
@@ -232,18 +301,8 @@ public final class GatePreview {
             return;
         }
         Font font = minecraft.font;
-        GatePlacement.Preference preference = GateMountKeys.preference();
-        GateMount.Surface surface = target.surface();
-        boolean element = !target.geometry().gate();
-        boolean pole = GatePoles.pole(target.geometry());
-        Component pose = element ? GateMounting.describe(target.geometry())
-                : GateMounting.describe(preference.mount(surface), preference.turn(surface), preference.fine(surface));
-        String refusal = element && !pole && surface != GateMount.Surface.FLOOR ? "propwash.race.element.preview_floor_only"
-                : target.allowed() ? "propwash.race.mount.preview_blocked" : "propwash.race.mount.preview_not_allowed";
-        Component status = target.free() ? pose : Component.translatable(refusal, pose);
-        String hint = pole ? (target.seated() ? "propwash.race.pole.hint_seated" : "propwash.race.pole.hint")
-                : element ? "propwash.race.element.hint" : "propwash.race.mount.hint";
-        Component keys = Component.translatable(hint, GateMountKeys.keyName(), GateMountKeys.keyName());
+        Component status = status(target, GateMountKeys.preference());
+        Component keys = keys(target);
         int width = Math.max(font.width(status), font.width(keys)) + 2 * HINT_PAD + 2;
         int centerX = graphics.guiWidth() / 2;
         int bottom = graphics.guiHeight() - HINT_BOTTOM;
@@ -252,5 +311,46 @@ public final class GatePreview {
         ThemeDraw.notice(graphics, centerX - width / 2, top, centerX + width / 2, bottom, accent, 1.0F);
         graphics.centeredText(font, status, centerX + 1, top + 4, target.free() ? Palette.TEXT : 0xFFFF8A80);
         graphics.centeredText(font, keys, centerX + 1, top + 5 + font.lineHeight, Palette.TEXT_MUTED);
+    }
+
+    public static Component status(Target target, GatePlacement.Preference preference) {
+        GateMount.Surface surface = target.surface();
+        boolean element = !target.geometry().gate();
+        boolean pole = GatePoles.pole(target.geometry());
+        Component pose = element ? GateMounting.describe(target.geometry())
+                : target.lid() ? GateMounting.describeDirection(target.geometry())
+                : GateMounting.describe(preference.mount(surface), preference.turn(surface), preference.fine(surface));
+        if (target.free()) {
+            return pose;
+        }
+        if (target.allowed()) {
+            switch (target.refusal()) {
+                case TOO_HIGH -> {
+                    return Component.translatable("propwash.race.stack.preview_too_high", pose, GateStacking.MAX_STACK);
+                }
+                case TOO_WIDE -> {
+                    return Component.translatable("propwash.race.stack.preview_too_wide", pose);
+                }
+                case OCCUPIED -> {
+                    return Component.translatable("propwash.race.stack.preview_occupied", pose);
+                }
+                default -> {
+                }
+            }
+        }
+        String refusal = element && !pole && surface != GateMount.Surface.FLOOR ? "propwash.race.element.preview_floor_only"
+                : target.allowed() ? "propwash.race.mount.preview_blocked" : "propwash.race.mount.preview_not_allowed";
+        return Component.translatable(refusal, pose);
+    }
+
+    public static Component keys(Target target) {
+        if (target.lid()) {
+            return Component.translatable("propwash.race.lid.hint", GateMountKeys.keyName());
+        }
+        boolean element = !target.geometry().gate();
+        boolean pole = GatePoles.pole(target.geometry());
+        String hint = pole ? (target.seated() ? "propwash.race.pole.hint_seated" : "propwash.race.pole.hint")
+                : element ? "propwash.race.element.hint" : "propwash.race.mount.hint";
+        return Component.translatable(hint, GateMountKeys.keyName(), GateMountKeys.keyName());
     }
 }

@@ -21,7 +21,7 @@ Schlüssel `HomePoint` in den Entity-Daten von `propwash:drone`:
 
 | Feld | Inhalt |
 |---|---|
-| `x`, `y`, `z` | Position (Kommazahlen), am Boden unter der Drohne bzw. an den Füßen des Piloten – genau der Punkt, den GPS Rescue anfliegt |
+| `x`, `y`, `z` | Position (Kommazahlen), auf der Oberkante unter der Drohne (auch auf Stufen, Teppich, Schnee) bzw. an den Füßen des Piloten – genau der Punkt, den GPS Rescue anfliegt |
 | `dimension` | Dimension, in der der Punkt liegt, z. B. `minecraft:overworld` |
 | `game_time` | Spielzeit in Ticks beim Setzen, vergleichbar mit `/time query gametime` (20 Ticks = 1 Sekunde) |
 | `source` | wer ihn gesetzt hat: `arm` (Scharfschalten), `manual` (Taste oder Schalter „Homepoint setzen“), `pilot` (Modus „Beim Piloten“: Stand beim Scharfschalten), `command` (Admin per `/data` oder `/summon`) |
@@ -154,8 +154,36 @@ Spieltest sah das aus, als funktioniere die Taste nicht. Ersetzt durch **Reset**
   beides Meldung „noch kein Homepoint“. Das Ziel muss innerhalb von Weltgrenze und Bauhöhe liegen und dort, wo der Pilot
   auch hinfliegen dürfte: in seiner Funkreichweite (`RadioLink.releaseRange` wie beim Fliegen), nicht im geschützten
   Spawn-Bereich, und ohne Recht zum Erzeugen von Gelände nur, wenn der ganze Umkreis des Tickets schon erzeugt ist
-  (`RangeManager.generatedStatus`, Radius 3 Chunks; unbekannt = warten ohne Ticket). Ist es zugebaut, sucht der Server bis 4 Blöcke darüber in Viertelschritten Platz,
-  sonst Meldung.
+  (`RangeManager.generatedStatus`, Radius 3 Chunks; unbekannt = warten ohne Ticket).
+- **Nur auf einen freien Platz** (seit dem Discord-Befund vom 26.10., `HomeResetRules.spot` mit `HomeSpace`): Ist der
+  Homepoint frei (Kollisionsbox der Drohne ohne Block-Kollision), steht die Drohne genau dort. Sonst sucht der Server im
+  Umkreis von 3 Blöcken (`SEARCH_RADIUS`) die nächste Stelle, an der die Drohne frei steht: je Spalte die erste freie Höhe
+  bis 1 Block über dem Homepoint (`RISE`, Achtelschritte), von dort fällt die Box mit den echten Kollisionsformen bis auf
+  die erste Oberkante, höchstens 1 Block unter den Homepoint (`STEP_DOWN`). Für weiche Flächen im Tag
+  `propwash:drone_surface` (Schnee, Seelensand, Schlamm, Honigblock) zählt dabei wie in der Flugphysik die sichtbare Form
+  (`drone.SoftGround`, `docs/design/ground-contact.md` §2.4), beim freien Platz wie beim Fallen: Die Drohne steht nach dem
+  Reset obenauf, wo sie auch im Flug liegt. Gewertet wird der Abstand, bei Gleichstand die
+  gleiche Höhe. So fällt die Drohne nie durch einen Boden, landet nie im Block und geht auch nicht durch eine Decke nach
+  oben (bis dahin: bis 4 Blöcke senkrecht nach oben, auch durch Decken). Liegt die freie Stelle genau über dem Homepoint
+  im selben Block (Homepoint in einer Stufe, im Teppich, im Schnee oder auf der Kollisionskante einer weichen Fläche), gilt
+  das als Homepoint ohne Hinweis; sonst Meldung
+  „Reset: Homepoint blockiert – Drohne an der nächsten freien Stelle abgesetzt“ (`Outcome.NEARBY`, gelb). Keine freie
+  Stelle im Umkreis: „Der Homepoint ist zugebaut“, die Drohne bleibt, wo sie ist. Weltgrenze und Spawn-Schutz gelten für
+  jede geprüfte Stelle.
+- **Homepoint setzen nur auf freie Stellen:** Beim Scharfschalten und bei „Homepoint setzen“ legt der Client den Punkt
+  mit derselben Prüfung auf die Oberkante unter der Drohne (`HomeResetRules.ground`): erste freie Höhe ab der Drohne,
+  dann mit der Kollisionsbox nach unten bis zur ersten Oberkante (höchstens 96 Blöcke, sonst bleibt die Höhe), auf
+  weichen Flächen bis zur sichtbaren Oberfläche, auf der die Drohne liegt. Bis zum Befund vom 27.10. rechnete `HomeSpace`
+  dort nur mit der Kollisionsform: Homepoint und Reset lagen 0,125 m (Schnee, Seelensand, Schlamm) bzw. 0,0625 m (Honig)
+  im Block, nach dem Reset auf Schlamm oder Seelensand war das FPV-Bild ganz von der Block-Überlagerung bedeckt, im Honig
+  sah man von innen. Bis dahin
+  übersprang `WorldProbe.groundBelow` den Block, in dem die Drohne stand, und kannte nur ganze Blöcke: Auf Stufe,
+  Treppe, Zaubertisch, Teppich oder Schnee lag der Homepoint im Block darunter, schwebte der Teilblock, sogar auf dem
+  Boden darunter – der Reset ließ die Drohne dann „durchfallen“. Im Modus „Beim Piloten“ wird ein Punkt im Block bis
+  1 Block angehoben.
+- **FPV-Bild im Block:** Steckt die Kamera oder die Drohne in einem Block, der die Sicht versperrt (wie bei Vanilla, z. B.
+  ein auf die Drohne gesetzter Block), deckt das FPV-Bild die Vanilla-Überlagerung mit der Blocktextur ab
+  (`FpvView.coverInsideBlock`, aus `LevelExtractorMixin`); bei Kamera durch Blöcke (`CameraClip`) nicht.
 - **Laden:** Der Server setzt ein `DRONE_TICKET` (Radius 2) am Ziel und versetzt erst, wenn dort Entities ticken
   (`isPositionEntityTicking`), höchstens 200 Ticks lang, sonst Meldung. Vorher versetzt, würde die Drohne in einem
   ungeladenen Entity-Abschnitt verschwinden. Danach verfolgt der Pilot seine Drohne 100 Ticks lang auch, wenn ihm der
@@ -195,6 +223,15 @@ Spieltest sah das aus, als funktioniere die Taste nicht. Ersetzt durch **Reset**
 - JUnit `HomeResetRulesTest` (Ziel, Rückfall, Dimension, Sperrzeit, Grenzen, Freiraum, gerade Lage, Welt-Regel und
   Voreinstellungen, Texte), `KeyRenameTest` (alte Taste und Schalterbelegung), `race.ResetAbortTest` (Abbruch, Sprung
   zählt keine Runde, neuer Lauf durch Gate 1).
+- JUnit `HomeSpotTest` (freier Homepoint unverändert, Teilblöcke ohne Hinweis, Block auf dem Homepoint unter Decke und
+  unter freiem Himmel daneben, nie vom Podest oder durch den Boden, ein Block hinab erlaubt, zugebaut, Homepoint auf
+  schwebender Stufe, in der Luft, im Block).
+- Selbsttest `reset: freier Platz – …` (beide Loader, `rescue.client.HomeSpaceSelfTests`): Homepoint auf schwebender
+  Stufe, Treppe, Zaubertisch und vollem Block, auf Teppich und Schnee, auf schwebendem Schlamm, Seelensand und Honigblock
+  (Oberkante dort die sichtbare Form, auf der die Drohne liegt), unter einem vollen Block; Reset per Taste dorthin ohne
+  Durchfallen und nicht in den Block; Block auf dem Homepoint im FPV (Überlagerung, danach Reset daneben mit Hinweis);
+  Schlamm und Honigblock im FPV (nach dem Reset Kamera über der Oberfläche, keine Überlagerung), unter freiem Himmel,
+  ganz zugebaut. Bildschirmfoto `reset_fpv_in_block` (Fabric, `-PpropwashScreenshots=true`).
 - Selbsttest `reset: …` (beide Loader): Taste setzt die Drohne gerade und entschärft zurück; Welt-Regel aus verweigert,
   an erlaubt; laufender Lauf bricht mit `RESET` ab, Server lehnt eine Runde danach ab, Scharfschalten am Start stellt
   auf, Reset verlässt die Aufstellung; ferner Homepoint (400 Blöcke) im FPV hin und per Taste zurück, Chunk geladen,

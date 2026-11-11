@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/drone_built",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "battery_swapped"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:b4s_650"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.battery_swapped.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.battery_swapped.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

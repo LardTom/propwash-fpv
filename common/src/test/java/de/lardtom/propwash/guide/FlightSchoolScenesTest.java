@@ -23,6 +23,7 @@ import de.lardtom.propwash.guide.scene.SceneState;
 import de.lardtom.propwash.guide.scene.SceneStep;
 import de.lardtom.propwash.guide.scene.TimedCue;
 import de.lardtom.propwash.guide.scenes.SceneKit;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -42,7 +43,6 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class FlightSchoolScenesTest {
     static final List<String> ORDER = List.of("drone_build", "bind", "fpv_los", "battery", "race", "gate_free", "course_elements", "tricks", "video", "action_cam", "gripper",
@@ -56,13 +56,7 @@ class FlightSchoolScenesTest {
             SceneKit.KEY_GATE_ROTATE, SceneKit.KEY_GATE_EDIT_MOUSE, SceneKit.KEY_CARGO_DROP, SceneKit.KEY_MODE_3D, SceneKit.KEY_TURTLE, SceneKit.KEY_ROLL_RIGHT);
 
     private static Path guideLang() {
-        for (Path candidate : List.of(Path.of("common/src/lang/guide"), Path.of("src/lang/guide"))) {
-            if (Files.isDirectory(candidate)) {
-                return candidate;
-            }
-        }
-        fail("Sprachquellen der Flugschule nicht gefunden");
-        return Path.of(".");
+        return TestPaths.lang("guide");
     }
 
     private static JsonObject lang(String language) throws IOException {

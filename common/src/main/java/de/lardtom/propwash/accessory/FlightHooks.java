@@ -5,6 +5,7 @@ import de.lardtom.propwash.api.flight.DroneProfile;
 import de.lardtom.propwash.api.flight.FlightAssist;
 import de.lardtom.propwash.api.flight.FlightExtensions;
 import de.lardtom.propwash.api.flight.ForceProvider;
+import de.lardtom.propwash.apiimpl.NamespaceRules;
 import de.lardtom.propwash.build.AccessoryMount;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.DroneBuild;
@@ -32,7 +33,7 @@ public final class FlightHooks implements FlightExtensions {
 
     private static String check(String id) {
         Objects.requireNonNull(id, "id");
-        if (!ID.matcher(id).matches() || id.startsWith(Constants.MOD_ID + ":")) {
+        if (!ID.matcher(NamespaceRules.requireForeign(id, "flight hook")).matches()) {
             throw new IllegalArgumentException("Id braucht einen eigenen Namensraum (z. B. meinmod:kino): " + id);
         }
         return id;

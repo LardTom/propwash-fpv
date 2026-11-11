@@ -1,10 +1,10 @@
 {
   "block.propwash.signal_repeater": "Signal Repeater",
   "gamerule.propwash.signal_repeaters": "Signal repeaters per link",
-  "gamerule.propwash.signal_repeaters.description": "How many signal repeaters may pass video and control on between pilot and drone in a row (at most 4). Each repeater reaches 128 blocks, and the signal goes through walls and ceilings just as it otherwise would; laps flown over repeaters count for leaderboards. 0 = repeaters off.",
+  "gamerule.propwash.signal_repeaters.description": "How many signal repeaters may pass video and control on between pilot and drone in a row (at most 4). Each hop reaches as far as a direct link – the drone's video transmitter for the picture, the remote for control – and walls and ceilings weaken every hop as usual; laps flown over repeaters count for leaderboards. 0 = repeaters off.",
   "gamerule.propwash.signal_repeaters.value.0": "Off",
   "propwash.help.signal_repeater.fits": "Analog and digital video, any radio",
-  "propwash.help.signal_repeater.summary": "Relays video and control, 128 blocks",
+  "propwash.help.signal_repeater.summary": "Relays video and control hop by hop",
   "propwash.help.signal_repeater.use.1": "Place on a floor, wall or ceiling.",
   "propwash.help.signal_repeater.use.2": "Chains of up to 4 repeaters (world rule).",
   "propwash.help.signal_repeater.use.3": "OSD \"RPT\": repeaters in use, signal per hop.",

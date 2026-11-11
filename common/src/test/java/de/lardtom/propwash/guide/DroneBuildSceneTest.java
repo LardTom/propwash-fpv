@@ -11,6 +11,7 @@ import de.lardtom.propwash.guide.scene.SceneState;
 import de.lardtom.propwash.guide.scene.SceneStep;
 import de.lardtom.propwash.guide.scene.TimedCue;
 import de.lardtom.propwash.guide.scenes.DroneBuildScene;
+import de.lardtom.propwash.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -19,7 +20,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -28,19 +28,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class DroneBuildSceneTest {
     private static final Pattern FAKE_UMLAUT = Pattern.compile("(?i)\\b\\w*(fuer|ueber|koennen|muess|waehl|oeffn|schliess|groess|laed|naechst|zurueck)\\w*\\b");
 
     private static Path guideLang() {
-        for (Path candidate : List.of(Path.of("common/src/lang/guide"), Path.of("src/lang/guide"))) {
-            if (Files.isDirectory(candidate)) {
-                return candidate;
-            }
-        }
-        fail("Sprachquellen der Flugschule nicht gefunden");
-        return Path.of(".");
+        return TestPaths.lang("guide");
     }
 
     private static JsonObject lang(String language) throws IOException {

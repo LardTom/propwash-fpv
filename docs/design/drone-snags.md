@@ -11,8 +11,9 @@ alles ohne Kollisionsform hindurch, als wäre es Luft, und an einer Glocke prall
 | Netz (`WEB`) | `propwash:drone_snag_web`: Spinnweben | fängt die Drohne: starke Bremse, hält sie fest, Props laufen schwer |
 | Faden (`STRING`) | `propwash:drone_snag_string`: Stolperdraht (Faden) | kurzer, kräftiger Ruck; der Faden wickelt sich um die Motoren |
 | Laub (`FOLIAGE`) | `propwash:drone_snag_foliage`: Ranken, Leuchtflechte, Trauer- und Wirrranken (Spitze und Stamm), Höhlenranken (beide), hängende Wurzeln, hängendes Blassmoos | leichte Bremse, die Props reißen Blätter ab |
+| Pulverschnee (`POWDER_SNOW`, seit 0.6.0) | `propwash:drone_snag_powder_snow`: Pulverschnee; dazu ohne Tag der Inhalt des Vanilla-Pulverschneekessels bis zur Füllhöhe | bremst wie Vanilla-Entities, die Drohne sinkt langsam ein (Befund DEC2810-1, `docs/drone-cauldrons.md` §3) |
 
-Die Tags sind Daten: Datenpakete und Add-ons können eigene Blöcke in einen der drei Tags legen.
+Die Tags sind Daten: Datenpakete und Add-ons können eigene Blöcke in einen der vier Tags legen.
 
 **Nicht dabei** (Entscheidungen):
 - *Gerüst*: Bambusstangen sind ein festes Gestell, kein Fasergewirr. Als Bremse wäre es falsch, als Kollision würde es
@@ -55,6 +56,14 @@ Werkstoffe (`interact.SnagMaterial`, Werte bei voller Berührung aller fünf Pun
 | Netz | 12 | 4 | 4 | +100 % | 2 % |
 | Faden | 3 | 1,2 | 0 | +200 % | 3 % |
 | Laub | 1 | 0,25 | 0 | +30 % | 0,5 % |
+| Pulverschnee | 13,3 | 0 | 0 | 0 | 0 |
+
+Pulverschnee folgt dem Vanilla-Faktor: Vanilla lässt im Pulverschnee je Tick nur das 1,5-Fache der Bewegung dieses Ticks
+zu (senkrecht, waagrecht 0,9) und setzt die Geschwindigkeit danach auf null. Als lineare Bremse ist das
+1 / (1,5 × 0,05 s) ≈ 13,3/s; mit Leerlaufgas sinkt eine Drohne so mit rund 0,7 m/s ein, ohne Halten und ohne Last an
+den Props kommt sie mit Gas heraus. Im Pulverschneekessel gibt `SnagBlocks#shape` statt der Kesselform das Becken
+(2–14 px) vom Boden (4 px) bis zur Füllhöhe zurück; Bröckchen und Klang nehmen dort das Aussehen des Pulverschnees
+(`SnagBlocks#look`).
 
 Was das im Flug heißt (JUnit `SnagFlightTest`, 5-Zoll und 65-mm-Whoop):
 - Ein 5-Zoll mit 20 m/s steckt nach 0,44 m im Netz fest, mit 40 m/s nach 0,84 m – kein Absturz, kein Aufprall.

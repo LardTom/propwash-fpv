@@ -21,11 +21,12 @@ class TrackThinnerTest {
         }
         counter.update(growing);
         List<TickPose> poses = PathResampler.perTick(full);
-        assertEquals(poses.size(), counter.ticks());
+        int pending = (int) PathResampler.ANTI_ALIAS_TICKS;
+        assertEquals(poses.size() - pending, counter.ticks());
         CameraTrack saved = CameraTrack.build(poses, Simplification.OFF, Integer.MAX_VALUE).track();
-        assertEquals(saved.camera().size(), counter.cameraKeyframes());
+        assertEquals(saved.camera().size() - pending, counter.cameraKeyframes());
         assertEquals(saved.fov().size(), counter.fovKeyframes());
-        for (int i = 0; i < poses.size(); i++) {
+        for (int i = 0; i < counter.ticks(); i++) {
             assertEquals(poses.get(i).tick(), counter.frames().tick(i));
             assertEquals(poses.get(i).x(), counter.frames().pose(i).x(), 0.0);
             assertEquals(saved.camera().get(i), counter.frames().keyframe(i));

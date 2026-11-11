@@ -125,11 +125,18 @@ public final class GateMountKeys {
         GateEntity gate = hit instanceof EntityHitResult entityHit && entityHit.getEntity() instanceof GateEntity found ? found : null;
         boolean sneaking = minecraft.options.keyShift.isDown() || player.isShiftKeyDown();
         GateKeyRoute.Context context = new GateKeyRoute.Context(minecraft.gui.screen() != null, PilotSession.INSTANCE.isActive(), hands(player),
-                gate != null, sneaking, sharedWithFlightMode());
+                gate != null, sneaking, sharedWithFlightMode(), gate != null && stacking(player, gate));
         switch (GateKeyRoute.route(context)) {
             case ROTATE_GATE, NEXT_MOUNT_GATE -> {
                 if (gate != null) {
                     ClientNet.sendToServer(new RacePayloads.GateRotateC2S(gate.getId(), sneaking, step()));
+                }
+            }
+            case TURN_STACK, NEXT_MOUNT_STACK -> {
+                setPreference(GateKeyRoute.stackPreference(preference, sneaking, step()));
+                if (!GatePreview.visible()) {
+                    GateMount.Surface floor = GateMount.Surface.FLOOR;
+                    RaceHud.message(GateMounting.describe(preference.mount(floor), preference.turn(floor), preference.fine(floor)), RaceHud.WHITE);
                 }
             }
             case NEED_TOOL -> RaceHud.message(Component.translatable("propwash.race.mount.need_tool"), RaceHud.WHITE);
@@ -163,6 +170,11 @@ public final class GateMountKeys {
             case NONE, FLIGHT_MODE -> {
             }
         }
+    }
+
+    public static boolean stacking(LocalPlayer player, GateEntity gate) {
+        InteractionHand hand = gateHand(player);
+        return hand != null && GatePreview.stacksGates(player.getItemInHand(hand).getItem()) && gate.stackable();
     }
 
     public static float step() {

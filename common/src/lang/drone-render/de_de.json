@@ -13,7 +13,7 @@
   "propwash.drone_render.section.preview": "Vorschau",
   "propwash.drone_render.section.fpv": "FPV-Bild",
   "propwash.drone_render.fpv_props": "Props im FPV-Bild",
-  "propwash.drone_render.fpv_props.tip": "Zeigt die eigenen Props im Kamerabild genau dort, wo sie bei dieser Kameraposition, diesem Uptilt und diesem Sichtfeld wirklich zu sehen wären: beim 5-Zöller mit steilem Uptilt die Spitzen am Rand, beim Deadcat gar nicht. Nur Darstellung, kein Einfluss auf das Flugmodell.",
+  "propwash.drone_render.fpv_props.tip": "Zeigt die eigenen Props samt Motoren und Armen im Kamerabild genau dort, wo sie bei dieser Kameraposition, diesem Uptilt und diesem Sichtfeld wirklich zu sehen wären: beim 5-Zöller mit steilem Uptilt die Spitzen am Rand, beim Deadcat gar nicht. Nur Darstellung, kein Einfluss auf das Flugmodell.",
   "propwash.drone_render.fpv_ducts": "Ducts im FPV-Bild",
   "propwash.drone_render.fpv_ducts.tip": "Zeigt die Ducts des eigenen Whoops oder Cinewhoops im Kamerabild genau dort, wo sie bei dieser Kameraposition, diesem Uptilt und diesem Sichtfeld wirklich zu sehen wären – die vorderen Ducts in den unteren Ecken, weil die Kamera wie bei echten darüber sitzt. Nur Darstellung, kein Einfluss auf das Flugmodell."
 }

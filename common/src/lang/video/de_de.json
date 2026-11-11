@@ -290,7 +290,7 @@
   "propwash.video.spectate.click": "Klicken zum Zuschauen (schließt den Konfigurator).",
   "propwash.video.spectate.stop": "Zuschauen beenden",
   "propwash.video.spectate.show_osd": "OSD des Piloten zeigen",
-  "propwash.video.spectate.show_osd.tip": "Zeigt beim Zuschauen die Flugdaten der Drohne (Akku, Tempo, Höhe, Kanal) in deinem OSD-Layout.",
+  "propwash.video.spectate.show_osd.tip": "Zeigt beim Zuschauen das OSD des Piloten, wie er es eingerichtet hat (Layout, Farben, Einheiten, Stick-Mode), mit seinen Live-Werten: Sticks, Akku, Modus, Warnungen, Runde und Zeit. Deine eigenen OSD-Einstellungen bleiben unverändert.",
   "propwash.video.spectate.show_banner": "Kanal einblenden",
   "propwash.video.spectate.show_banner.tip": "Zeigt Kanal, Pilot und Drohne auf einer Tafel oben im Bild.",
   "propwash.video.spectate.tab_hint": "Taste %s: nächster aktiver Kanal, nach dem letzten endet das Zuschauen. Esc oder Rechtsklick: zurück zu dir. Du steuerst nichts – du siehst nur das Bild.",

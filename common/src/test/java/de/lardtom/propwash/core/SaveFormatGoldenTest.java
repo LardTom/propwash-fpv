@@ -17,6 +17,7 @@ import de.lardtom.propwash.content.paint.PaintCodecs;
 import de.lardtom.propwash.race.GhostCodec;
 import de.lardtom.propwash.race.GhostLook;
 import de.lardtom.propwash.race.GhostTrack;
+import de.lardtom.propwash.testutil.TestPaths;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -27,8 +28,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -56,7 +55,7 @@ class SaveFormatGoldenTest {
         Map<String, String> actual = new LinkedHashMap<>();
         this.groups.forEach((group, text) -> actual.put(group, this.counts.get(group) + ":" + hash(text)));
         Map<String, String> expected = new LinkedHashMap<>();
-        for (String line : Files.readAllLines(path(), StandardCharsets.UTF_8)) {
+        for (String line : TestPaths.requireLines(RESOURCE)) {
             if (!line.isBlank()) {
                 int space = line.indexOf(' ');
                 expected.put(line.substring(0, space), line.substring(space + 1));
@@ -191,14 +190,5 @@ class SaveFormatGoldenTest {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    private static Path path() {
-        for (Path candidate : List.of(Path.of("common/src/test/resources", RESOURCE), Path.of("src/test/resources", RESOURCE))) {
-            if (Files.exists(candidate)) {
-                return candidate;
-            }
-        }
-        return Path.of("common/src/test/resources", RESOURCE);
     }
 }

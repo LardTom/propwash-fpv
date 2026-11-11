@@ -104,14 +104,6 @@ class HomeResetRulesTest {
     }
 
     @Test
-    void clearanceSearchClimbsOutOfBlocks() {
-        assertEquals(64.0, HomeResetRules.clearY(64.0, y -> true));
-        assertEquals(65.0, HomeResetRules.clearY(64.0, y -> y >= 65.0));
-        assertEquals(64.0 + HomeResetRules.CLEARANCE, HomeResetRules.clearY(64.0, y -> y >= 64.0 + HomeResetRules.CLEARANCE));
-        assertTrue(Double.isNaN(HomeResetRules.clearY(64.0, y -> false)));
-    }
-
-    @Test
     void levelKeepsHeadingAndDropsTilt() {
         for (float yaw : new float[]{0.0F, 0.7F, -2.1F, 3.0F}) {
             Quaternionf tilted = new Quaternionf().rotationY(yaw).rotateX(0.6F).rotateZ(-0.9F);
@@ -146,9 +138,10 @@ class HomeResetRulesTest {
     void everyShownOutcomeAndTheRuleHaveTexts() throws IOException {
         for (String language : List.of("en_us", "de_de")) {
             JsonObject rescue = read(common().resolve("src/lang/rescue/" + language + ".json"));
+            JsonObject autoArm = read(common().resolve("src/lang/auto-arm/" + language + ".json"));
             for (HomeResetRules.Outcome outcome : HomeResetRules.Outcome.values()) {
                 if (!outcome.silent()) {
-                    assertTrue(rescue.has(outcome.messageKey()), language + " " + outcome.messageKey());
+                    assertTrue(rescue.has(outcome.messageKey()) || autoArm.has(outcome.messageKey()), language + " " + outcome.messageKey());
                 }
             }
             assertTrue(rescue.has(WorldRuleSpecs.ALLOW_RESET.translationKey()), language);

@@ -14,6 +14,7 @@ import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.net.ImpactC2S;
 import de.lardtom.propwash.network.PropwashNet;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.server.AddonWorldRules;
 import de.lardtom.propwash.server.ServerRules;
 import de.lardtom.propwash.server.WorldRuleEditC2S;
 import de.lardtom.propwash.server.WorldRuleText;
@@ -197,7 +198,7 @@ public final class WorldRulesSelfTests {
                     }
                     for (GameRule<?> rule : WorldRules.propwashRules()) {
                         Identifier id = BuiltInRegistries.GAME_RULE.getKey(rule);
-                        if (id == null || WorldRuleText.spec(id).isEmpty()) {
+                        if (id == null || WorldRuleText.spec(id).isEmpty() && !AddonWorldRules.isAddonRule(id)) {
                             problems.add("Welt-Regel " + id + " fehlt im Katalog WorldRuleSpecs (Export für die Website)");
                         }
                     }
@@ -733,7 +734,7 @@ public final class WorldRulesSelfTests {
     }
 
     public static Screenshots.Scene readOnlyScene() {
-        return new TabScene(WorldRuleSpecs.WIND, -1, false);
+        return new TabScene(WorldRuleSpecs.GRAVITY_SCALE, -1, false);
     }
 
     public static Screenshots.Scene presetScene(RulePreset applied, RulePreset hover) {

@@ -17,7 +17,7 @@ public record BuildAnalysis(
         Set<BuildWarning> warnings) {
     static final double TOP_SPEED_SOC = 0.8;
     static final double DEFAULT_ANGLE_LIMIT = Math.toRadians(60.0);
-    public static final double REFERENCE_AMBIENT_C = 25.0;
+    public static final double REFERENCE_AMBIENT_C = 20.0;
     public static final double PROPS_IN_VIEW_WARNING = 30.0;
     public static final double MOTOR_TEMP_WINDOW_S = 60.0;
 
@@ -93,7 +93,7 @@ public record BuildAnalysis(
         EnergyModel.Heat heat = EnergyModel.fullThrottleMotorTemp(p, REFERENCE_AMBIENT_C, MOTOR_TEMP_WINDOW_S);
         double motorTemp = heat.sustained();
         double minuteTemp = heat.minute();
-        if (motorTemp > p.motorDerateStartC) {
+        if (motorTemp > p.motorDerateStartC || heat.escSustained() > Thermal.ESC_LIMIT_C) {
             warnings.add(BuildWarning.MOTOR_THERMAL);
         }
         double propsInView = CameraOcclusion.percent(build);

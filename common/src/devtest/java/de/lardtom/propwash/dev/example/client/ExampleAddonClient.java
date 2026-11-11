@@ -21,6 +21,7 @@ public final class ExampleAddonClient {
 
     private static boolean initialized;
     private static boolean tabRegistered;
+    private static boolean sizeShown = true;
     private static @Nullable WorkbenchContext lastContext;
 
     private ExampleAddonClient() {
@@ -44,6 +45,7 @@ public final class ExampleAddonClient {
             registerTab();
         }
         ExampleAccessoriesClient.init();
+        ExampleSwitchesClient.init();
     }
 
     public static synchronized void registerTab() {
@@ -56,6 +58,10 @@ public final class ExampleAddonClient {
 
     public static @Nullable WorkbenchContext lastContext() {
         return lastContext;
+    }
+
+    public static void sizeButton(boolean shown) {
+        sizeShown = shown;
     }
 
     private static final class ImportButton implements WorkbenchExtension {
@@ -96,7 +102,7 @@ public final class ExampleAddonClient {
 
         @Override
         public void init(WorkbenchContext context) {
-            if (!ExampleAddon.showcase()) {
+            if (!ExampleAddon.showcase() || !sizeShown) {
                 return;
             }
             Component tooltip = Component.translatable("propwash_example.workbench.size.tooltip");

@@ -1,382 +1,131 @@
-# Propwash FPV
+![Propwash FPV](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/banner.png)
 
 **Echtes FPV-Fliegen in Minecraft.** Bau dir einen Quadcopter aus realen Bauteilen, setz die Brille auf und flieg ihn
-in der Ich-Perspektive der Drohne – mit deiner eigenen Funke, einem Gamepad oder der Tastatur. Jag durch Renn-Gates,
+in der Ich-Perspektive der Drohne, mit deiner eigenen Funke, einem Gamepad oder der Tastatur. Jag durch Renn-Gates,
 flieg Freestyle über deine Bauwerke oder erkunde die Welt aus der Luft.
 
+![Freestyle: ein Trippy Spin zwischen überwucherten Hochhäusern](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-freestyle-spin.gif)
+
 Propwash hat ein eigenes Flugmodell und einen Flight-Controller im Betaflight-Stil, deshalb fliegen sich die Drohnen
-wie echte: bissige 5-Zoll-Freestyler, verspielte Whoops, sparsame Long-Range-Kreuzer. Alles ist im Überlebensmodus
+wie echte: bissige 5″-Freestyler, verspielte Whoops, sparsame Long-Range-Kreuzer. Alles ist im Überlebensmodus
 spielbar, und eine animierte Flugschule erklärt dir die ganze Mod direkt im Spiel.
 
----
+![Öffentlicher Server](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-server.png)
 
-## Neu in 0.5.2
+![Öffentlicher Server mc.propwashfpv.com: beitreten mit Fabric oder NeoForge](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/server-banner.png)
 
-- **Ein echtes FPV-Objektiv:** Das FPV-Bild sieht durch ein Fisheye wie eine echte FPV-Kamera – der Regler *Fisheye*
-  im Tab *Video* stellt die Stärke ein, 0 % bringt das alte flache Bild zurück
-- **Wasserdichte Drohnen und Turtle-Modus:** Mit dem neuen Spray fliegt eine Drohne im Wasser; liegt sie auf dem Kopf,
-  dreht sie sich mit den eigenen Props wieder um
-- **Zonen:** Ein Bereich der Welt bekommt eigene Simulationswerte – rennfrei oder als Flughilfe gewertet
-- **VTX-Leistung, Bando-Karten, Spinnweben und Glocken:** Sendeleistung (Standard *Auto*) mit Reichweite, Wärme und
-  Akkuverbrauch, Entdeckerkarten zum nächsten Bando, Drohnen verfangen sich in Spinnweben und läuten Glocken
-- **Akkus wie echte Packs, bessere Landungen und echte Abstürze:** eine flache Entladekurve mit steilem Ende, das man in
-  jedem Punch spürt; nach einer Landung setzen Drohnen auf ihrem echten Rahmen auf, nach einem harten Absturz können sie
-  auch auf dem Kopf liegen
+Flieg mit anderen Piloten auf unserem öffentlichen Server **`mc.propwashfpv.com`**. Neu in 0.6.0: Du trittst mit
+**Fabric oder NeoForge** bei. NeoForge-Spieler treten einem Fabric-Server bei, auf dem dieselbe Propwash-Version und
+dieselben Add-ons laufen. Installier Propwash 0.6.0 und trag die Adresse in deine Serverliste ein; fehlt etwas, nennt
+die Beitrittsmeldung die Mods.
 
-## Neu in 0.5.1
+![Neu in 0.6.0](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-new.png)
 
-- **Drohnen-Trails auf Servern:** Die Trails anderer Piloten erscheinen jetzt im Mehrspieler, nicht nur während GPS
-  Rescue
-- **Welt-Regeln für Admins:** Server-Admins, die `/gamerule` nutzen dürfen – etwa über einen Rechte-Mod –, ändern den
-  Tab *Welt-Regeln*, nicht nur Operatoren
-- **Drohnen-Tags für Server-Admins:** Jede Drohne trägt `pw_owner_<Name>`, `pw_pilot_<Name>` und `pw_flying` – z. B.
-  entfernt `/kill @e[type=propwash:drone,tag=pw_owner_Steve]` Steves Drohnen
+- **Sharecodes für alle Add-ons.** PW3-Codes kommen aus der Werkbank, dem Tab *Sharecode* oder von `/propwash code`. Sie nennen jedes Add-on, das ein Bauplan braucht, zeigen im Überlebensmodus eine Einkaufsliste und sind im Chat klickbar, mit Vorschau der Drohne.
+- **Ein größeres Rennsystem.** Schleifen und Durchgänge rückwärts, Punkt-zu-Punkt-Kurse, Gates, die zu Reihen und Tauchwürfeln einrasten, eine Seite *Position*, Kurs-IDs und ein Rennstandard für Server.
+- **Zu jedem Rekord ein Replay.** Ein Klick auf eine Zeit in der Bestenliste zeigt den Sharecode der Drohne, ein Replay aus der Ich-Sicht und einen Geist zum Gegenfliegen.
+- **Freecam-Drohne.** Eine Kamera-Drohne, die es nur auf deinem Bildschirm gibt: keine Kollision, kein Akku, mitten durch Wände (`F6`, wenn die Welt es erlaubt).
+- **RX-Block.** Binde ihn an deine Funke, und ein Kanal wird zum Redstone-Signal von 0 bis 15, bis 128 Blöcke weit.
+- **Motor-Hitze wie bei echten Koptern.** Der ESC regelt ab, wenn er überhitzt, heiße Motoren verlieren Leistung und verschleißen.
+- **Sauber gesteckte Akkus.** Ein eingesteckter Akku sitzt ohne Stecker und Kabel auf der Drohne, an jedem Rahmen.
+- **Drohnen reagieren auf Blöcke.** Slime federt sie zurück, Wolle und Heuballen fangen sie ab, Honig bremst und klebt, Druckplatten und Stolperdrähte lösen aus.
+- **Zonen für alle.** Jeder Spieler markiert Zonen mit dem Zonen-Markierer; Kreativ-Barrieren lassen nur Drohnen durch oder halten nur Drohnen auf.
+- **Add-on-API 1.8.** Add-ons bringen Schalter, OSD-Anzeigen, Welt-Regeln, werfendes Zubehör, autonome Flüge und einen zweiten Piloten an der Kamera.
 
-## Neu in 0.5.0
+![RX-Block: der Gasknüppel wird zum Redstone-Signal](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-rx-block-redstone.gif)
 
-- **Flugtraining:** 20 Lektionen zum Selberfliegen in fünf Kapiteln – vom Scharfschalten und Schweben über Gates und
-  Flips bis zur Abschlussprüfung – mit der eigenen Drohne durch einen Hologramm-Kurs, den nur du siehst, mit Sternen,
-  Bestzeiten und Zwischenzeiten; geht auch im Überleben und auf Servern
-- **Welt-Regeln:** Schwerkraft, Akkulaufzeit, Wind, Turbulenz, Crash-Schaden, Propellertreffer, unendliche Reichweite
-  und eine Grenze für Videokanäle sind Spielregeln für die ganze Welt, mit eigenem Tab „Welt-Regeln“ (Host und
-  alle, die `/gamerule` nutzen dürfen, ändern sie, alle anderen sehen sie) und den Voreinstellungen Realistisch, Training und Arcade mit einem Klick
-- **Freestyle-Tricks, die echtes Fliegen verstehen:** 59 Tricks in neun Familien, 43 davon neu – vom Juicy Flick,
-  Rubik's Cube und McTwist über Matty-Varianten, Power Flips und Hammerheads bis zu Sbang-Kombos, Guillotine und Side Trippy
-  der neuen Schule, im 3D-Modus auch Rückenflug, Schweben kopfüber, Tic-Toc und 3D-Flips – erkannt auch unsauber, schnell
-  oder aneinandergereiht, mit Ketten-Bonus und Lektion „Freestyle-Tricks“
-- **Drohnen treffen Mobs und Spieler:** sie prallen ab und verletzen je nach Wucht, höchstens fünf Herzen, Spieler nur
-  mit PvP – als Welt-Regel abschaltbar
-- **Greifer:** eine Servo-Klaue für die untere Halterung, die im Tiefflug liegende Items aufnimmt, trägt und dort
-  abwirft, wo du willst
-- **Action-Cam (Flashback):** zeichnet deinen Flug als Kamerapfad für die Replay-Mod Flashback auf (nur Fabric,
-  eigener Download), eine fertige Szene je Flug
-- **Bandos:** seltene verlassene Scheunen, Fabriken, Wassertürme, Stege, Bohrinseln und Förderanlagen zum
-  Durchfliegen, jedes Mal anders gebaut, manche mit einer Truhe gebrauchter Teile
-- **Empfänger-Assistent mit animierter Funke:** die Propwash-Funke macht jeden Schritt vor – Knüppel, Schalter und
-  Tasten – neben den Live-Balken, hebt den Arm-Schalter hervor und fragt nach, statt bei der Gas-Richtung zu raten
-- **Scharf-Winkel** je Drohne wie `small_angle` in Betaflight: mit 180° scharf in jeder Lage, auch in der Luft
-- **Binden ganz einfach:** Drohne mit der Funke anklicken, ihr Empfänger merkt sich dich – nach Werkbank, Aufheben und
-  Absetzen verbindet die Funke sofort. Brillen werden nicht gebunden: Mit einer Brille, die zum Videosystem der Drohne
-  passt, fliegst du FPV, ohne Brille im Sichtflug
-- **Eigene Befehle:** eigene Minecraft-Befehle wie `/time set night` auf Funkenschalter, Taster oder Taste legen – einen
-  fürs Einschalten, einen fürs Ausschalten; sie laufen wie im Chat getippt, mit deinen eigenen Rechten
-- **GPS Rescue ohne Pilot:** Steigst du im Heimflug aus, steckst die Funke weg oder verlässt das Spiel, fliegt die
-  Drohne allein heim und landet – jetzt auch um Bäume und Gebäude herum, aus Hallen durchs Tor und nie ins Wasser oder
-  in Lava
-- **Gates frei drehen:** diagonale, geneigte und Rauten-Gates und jede Öffnung von 1 × 1 bis 16 × 16 Blöcken, eingestellt
-  im Spiel mit Mausrad und Live-Vorschau, während du weiterläufst und dich umsiehst; Drohnen prallen im echten Winkel ab, und „Gate drehen“ dreht auch in
-  45°-, 15°- oder 5°-Schritten
-- **Flaggen, Slalom und Tauchwürfel:** Wendeflaggen links oder rechts herum, Slalomstangen, deren Seiten das
-  Kurs-Werkzeug abwechselt, und Tauchwürfel wie bei MultiGP – oben hinein, durch die gewählte Seite hinaus; jedes
-  Element zählt nur, wenn es richtig geflogen wird
-- **Gate-Stangen:** eine einzelne Gate-Seite mit LEDs in 16 Farben – am Boden, aus der Wand, von der Decke oder wie
-  bei MultiGP auf der Ecke eines Gates, bis zu vier übereinander
-- **Freiform-Gates:** Rechtsklick auf den Rand eines Gangs, Höhleneingangs, Fensters oder Schachts, und die Öffnung
-  selbst wird zum Renn-Gate – kein Rahmen, nur ein Leuchtumriss an den Blöcken, jede Form bis 20 × 20 Blöcke
-  (Welt-Regel)
-- **4:3-Bild:** ein Bildformat 4:3 wie in analogen Brillen – schwarze Ränder links und rechts, oben und unten mehr
-  Bild, das OSD im 4:3-Bild; Auto wählt 4:3 für analog und 16:9 für digital
-- **Doku** unter [propwashfpv.com/docs](https://propwashfpv.com/docs/), und der Quellcode ist jetzt unter der PolyForm
-  Shield License einsehbar (Add-on-API unter MIT)
+![Bau deine Drohne](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-build.png)
 
-## Neu in 0.4.0
+![Die Drohnen-Werkbank: Teile rein, flugfertige Drohne raus](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-workbench.gif)
 
-- **Addons für neue Bauteile:** Eine versionierte Parts-API lässt andere Mods Rahmen, Stacks, Motoren, Props, Akkus,
-  Video-Einheiten und Zubehör hinzufügen, die überall funktionieren – Werkbank, Analyse, Flugmodell, Lackierung,
-  Verschleiß, Tooltips, Flugschule und Speicherstände. Erstes Addon: *Propwash: Just More Parts*
-- **Neue Rahmenformen aus Addons:** Deadcats mit Props außerhalb des Kamerabilds, Stretched- und Squashed-X, H-Frames,
-  Ducts und X-Class-Rahmen mit Props bis 13″, geflogen mit einem Mixer für die echte Arm-Anordnung
-- **Motorhitze und ESC-Spannung:** Zu heiße Motoren werden zurückgeregelt und nutzen sich ab, ein Akku über dem
-  Spannungsbereich des ESC lässt ihn beim Scharfschalten durchbrennen; die Werkbank zeigt die Dauertemperatur und wie
-  viel vom Kamerabild die Props verdecken, und die eigenen Props erscheinen jetzt im FPV-Bild
-- **Sharecodes (in Addons):** Baupläne, Lackierungen, Flug-Tunings und OSD-Layouts exportieren und importieren – vom
-  Server geprüft, im Überlebensmodus bezahlt mit Teilen und Farbstoffen
-- **Realistische Flugzeiten und Akku:** Schweben, Reisen, gemischt und aggressiv aus der Energie, die ein echter Akku
-  liefert (Motor- und ESC-Verluste, Videoleistung, nutzbare Kapazität, Landespannung); OSD, HUD und Akku-Warnungen
-  folgen demselben Verbrauch, der Akku ist leer, wenn ein echter leer wäre
-- **Eigener Kreativ-Tab je Addon** direkt hinter dem Propwash-FPV-Tab, z. B. *Propwash: Just More Parts*
-- **Drohnen als Wand-Trophäe:** Im Item-Rahmen hängen Drohnen, Rahmen und Props flach an der Wand, Kameraseite nach
-  vorn und Nase oben, und drehen sich mit dem Rahmen; im Regal sind sie zum Betrachter geneigt
-- **„Props im Kamerabild“ stimmt mit dem FPV-Bild überein** und folgt Rahmen und Kamerahalter (gestreckte Rahmen zeigen
-  mehr Prop als ein True-X, Deadcats keine), der eingebaute Cinewhoop erreicht realistische 89 km/h, und
-  die Werkbank bleibt in jeder Sprache und GUI-Größe lesbar
-- **Fehlerbehebungen:** kein Röntgenblick mehr durchs Wasser hinter drehenden Props, keine periodischen OSD-/HUD-Hänger
-  mehr mit Schrift-Ressourcenpaketen
-- Wird ein Addon entfernt, behalten Drohnen seine Teile als *Unbekanntes Bauteil* und sind wieder vollständig, sobald
-  es zurück ist
+- **Echte Teile, echte Zahlen.** Fünf Rahmen vom 65-mm-Whoop bis zum 7″-Long-Range, dazu Flight-Controller, Motoren, Props, Akkus und Video-Einheiten mit echten Kennzahlen. Gewicht, Schub, Schwebegas, Höchstgeschwindigkeit und Flugzeit ergeben sich aus dem Aufbau.
+- **Drohnen-Werkbank.** 3D-Vorschau mit Schub-Gewicht-Verhältnis, Höchstgeschwindigkeit und Flugzeit und einer Warnung für jedes Teil, das nicht passt. Fünf flugfertige Presets im Kreativmodus.
+- **Lackierung.** Zwölf Teile einzeln färben, mit Farbstoffen, Oberflächen aus Carbon und Metall, Hex-Farben und Vorlagen.
+- **Abstürze hinterlassen Spuren.** Props splittern zuerst, ein harter Einschlag bläht den Akku auf. Props tauschst du im Feld, repariert wird paarweise.
 
-## Neu in 0.3.1
+![Flieg sie wie echt](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-fly.png)
 
-- **Stapelbare Gates:** Rechtsklick mit einem Gate auf ein Gate stapelt bis zu vier zu einer Leiter mit gemeinsamen
-  Mittelbalken wie bei echten Drohnen-Leitern – jedes bleibt ein eigenes Kurs-Gate, und die Drohnen-Arena hat jetzt eine
-- **Beidhändige Funke in der Ego-Ansicht:** Die Funke sitzt tiefer und kleiner im Bild, die Unterarme kommen aus den
-  unteren Ecken, und das Item in der Nebenhand wird ausgeblendet, solange du die Funke hältst
+- **Ein echtes Flugmodell.** Starrkörper-Physik mit Motor-, ESC- und Akku-Simulation, Prop-Wash, Bodeneffekt, Wind und Böen. Betaflight- und Actual-Rates, PIDs, Acro, Angle und Horizon, 3D-Modus und GPS Rescue.
+- **Deine eigene Funke.** EdgeTX/OpenTX über USB, Gamepads oder die Tastatur. Ein animierter Empfänger-Assistent richtet sie ein, Knüppel-Mode 1 bis 4, jeder Schalter belegbar.
+- **FPV oder auf Sicht.** Mit passender Brille siehst du durch die Kamera der Drohne, mit OSD im Betaflight-Stil (über 40 Elemente, Editor mit Drag and Drop). Ohne Brille fliegst du auf Sicht.
+- **Analoges und digitales Video.** Analog zerfällt in Stufen zu Schnee und Rauschen, digital wird klötzchenhaft und friert ein. Wände dämpfen die Verbindung, Hügel, Höhlen und tiefes Wasser trennen sie.
 
-## Neu in 0.3.0
+![In der Brille: FPV durch Gates im Sonnenuntergang](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-fpv-race.gif)
 
-- **Lackierung:** Färbe jedes Teil deiner Drohne in der Werkbank – Rahmen, Motoren, jeden Prop einzeln, Stack, Akku
-  und mehr – mit Farbstoffen, fünf Oberflächen aus Carbon und Metall, beliebigen Hex-Farben und Vorlagen
-- **Rennkurse in der Welt:** vier seltene, fertige Kurse entstehen in Ebenen, Tafelbergen, Wüsten, Wäldern und mehr,
-  mit nummerierten Gates, Rekordtafel und Beutetruhe
-- **Videokanäle und Zuschauen:** Jeder Sender funkt auf einem echten 5,8-GHz- oder Digitalkanal; mit `F7` siehst du
-  durch deine Brille das Kamerabild anderer Piloten
-- **Geister-Rennen und Bestenlisten:** Flieg gegen den Geist deiner Bestrunde und den Rekord-Geist des Servers,
-  Bestenlisten je Drohnenklasse im eigenen Fenster, stehende Starts mit Startampel für mehrere Piloten
-- **Ideallinie und Gate-Markierungen:** eine leuchtende Linie durch die nächsten Gates, ein kariertes Start-/Ziel-Gate
-  und Pfeile für die Flugrichtung
-- **Freestyle-Tricks:** Flips, Rollen, Power Loops, Matty Flips und mehr werden erkannt, mit Punkten und Kombos im OSD
+![Rennen](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-racing.png)
 
-## Neu in 0.2.0
+![Rennen gegen den Geist: Zwischenzeiten und Abstand an jedem Gate im OSD](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-race-ghost-fpv.gif)
 
-- **Zubehör:** eine Action-Cam oben auf dem Rahmen und ein LED-Streifen unter der Nase – beide verändern, wie die
-  Drohne fliegt
-- **Action-Cams, die wirklich aufnehmen:** dein Flug als MP4-Video, auf Wunsch mit Motorgeräusch
-- **LED-Streifen** in 11 Farben mit Modi wie bei Betaflight und FPV-Scheinwerfer für Höhlen; optional mit
-  LambDynamicLights
-- **Bauteil-Verschleiß:** Abstürze nutzen Props, Motoren und mehr ab; Props tauschst du direkt vor Ort oder
-  reparierst sie paarweise
-- Realistische Topspeeds, ein ruhiges FPV-Bild bei hohem Tempo und ein Videobild, das in echten Stufen zerfällt
-- Eine neue Funke wird einmal erkannt und eingerichtet, jeder Schalter lässt sich invertieren, Scharfschalten ist
-  sicher wie bei Betaflight
-- Zwei neue Lektionen in der Flugschule
+- **Bau deine Strecke.** Gates in drei Größen, gestapelte Leitern, Gate-Stangen, Flaggen, Slalom und Tauchwürfel, freie Gates um jede Öffnung, frei gedreht in Schritten von 45°, 15° oder 5°.
+- **Echte Rennzeitnahme.** Zwischenzeiten an jedem Gate, stehende Starts mit Startampel für mehrere Piloten, eine leuchtende Ideallinie durch die nächsten Gates.
+- **Geister, Replays, Bestenlisten.** Flieg gegen deine Bestzeit oder den Server-Rekord je Kurs und Drohnenklasse. Es zählen nur Runden, die der Server geprüft hat.
 
----
+![Neu in 0.6.0: eine Zeit der Bestenliste mit Vorschau des Sharecodes und Replay aus der Ich-Sicht](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-leaderboard-replay.gif)
 
-## Features
+![Freestyle](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-freestyle.png)
 
-### Flugmodell und Flight-Controller
-- Starrkörper-Physik mit Motor-, Regler- und Akkusimulation, Rotoraerodynamik, Bodeneffekt, Prop-Wash,
-  Spannungseinbruch, Wind und Böen
-- Jede Drohne ergibt sich aus ihren Teilen: Gewicht, Schub, Schwebegas, Höchstgeschwindigkeit und Flugzeit folgen aus
-  dem Build
-- Rates nach Betaflight und Actual, PID mit Feed-Forward, I-Term-Relax, Anti-Gravity, TPA und Airmode
-- Flugmodi Acro, Angle und Horizon, Arming-Prüfungen, Failsafe und Aufrichten nach einem Absturz
-- 3D-Modus mit umkehrbaren Motoren: im Tab „Modi“ freischalten, auf einen Schalter legen – Gasmitte ist Nullschub,
-  darunter drehen die Props rückwärts, so fliegst du kopfüber und startest nach einem Absturz kopfüber
-- **GPS Rescue:** Heimflug mit Hindernisvermeidung und Wegplanung, automatischer Landung auf sicherem Grund,
-  Failsafe bei Funkverlust – und er fliegt weiter, wenn du aussteigst
+![Sbang-Kombo im OSD: Eject, Split-S und Juicy Flick für ×3](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-freestyle-trick-combo-osd.gif)
 
-### Eigene Drohnen bauen
-- Fünf Rahmen: vom 65-mm-Whoop über 3-Zoll-Cinewhoop, 5-Zoll-Freestyle- und Race-Rahmen bis zum 7-Zoll-Long-Range
-- Flight-Controller, sechs Motoren, sechs Propeller, Akkus und Videoeinheiten mit echten Kennwerten
-- Echte Wahl innerhalb eines Rahmens: leichte 1404- oder kräftige 2004-Motoren am Cinewhoop, Vier- oder Dreiblatt am
-  Whoop, 30×30-Stack oder leichtes 20×20-AIO an Race- und Long-Range-Rahmen, 2807- oder 2207-Motoren am 7-Zöller
-- Gib deiner Drohne einen Namen – im Konfigurator, mit Namensschild oder Amboss; OSD, Funke und Brille zeigen ihn
-- Die **Drohnen-Werkbank** setzt alles zusammen – mit 3D-Vorschau, Gewicht, Schub-Gewicht-Verhältnis, Schwebegas,
-  Höchstgeschwindigkeit und Flugzeit – und warnt vor Teilen, die nicht zusammenpassen
-- Fünf flugfertige Vorlagen im Kreativmodus: Whoop, Cinewhoop, Freestyle, Racer und Long Range
+**59 Tricks in neun Familien** werden erkannt, auch unsauber, schnell oder aneinandergereiht: Flips und Rolls, Power
+Loops, Juicy Flicks, Matty Flips, Sbang-Kombos, Guillotines, Side Trippies und im 3D-Modus Rückenflug und Tic-Tocs.
+Punkte, Kombos bis ×4 und Stil-Boni erscheinen im OSD, und der Tab *Freestyle* erklärt jeden Trick mit einem Video.
 
-### Mit der echten Funke fliegen
-- EdgeTX-/OpenTX-Funken per USB, Gamepads und Tastaturflug als Ersatz
-- Empfänger-Assistent für Kanäle, Kalibrierung und Schalter; freie Schalterbelegung für Scharfschalten, Flugmodi,
-  Aufrichten, Heimflug, Homepoint, Suchpiepser, Reset zum Homepoint und Action-Cam-Aufnahme
-- Knüppel-Mode 1–4 (Standard Mode 2), als erster Schritt im Empfänger-Assistenten gewählt; Knüppelanzeige im OSD,
-  Flugschule und FPV-Funke folgen ihm
-- Die **FPV-Funke** im Spiel bewegt ihre Knüppel mit deinen
+![Flugschule](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-flight-school.png)
 
-### FPV oder Sichtflug
-- Mit passender Brille siehst du durch die Kamera der Drohne, dazu ein OSD wie bei Betaflight (43 Elemente,
-  Vorlagen, Editor per Ziehen und Ablegen)
-- Keine Brille? Dann fliegst du auf Sicht: Dein Blick folgt der Drohne, ein kompaktes Funk-HUD zeigt Akku, Signal und
-  Flugmodus
+![Flugschule: die animierte Lektion zu Gates und Rennen](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-flight-school-racing.gif)
 
-### Analoges und digitales Video
-- **Analog:** kaum Verzögerung; mit Entfernung und Hindernissen zerfällt das Bild in Stufen – verrissene Zeilen,
-  verblassende Farben, Schnee mit Bildsprüngen und zuletzt volles Rauschen
-- **Digital:** klares HD-Bild mit etwas mehr Latenz; am Rand wird es weicher, blockiger und träger, ruckelt und bleibt
-  auf dem letzten Bild stehen, bevor „KEIN SIGNAL“ kommt – nie analoger Schnee; HDZero-artige Systeme bleiben scharf
-  und zerfallen stattdessen in Blöcke
-- Signalmodell mit Reichweite je Videoeinheit: Ein Block Stein, Ziegel, Bretter oder Beton dämpft wie eine Hauswand,
-  Laub und Glas viel weniger, Hügel, Höhlen, tiefes Wasser und Metall trennen die Verbindung weiterhin – auch die der
-  Fernsteuerung
-- Bildformat 16:9 oder 4:3 (schwarze Ränder wie in 4:3-Brillen, gleiches horizontales Sichtfeld, OSD im Bild) oder
-  Auto nach dem Videosystem
-- Die **Kreativ-FPV-Brille** empfängt jedes System; Latenz, Reichweite und Rauschen sind frei einstellbar; im
-  Kreativmodus oder mit dieser Brille hat auch die Funkreichweite keine feste Grenze
+**22 animierte 3D-Lektionen** erklären alles mit einem kleinen Diorama, Beschriftungen und deinen eigenen Tasten:
+Bauen, Binden, FPV, Rennen, Tricks, Videosysteme, GPS Rescue und mehr. Das **Flugtraining** bringt 20 Lektionen zum
+Selberfliegen durch einen Hologramm-Kurs, mit Sternen, Bestzeiten und Zwischenzeiten. Halte **M** über ein
+Propwash-Item, um seine Lektion zu öffnen.
 
-### Akkus und Ladegerät
-- Jeder Akku ist ein eigenes Item mit eigenem Ladestand und eigener Spannung
-- Jeder Rahmen nimmt nur die Akkus, die zu ihm passen
-- Akkutausch mit Schleichen + Rechtsklick, geladen wird im **Akku-Ladegerät** (vier Schächte, mit Redstone schneller)
+![Action-Cams und Replays](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-cameras.png)
 
-### Action-Cams, die wirklich aufnehmen
-- Eine Action-Cam oben auf dem Rahmen nimmt deinen Flug als echtes **MP4-Video** auf (H.264, 30 oder 60 fps, 720p bis
-  1440p, auf Wunsch mit dem Motorgeräusch als AAC-Ton), gespeichert in `propwash/recordings` – das saubere Kamerabild
-  ohne OSD und ohne Funkstörungen
-- **Action-Cam (Light)**: nackte FPV-Cam, 42 g, Strom aus dem Flugakku, rohes Bild, rauscht etwas bei Dunkelheit
-- **Action-Cam (Heavy)**: große Action-Cam im Gehäuse, 150 g, mit Stabilisierung und auf Wunsch geradem Horizont, eigener
-  Akku (ca. 90 min bei 1080p), der abgestellt per USB aus dem Flugakku lädt
-- **Action-Cam (Flashback)**: zeichnet deinen Flug als Kamerapfad für die Replay-Mod
-  [Flashback](https://modrinth.com/mod/flashback) auf (nur Fabric, eigener Download) – jeder Flug wird eine Szene im
-  Flashback-Editor, fertig zum Rendern als Kinovideo; ohne Flashback zeigt sie nur einen Hinweis
-- Das Gewicht spürst du im Flug: mehr Masse und Trägheit, die schwere Kamera sitzt hoch oben und macht Rollen und
-  Flips träger
-- Aufnahme mit **F9** (frei belegbar), einem Schalter oder Taster an der Funke oder automatisch beim Scharfschalten;
-  eine dezente **REC**-Anzeige im OSD zeigt die Zeit, kodiert wird im Hintergrund, das Spiel bleibt flüssig
-- Das Fenster **Aufnahmen** zeigt alle Videos mit Vorschaubild, Datum, Länge und Größe – im Systemplayer abspielen,
-  löschen oder den Ordner öffnen
+- **Action-Cams, die wirklich aufnehmen.** Montier eine auf den Rahmen und nimm deinen Flug als MP4 auf (H.264, bis 1440p60, auf Wunsch mit Motorgeräusch). Die *Action-Cam (Flashback)* macht aus jedem Flug einen Kamerapfad für die Replay-Mod Flashback.
+- **Freecam-Drohne.** Kurse planen und Kamerafahrten filmen, ohne eine echte Drohne zu riskieren.
+- **LED-Streifen und Scheinwerfer.** 11 Farben, Modi wie in Betaflight und ein Scheinwerfer, der Höhlen im FPV fliegbar macht; LambDynamicLights wird optional unterstützt.
 
-### LED-Streifen und Scheinwerfer
-- Der LED-Streifen leuchtet in 11 Farben mit den Modi Dauerhaft, Blinken, Scharf-Status, Akku-Warnung und Regenbogen,
-  gespeichert in der Drohne und für alle Spieler sichtbar
-- Im FPV leuchtet er im Dunkeln den Weg nach vorn aus, Höhlen werden fliegbar
-- Im Flug an- und ausschalten per Schalter an der Funke („LEDs aus“, wie LED_LOW bei Betaflight) oder `F8`
-- Mit **LambDynamicLights** (optional) wird deine Drohne zur echten Lichtquelle in der Welt
+![FPV durch eine dunkle Höhle mit Scheinwerfer](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/gif-fpv-cave.gif)
 
-### Bauteil-Verschleiß
-- Jeder Absturz nutzt die Teile ab, je nachdem wie hart du aufschlägst: zuerst die Props, Motoren, Kamera und Rahmen
-  halten deutlich länger, ein sehr harter Treffer bläht den Akku auf
-- Angeschlagene Props kosten Schub und lassen das Bild wackeln, mit einem gebrochenen Prop bleibst du am Boden; das
-  OSD warnt dich
-- Props tauschst du vor Ort mit Schleichen + Rechtsklick, andere Teile an der Werkbank; Zubehör nutzt sich nie ab
-- Props reparierst du wie Werkzeug: Zwei beschädigte Props derselben Sorte, zusammen gecraftet oder im Schleifstein,
-  ergeben einen mit beiden Zuständen zusammen plus 5 %
-- Crash-Schaden und seine Stärke sind Welt-Regeln, eine Welt oder ein Server kann ihn abschwächen oder abschalten
+![Überleben und Welten](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-world.png)
 
-### Rennen
-- Renn-Gates in drei Größen und ein Kurs-Werkzeug, das sie zur Strecke verbindet
-- Gates bis zu vier hoch zu Leitern und Doppel-Gates stapeln, jedes bleibt ein eigenes Kurs-Gate
-- Zeitmessung mit Zwischenzeiten, stehende Starts mit Startampel für mehrere Piloten und 3 Sekunden Frühstart-Strafe
-- Geister deiner Bestrunde und des Server-Rekords je Drohnenklasse, mit Abstand an jedem Gate
-- Bestenlisten je Kurs und Drohnenklasse im eigenen Fenster; es zählen nur vom Server geprüfte Runden
-- Eine leuchtende Ideallinie durch die nächsten Gates; dein nächstes Gate leuchtet grün, Gate 1 ist ein kariertes
-  Start-/Ziel-Gate, Pfeile am Boden zeigen die Flugrichtung
-- Vier Arten fertiger Rennkurse entstehen in der Welt, mit Rekordtafel und Beutetruhe
+- **Fortschritt im Überlebensmodus.** Alles außer der Kreativ-Brille ist herstellbar: ein ganzer Whoop aus Kupfer, Eisen und Redstone, High-End-Teile mit Diamanten, Amethyst und Echoscherben. Teile liegen auch in Truhen.
+- **Orte zum Fliegen.** Seltene Bandos (Scheunen, Fabriken, Wassertürme, Stege, Fördertürme) und vier Arten fertiger Rennkurse entstehen in der Welt.
+- **Welt-Regeln.** Schwerkraft, Akkulaufzeit, Wind, Crash-Schaden, Reichweite und mehr als Spielregeln, mit den Voreinstellungen *Realistisch*, *Training* und *Arcade* per Klick.
+- **Für Mehrspieler gemacht.** Der Server lädt die Chunks um die Drohne, prüft die Bewegung und hält die Bestenlisten ehrlich.
 
-### Lackierung
-- Zwölf Teile jeder Drohne einzeln färben: Rahmen, TPU, Motorglocken, jeden Prop, Stack, Akku, Kamera,
-  Antennenspitzen und Zubehör
-- 16 Farbstoff-Farben, Oberflächen Carbon, Titan, Aluminium, Gold und Kupfer, Hex-Farben, Vorlagen, Kopieren und Einfügen
-- Kostet im Überlebensmodus einen Farbstoff je umgefärbtem Teil; andere Spieler sehen deine Farben, auch das Item-Icon
+![Add-ons](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-addons.png)
 
-### Videokanäle und Zuschauen
-- Analog R1–R8 und F1–F8 mit echten 5,8-GHz-Frequenzen, digital CH1–CH8, automatisch vergeben oder fest je Drohne
-- Mit Brille `F7` drücken und anderen Piloten zuschauen, mit ihrem OSD und deinen eigenen Bildstörungen
+Offizielle Add-ons für Propwash 0.6.0. Installier sie auf dem Client **und** dem Server, in derselben Version.
 
-### Freestyle-Tricks
-- 59 Tricks in neun Familien: Flips und Rollen bis dreifach und segmentiert, Snap Rolls, Korkenzieher, Vanny Rolls,
-  Rewinds und Flip-Rewinds, Juicy Flicks, Rubik's Cubes, Power Loops mit Power Flip, Power Roll, Inverted 360 und Side Loop,
-  Maverick Loops, Baranis, Immelmanns und Immelmatts, Hammerheads, Matty Flips sowie Anti, Half und Power Matty, Split-S,
-  540-Split-S und Splitbacks, Yaw-Spins aufrecht und kopfüber, Coin Drops, Trippy Spins, McTwists, Kopfüber hängen, Knife
-  Edges, Reverse Knife Edges und Wall Rides, Sturzflüge, Rückwärts-Sturzflüge und Tornados, Orbits, Gaps und
-  Proximity-Vorbeiflüge – auch unsauber, langsam und aneinandergereiht
-- Neue Schule: Ejects und Sbang-Kombos, Funky Split, Shinobi Flip, Guillotine und Side Trippy; im 3D-Modus Rückenflug,
-  Schweben kopfüber, Tic-Toc, 3D-Flip, 3D-Rolle und Power Loop (3D)
-- Der Tab „Freestyle“ gruppiert alle Tricks nach Familien, mit Suche (auch nach Szene-Namen wie Barrel Roll oder Stall Turn)
-- Punkte, Kombos bis ×4, Ketten- und Stil-Boni im OSD; Trick-Punkte und beste Kombo in der Flugstatistik; jeder Trick
-  im Tab „Freestyle“ erklärt, dazu eine Flugschul-Lektion
+<table><tr><td width="33%"><a href="https://modrinth.com/mod/propwash-just-more-parts"><img src="https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/card-just-more-parts.png" alt="Just More Parts: 146 echte Teile" width="240"></a></td><td width="33%"><a href="https://www.curseforge.com/minecraft/mc-mods/propwash-camera-drones"><img src="https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/card-camera-drones.png" alt="Camera Drones: GPS, Gimbal und Missionen" width="240"></a></td><td width="33%"><a href="https://www.curseforge.com/minecraft/mc-mods/propwash-mob-defense"><img src="https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/card-mob-defense.png" alt="Mob Defense: Dispenser, Speer und Raketen-Booster" width="240"></a></td></tr></table>
 
-### Propwash-Staub
-Fliegst du dicht über dem Boden, wirbeln die Rotoren dezent Staub in der Farbe des Blocks darunter auf, über Wasser
-feine Gischt. Wie hoch, wie viel und wie weit er sich ausbreitet, folgt aus Schub, Propellergröße und Neigung.
-Einstellbar, und Minecrafts Partikel-Einstellung wird beachtet.
+![Los geht's](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-get-started.png)
 
-### Überlebensmodus
-- Alles außer der Kreativ-FPV-Brille lässt sich herstellen
-- Fünf Zwischenteile (Carbonplatte, Kupferspule, Platine, LiPo-Zelle, HD-Videochip) verbinden Vanilla-Rohstoffe mit
-  den Bauteilen
-- Fortschritt in Stufen: ein kompletter Whoop, Funke und analoge Brille aus Kupfer, Eisen und Redstone; für die
-  Oberklasse brauchst du Gold, Diamanten, Quarz, Amethyst, Glowstone und Echo-Splitter
-- Das Rezeptbuch zeigt jedes Rezept, sobald du eine Zutat hast – und alle auf einmal, sobald du ein Propwash-Item besitzt
-  (Suche „propwash“ an der Werkbank)
-- In Truhen von Dörfern, Minen, Verliesen, Tempeln, Außenposten, Festungen, Schiffswracks, Prüfungskammern,
-  Tresoren, antiken Städten und Endstädten stecken Bauteile, Akkus und ganz selten ein flugfertiger Whoop
+1. Bau eine Drohne an der **Drohnen-Werkbank** oder nimm ein Preset aus dem Kreativ-Tab.
+2. Stell sie auf den Boden und klick sie mit der **FPV-Funke** an, um sie zu binden.
+3. Setz eine **FPV-Brille** auf, die zum Videosystem der Drohne passt (analog oder digital).
+4. Halte die Funke, klick in die Luft, schalte mit deinem Schalter oder **Z** scharf und flieg los.
 
-### Flugschule
-Neunzehn animierte 3D-Lektionen (im Kreativmodus zwanzig) erklären alles mit einem kleinen Diorama, Hinweisen und deiner echten Tastenbelegung:
-Drohne bauen, Funke binden und Brille aufsetzen, FPV und Sichtflug, Akkus und Laden, Gates und Rennen, Gates frei drehen,
-Flaggen, Slalom und Tauchwürfel, Freestyle-Tricks, Videosysteme,
-Aufnehmen mit der Action-Cam, den Greifer, den Konfigurator, GPS Rescue und Failsafe, Höhe und Position halten, den 3D-Modus, Absturz und
-Reichweite, Props wechseln und Schäden, das Herstellen im Überlebensmodus und Bandos. Dazu kommt das Flugtraining mit 20
-Lektionen zum Selberfliegen. **Halte M über
-ein beliebiges Propwash-Item**, um seine Lektion zu öffnen.
+Hängst du fest? Halte **M** über ein Propwash-Item für seine Flugschul-Lektion oder **Shift** für einen ausführlichen
+Tooltip. Die ganze Doku: [propwashfpv.com/docs](https://propwashfpv.com/docs/).
 
-### Addons
-Propwash 0.4.0 öffnet sich: Addons können Bauteile aller Art, neue Rahmenformen, Presets, Werkbank-Knöpfe,
-Konfigurator-Tabs, Flugschul-Lektionen und Sharecodes hinzufügen. Addons gehören auf den Client **und** den Server, in
-derselben Version; Propwash vergleicht die Teile-Listen beim Verbinden.
+![Voraussetzungen](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-requirements.png)
 
-### Und außerdem
-- Motorsound in Echtzeit synthetisiert, für jede Drohne einzeln, mit Doppler-Effekt und Pieptönen
-- Shift-Tooltips an jedem Item: wofür, wie benutzen, was passt
-- Ein Konfigurator im Betaflight-Stil (**K**, außerdem über Mod Menu unter Fabric und die Mod-Liste unter NeoForge)
-  mit Tabs für Tuning, Rates, Empfänger, Modi, Tasten, Video, Videokanal, OSD, LED-Streifen, Action-Cam, Rennen, Freestyle,
-  GPS Rescue, Welt-Regeln, Darstellung, Audio und Server
-- Mehrspielertauglich: Der Server lädt und erzeugt die Chunks um die Drohne, deine Sichtweite begrenzt dich also nicht;
-  Welt-Regeln für alle (Schwerkraft, Akkulaufzeit, Wind, Crash-Schaden, Reichweite, Videokanäle), Rechte und Prüfung der
-  Bewegungen
-
----
-
-## Los geht's
-
-1. Bau an der **Drohnen-Werkbank** eine Drohne (oder nimm eine Vorlage aus dem Kreativ-Tab).
-2. Setz sie auf den Boden.
-3. Klick die Drohne mit der **FPV-Funke** an, um sie zu binden.
-4. Setz eine **FPV-Brille** auf, die zum Videosystem der Drohne passt (analog oder digital) – gebunden wird sie nicht.
-5. Funke in die Hand und Rechtsklick in die Luft: FPV mit passender Brille, Sichtflug ohne Brille.
-6. Scharf schalten (Schalter oder **Y**) und los. Erneuter Rechtsklick mit der Funke oder **Z** beendet den Flug.
-
-Nicht weiter? Halte **M** über ein Propwash-Item für seine Flugschul-Lektion oder **Shift** für einen ausführlichen
-Tooltip.
-
-### Standardtasten
-
-| Aktion | Taste |
-|---|---|
-| Scharf schalten/entschärfen | Y |
-| Flugmodus wechseln (Acro/Angle/Horizon, im Flug) | R |
-| Acro / Angle / Horizon direkt | Ziffernblock 1 / 2 / 3 |
-| 3D-Modus an/aus (nach dem Freischalten) | Ziffernblock 6 |
-| Drohne aufrichten | U |
-| FPV-Flug beenden | Z |
-| GPS Rescue an/aus | J |
-| Homepoint setzen | , (Komma) |
-| Suchpiepser an/aus | . (Punkt) |
-| Reset (zurück zum Homepoint) | Rücktaste |
-| Gate drehen (Gate oder Kurs-Werkzeug in der Hand; Schleichen: Lage wechseln) | R (geteilt mit „Flugmodus wechseln“) |
-| Action-Cam: Aufnahme starten/stoppen | F9 |
-| Konfigurator | K |
-| Flugschule | M (über einem Item halten) |
-| Tastaturflug | W/S Gas, A/D Gieren, Pfeiltasten Nicken und Rollen |
-
-Die Tasten gelten für eine deutsche QWERTZ-Tastatur; auf einer US-Tastatur liegen Scharfschalten und Beenden auf Z
-und Y. Jede Taste lässt sich im Konfigurator-Tab **Tasten** ändern.
-
-### Funke einrichten
-Schließ deine EdgeTX-/OpenTX-Funke per USB an und wähle **USB-Joystick (HID)**. Propwash erkennt sie automatisch
-(AETR, AUX1 = scharf, AUX2 = Flugmodus) und fragt einmal, ob du sie jetzt einrichten willst – der vorbelegte Assistent
-braucht meist nur eine Bestätigung und eine kurze Kalibrierung. Danach lädt die Funke beim Einstecken ohne Rückfrage ihr
-Profil. Den **Empfänger-Assistenten** startest du jederzeit wieder im Konfigurator unter **Empfänger**.
-
----
-
-## Voraussetzungen
-
-- Minecraft **26.3**
-- **Fabric:** Fabric Loader 0.19.5+ und **Fabric API**
-- **NeoForge:** 26.3.0.10-beta oder neuer
-- Java 25
+- Minecraft **26.3** · Java 25
+- **Fabric:** Fabric Loader 0.19.5+ und Fabric API · **NeoForge:** 26.3.0.10-beta oder neuer
 - Nötig auf **Client und Server**
-- Optional: [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights), damit Drohnen mit LED-Streifen echte
-  Lichtquellen sind
+- Mit *Just More Parts*: **1.2.0** oder neuer (1.1.x startet nicht mit Propwash 0.6.0)
+- Optional: [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) für LED-Streifen als echte Lichtquellen
+- Funken im USB-Joystick-Modus. Mit einem Shaderpack fällt der Video-Effekt auf ein einfacheres Overlay zurück.
 
-## Bekannte Einschränkungen
+![Community](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/header-community.png)
 
-- Vorerst nur Minecraft 26.3.
-- Mit einem Shaderpack (Iris/Oculus) wird der Video-Effekt durch eine einfachere Überlagerung ersetzt.
-- Außerhalb des Kreativmodus reicht die Funkverbindung etwa 1.200 Blöcke weit; Server können sie weiter begrenzen.
-- Funken müssen im USB-Joystick-Modus laufen.
-- macOS: Propwash erkennt Controller standardmäßig ohne Apples GameController-Framework, damit Funken wie die
-  Radiomaster Pocket erscheinen. Reine MFi-Gamepads, die nur darüber laufen, brauchen die
-  Einstellung „Apples GameController“ im Tab „Empfänger“.
-- Beim Zuschauen ist das OSD des Piloten angenähert: Flugmodus, Sticks und Funkverbindung werden nicht übertragen.
-- Die Action-Cam nimmt bis 1440p60 auf; wie flüssig, hängt vom Prozessor ab. Die Tonspur enthält nur das
-  Motorgeräusch der aufnehmenden Drohne.
+[![Discord](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/button-discord.png)](https://discord.gg/bNhkSXYSgZ) [![Website](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/button-website.png)](https://propwashfpv.com) [![Auf Ko-fi unterstützen](https://raw.githubusercontent.com/LardTom/propwash-fpv/main/.github/listing/button-kofi.png)](https://ko-fi.com/propwashfpv)
 
----
+Fragen, Builds, Rundenzeiten? Komm auf den Discord oder lies die Doku auf der Website. Propwash und seine Add-ons sind
+kostenlos; wenn sie dir gefallen, kannst du das Projekt auf [Ko-fi](https://ko-fi.com/propwashfpv) unterstützen. Danke!
 
-*Propwash FPV ist eine eigenständige Mod und steht in keiner Verbindung zu Betaflight, EdgeTX, OpenTX oder einem
+*Propwash FPV ist eine eigenständige Mod. Sie steht in keiner Verbindung zu Betaflight, EdgeTX, OpenTX oder einem
 Drohnenhersteller.*
-
 *KEIN OFFIZIELLES MINECRAFT-PRODUKT. NICHT VON MOJANG ODER MICROSOFT GENEHMIGT ODER MIT IHNEN VERBUNDEN.*

@@ -3,12 +3,15 @@ package de.lardtom.propwash.build;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import de.lardtom.propwash.api.build.BuildCheck;
+import de.lardtom.propwash.api.part.AccessoryDefinition;
+import de.lardtom.propwash.api.part.AccessorySlot;
 import de.lardtom.propwash.api.part.BatteryDefinition;
 import de.lardtom.propwash.api.part.BatteryFitRule;
 import de.lardtom.propwash.api.part.FrameDefinition;
 import de.lardtom.propwash.api.part.FrameRole;
 import de.lardtom.propwash.api.part.MotorDefinition;
 import de.lardtom.propwash.api.part.Mounts;
+import de.lardtom.propwash.api.part.PartBasics;
 import de.lardtom.propwash.api.part.PartDefinition;
 import de.lardtom.propwash.api.part.PropDefinition;
 import de.lardtom.propwash.api.part.PropMaterial;
@@ -83,6 +86,11 @@ class PartCompatibilityTest {
         return part(PropDefinition.builder(id("p5_t_mount")).mass(4.2).size(130, 4.1, 3).coefficients(0.105, 0.062).mount(HUB_T_MOUNT).build());
     }
 
+    private static AccessoryType cinewhoopOnlyMount() {
+        return part(AccessoryDefinition.builder(id("cine_mount")).basics(PartBasics.of(60.0)).slot(AccessorySlot.FRONT).size(40.0, 30.0, 40.0)
+                .frames(FrameType.CINEWHOOP_3.id()).build());
+    }
+
     static Map<DroneBuild.Issue, DroneBuild> refusedCombinations() {
         Map<DroneBuild.Issue, DroneBuild> out = new LinkedHashMap<>();
         DroneBuild freestyle = DroneBuild.FREESTYLE;
@@ -97,6 +105,7 @@ class PartCompatibilityTest {
                 freestyle.video(), freestyle.battery()));
         out.put(DroneBuild.Issue.BATTERY_FRAME, DroneBuild.WHOOP.withBattery(BatteryType.B6S_1300));
         out.put(DroneBuild.Issue.ACCESSORY_MOUNT, DroneBuild.WHOOP.withAccessory(AccessoryType.ACTION_CAM_LIGHT));
+        out.put(DroneBuild.Issue.ACCESSORY_FRAME, freestyle.withAccessory(cinewhoopOnlyMount()));
         return out;
     }
 

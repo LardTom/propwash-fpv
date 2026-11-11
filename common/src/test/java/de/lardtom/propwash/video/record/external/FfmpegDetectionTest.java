@@ -179,6 +179,14 @@ class FfmpegDetectionTest {
     }
 
     @Test
+    void loginShellLinesAreUnixPathsOnEveryPlatform() {
+        assertEquals(Optional.of("/usr/local/bin/ffmpeg"), LoginShell.parse(List.of("  /usr/local/bin/ffmpeg\t", "/"), "ffmpeg")
+                .map(path -> path.toString().replace('\\', '/')));
+        assertEquals(Optional.empty(), LoginShell.parse(List.of("C:\\tools\\bin\\ffmpeg", "C:/tools/bin/ffmpeg", "~/bin/ffmpeg"), "ffmpeg"));
+        assertEquals(Optional.empty(), LoginShell.parse(List.of("/opt/tools/bin/ffmpeg-full", "/opt/ffmpeg/bin"), "ffmpeg"));
+    }
+
+    @Test
     void loginShellFindsWhatTheProfilePutsOnThePath(@TempDir Path dir) throws IOException {
         Assumptions.assumeTrue(unix() && Files.isExecutable(Path.of("/bin/sh")));
         Path home = Files.createDirectories(dir.resolve("home"));

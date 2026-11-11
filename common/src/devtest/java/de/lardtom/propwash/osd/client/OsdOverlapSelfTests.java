@@ -9,6 +9,7 @@ import de.lardtom.propwash.osd.OsdData;
 import de.lardtom.propwash.osd.OsdElement;
 import de.lardtom.propwash.osd.OsdGrid;
 import de.lardtom.propwash.osd.OsdPreset;
+import de.lardtom.propwash.osd.SpectatorCount;
 import de.lardtom.propwash.trick.TrickType;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.config.ConfigTabs;
@@ -138,6 +139,7 @@ public final class OsdOverlapSelfTests {
         wide.clockHour = 23;
         wide.clockMinute = 59;
         wide.gpsSatellites = 24;
+        wide.spectators = SpectatorCount.MAX;
         return List.of(armed, wide);
     }
 

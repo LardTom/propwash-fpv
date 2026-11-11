@@ -99,6 +99,50 @@ class RescueRoutingTest {
     }
 
     @Test
+    void homeBeforeDoorLandsOnTheHomepoint() {
+        for (DroneBuild build : DroneBuild.PRESETS) {
+            VoxelWorld world = new VoxelWorld(0).fill(0, 0, -1, 0, 1, -1);
+            RescueRun run = new RescueRun(world, build, new RescueSettings(), 0.5, 0.0, 0.5).autonomous().launch(-11.5, 6.0, 0.5, 0.0);
+            boolean disarmed = run.runUntilDisarmed(90.0);
+            assertLanded(run, disarmed, 0.0);
+            assertTrue(run.distanceToHome() < 0.3, build.frame() + " neben dem Homepoint vor der Tür gelandet: " + run.describe());
+        }
+    }
+
+    @Test
+    void homeInCornerOfWallsLandsOnTheHomepoint() {
+        VoxelWorld world = new VoxelWorld(0).fill(-3, 0, -1, 3, 2, -1).fill(-1, 0, -1, -1, 2, 3);
+        RescueRun run = new RescueRun(world, DroneBuild.FREESTYLE, new RescueSettings(), 0.5, 0.0, 0.5).autonomous().launch(14.5, 4.0, 6.5, 0.0);
+        boolean disarmed = run.runUntilDisarmed(90.0);
+        assertLanded(run, disarmed, 0.0);
+        assertTrue(run.distanceToHome() < 0.3, "neben dem Homepoint in der Mauerecke gelandet: " + run.describe());
+    }
+
+    @Test
+    void homeTouchingTheDoorStillMovesAside() {
+        VoxelWorld world = new VoxelWorld(0).fill(0, 0, -1, 0, 1, -1);
+        RescueRun run = new RescueRun(world, DroneBuild.FREESTYLE, new RescueSettings(), 0.5, 0.0, 0.1).autonomous().launch(-11.5, 6.0, 0.5, 0.0);
+        boolean disarmed = run.runUntilDisarmed(90.0);
+        assertLanded(run, disarmed, 0.0);
+        double half = 0.5 * run.flight.sim.params().hitboxWidth;
+        assertTrue(run.flight.z() - half >= 0.0 || run.flight.x() + half <= 0.0 || run.flight.x() - half >= 1.0,
+                "in die Tür gelandet: " + run.describe());
+        assertTrue(run.distanceToHome() < 2.0, run.describe());
+    }
+
+    @Test
+    void homeBesideLavaStillMovesAway() {
+        VoxelWorld world = new VoxelWorld(0).mark(Ground.LAVA, -1, -1, -1, 1, -1, -1);
+        RescueRun run = new RescueRun(world, DroneBuild.FREESTYLE, new RescueSettings(), 0.5, 0.0, 0.5).autonomous().launch(-11.5, 6.0, 0.5, 0.0);
+        boolean disarmed = run.runUntilDisarmed(90.0);
+        assertLanded(run, disarmed, 0.0);
+        double half = 0.5 * run.flight.sim.params().hitboxWidth + 0.4;
+        assertTrue(RescueAutopilot.spotQuality(world, run.autopilot.landX(), run.autopilot.landZ(), half, 10.0) >= 0,
+                "Landeplatz neben der Lava: " + run.describe());
+        assertTrue(run.distanceToHome() > 0.5, "neben der Lava gelandet: " + run.describe());
+    }
+
+    @Test
     void closedCaveGivesUpAndHoversWhenPiloted() {
         VoxelWorld world = new VoxelWorld(0).fill(20, 0, -8, 36, 8, 8).clear(21, 0, -7, 35, 7, 7);
         RescueRun run = new RescueRun(world, DroneBuild.FREESTYLE, new RescueSettings(), 0.5, 0.0, 0.5).launch(28.5, 2.0, 0.5, 0.0);

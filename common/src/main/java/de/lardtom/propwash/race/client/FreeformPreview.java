@@ -38,7 +38,7 @@ public final class FreeformPreview {
     private static @Nullable Key lastKey;
     private static FreeformGateItem.@Nullable Plan lastPlan;
 
-    private record Key(BlockPos clicked, Direction face, int axis, int variant, int limit, long bucket, ClientLevel level) {
+    private record Key(BlockPos clicked, Direction face, int axis, int variant, int limit, long bucket, ClientLevel level, boolean ignoreGaps) {
     }
 
     private FreeformPreview() {
@@ -66,11 +66,12 @@ public final class FreeformPreview {
         boolean reverse = FreeformGateItem.reversed(player, true);
         Vec3 look = player.getViewVector(1.0F);
         FreeformFill.Aim aim = FreeformBlocks.aim(level, hit.getBlockPos(), hit.getDirection(), look, reverse);
+        boolean ignoreGaps = FreeformGateItem.ignoresGaps(player);
         Key key = new Key(hit.getBlockPos().immutable(), hit.getDirection(), aim.axis(), aim.variant(), FreeformBlocks.limit(level),
-                level.getGameTime() / REFRESH_TICKS, level);
+                level.getGameTime() / REFRESH_TICKS, level, ignoreGaps);
         if (!key.equals(lastKey) || lastPlan == null) {
             lastKey = key;
-            lastPlan = FreeformGateItem.plan(level, hit.getBlockPos(), hit.getDirection(), look, reverse);
+            lastPlan = FreeformGateItem.plan(level, hit.getBlockPos(), hit.getDirection(), look, reverse, ignoreGaps);
         }
         return lastPlan;
     }
@@ -86,7 +87,7 @@ public final class FreeformPreview {
         GateGeometry geometry = plan.geometry();
         boolean ok = plan.ok() && minecraft.player != null && minecraft.player.mayBuild();
         if (geometry != null) {
-            int color = ok ? GateRenderer.LIGHT_WHITE : GateRenderer.LIGHT_RED;
+            int color = !ok ? GateRenderer.LIGHT_RED : plan.gapsIgnored() ? FreeformGateRenderer.WARNING_COLOR : GateRenderer.LIGHT_WHITE;
             renderer.fill(STATE, geometry.at(0.0, 0.0, 0.0), null, GateRenderer.Marking.NONE, 0, color, ok ? 0.55F : 0.8F);
             STATE.lightCoords = LightCoordsUtil.FULL_BRIGHT;
             STATE.outlineColor = 0;
@@ -131,11 +132,14 @@ public final class FreeformPreview {
         if (!allowed) {
             status = Component.translatable("propwash.race.mount.not_allowed");
         } else if (ok && geometry != null) {
-            status = GateMounting.describe(geometry);
+            status = plan.gapsIgnored() ? Component.translatable("propwash.race.freeform.preview_open", GateMounting.describe(geometry))
+                    : GateMounting.describe(geometry);
         } else {
             status = FreeformGateItem.problem(plan);
         }
-        Component keys = Component.translatable("propwash.race.freeform.hint", GateMountKeys.keyName(),
+        Component keys = plan.result().status() == FreeformFill.Status.OPEN
+                ? Component.translatable("propwash.race.freeform.open_keys", Component.keybind("key.sneak"))
+                : Component.translatable("propwash.race.freeform.hint", GateMountKeys.keyName(),
                 GateMounting.variantName(CourseElement.FREEFORM, GateMountKeys.preference().variant(CourseElement.FREEFORM)));
         int width = Math.max(font.width(status), font.width(keys)) + 2 * HINT_PAD + 2;
         int centerX = graphics.guiWidth() / 2;

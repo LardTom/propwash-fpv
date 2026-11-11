@@ -3,7 +3,8 @@ package de.lardtom.propwash.interact;
 public enum SnagMaterial {
     WEB("web", 12.0, 4.0, 4.0, 1.0, 0.02),
     STRING("string", 3.0, 1.2, 0.0, 2.0, 0.03),
-    FOLIAGE("foliage", 1.0, 0.25, 0.0, 0.3, 0.005);
+    FOLIAGE("foliage", 1.0, 0.25, 0.0, 0.3, 0.005),
+    POWDER_SNOW("powder_snow", 40.0 / 3.0, 0.0, 0.0, 0.0, 0.0);
 
     public static final SnagMaterial[] VALUES = values();
     public static final int COUNT = VALUES.length;

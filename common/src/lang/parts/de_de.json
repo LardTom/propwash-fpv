@@ -19,7 +19,7 @@
   "propwash.parts.tooltip.shape.custom": "eigene Geometrie",
   "propwash.parts.tooltip.prop_mount": "Prop-Aufnahme: %s",
   "propwash.parts.tooltip.thermal": "Hitzegrenzen: %s",
-  "propwash.parts.tooltip.thermal_limits": "Drosselung ab %s °C, höchstens %s °C",
+  "propwash.parts.tooltip.thermal_limits": "Leistung sinkt ab %s °C, höchstens %s °C",
   "propwash.parts.tooltip.material": "Material: %s",
   "propwash.parts.tooltip.material.polycarbonate": "Polycarbonat",
   "propwash.parts.tooltip.material.glass_fiber_nylon": "Glasfaser-Nylon",

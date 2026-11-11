@@ -97,7 +97,7 @@ public final class SettingsIndex {
         Map<String, Target> targets = new HashMap<>();
         List<String> failed = new ArrayList<>();
         Map<String, ConfigTab> fresh = new LinkedHashMap<>();
-        for (ConfigTab tab : ConfigTabs.create()) {
+        for (ConfigTab tab : ConfigTabs.create(screen.freecam())) {
             String id = safeId(tab);
             if (id != null) {
                 fresh.putIfAbsent(id, tab);

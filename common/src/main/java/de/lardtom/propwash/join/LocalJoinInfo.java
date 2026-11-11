@@ -74,10 +74,7 @@ public final class LocalJoinInfo {
                 owned.computeIfAbsent(owner, key -> new TreeSet<>()).add(namespace);
             }
         }
-        Map<String, AddonInfo> addons = new TreeMap<>();
-        for (ModMeta meta : Services.PLATFORM.dependentMods(Constants.MOD_ID)) {
-            addons.put(meta.id(), addon(meta, owned.get(meta.id())));
-        }
+        Map<String, AddonInfo> addons = dependents(Services.PLATFORM.dependentMods(Constants.MOD_ID), owned);
         for (Map.Entry<String, TreeSet<String>> entry : owned.entrySet()) {
             if (addons.containsKey(entry.getKey())) {
                 continue;
@@ -101,6 +98,17 @@ public final class LocalJoinInfo {
         addons.remove(Constants.MOD_ID);
         return new JoinInfo(Services.PLATFORM.getModVersion(), ProtocolVersionPayload.localProtocol(), builtinFingerprint(),
                 new ArrayList<>(addons.values()));
+    }
+
+    static Map<String, AddonInfo> dependents(List<ModMeta> mods, Map<String, TreeSet<String>> owned) {
+        Map<String, AddonInfo> addons = new TreeMap<>();
+        for (ModMeta meta : mods) {
+            if (meta.clientOptional() && !owned.containsKey(meta.id())) {
+                continue;
+            }
+            addons.put(meta.id(), addon(meta, owned.get(meta.id())));
+        }
+        return addons;
     }
 
     private static AddonInfo addon(ModMeta meta, @Nullable TreeSet<String> namespaces) {

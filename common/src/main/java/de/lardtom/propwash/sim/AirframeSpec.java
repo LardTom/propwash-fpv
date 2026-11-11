@@ -3,11 +3,15 @@ package de.lardtom.propwash.sim;
 import de.lardtom.propwash.api.part.FrameRole;
 import de.lardtom.propwash.build.BatteryType;
 import de.lardtom.propwash.build.DroneBuild;
+import org.joml.Quaternionfc;
 
 public final class AirframeSpec {
     public static final int MOTORS = 4;
     public static final int HULL_POINTS = 12;
-    public static final int GROUND_POINTS = HULL_POINTS + 8;
+    public static final int ACCESSORY_GROUND = HULL_POINTS + 8;
+    public static final int ACCESSORY_POINTS = 8;
+    public static final int STAND_LEGS = MOTORS;
+    public static final int GROUND_POINTS = ACCESSORY_GROUND + ACCESSORY_POINTS + STAND_LEGS;
     public static final double LEGACY_LENS_UP = 0.015;
     public static final double LEGACY_LENS_FORWARD_FACTOR = 0.7;
 
@@ -93,6 +97,8 @@ public final class AirframeSpec {
     public final double motorCoolingBase;
     public final double motorCoolingPerOmega;
     public final double motorCoolingScale;
+    public final double motorEddyLoss;
+    public final double escCooling;
     public final double motorDerateStartC;
     public final double motorMaxTempC;
     public final double motorHeatWearPerSecond;
@@ -130,6 +136,7 @@ public final class AirframeSpec {
     private final double[] hullZ = new double[HULL_POINTS];
     private final int groundCount;
     private final int groundMask;
+    private final int accessoryCorners;
     private final double[] groundX = new double[GROUND_POINTS];
     private final double[] groundY = new double[GROUND_POINTS];
     private final double[] groundZ = new double[GROUND_POINTS];
@@ -217,6 +224,8 @@ public final class AirframeSpec {
         this.motorCoolingBase = d.motorCoolingBase;
         this.motorCoolingPerOmega = d.motorCoolingPerOmega;
         this.motorCoolingScale = d.motorCoolingScale;
+        this.motorEddyLoss = d.motorEddyLoss;
+        this.escCooling = d.escCooling;
         this.motorDerateStartC = d.motorDerateStartC;
         this.motorMaxTempC = d.motorMaxTempC;
         this.motorHeatWearPerSecond = d.motorHeatWearPerSecond;
@@ -252,6 +261,7 @@ public final class AirframeSpec {
         System.arraycopy(d.hullZ, 0, this.hullZ, 0, HULL_POINTS);
         this.groundCount = d.groundCount;
         this.groundMask = d.groundMask;
+        this.accessoryCorners = d.standCount;
         System.arraycopy(d.groundX, 0, this.groundX, 0, GROUND_POINTS);
         System.arraycopy(d.groundY, 0, this.groundY, 0, GROUND_POINTS);
         System.arraycopy(d.groundZ, 0, this.groundZ, 0, GROUND_POINTS);
@@ -339,6 +349,46 @@ public final class AirframeSpec {
 
     public double groundZ(int k) {
         return this.groundZ[k];
+    }
+
+    public int accessoryPointCount() {
+        return this.accessoryCorners;
+    }
+
+    public int standPointCount() {
+        return Math.max(0, this.groundCount - ACCESSORY_GROUND);
+    }
+
+    public double accessoryX(int k) {
+        return this.groundX[ACCESSORY_GROUND + k];
+    }
+
+    public double accessoryY(int k) {
+        return this.groundY[ACCESSORY_GROUND + k];
+    }
+
+    public double accessoryZ(int k) {
+        return this.groundZ[ACCESSORY_GROUND + k];
+    }
+
+    public double accessoryDepth(Quaternionfc orientation) {
+        int count = this.accessoryPointCount();
+        if (count == 0) {
+            return 0.0;
+        }
+        double qx = orientation.x();
+        double qy = orientation.y();
+        double qz = orientation.z();
+        double qw = orientation.w();
+        double ax = 2.0 * (qx * qy + qw * qz);
+        double ay = 1.0 - 2.0 * (qx * qx + qz * qz);
+        double az = 2.0 * (qy * qz - qw * qx);
+        double lowest = Double.POSITIVE_INFINITY;
+        for (int k = 0; k < count; k++) {
+            lowest = Math.min(lowest, -ax * this.accessoryX(k) + ay * this.accessoryY(k) - az * this.accessoryZ(k));
+        }
+        double depth = this.hitboxFootOffset - lowest;
+        return Double.isFinite(depth) && depth > 0.0 ? depth : 0.0;
     }
 
     public int hullMotor(int k) {

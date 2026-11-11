@@ -17,6 +17,8 @@ import de.lardtom.propwash.drone.bind.ReceiverBinds;
 import de.lardtom.propwash.drone.coating.DroneCoating;
 import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.stats.advancement.FpvAdvancements;
+import de.lardtom.propwash.stats.advancement.Milestone;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -149,6 +151,7 @@ public final class DroneInteractions {
         if (!old.isEmpty() && !player.getInventory().add(old) && !old.isEmpty()) {
             drone.spawnAtLocation(player.level(), old);
         }
+        FpvAdvancements.milestone(player, Milestone.BATTERY_SWAPPED);
         player.level().playSound(null, drone.getX(), drone.getY(), drone.getZ(), SoundEvents.ARMOR_EQUIP_GENERIC, SoundSource.PLAYERS, 0.8F, 1.2F);
         String key = hadBattery ? "propwash.drone.battery.swapped" : "propwash.drone.battery.inserted";
         player.sendOverlayMessage(Component.translatable(key, Component.translatable(type.get().translationKey()), Batteries.percent(charge))

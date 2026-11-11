@@ -1,0 +1,8 @@
+package de.lardtom.propwash.api.client.osd;
+
+import org.jspecify.annotations.Nullable;
+
+@FunctionalInterface
+public interface OsdWarning {
+    @Nullable OsdText warning(OsdContext context);
+}

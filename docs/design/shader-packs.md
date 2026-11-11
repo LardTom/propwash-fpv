@@ -40,7 +40,7 @@ zeichnen. Diese Geometrie ist nur aus der Kamera richtig:
   52–55 mm gedrückt). Eckpunkte knapp
   vor der Linse (Tiefe ab 0,25 mm) wandern dabei bis zu 200-fach nach außen: im Kamerabild deckungsgleich mit der
   Scheibe, in der Welt aber eine dünne Fläche quer vor der Linse, viele Meter breit.
-- Ohne Shaderpack zeichnet seit 0.5.0 ein eigener Durchgang am Platz der Hand (`FpvPropPass`) Props und Ducts ohne
+- Ohne Shaderpack zeichnet seit 0.5.0 ein eigener Durchgang am Platz der Hand (`FpvPropPass`) Props, Arme, Motoren und Ducts ohne
   Tiefentest gegen die Welt. Mit aktivem Shaderpack (`IrisCompat.shaderPackActive`) bleibt der Welt-Durchgang mit der
   Schatten-Sperre unten, weil Iris die Hand in seiner eigenen Pipeline zeichnet.
 - Die Sichtprüfung `FpvPropGeometry#visible` nimmt die Projektion der `CameraRenderState`; im Schattenpass ist das die

@@ -9,6 +9,12 @@
     ],
     "license": "LicenseRef-PolyForm-Shield-1.0.0",
     "environment": "client",
+    "custom": {
+        "propwash:client": "optional"
+    },
+    "suggests": {
+        "propwash": "*"
+    },
     "mixins": [
         "propwash.dev.mixins.json"
     ]

@@ -3,10 +3,14 @@ package de.lardtom.propwash.zone.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.race.client.GateMountKeys;
 import de.lardtom.propwash.zone.Zone;
 import de.lardtom.propwash.zone.ZoneBox;
 import de.lardtom.propwash.zone.ZoneShape;
+import de.lardtom.propwash.zone.ZoneView;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -15,11 +19,13 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.util.Util;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class ZoneRenderer {
     public static final Identifier WHITE = Constants.id("textures/entity/race/white.png");
@@ -39,9 +45,15 @@ public final class ZoneRenderer {
     private static final double FILL_REACH = 24.0;
     private static final int CIRCLE = 48;
     private static final int PILLARS = 8;
+    private static final float FOCUS_STRENGTH = 1.4F;
+    private static final float FOCUS_PULSE = 0.9F;
+    private static final double FOCUS_PERIOD_MILLIS = 900.0;
+    private static final float HIGHLIGHT_STRENGTH = 1.35F;
+    private static final float EDGES_STRENGTH = 0.7F;
     private static @Nullable RenderType type;
     private static int drawn;
     private static long frames;
+    private static Map<Integer, ZoneView.Style> styles = Map.of();
 
     private ZoneRenderer() {
     }
@@ -52,6 +64,18 @@ public final class ZoneRenderer {
 
     public static long frames() {
         return frames;
+    }
+
+    public static Map<Integer, ZoneView.Style> styles() {
+        return styles;
+    }
+
+    public static boolean holdingTool(@Nullable LocalPlayer player) {
+        return player != null && (ZoneMarkerClient.holding(player) || GateMountKeys.holdingCourseTool(player));
+    }
+
+    public static boolean outlines(Minecraft minecraft) {
+        return ZoneView.outlines(ZoneViewConfig.show(), holdingTool(minecraft.player), ZoneEditor.active(), PilotSession.INSTANCE.isActive());
     }
 
     private static RenderType type() {
@@ -73,19 +97,26 @@ public final class ZoneRenderer {
         Vec3 camera = levelState.cameraRenderState.pos;
         if (camera == null || minecraft.level == null || minecraft.gui.hud.isHidden()) {
             drawn = 0;
+            styles = Map.of();
             return;
         }
         ZoneEditor editor = ZoneEditor.current();
+        int focus = ZoneFocus.focusedId();
+        boolean outlines = outlines(minecraft);
+        float pulse = FOCUS_STRENGTH + FOCUS_PULSE * (float) Math.abs(Math.sin(Util.getMillis() / FOCUS_PERIOD_MILLIS * Math.PI));
         List<Zone> zones = new ArrayList<>();
         for (Zone zone : ClientZones.INSTANCE.zones()) {
             if (editor != null && editor.replaces(zone)) {
                 continue;
             }
-            if (zone.box().distanceSq(zone.shape(), camera.x, camera.y, camera.z) <= MAX_DISTANCE * MAX_DISTANCE) {
+            if (zone.id() == focus || outlines && zone.box().distanceSq(zone.shape(), camera.x, camera.y, camera.z) <= MAX_DISTANCE * MAX_DISTANCE) {
                 zones.add(zone);
             }
         }
-        Zone draft = editor == null ? null : editor.draft();
+        Zone draft = editor == null ? ZoneMarkerClient.preview(minecraft) : editor.draft();
+        Map<Integer, ZoneView.Style> styled = ZoneView.styles(zones, draft == null ? null : draft.box(),
+                ZoneView.highlight(focus, zones, camera.x, camera.y, camera.z));
+        styles = styled;
         drawn = zones.size();
         frames++;
         if (zones.isEmpty() && draft == null) {
@@ -94,25 +125,33 @@ public final class ZoneRenderer {
         collector.order(1).submitCustomGeometry(poseStack, type(), (pose, buffer) -> {
             Draw draw = new Draw(pose, buffer, camera);
             for (Zone zone : zones) {
-                zone(draw, zone, color(zone), 1.0F);
+                ZoneView.Style style = styled.getOrDefault(zone.id(), ZoneView.Style.FULL);
+                if (zone.id() == focus) {
+                    zone(draw, zone, color(zone), pulse, true, true);
+                } else if (style == ZoneView.Style.EDGES) {
+                    zone(draw, zone, color(zone), EDGES_STRENGTH, false, false);
+                } else {
+                    zone(draw, zone, color(zone), style == ZoneView.Style.HIGHLIGHT ? HIGHLIGHT_STRENGTH : 1.0F, false, true);
+                }
             }
             if (draft != null) {
-                zone(draw, draft, DRAFT, 1.6F);
+                zone(draw, draft, DRAFT, 1.6F, false, true);
             }
         });
     }
 
-    private static void zone(Draw draw, Zone zone, int rgb, float strength) {
+    private static void zone(Draw draw, Zone zone, int rgb, float strength, boolean focused, boolean surface) {
         ZoneBox box = zone.box();
         double distance = Math.sqrt(box.distanceSq(zone.shape(), draw.camera.x, draw.camera.y, draw.camera.z));
-        float far = (float) Math.clamp(1.0 - distance / MAX_DISTANCE, 0.15, 1.0);
+        float far = focused ? 1.0F : (float) Math.clamp(1.0 - distance / MAX_DISTANCE, 0.15, 1.0);
         int edge = ARGB.color(Math.round(255.0F * Math.min(1.0F, EDGE_ALPHA * strength * far)), rgb);
-        float fill = distance > FILL_REACH ? 0.0F : (float) (FILL_ALPHA * strength * (1.0 - distance / FILL_REACH));
+        float fill = !surface || distance > FILL_REACH ? 0.0F : (float) (FILL_ALPHA * strength * (1.0 - distance / FILL_REACH));
         int fillColor = ARGB.color(Math.round(255.0F * fill), rgb);
+        float grid = surface ? strength : 0.0F;
         if (zone.shape() == ZoneShape.CYLINDER) {
-            cylinder(draw, box, edge, fillColor, rgb, strength);
+            cylinder(draw, box, edge, fillColor, rgb, grid);
         } else {
-            box(draw, box, edge, fillColor, rgb, strength);
+            box(draw, box, edge, fillColor, rgb, grid);
         }
     }
 

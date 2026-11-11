@@ -98,6 +98,7 @@ public record FrameDefinition(Identifier id, PartBasics basics, FrameRole role, 
         private Vec3Mm centerOfMassMm = Vec3Mm.ZERO;
         private MassSplit massSplit;
         private final Map<AccessorySlot, AnchorSpec> anchors = new EnumMap<>(AccessorySlot.class);
+        private Optional<AnchorSpec> antennaAnchor = Optional.empty();
         private double frontalAreaM2 = -1.0;
         private double dragCoefficient = -1.0;
         private OptionalDouble sideAreaM2 = OptionalDouble.empty();
@@ -202,6 +203,11 @@ public record FrameDefinition(Identifier id, PartBasics basics, FrameRole role, 
             return this;
         }
 
+        public Builder antennaAnchor(AnchorSpec anchor) {
+            this.antennaAnchor = Optional.of(anchor);
+            return this;
+        }
+
         public Builder aero(double frontalAreaM2, double dragCoefficient) {
             this.frontalAreaM2 = frontalAreaM2;
             this.dragCoefficient = dragCoefficient;
@@ -251,7 +257,7 @@ public record FrameDefinition(Identifier id, PartBasics basics, FrameRole role, 
             double electronics = this.electronicsMm != null ? this.electronicsMm : AirframeGeometry.defaultElectronicsMm(this.wheelbaseMm);
             MassSplit split = this.massSplit != null ? this.massSplit : this.duct.isPresent() ? MassSplit.DUCTED : MassSplit.OPEN;
             AirframeGeometry geometry = new AirframeGeometry(this.arms, onTop, plate, electronics, this.cameraMm, this.cameraTiltDeg,
-                    this.centerOfMassMm, split, this.anchors);
+                    this.centerOfMassMm, split, this.anchors, this.antennaAnchor);
             FrameAero aero = new FrameAero(this.frontalAreaM2, this.dragCoefficient, this.sideAreaM2, this.topAreaM2);
             return new FrameDefinition(this.id, this.basics, this.role, this.shape, this.wheelbaseMm, this.minPropMm, this.maxPropMm,
                     this.motorMounts, this.stackMounts, this.accessoryMounts, geometry, aero, this.duct, this.impactTolerance, this.batteryFit);

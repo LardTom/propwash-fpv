@@ -12,19 +12,38 @@ public final class RelayLinks {
         return system == VideoSystem.DIGITAL ? RelayPaths.Combine.WEAKEST : RelayPaths.Combine.NOISE;
     }
 
+    public static double videoHopReach(VideoSystem system, double rangeBlocks) {
+        return LinkBudget.maxReachBlocks(system, rangeBlocks);
+    }
+
     public static double videoHopMarginDb(double distance, double rangeBlocks, double obstructionDb) {
-        if (!RelayRules.inReach(distance) || Double.isNaN(obstructionDb)) {
+        if (!(distance >= 0.0) || Double.isNaN(obstructionDb)) {
             return Double.NaN;
         }
-        return LinkBudget.marginDb(distance, rangeBlocks) - Math.max(0.0, obstructionDb) - RelayRules.reachPenaltyDb(distance);
+        return LinkBudget.marginDb(distance, rangeBlocks) - Math.max(0.0, obstructionDb);
+    }
+
+    public static double controlHopReach(boolean freeRange, double creativeRange) {
+        if (!freeRange) {
+            return RadioLink.FULL_RANGE + RadioLink.FADE_RANGE;
+        }
+        if (creativeRange > 0.0 && Double.isFinite(creativeRange)) {
+            return creativeRange * (1.0 + RadioLink.FADE_RANGE / RadioLink.FULL_RANGE);
+        }
+        return Double.POSITIVE_INFINITY;
     }
 
     public static double controlHopQuality(double distance, boolean freeRange, double creativeRange) {
-        if (!RelayRules.inReach(distance)) {
+        return controlHopQuality(distance, freeRange, creativeRange, 0.0);
+    }
+
+    public static double controlHopQuality(double distance, boolean freeRange, double creativeRange, double videoObstructionDb) {
+        if (!(distance >= 0.0)) {
             return Double.NaN;
         }
-        double radio = RadioLink.quality(distance, Double.POSITIVE_INFINITY, freeRange, creativeRange);
-        return Math.min(radio, RelayRules.reachFactor(distance));
+        double shade = Double.isNaN(videoObstructionDb) ? 0.0 : videoObstructionDb;
+        double quality = RadioLink.quality(distance, Double.POSITIVE_INFINITY, freeRange, creativeRange, shade);
+        return quality > 0.0 ? quality : Double.NaN;
     }
 
     public static float controlQuality(float direct, double relayed, double directDistance, double serverLimit) {

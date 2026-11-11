@@ -14,8 +14,9 @@
   "accessory_anchors": {
     "top": {"pos": [0.0, 34.7, -69.0], "tilt_deg": 22.0, "length_mm": 0.0},
     "bottom": {"pos": [0.0, -3.0, -56.0], "tilt_deg": 30.0, "length_mm": 34.0},
-    "front": {"pos": [0.0, 0.0, -72.0], "tilt_deg": 0.0, "length_mm": 0.0}
+    "front": {"pos": [0.0, 0.0, -64.0], "tilt_deg": 0.0, "length_mm": 0.0}
   },
+  "antenna_anchor": {"pos": [0.0, 28.5, 64.0], "tilt_deg": 45.0},
   "aero": {"frontal_area_m2": 0.012, "drag_coefficient": 0.9},
   "impact_tolerance": 8.0,
   "battery_fit": {"cells": [4, 6], "max_mass_g": 230.0, "preferred_min_cells": 6, "preferred_min_capacity_mah": 0},

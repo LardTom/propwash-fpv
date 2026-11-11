@@ -14,4 +14,8 @@ public interface RescueWorld {
     default Ground ground(int x, int y, int z) {
         return this.solid(x, y, z) ? Ground.SOLID : Ground.NONE;
     }
+
+    default double groundTop(int x, int y, int z) {
+        return 1.0;
+    }
 }

@@ -1,5 +1,8 @@
 package de.lardtom.propwash.drone;
 
+import de.lardtom.propwash.accessory.AccessoryComponents;
+import de.lardtom.propwash.accessory.AccessoryContents;
+import de.lardtom.propwash.accessory.AccessoryPayload;
 import de.lardtom.propwash.build.AccessoryType;
 import de.lardtom.propwash.build.ActionCamSpec;
 import de.lardtom.propwash.build.DroneBuild;
@@ -50,6 +53,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public class QuadcopterItem extends Item {
+    public static final String OVERLOADED_KEY = "propwash.drone.tooltip.overloaded";
     private static final double SURFACE_GAP = 0.01;
 
     public QuadcopterItem(Item.Properties properties) {
@@ -77,6 +81,13 @@ public class QuadcopterItem extends Item {
         Vec3 pos = placement(context, drone.getBbWidth(), drone.getBbHeight());
         drone.snapTo(pos.x, pos.y, pos.z, yRot, 0.0F);
         drone.setAttitude(new Quaternionf().rotationY((float) (Math.PI - Math.toRadians(yRot))));
+        double lift = drone.accessoryLift();
+        if (lift > 0.0) {
+            drone.snapTo(pos.x, pos.y + lift, pos.z, yRot, 0.0F);
+            if (!level.noCollision(drone, drone.getBoundingBox())) {
+                drone.snapTo(pos.x, pos.y, pos.z, yRot, 0.0F);
+            }
+        }
         if (!level.noCollision(drone, drone.getBoundingBox())) {
             return InteractionResult.FAIL;
         }
@@ -143,6 +154,9 @@ public class QuadcopterItem extends Item {
             status.add(Component.translatable("propwash.drone.tooltip.unrealistic_status").withStyle(ChatFormatting.GOLD));
         }
         BindTooltips.line(stack).ifPresent(status::add);
+        if (AccessoryPayload.overloaded(build, stack.getOrDefault(AccessoryComponents.CONTENTS.get(), AccessoryContents.EMPTY))) {
+            status.add(Component.translatable(OVERLOADED_KEY, Math.round(AccessoryPayload.MAX_LADEN_GRAMS / 1000.0)).withStyle(ChatFormatting.RED));
+        }
         if (CoatingComponents.coated(stack)) {
             status.add(Component.translatable("propwash.drone.tooltip.waterproof").withStyle(ChatFormatting.AQUA));
         }

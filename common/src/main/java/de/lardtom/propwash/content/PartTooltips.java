@@ -67,7 +67,7 @@ public final class PartTooltips {
             case PropType prop -> fits(frame -> frame.maxPropMm >= prop.diameterMm && frame.minPropMm <= prop.diameterMm, out);
             case BatteryType battery -> batteryFrames(battery, out);
             case VideoType video -> videoGoggles(video, out);
-            case AccessoryType accessory -> fits(frame -> frame.accessoryMounts.contains(accessory.mount), out);
+            case AccessoryType accessory -> fits(frame -> fitsFrame(accessory, frame), out);
             default -> {
             }
         }
@@ -144,6 +144,20 @@ public final class PartTooltips {
 
     public static Component videoSystemName(VideoSystem system) {
         return Component.translatable("propwash.content.video_system." + system.name().toLowerCase(Locale.ROOT));
+    }
+
+    public static boolean fitsFrame(AccessoryType accessory, FrameType frame) {
+        return frame.accessoryMounts.contains(accessory.mount) && accessory.fitsFrame(frame);
+    }
+
+    public static Component fittingFrames(AccessoryType accessory) {
+        List<Component> names = new ArrayList<>();
+        for (FrameType frame : FrameType.values()) {
+            if (fitsFrame(accessory, frame)) {
+                names.add(frameShortName(frame));
+            }
+        }
+        return names.isEmpty() ? Component.translatable(PREFIX + "fits_none") : ItemHelp.joined(names);
     }
 
     public static Component frameShortName(FrameType frame) {

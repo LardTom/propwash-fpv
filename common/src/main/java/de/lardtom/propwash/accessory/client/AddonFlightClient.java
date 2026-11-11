@@ -9,6 +9,8 @@ import de.lardtom.propwash.api.flight.FlightAssist;
 import de.lardtom.propwash.api.flight.SensorDirection;
 import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.drone.QuadcopterEntity;
+import de.lardtom.propwash.drone.operator.client.OperatorClient;
+import de.lardtom.propwash.input.addon.AddonInputState;
 import de.lardtom.propwash.rescue.client.RescueController;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.PilotInput;
@@ -24,6 +26,8 @@ public final class AddonFlightClient {
     private static final long TOAST_MILLIS = 4000L;
 
     private @Nullable DroneSim attachedSim;
+    private @Nullable DroneSim inputSim;
+    private @Nullable QuadcopterEntity inputDrone;
     private @Nullable DroneBuild attachedBuild;
     private @Nullable FlightAssist assist;
     private @Nullable String assistId;
@@ -35,6 +39,12 @@ public final class AddonFlightClient {
 
     public void beforeFrame(Minecraft minecraft, QuadcopterEntity drone, DroneSim sim, PilotInput input, DroneBuild flown) {
         input.actions = AccessoryActionInput.INSTANCE.bits();
+        OperatorClient.feed(drone, sim);
+        if (sim != this.inputSim || drone != this.inputDrone) {
+            this.inputSim = sim;
+            this.inputDrone = drone;
+            AddonInputState.bind(drone, sim);
+        }
         if (!FlightHooks.INSTANCE.any()) {
             return;
         }
@@ -99,6 +109,8 @@ public final class AddonFlightClient {
 
     public void end() {
         this.attachedSim = null;
+        this.inputSim = null;
+        this.inputDrone = null;
         this.attachedBuild = null;
         this.assist = null;
         this.assistId = null;

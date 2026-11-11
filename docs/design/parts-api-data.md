@@ -71,7 +71,7 @@ Plattformdienst `IPlatformHelper#readModResources`).
 | `sort` | ganze Zahl | 1000 | Reihenfolge in `values()`, Kreativ-Tab |
 | `creative` | bool | `true` | im Kreativ-Tab des Addons |
 | `durability` | Zahl | 1,0 (Props: Material) | Teiler der Crash-Verschleißdosis |
-| `recycle` | `"none"` oder `{"item": id, "count": n}` | fehlt = Kategorie | Recycling defekter Teile (`count` Standard 1) |
+| `recycle` | `"none"` oder `{"item": id, "count": n}` | fehlt = Kategorie | Recycling im Tab „Recyceln“ für Teile ohne Crafting-Rezept: Menge bei 100 % Zustand (`count` Standard 1), Propwash wendet die Stufen 100/50/25 % an; mit Rezept gelten dessen Zutaten |
 | `visual.accent` | `"#rrggbb"` | – | Akzentfarbe (Akkuhülle, prozedurale Form) |
 | `visual.render_model` | Id | – | anderes Drohnen-Modell |
 
@@ -166,6 +166,7 @@ Plattformdienst `IPlatformHelper#readModResources`).
 | `size_mm` | `[b, h, t]` | **Pflicht** |
 | `flight_battery_w`, `frontal_area_m2` | Zahl | 0 |
 | `leds` | ganze Zahl 0–64 | 0 |
+| `led_path` | Liste von 2–256 Punkten `[x, y, z]` in mm | leer = gerader Streifen; ab API 1.7 (in Arbeit, Propwash 0.6.0): Linie, an der die `leds` gleichmäßig nach Länge verteilt leuchten (LED *i* bei (*i* + 0,5)/`leds` der Gesamtlänge), im Koordinatensystem des Zubehörs wie `size_mm` (Ursprung am Anbaupunkt, +X rechts, +Y oben, −Z vorn, vor der Neigung); jede Koordinate höchstens ±500 mm, Gesamtlänge > 0, nur mit `leds` > 0. Ein geschlossener Ring wiederholt am Ende den ersten Punkt. Der Pfad wird nicht auf die Streifenlänge des Rahmens gestreckt; Kollision und Stirnfläche rechnen weiter mit `size_mm` |
 | `lens` | `{"x_mm", "length_mm"}` | 0/0 |
 | `action_cam` | `{max_height, max_fps, stabilization, horizon_levelling, own_battery_wh, record_w, max_record_w, fov_deg, image_quality, low_light_noise, sensor_in}`, nur `top` | – ; `max_record_w` Standard `record_w`; `sensor_in` Zahl oder Bruch `"1/2.8"` |
 

@@ -1,10 +1,13 @@
 package de.lardtom.propwash.accessory;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.accessory.dispense.AccessoryDispenser;
 import de.lardtom.propwash.accessory.net.AccessoryActionC2S;
 import de.lardtom.propwash.api.accessory.AccessoryAction;
 import de.lardtom.propwash.api.accessory.AccessoryBehavior;
 import de.lardtom.propwash.api.accessory.AccessoryInventory;
+import de.lardtom.propwash.api.accessory.DispenseOptions;
+import de.lardtom.propwash.api.accessory.DispenseResult;
 import de.lardtom.propwash.api.accessory.MountPose;
 import de.lardtom.propwash.api.drone.DronePhysics;
 import de.lardtom.propwash.api.event.PropwashEvents;
@@ -24,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.WeakHashMap;
 
@@ -64,19 +68,39 @@ public final class AccessoryHost {
         if (!drone.isFlownBy(player.getUUID()) || payload.epoch() != drone.resetEpoch()) {
             return;
         }
-        int bit = 1 << (payload.number() - 1);
+        act(level, drone, player, payload.number(), payload.pressed());
+    }
+
+    static boolean trigger(Entity entity, int number, boolean pressed, ServerPlayer actor) {
+        Objects.requireNonNull(actor, "actor");
+        if (!(entity instanceof QuadcopterEntity drone) || drone.isRemoved() || !(drone.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread() || number < 1 || number > AccessoryActionC2S.ACTIONS) {
+            return false;
+        }
+        for (AccessoryType type : drone.build().accessories().byMount().values()) {
+            if (AccessoryBehaviors.INSTANCE.of(type.unladen()) != null) {
+                return act(level, drone, actor, number, pressed);
+            }
+        }
+        return false;
+    }
+
+    private static boolean act(ServerLevel level, QuadcopterEntity drone, ServerPlayer player, int number, boolean pressed) {
+        int bit = 1 << (number - 1);
         int before = held(drone);
-        int after = payload.pressed() ? before | bit : before & ~bit;
-        if (payload.pressed() ? !GATE.allow(player.getUUID(), level.getGameTime()) : (before & bit) == 0) {
-            return;
+        int after = pressed ? before | bit : before & ~bit;
+        if (pressed ? !GATE.allow(player.getUUID(), level.getGameTime()) : (before & bit) == 0) {
+            return false;
         }
         setHeld(drone, after);
+        boolean reached = false;
         for (Map.Entry<AccessoryMount, AccessoryType> entry : drone.build().accessories().byMount().entrySet()) {
             AccessoryBehavior behavior = AccessoryBehaviors.INSTANCE.of(entry.getValue().unladen());
             if (behavior == null) {
                 continue;
             }
-            Ctx ctx = new Ctx(level, drone, entry.getKey(), entry.getValue().unladen(), payload.number(), payload.pressed(), player);
+            reached = true;
+            Ctx ctx = new Ctx(level, drone, entry.getKey(), entry.getValue().unladen(), number, pressed, player);
             try {
                 behavior.onAction(ctx);
             } catch (RuntimeException e) {
@@ -85,11 +109,12 @@ public final class AccessoryHost {
         }
         if (PropwashEvents.ACCESSORY_ACTION.hasListeners()) {
             try {
-                PropwashEvents.ACCESSORY_ACTION.fire(listener -> listener.onAccessoryAction(player, drone, payload.number(), payload.pressed()));
+                PropwashEvents.ACCESSORY_ACTION.fire(listener -> listener.onAccessoryAction(player, drone, number, pressed));
             } catch (RuntimeException e) {
                 Constants.LOG.warn("Event accessory_action: Listener fehlgeschlagen", e);
             }
         }
+        return reached;
     }
 
     static void tick(QuadcopterEntity drone) {
@@ -197,6 +222,11 @@ public final class AccessoryHost {
         @Override
         public DronePhysics physics() {
             return DroneQueries.INSTANCE.physics(this.drone).orElseThrow();
+        }
+
+        @Override
+        public DispenseResult dispense(int slot, DispenseOptions options) {
+            return AccessoryDispenser.dispense(this.level, this.drone, this.mount, this.player, slot, options);
         }
 
         @Override

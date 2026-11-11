@@ -65,6 +65,13 @@ def write_paint(model, display, variants, groups_by_model, shared=None):
     return paint
 
 
+def write_mounted(model, display, base_paint, variants, groups_by_model):
+    write_model(model, display, f"{model.category}/{model.key}")
+    write_render_item(model)
+    shared = {"0": base_paint.texture_map()["0"]} if base_paint is not None else None
+    write_paint(model, display, variants, groups_by_model, shared=shared)
+
+
 def clean():
     for path in (ASSETS / "models/part", ASSETS / "textures/item/part", SOURCES):
         if path.exists():
@@ -92,8 +99,10 @@ def build():
         write_model(m, display, f"{m.category}/{m.key}")
         kit.dump_json(ASSETS / f"items/{m.key}.json", kit.item_definition(m.model_id, pre))
         write_render_item(m)
-        write_paint(m, display, variants, groups_by_model)
+        base_paint = write_paint(m, display, variants, groups_by_model)
         results[m.key] = m
+        if m.category == "stack" and stacks.has_plug(m):
+            write_mounted(stacks.mounted(m), display, base_paint, variants, groups_by_model)
     for m in batteries.build_under():
         m.pack()
         display, _ = kit.compute_display(m)
@@ -243,15 +252,17 @@ def build_painted_icon(results, variants):
 def icon_definition(model_id, pre_scale):
     scaled = kit.item_definition(model_id, pre_scale)["model"]["fallback"]
     nodes = []
-    for renderer in ({"type": "propwash:drone_build", "wall": True}, {"type": "propwash:drone_build"}):
+    for renderer in ({"type": "propwash:drone_build", "wall": True}, {"type": "propwash:drone_build"},
+                     {"type": "propwash:drone_build", "icon": True}):
         node = {"type": "minecraft:special", "base": model_id, "model": renderer}
         if "transformation" in scaled:
             node["transformation"] = scaled["transformation"]
         nodes.append(node)
-    wall, plain = nodes
+    wall, plain, icon = nodes
     ground = {"type": "minecraft:special", "base": GROUND_BASE, "model": {"type": "propwash:drone_build", "ground": True}}
     return {"model": {"type": "minecraft:select", "property": "minecraft:display_context",
-                      "cases": [{"when": "fixed", "model": wall}, {"when": "ground", "model": ground}], "fallback": plain}}
+                      "cases": [{"when": "fixed", "model": wall}, {"when": "ground", "model": ground}, {"when": "gui", "model": icon}],
+                      "fallback": plain}}
 
 
 if __name__ == "__main__":

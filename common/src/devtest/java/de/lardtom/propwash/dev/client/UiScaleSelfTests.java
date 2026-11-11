@@ -3,13 +3,32 @@ package de.lardtom.propwash.dev.client;
 import com.mojang.blaze3d.platform.Window;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
+import de.lardtom.propwash.network.PropwashNet;
 import de.lardtom.propwash.platform.Services;
+import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.server.WorldRulesS2C;
+import de.lardtom.propwash.server.client.ClientWorldRules;
 import de.lardtom.propwash.ui.LayoutAudit;
 import de.lardtom.propwash.ui.LayoutAudit.Finding;
+import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.LayoutProbe;
+import de.lardtom.propwash.ui.client.config.ConfigTabs;
+import de.lardtom.propwash.ui.client.widget.FlatButton;
+import de.lardtom.propwash.zone.Zone;
+import de.lardtom.propwash.zone.ZoneBox;
+import de.lardtom.propwash.zone.ZoneServer;
+import de.lardtom.propwash.zone.ZoneShape;
+import de.lardtom.propwash.zone.ZoneText;
+import de.lardtom.propwash.zone.ZonesS2C;
+import de.lardtom.propwash.zone.client.ClientZones;
+import de.lardtom.propwash.zone.client.ZoneSection;
+import de.lardtom.propwash.zone.client.ZoneSelfTests;
+import de.lardtom.propwash.zone.client.ZonesTab;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -24,6 +43,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -118,6 +138,11 @@ public final class UiScaleSelfTests {
         }
         SelfTest.clientStep(back, 2400, Screenshots::restoreLanguage);
         SelfTest.setupStep(GROUP + "Fenster und GUI-Skala zurückstellen", 40, UiScaleSelfTests::restore);
+        String zoneBack = GROUP + "Zonenname ganz – Sprache zurückstellen";
+        SelfTest.clientStep(GROUP + ZoneNames.TITLE, ZoneNames.STEP_TICKS, ctx -> ZoneNames.run(ctx, ZoneNames.ENGLISH));
+        SelfTest.switchStep(GROUP + "Zonenname ganz – Sprache Deutsch", zoneBack, 2400, ctx -> Screenshots.language(ctx, GERMAN));
+        SelfTest.clientStep(GROUP + "Deutsch: " + ZoneNames.TITLE, ZoneNames.STEP_TICKS, ctx -> ZoneNames.run(ctx, GERMAN));
+        SelfTest.clientStep(zoneBack, 2400, Screenshots::restoreLanguage);
     }
 
     static List<Case> selected(List<Case> cases, String custom) {
@@ -551,6 +576,367 @@ public final class UiScaleSelfTests {
         @Override
         public void log(String message) {
             this.parent.log(message);
+        }
+    }
+
+    static final class ZoneNames {
+        static final String ENGLISH = "en_us";
+        static final String ZONE = ZoneSelfTests.PREFIX + "Suche";
+        static final String TITLE = "Zonenname ganz – Zone „" + ZONE + "“ im Tab Zonen bei 640x480 (GUI-Skala 2 und automatisch), "
+                + "854x480 (2) und 1280x720 (3), als Operator und als Besitzer; Knöpfe der Zone ungekürzt";
+        static final int STEP_TICKS = 3600;
+        private static final int[][] WINDOWS = {{640, 480, 2}, {640, 480, 0}, {854, 480, 2}, {1280, 720, 3}};
+        private static final String STATE = "zone_names";
+        private static final String SHOT = "configurator_zones_narrow_";
+        private static final int WAIT_TICKS = 200;
+        private static final int MAX_SCROLLS = 24;
+        private static final int CLEANUP = 10;
+        private static final int SHOT_TICKS = 5;
+        private final String language;
+        private final AtomicBoolean created = new AtomicBoolean();
+        private final List<String> problems = new ArrayList<>();
+        private final List<String> checked = new ArrayList<>();
+        private int stage;
+        private int since;
+        private int index;
+        private int scrolls;
+        private int @Nullable [] saved;
+        private @Nullable String failure;
+        private @Nullable CompletableFuture<?> server;
+        private @Nullable CompletableFuture<String> shot;
+
+        private ZoneNames(String language) {
+            this.language = language;
+        }
+
+        static StepResult run(SelfTest.StepContext ctx, String language) {
+            ZoneNames run = (ZoneNames) ctx.state().computeIfAbsent(STATE, key -> new ZoneNames(language));
+            try {
+                return run.advance(ctx, Minecraft.getInstance());
+            } catch (RuntimeException e) {
+                run.restoreWindow(Minecraft.getInstance());
+                throw e;
+            }
+        }
+
+        private boolean right() {
+            return this.index % 2 == 0;
+        }
+
+        private int[] window() {
+            return WINDOWS[this.index / 2];
+        }
+
+        private String where(Minecraft mc) {
+            Window window = mc.getWindow();
+            int[] size = this.window();
+            return "GUI " + window.getGuiScaledWidth() + "x" + window.getGuiScaledHeight() + " (Fenster " + size[0] + "x" + size[1] + ", Skala "
+                    + (size[2] == 0 ? "automatisch" : String.valueOf(size[2])) + ") auf " + this.language + (this.right() ? " als Operator" : " als Besitzer");
+        }
+
+        private StepResult abort(SelfTest.StepContext ctx, String message) {
+            this.failure = message;
+            this.stage = CLEANUP;
+            this.since = ctx.tick();
+            return StepResult.pending();
+        }
+
+        private static void close(Minecraft mc) {
+            if (mc.gui.screen() instanceof ConfiguratorScreen screen) {
+                screen.discardAndClose();
+            } else if (mc.gui.screen() != null) {
+                mc.gui.setScreen(null);
+            }
+        }
+
+        private static @Nullable ZonesTab tab(Minecraft mc) {
+            return mc.gui.screen() instanceof ConfiguratorScreen screen && screen.activeTab() instanceof ZonesTab tab ? tab : null;
+        }
+
+        private static ZoneSection.@Nullable Entry entry(ZonesTab tab) {
+            for (ZoneSection.Entry entry : tab.zones().entries()) {
+                if (ZONE.equals(entry.zone().name())) {
+                    return entry;
+                }
+            }
+            return null;
+        }
+
+        private static boolean synced() {
+            for (Zone zone : ClientZones.INSTANCE.zones()) {
+                if (ZONE.equals(zone.name())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static void command(MinecraftServer server, String command) {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            server.getCommands().performPrefixedCommand(player.createCommandSourceStack(), command);
+        }
+
+        private static void resync(SelfTest.StepContext ctx) {
+            ctx.onServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                PropwashNet.sendToPlayer(player, WorldRules.snapshotFor(player));
+                PropwashNet.sendToPlayer(player, ZoneServer.snapshotFor(player));
+            });
+        }
+
+        private void restoreWindow(Minecraft mc) {
+            int[] window = this.saved;
+            if (window != null) {
+                mc.options.guiScale().set(window[2]);
+                mc.getWindow().setWindowed(window[0], window[1]);
+                mc.resizeGui();
+                this.saved = null;
+            }
+        }
+
+        private StepResult advance(SelfTest.StepContext ctx, Minecraft mc) {
+            Window window = mc.getWindow();
+            switch (this.stage) {
+                case 0 -> {
+                    if (!this.language.equals(mc.getLanguageManager().getSelected())) {
+                        return StepResult.fail("Sprache ist " + mc.getLanguageManager().getSelected() + " statt " + this.language);
+                    }
+                    this.saved = new int[]{window.getScreenWidth(), window.getScreenHeight(), mc.options.guiScale().get()};
+                    close(mc);
+                    String quoted = "\"" + ZONE + "\"";
+                    this.server = ctx.onServer(server -> {
+                        command(server, "propwash zone delete " + quoted);
+                        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                        int x = player.getBlockX();
+                        int y = player.getBlockY();
+                        int z = player.getBlockZ();
+                        Zone zone = Zone.create(ZoneServer.dimension(player.level()), ZONE, ZoneShape.BOX, ZoneBox.blocks(x - 70, y - 1, z - 70, x - 61, y + 4, z - 61))
+                                .withOwner(ZoneServer.owner(player));
+                        this.created.set(ZoneServer.save(server, zone, Component.literal("Selbsttest"), "Selbsttest").ok());
+                    });
+                    this.stage = 1;
+                    this.since = ctx.tick();
+                    return StepResult.pending();
+                }
+                case 1 -> {
+                    CompletableFuture<?> future = this.server;
+                    if (future != null && !future.isDone()) {
+                        return ctx.tick() - this.since > WAIT_TICKS ? this.abort(ctx, "Server legt die Testzone nicht an") : StepResult.pending();
+                    }
+                    if (!this.created.get()) {
+                        return this.abort(ctx, "Server lehnt die Testzone ab");
+                    }
+                    if (!synced()) {
+                        return ctx.tick() - this.since > WAIT_TICKS ? this.abort(ctx, "Testzone kommt am Client nicht an") : StepResult.pending();
+                    }
+                    this.stage = 2;
+                    return StepResult.pending();
+                }
+                case 2 -> {
+                    if (this.index >= WINDOWS.length * 2) {
+                        this.stage = CLEANUP;
+                        this.since = ctx.tick();
+                        return StepResult.pending();
+                    }
+                    close(mc);
+                    int[] size = this.window();
+                    float density = Math.max(1.0F, window.getPixelDensity());
+                    window.setWindowed(Math.round(size[0] / density), Math.round(size[1] / density));
+                    this.stage = 3;
+                    this.since = ctx.tick();
+                    return StepResult.pending();
+                }
+                case 3 -> {
+                    int[] size = this.window();
+                    boolean sized = window.getWidth() == size[0] && window.getHeight() == size[1];
+                    if (!sized && ctx.tick() - this.since < WINDOW_TICKS) {
+                        return StepResult.pending();
+                    }
+                    if (!sized) {
+                        return this.abort(ctx, "Fenster wird nicht " + size[0] + "x" + size[1] + ": " + window.getWidth() + "x" + window.getHeight());
+                    }
+                    mc.options.guiScale().set(size[2]);
+                    mc.resizeGui();
+                    if (this.right() && (!ClientWorldRules.INSTANCE.editable() || !ClientZones.INSTANCE.editable())) {
+                        resync(ctx);
+                    } else if (!this.right() && (ClientWorldRules.INSTANCE.editable() || ClientZones.INSTANCE.editable())) {
+                        List<WorldRulesS2C.Entry> entries = new ArrayList<>();
+                        ClientWorldRules.INSTANCE.raw().forEach((id, value) -> entries.add(new WorldRulesS2C.Entry(id, value)));
+                        ClientWorldRules.INSTANCE.accept(new WorldRulesS2C(false, entries));
+                        ClientZones.INSTANCE.accept(new ZonesS2C(false, true, ClientZones.INSTANCE.syncedDimension(), ClientZones.INSTANCE.stored(),
+                                ClientZones.INSTANCE.release()));
+                    }
+                    this.stage = 4;
+                    this.since = ctx.tick();
+                    return StepResult.pending();
+                }
+                case 4 -> {
+                    if (ClientWorldRules.INSTANCE.editable() != this.right() || ClientZones.INSTANCE.editable() != this.right()) {
+                        return ctx.tick() - this.since > WAIT_TICKS ? this.abort(ctx, "Operator-Rechte kommen nicht " + (this.right() ? "zurück"
+                                : "weg")) : StepResult.pending();
+                    }
+                    ConfigTabs.open(null, ZonesTab.ID);
+                    this.scrolls = 0;
+                    this.stage = 5;
+                    this.since = ctx.tick();
+                    return StepResult.pending();
+                }
+                case 5 -> {
+                    ZonesTab tab = tab(mc);
+                    ZoneSection.Entry entry = tab == null ? null : entry(tab);
+                    if (tab == null || entry == null || entry.owner() != this.right() || entry.edit() == null || ctx.tick() - this.since < 3) {
+                        return ctx.tick() - this.since > WAIT_TICKS ? this.abort(ctx, "Tab Zonen zeigt die Testzone nicht " + this.where(mc))
+                                : StepResult.pending();
+                    }
+                    int top = tab.screenY(entry);
+                    if (top >= tab.viewTop() && top + entry.height() <= tab.clipBottom()) {
+                        this.stage = 6;
+                        this.since = ctx.tick();
+                        return StepResult.pending();
+                    }
+                    Screen screen = mc.gui.screen();
+                    if (screen == null || this.scrolls++ >= MAX_SCROLLS) {
+                        this.problems.add(this.where(mc) + ": Zone lässt sich nicht ins Bild scrollen (y " + top + ", sichtbar " + tab.viewTop() + "–"
+                                + tab.clipBottom() + ")");
+                        return this.next(ctx, mc);
+                    }
+                    screen.mouseScrolled(tab.left() + 4, tab.viewTop() + 4, 0.0, top < tab.viewTop() ? 1.0 : -1.0);
+                    return StepResult.pending();
+                }
+                case 6 -> {
+                    if (ctx.tick() - this.since < SETTLE_TICKS) {
+                        return StepResult.pending();
+                    }
+                    ZonesTab tab = tab(mc);
+                    ZoneSection.Entry entry = tab == null ? null : entry(tab);
+                    Screen screen = mc.gui.screen();
+                    if (tab == null || entry == null || screen == null) {
+                        return this.abort(ctx, "Tab Zonen vor der Prüfung geschlossen " + this.where(mc));
+                    }
+                    this.check(mc, screen, tab, entry);
+                    int[] size = this.window();
+                    if (Screenshots.enabled() && this.right() && size[0] == 640 && size[2] == 2) {
+                        Screenshots.clearOverlays(mc);
+                        Screenshots.parkMouse(mc);
+                        this.stage = 7;
+                        this.since = ctx.tick();
+                        return StepResult.pending();
+                    }
+                    return this.next(ctx, mc);
+                }
+                case 7 -> {
+                    if (ctx.tick() - this.since < SHOT_TICKS) {
+                        return StepResult.pending();
+                    }
+                    this.shot = Screenshots.capture(SHOT + this.language.substring(0, 2));
+                    this.stage = 8;
+                    return StepResult.pending();
+                }
+                case 8 -> {
+                    CompletableFuture<String> pending = this.shot;
+                    if (pending != null && !pending.isDone()) {
+                        return StepResult.pending();
+                    }
+                    if (pending != null && pending.isCompletedExceptionally()) {
+                        this.problems.add("Bildschirmfoto " + SHOT + this.language.substring(0, 2) + ": " + pending.exceptionNow());
+                    } else if (pending != null) {
+                        ctx.log("Bildschirmfoto " + Screenshots.dir().resolve(SHOT + this.language.substring(0, 2) + ".png") + " (" + pending.join() + ")");
+                    }
+                    this.shot = null;
+                    return this.next(ctx, mc);
+                }
+                case CLEANUP -> {
+                    close(mc);
+                    this.restoreWindow(mc);
+                    String quoted = "\"" + ZONE + "\"";
+                    this.server = ctx.onServer(server -> {
+                        command(server, "propwash zone delete " + quoted);
+                        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                        PropwashNet.sendToPlayer(player, WorldRules.snapshotFor(player));
+                        PropwashNet.sendToPlayer(player, ZoneServer.snapshotFor(player));
+                    });
+                    this.stage = CLEANUP + 1;
+                    this.since = ctx.tick();
+                    return StepResult.pending();
+                }
+                default -> {
+                    CompletableFuture<?> future = this.server;
+                    boolean done = (future == null || future.isDone()) && ClientWorldRules.INSTANCE.editable() && ClientZones.INSTANCE.editable() && !synced();
+                    if (!done && ctx.tick() - this.since < WAIT_TICKS) {
+                        return StepResult.pending();
+                    }
+                    if (!done) {
+                        ctx.log("Aufräumen unvollständig: Rechte " + ClientWorldRules.INSTANCE.editable() + ", Testzone noch da " + synced());
+                    }
+                    if (this.failure != null) {
+                        return StepResult.fail(this.failure);
+                    }
+                    if (!this.problems.isEmpty()) {
+                        return StepResult.fail(String.join("; ", this.problems));
+                    }
+                    ctx.log(this.checked.size() + " Ansichten geprüft, Zonenname ganz: " + String.join(" | ", this.checked));
+                    return StepResult.pass();
+                }
+            }
+        }
+
+        private StepResult next(SelfTest.StepContext ctx, Minecraft mc) {
+            close(mc);
+            this.index++;
+            this.stage = 2;
+            this.since = ctx.tick();
+            return StepResult.pending();
+        }
+
+        private void check(Minecraft mc, Screen screen, ZonesTab tab, ZoneSection.Entry entry) {
+            String where = this.where(mc);
+            Zone zone = entry.zone();
+            boolean button = false;
+            int width = tab.rowWidth();
+            boolean compact = ZoneSection.compact(mc.font, zone, width, button);
+            int room = ZoneSection.nameRoom(mc.font, zone, width, button);
+            int needed = mc.font.width(zone.name());
+            String kind = ZoneText.kind(zone).getString();
+            LayoutProbe.Frame frame = LayoutProbe.capture(mc, screen);
+            LayoutAudit.Text drawn = null;
+            for (LayoutAudit.Text text : frame.texts()) {
+                if (text.value().equals(zone.name())) {
+                    drawn = text;
+                    break;
+                }
+            }
+            String cut = frame.cuts().get(zone.name());
+            String found = null;
+            if (cut != null) {
+                found = "gekürzt zu „" + cut + "“";
+            } else if (drawn == null) {
+                found = "nicht gezeichnet";
+            } else if (drawn.full().width() < needed - 1) {
+                found = "gestaucht auf " + drawn.full().width() + " von " + needed + " Punkten";
+            } else if (!drawn.full().equals(drawn.visible())) {
+                found = "nur teilweise sichtbar";
+            }
+            String layout = "Zeilenbreite " + width + ", Platz für den Namen " + room + ", nötig " + needed + (compact ? ", kompakt" : ", einzeilig");
+            if (found != null) {
+                this.problems.add("TRUNCATED „" + zone.name() + "“ " + where + ": " + found + " (" + layout + ")");
+            }
+            if (frame.cuts().containsKey(kind)) {
+                this.problems.add("TRUNCATED Art „" + kind + "“ " + where + ": gekürzt zu „" + frame.cuts().get(kind) + "“ (" + layout + ")");
+            }
+            for (FlatButton action : entry.buttons()) {
+                String label = action.getMessage().getString();
+                if (frame.cuts().containsKey(label) || mc.font.width(label) > action.getWidth() - 2 || action.getX() + action.getWidth() > tab.left() + width) {
+                    this.problems.add("TRUNCATED Knopf „" + label + "“ " + where + ": Breite " + action.getWidth() + ", nötig " + mc.font.width(label)
+                            + ", x " + action.getX() + "–" + (action.getX() + action.getWidth()) + " bei Zeile bis " + (tab.left() + width));
+                }
+            }
+            LayoutAudit.Box bounds = LayoutAudit.Box.of(0, 0, screen.width, screen.height);
+            for (Finding finding : LayoutAudit.statics(bounds, frame.texts(), frame.widgets())) {
+                if (finding.subject().equals(zone.name()) || finding.subject().equals(kind)) {
+                    this.problems.add(where + ": " + finding.describe());
+                }
+            }
+            this.checked.add(where + ": " + layout);
         }
     }
 }

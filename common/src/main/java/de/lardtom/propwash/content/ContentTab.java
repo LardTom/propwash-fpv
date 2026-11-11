@@ -6,6 +6,7 @@ import de.lardtom.propwash.api.build.DronePreset;
 import de.lardtom.propwash.api.part.PartKind;
 import de.lardtom.propwash.api.registry.ExtensionTab;
 import de.lardtom.propwash.bando.BandoModule;
+import de.lardtom.propwash.barrier.BarrierModule;
 import de.lardtom.propwash.api.registry.TabSection;
 import de.lardtom.propwash.apiimpl.ApiExtensions;
 import de.lardtom.propwash.apiimpl.ExtensionTabs;
@@ -18,6 +19,7 @@ import de.lardtom.propwash.parts.AddonItems;
 import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.registry.PropwashRegistries;
 import de.lardtom.propwash.registry.RegHolder;
+import de.lardtom.propwash.rx.RxModule;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -61,6 +63,7 @@ public final class ContentTab {
     }
 
     public static List<ItemStack> contents() {
+        Predicate<String> ownTab = ownTab();
         List<ItemStack> stacks = new ArrayList<>();
         Set<Item> listed = new HashSet<>();
         add(stacks, listed, new ItemStack(ContentBlocks.DRONE_WORKBENCH.item().get()));
@@ -87,7 +90,8 @@ public final class ContentTab {
             add(stacks, listed, ContentMaterials.stack(material));
         }
         for (Identifier id : List.of(ContentIds.GATE_SMALL, ContentIds.GATE_MEDIUM, ContentIds.GATE_LARGE, ContentIds.GATE_POLE, ContentIds.RACE_FLAG,
-                ContentIds.SLALOM_POLE, ContentIds.DIVE_CUBE, ContentIds.FREEFORM_GATE, ContentIds.COURSE_TOOL, ContentIds.SIGNAL_REPEATER)) {
+                ContentIds.SLALOM_POLE, ContentIds.DIVE_CUBE, ContentIds.FREEFORM_GATE, ContentIds.COURSE_TOOL, ContentIds.SIGNAL_REPEATER, RxModule.ID,
+                RxModule.CREATIVE_ID, BarrierModule.DRONE_PASS_ID, BarrierModule.DRONE_BLOCK_ID)) {
             ContentIds.item(id).ifPresent(item -> add(stacks, listed, new ItemStack(item)));
         }
         for (Item item : BuiltInRegistries.ITEM) {
@@ -95,11 +99,11 @@ public final class ContentTab {
                 add(stacks, listed, new ItemStack(item));
             }
         }
-        for (PartInfo part : addonParts(ContentTab::withoutOwnTab)) {
+        for (PartInfo part : addonParts(namespace -> !ownTab.test(namespace))) {
             AddonItems.INSTANCE.item(part.id()).ifPresent(item -> add(stacks, listed, new ItemStack(item)));
         }
         for (DronePreset preset : ApiExtensions.registeredPresets()) {
-            if (preset.creativeListed() && withoutOwnTab(preset.id().getNamespace())) {
+            if (preset.creativeListed() && !ownTab.test(preset.id().getNamespace())) {
                 ItemStack drone = addonPreset(preset);
                 if (!drone.isEmpty()) {
                     stacks.add(drone);
@@ -107,7 +111,8 @@ public final class ContentTab {
             }
         }
         for (ItemStack stack : PropwashApi.creativeTab().collect()) {
-            if (!stack.isEmpty() && SessionItems.available(stack)) {
+            if (!stack.isEmpty() && SessionItems.available(stack)
+                    && !ownTab.test(BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace())) {
                 stacks.add(stack);
             }
         }
@@ -138,8 +143,8 @@ public final class ContentTab {
         return ofKind;
     }
 
-    private static boolean withoutOwnTab(String namespace) {
-        return !ExtensionTabs.INSTANCE.hasTab(namespace);
+    private static Predicate<String> ownTab() {
+        return CreativeTabNamespaces.ownTab(BuiltInRegistries.CREATIVE_MODE_TAB.keySet(), ExtensionTabs.INSTANCE::hasTab);
     }
 
     public static CreativeModeTab extensionTab(ExtensionTab tab) {

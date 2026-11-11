@@ -70,6 +70,18 @@ public final class RecordGhosts extends SavedData {
         return stored;
     }
 
+    public List<Stored> all() {
+        return List.copyOf(this.ghosts.values());
+    }
+
+    public boolean remove(int course, String frame) {
+        if (this.ghosts.remove(key(course, frame)) != null) {
+            this.setDirty();
+            return true;
+        }
+        return false;
+    }
+
     public void removeCourse(int course) {
         if (this.ghosts.values().removeIf(stored -> stored.course() == course)) {
             this.setDirty();

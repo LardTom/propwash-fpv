@@ -77,7 +77,9 @@ Discord).
 **Zuordnung Teil → Add-on:** Namensraum gleich Mod-Id; sonst die Mod, deren `loadBundled(modId)` die JSON-Teile geladen
 hat; sonst „Unbekannte Teile“. **Add-on-Liste:** Mods, die in ihren Metadaten von `propwash` abhängen (Fabric
 `depends`/`recommends`/`suggests`, NeoForge `required`/`optional`), plus Mods, denen Teile gehören. Nie die ganze
-Mod-Liste.
+Mod-Liste. Seit 0.6.0 fehlen darin Add-ons ohne Client-Bedarf (Fabric `"environment": "server"`, sonst
+`"propwash:client": "optional"`, `docs/api/addon-guide.md` Abschnitt 1.3.1), außer ihnen gehören Teile oder
+Akku-Chemien (`LocalJoinInfo.dependents`).
 
 **Server-Log:** `Propwash: Beitritt von <Spieler> abgelehnt, Add-ons passen nicht zum Server (Übersicht wie beim Spieler):` und darunter dieselbe
 Zusammenfassung wie „Details kopieren“ (englisch, die Sprache des Servers). Lässt Propwash den Beitritt trotz
@@ -103,10 +105,13 @@ Propwash-Versionen mit anderem Protokoll (Fall d/e auf Fabric). Der Kanal ist ne
 
 - **NeoForge, anderes Netzwerkprotokoll:** NeoForge vergleicht die Kanal-Versionen aller Propwash-Pakete vor jeder
   Konfigurationsaufgabe und zeigt seinen eigenen Bildschirm (eine Zeile „Channel of mod "Propwash FPV" …“ mit beiden
-  Protokollnummern). Das zu umgehen hieße, alle Propwash-Kanäle optional und unversioniert anzumelden; dann könnten
-  Propwash-Clients auch Servern ohne Propwash beitreten und dort Pakete schicken. Bewusst nicht geändert.
+  Protokollnummern). Seit 0.6.0 sind die Kanäle optional (`docs/design/cross-loader-join.md`), aber weiter versioniert,
+  die Aushandlung vergleicht die Version auch dann.
 - **Eigene Pflicht-Kanäle eines Add-ons** prüft NeoForge ebenfalls vorher (seine Liste nennt den `displayName`).
-- **Client ohne Propwash auf NeoForge:** NeoForges Kanal-Abgleich trennt vorher („missing on the client side“, Propwash FPV).
+- **NeoForge-Client ohne Propwash auf NeoForge:** Seit 0.6.0 trennt Propwash selbst mit `JoinCheck.missingPropwash()`
+  (vorher NeoForges Kanal-Abgleich).
+- **Client ohne NeoForge auf NeoForge-Server** (Fabric oder ohne Mods): Seit 0.6.0 trennt Propwash mit
+  `JoinCheck.notNeoForge()` (`docs/design/cross-loader-join.md`, Abschnitt „Spieler ohne NeoForge auf NeoForge-Servern“).
 - Fallen Server und Client in Version **und** Add-ons auseinander, zeigt NeoForge nur die Protokollzeile; Fabric die
   ganze Übersicht.
 

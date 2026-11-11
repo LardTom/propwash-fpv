@@ -4,13 +4,13 @@
   "spawn_overrides": {},
   "step": "surface_structures",
   "terrain_adaptation": "beard_thin",
-  "template": "propwash:world_course/canyon_run_badlands",
+  "template": "propwash:world_course/v2/canyon_run_badlands",
   "biome_templates": [
     {
       "biomes": [
         "minecraft:desert"
       ],
-      "template": "propwash:world_course/canyon_run_desert"
+      "template": "propwash:world_course/v2/canyon_run_desert"
     }
   ],
   "max_slope": 12,

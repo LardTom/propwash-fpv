@@ -62,7 +62,7 @@ class SwitchLogicTest {
         float[] axes = new float[0];
         assertEquals(0, e.evaluate(p, axes, new boolean[]{true, false}));
         assertEquals(0, e.evaluate(p, axes, new boolean[]{false, false}));
-        int bits = e.evaluate(p, axes, new boolean[]{true, true});
+        long bits = e.evaluate(p, axes, new boolean[]{true, true});
         assertTrue(SwitchEvaluator.isSet(bits, SwitchFunction.ARM));
         assertTrue(SwitchEvaluator.isSet(bits, SwitchFunction.BEEPER));
         bits = e.evaluate(p, axes, new boolean[]{false, false});

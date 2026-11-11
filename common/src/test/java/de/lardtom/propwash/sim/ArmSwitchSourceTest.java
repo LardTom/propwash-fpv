@@ -44,7 +44,7 @@ class ArmSwitchSourceTest {
         }
 
         boolean frame() {
-            int bits = this.source == RadioSource.KEYBOARD ? 0 : this.evaluator.evaluate(this.profile, this.axes, NO_BUTTONS);
+            long bits = this.source == RadioSource.KEYBOARD ? 0 : this.evaluator.evaluate(this.profile, this.axes, NO_BUTTONS);
             this.watch.observe(this.source, this.source == RadioSource.KEYBOARD ? "" : "boxer",
                     this.source == RadioSource.KEYBOARD ? SwitchAssignment.none() : this.arm);
             if (this.guarded) {

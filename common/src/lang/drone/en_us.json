@@ -13,7 +13,6 @@
   "propwash.drone.arm_blocker.rebooting": "flight controller rebooting",
   "propwash.drone.arm_blocker.throttle_not_low": "throttle not all the way down",
   "propwash.drone.esc_burned": "ESC burnt out: %1$sS battery on an ESC rated for at most %2$sS",
-  "propwash.drone.motor_derate": "Motors overheating – power is being limited",
   "propwash.drone.arm_blocker.hardware_fault": "flight controller or battery broken",
   "propwash.drone.failsafe": "FAILSAFE – radio link lost",
   "propwash.drone.flip.armed": "Disarm before flipping upright",

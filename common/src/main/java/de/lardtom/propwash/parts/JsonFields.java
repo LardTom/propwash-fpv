@@ -173,11 +173,23 @@ final class JsonFields {
             this.missing(key);
             return List.of();
         }
-        List<Identifier> out = new ArrayList<>();
         List<JsonElement> items = element.isJsonArray() ? asList(element.getAsJsonArray()) : List.of(element);
         if (items.isEmpty()) {
             this.error(key, "mindestens eine Id erwartet");
         }
+        return this.ids(key, element, items);
+    }
+
+    List<Identifier> optIdList(String key) {
+        JsonElement element = this.take(key);
+        if (element == null) {
+            return List.of();
+        }
+        return this.ids(key, element, element.isJsonArray() ? asList(element.getAsJsonArray()) : List.of(element));
+    }
+
+    private List<Identifier> ids(String key, JsonElement element, List<JsonElement> items) {
+        List<Identifier> out = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             JsonElement item = items.get(i);
             String where = element.isJsonArray() ? key + "[" + i + "]" : key;

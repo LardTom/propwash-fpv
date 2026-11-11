@@ -13,6 +13,10 @@ public final class StickMapper {
         this.throttle3d = ThrottleCentering.CENTER;
     }
 
+    public void presetThrottle(float throttle) {
+        this.integratedThrottle = ChannelMapping.clamp(throttle, 0.0F, 1.0F);
+    }
+
     public float integratedThrottle() {
         return this.integratedThrottle;
     }

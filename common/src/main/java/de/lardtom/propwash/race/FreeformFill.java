@@ -61,6 +61,10 @@ public final class FreeformFill {
         public boolean intact() {
             return this.blockedCells == 0 && this.openEdges == 0;
         }
+
+        public Integrity ignoringGaps() {
+            return new Integrity(this.blockedCells, 0, this.unknown);
+        }
     }
 
     private FreeformFill() {
@@ -87,6 +91,13 @@ public final class FreeformFill {
             return result.minA + result.width * 0.5;
         }
         return result.minB + result.height * 0.5;
+    }
+
+    public static float facing(double lookX, double lookZ) {
+        if (Math.abs(lookX) < 1.0E-6 && Math.abs(lookZ) < 1.0E-6) {
+            return 0.0F;
+        }
+        return GateGeometry.snapYaw((float) Math.toDegrees(Math.atan2(-lookX, lookZ)));
     }
 
     public static Aim aim(int clickedX, int clickedY, int clickedZ, int faceX, int faceY, int faceZ, boolean clickedOpen, double lookX, double lookY,
@@ -191,6 +202,120 @@ public final class FreeformFill {
         }
         FreeformRegion region = FreeformRegion.of(axis, width, height, seedA - minA, seedB - minB, cells);
         return new Result(region == null ? Status.START_BLOCKED : Status.OK, region, axis, plane, minA, minB, width, height, valid);
+    }
+
+    public static Result lenient(Probe probe, int axis, int seedX, int seedY, int seedZ, int limit) {
+        Result strict = fill(probe, axis, seedX, seedY, seedZ, limit);
+        if (strict.status() != Status.OPEN) {
+            return strict;
+        }
+        int valid = Math.clamp(limit, MIN_LIMIT, MAX_LIMIT);
+        int plane = coordinate(axis, seedX, seedY, seedZ);
+        int seedA = coordinate(FreeformRegion.aAxis(axis), seedX, seedY, seedZ);
+        int seedB = coordinate(FreeformRegion.bAxis(axis), seedX, seedY, seedZ);
+        boolean[] unloaded = {false};
+        Integer left = solidAlong(probe, axis, plane, seedA, seedB, -1, 0, valid, unloaded);
+        Integer right = solidAlong(probe, axis, plane, seedA, seedB, 1, 0, valid, unloaded);
+        Integer down = solidAlong(probe, axis, plane, seedA, seedB, 0, -1, valid, unloaded);
+        Integer up = solidAlong(probe, axis, plane, seedA, seedB, 0, 1, valid, unloaded);
+        Integer minA = left != null ? left : runEnd(probe, axis, plane, seedA, -1, true, down, up, valid, unloaded);
+        Integer maxA = right != null ? right : runEnd(probe, axis, plane, seedA, 1, true, down, up, valid, unloaded);
+        Integer minB = down != null ? down : runEnd(probe, axis, plane, seedB, -1, false, left, right, valid, unloaded);
+        Integer maxB = up != null ? up : runEnd(probe, axis, plane, seedB, 1, false, left, right, valid, unloaded);
+        if (unloaded[0]) {
+            return new Result(Status.UNLOADED, null, axis, plane, seedA, seedB, 1, 1, valid);
+        }
+        if (minA == null || maxA == null || minB == null || maxB == null) {
+            return strict;
+        }
+        int boxWidth = maxA - minA - 1;
+        int boxHeight = maxB - minB - 1;
+        if (boxWidth > valid || boxHeight > valid) {
+            return new Result(Status.TOO_BIG, null, axis, plane, minA + 1, minB + 1, boxWidth, boxHeight, valid);
+        }
+        Set<Long> visited = new HashSet<>();
+        ArrayDeque<int[]> queue = new ArrayDeque<>();
+        visited.add(key(seedA, seedB));
+        queue.add(new int[]{seedA, seedB});
+        int lowA = seedA;
+        int highA = seedA;
+        int lowB = seedB;
+        int highB = seedB;
+        while (!queue.isEmpty()) {
+            int[] at = queue.poll();
+            for (int dir = 0; dir < 4; dir++) {
+                int na = at[0] + (dir == 0 ? -1 : dir == 1 ? 1 : 0);
+                int nb = at[1] + (dir == 2 ? -1 : dir == 3 ? 1 : 0);
+                if (na <= minA || na >= maxA || nb <= minB || nb >= maxB || visited.contains(key(na, nb))) {
+                    continue;
+                }
+                Cell next = cell(probe, axis, plane, na, nb);
+                if (next == Cell.UNLOADED) {
+                    return new Result(Status.UNLOADED, null, axis, plane, seedA, seedB, 1, 1, valid);
+                }
+                if (next != Cell.OPEN) {
+                    continue;
+                }
+                visited.add(key(na, nb));
+                lowA = Math.min(lowA, na);
+                highA = Math.max(highA, na);
+                lowB = Math.min(lowB, nb);
+                highB = Math.max(highB, nb);
+                queue.add(new int[]{na, nb});
+            }
+        }
+        int width = highA - lowA + 1;
+        int height = highB - lowB + 1;
+        boolean[] cells = new boolean[width * height];
+        for (long k : visited) {
+            int a = (int) (k >> 32);
+            int b = (int) k;
+            cells[(b - lowB) * width + (a - lowA)] = true;
+        }
+        FreeformRegion region = FreeformRegion.of(axis, width, height, seedA - lowA, seedB - lowB, cells);
+        return new Result(region == null ? Status.START_BLOCKED : Status.OK, region, axis, plane, lowA, lowB, width, height, valid);
+    }
+
+    private static @Nullable Integer solidAlong(Probe probe, int axis, int plane, int a, int b, int da, int db, int limit, boolean[] unloaded) {
+        for (int step = 1; step <= limit + 1; step++) {
+            Cell cell = cell(probe, axis, plane, a + da * step, b + db * step);
+            if (cell == Cell.SOLID) {
+                return da != 0 ? a + da * step : b + db * step;
+            }
+            if (cell == Cell.UNLOADED) {
+                unloaded[0] = true;
+                return null;
+            }
+            if (cell == Cell.OUTSIDE) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable Integer runEnd(Probe probe, int axis, int plane, int from, int direction, boolean alongA, @Nullable Integer line0,
+                                            @Nullable Integer line1, int limit, boolean[] unloaded) {
+        Integer best = null;
+        for (Integer line : new Integer[]{line0, line1}) {
+            if (line == null) {
+                continue;
+            }
+            int end = from;
+            for (int step = 1; step <= limit + 1; step++) {
+                int at = from + direction * step;
+                Cell cell = alongA ? cell(probe, axis, plane, at, line) : cell(probe, axis, plane, line, at);
+                if (cell == Cell.UNLOADED) {
+                    unloaded[0] = true;
+                }
+                if (cell != Cell.SOLID) {
+                    break;
+                }
+                end = at;
+            }
+            int bound = end + direction;
+            best = best == null ? bound : direction < 0 ? Math.min(best, bound) : Math.max(best, bound);
+        }
+        return best;
     }
 
     public static Integrity check(Probe probe, FreeformRegion region, int plane, int minA, int minB) {

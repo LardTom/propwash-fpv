@@ -733,9 +733,9 @@ public final class CourseEditSelfTests {
             }
             course.owner = "";
             course.ownerName = "";
-            if (CourseEdits.access(guest, course, CourseEdits.Action.LAPS) != CourseAccess.ALLOWED
-                    || edit(guest, course.id, CourseEdits.Action.LAPS, 7) != CourseEdits.Result.DONE || course.laps != 7) {
-                return "Gast darf einen Kurs ohne Ersteller in dessen Nähe nicht ändern";
+            if (CourseEdits.access(guest, course, CourseEdits.Action.LAPS) != CourseAccess.OWNERLESS
+                    || edit(guest, course.id, CourseEdits.Action.LAPS, 7) != CourseEdits.Result.DENIED || course.laps != EDITED_LAPS) {
+                return "Gast darf einen Kurs ohne Ersteller in dessen Nähe ändern";
             }
             if (!course.owner.isEmpty()) {
                 return "Kurs ohne Ersteller wurde durch das Fenster übernommen";
@@ -744,7 +744,7 @@ public final class CourseEditSelfTests {
                 return "Gast darf einen Kurs ohne Ersteller löschen";
             }
             guest.snapTo(start.x + 2_000.0, start.y, start.z, 0.0F, 0.0F);
-            if (CourseEdits.access(guest, course, CourseEdits.Action.LAPS) != CourseAccess.TOO_FAR
+            if (CourseEdits.access(guest, course, CourseEdits.Action.LAPS) != CourseAccess.OWNERLESS
                     || edit(guest, course.id, CourseEdits.Action.LAPS, 9) != CourseEdits.Result.DENIED) {
                 return "Gast darf einen Kurs ohne Ersteller aus der Ferne ändern";
             }
@@ -758,7 +758,7 @@ public final class CourseEditSelfTests {
             course.owner = guest.getUUID().toString();
             course.ownerName = guest.getGameProfile().name();
             guest.snapTo(start.x + 2_000.0, start.y, start.z, 0.0F, 0.0F);
-            if (edit(guest, course.id, CourseEdits.Action.LAPS, EDITED_LAPS) != CourseEdits.Result.DONE || course.laps != EDITED_LAPS) {
+            if (edit(guest, course.id, CourseEdits.Action.LAPS, 7) != CourseEdits.Result.DONE || course.laps != 7) {
                 return "Ersteller darf seinen Kurs aus der Ferne nicht ändern";
             }
             course.owner = new UUID(79L, 1L).toString();
@@ -895,6 +895,7 @@ public final class CourseEditSelfTests {
         private volatile int course = GateEntity.NO_COURSE;
         private @Nullable CompletableFuture<Void> built;
         private @Nullable CompletableFuture<Void> probe;
+        private @Nullable CompletableFuture<Void> sent;
         private volatile boolean loaded;
         private boolean opened;
 
@@ -989,13 +990,21 @@ public final class CourseEditSelfTests {
                 this.opened = true;
                 if (this.board) {
                     int id = this.course;
-                    ctx.onServer(server -> RaceServer.sendLeaderboard(player(server), id, true));
+                    this.sent = ctx.onServer(server -> RaceServer.sendLeaderboard(player(server), id, false));
                 } else {
                     CourseEditScreen.open(null, this.course);
                 }
                 return StepResult.pending();
             }
             if (this.board) {
+                if (this.sent != null) {
+                    if (!this.sent.isDone()) {
+                        return StepResult.pending();
+                    }
+                    this.sent = null;
+                    mc.gui.setScreen(new LeaderboardScreen(null, this.course));
+                    return StepResult.pending();
+                }
                 LeaderboardScreen screen = LeaderboardScreen.active();
                 if (screen == null || screen.frames() < 2 || screen.shownRows().size() != TIMES.length || screen.editButton() == null) {
                     return ctx.tick() > 300 ? StepResult.fail("Bestenliste mit Knopf Kurs bearbeiten öffnet nicht") : StepResult.pending();
@@ -1037,6 +1046,7 @@ public final class CourseEditSelfTests {
             this.probe = null;
             this.loaded = false;
             this.opened = false;
+            this.sent = null;
             ctx.onServer(server -> {
                 CourseRegistry registry = CourseRegistry.get();
                 if (registry != null && id != GateEntity.NO_COURSE) {

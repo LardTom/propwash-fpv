@@ -727,7 +727,7 @@ public final class FreeformGateSelfTests {
             if (editor.integrity() == null || !editor.integrity().intact()) {
                 return StepResult.fail("Einstellen meldet eine veränderte Öffnung");
             }
-            if (!editor.model().rows(0).equals(List.of(GateEditModel.Row.VARIANT))
+            if (!editor.model().rows(0).equals(List.of(GateEditModel.Row.VARIANT, GateEditModel.Row.OPEN_EDGES))
                     || !editor.model().rows(1).equals(List.of(GateEditModel.Row.SIGNAL, GateEditModel.Row.PULSE, GateEditModel.Row.RACE_ONLY))) {
                 return StepResult.fail("Zeilen am Freiform-Gate falsch: " + editor.model().rows());
             }

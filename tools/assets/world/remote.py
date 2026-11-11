@@ -46,6 +46,12 @@ def stick_boxes(cx):
 
 STICK_LEFT = stick_boxes(PIVOT_LEFT[0])
 STICK_RIGHT = stick_boxes(PIVOT_RIGHT[0])
+BUTTON_X = (6.5, 8.0, 9.5)
+HOUSING_X0 = 1.5
+
+
+def housing_texel(x):
+    return int(round((x - HOUSING_X0) * 2))
 
 ALL = ("north", "south", "east", "west", "up", "down")
 
@@ -101,18 +107,19 @@ def paint_body(face, w, h):
         bevel(img, ANTH_HI, ANTH_LO)
         for x in range(2, w - 2):
             px[x, 1] = hex_rgba("323740")
-        for bx in (10, 13):
+        *greys, amber = (housing_texel(x - 0.5) for x in BUTTON_X)
+        for bx in greys:
             for y in (10, 11):
                 px[bx, y] = METAL_LO
                 px[bx + 1, y] = METAL_LO
             px[bx, 10] = METAL
-        px[16, 10] = AMBER_LO
-        px[17, 10] = AMBER
-        px[16, 11] = AMBER_LO
-        px[17, 11] = AMBER_LO
+        px[amber, 10] = AMBER_LO
+        px[amber + 1, 10] = AMBER
+        px[amber, 11] = AMBER_LO
+        px[amber + 1, 11] = AMBER_LO
         for x in (1, 2, w - 3, w - 2):
             px[x, 12] = ANTH_LO
-        px[w // 2 - 1, 12] = LED_RED
+        px[housing_texel(BUTTON_X[0] + 0.5), 12] = LED_RED
         return img
     if face == "north":
         bevel(img, ANTH_HI, ANTH_LO)

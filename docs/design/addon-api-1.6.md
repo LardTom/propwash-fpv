@@ -257,11 +257,24 @@ Zubehör-Aktionen decken Feuern, Moduswechsel und Kamera ab, weitere Tasten meld
 
 ## 15. Offene Punkte
 
-- Eigene Funken (Item, Modell, Belegung) für Add-ons; heute nutzt die Kino-Drohne die Propwash-Funke.
+Stand nach API 1.7 (Propwash 0.6.0): Erledigtes verweist auf [`0.6.0/addon-api-namespace.md`](0.6.0/addon-api-namespace.md),
+die Anleitung steht im Handbuch [`../api/addon-guide.md`](../api/addon-guide.md) Abschnitt 21.
+
+- Eigene Funken (Item, Modell, Belegung) für Add-ons; heute nutzt die Kino-Drohne die Propwash-Funke. → Belegung
+  **erledigt in 1.7**: eigene Schalter und Achsen auf der Seite „Add-ons“ im Tab „Modi“ (A1, §3.1). Eigene Funken-Items
+  und -Modelle bleiben bewusst draußen (§2.2).
 - Platzierbare Add-on-Elemente im OSD-Editor (heute zeichnet ein HUD-Element selbst, mit eigener Einstellung im Add-on).
-- Hindernis-Scan im Server-Heimflug (dort plant Propwashs Autopilot selbst um Hindernisse).
+  → **Erledigt in 1.7:** OSD-Elemente und -Warnungen (A2, §3.2); freie Grafik bleibt ein HUD-Element.
+- Hindernis-Scan im Server-Heimflug (dort plant Propwashs Autopilot selbst um Hindernisse). → Für Add-on-Flüge
+  **erledigt in 1.7**: Im autonomen Flug gilt `sensorRange()` mit Strahlen am Server (B7, §3.10); der Heimflug selbst
+  plant weiter mit Propwashs Autopilot.
 - Ein eigenes 3D-Modell für Zubehör vorne der eingebauten Teile gibt es nicht (es gibt kein eingebautes Zubehör vorne).
 - Action-Cam-Daten gibt es nur auf der Halterung oben, und der Gimbal dreht nur das FPV-Bild, nicht die Aufnahme.
   Stabilisierte Aufnahmen einer Gimbal-Kamera vorne (Kino-Add-on, `addon-cinematic.md` §7) brauchen eine spätere
-  API-Nebenversion.
+  API-Nebenversion. → **Erledigt in 1.7:** `action_cam` auch vorn, `GimbalProvider#stabilizesRecording()`, Gimbal-Lage
+  im Flashback-Kamerapfad, Gimbal-Kopf am Modell und Brennweite (B9, §3.12).
 - Zubehör-Tasten werden einmal je Tick gelesen; ein Antippen unter 50 ms kann verloren gehen.
+- Dazu in 1.7 erledigt, ohne hier als offener Punkt zu stehen: Namen der Zubehör-Aktionen (§3.1), Werfen wie ein
+  Dispenser und sichtbarer Inhalt (B1, B2), Stöße durch Explosionen und Windkugeln (B3), alle Drohnen eines Levels und
+  Kamerablick (B4), Welt-Regeln (B5), Daten an der Drohne (B6), autonomer Flug ohne Pilot (B7), zweiter Operator (B8),
+  Pilotenwechsel und Wartungsknöpfe (B10).

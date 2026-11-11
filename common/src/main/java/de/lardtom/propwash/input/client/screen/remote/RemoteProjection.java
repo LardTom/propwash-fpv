@@ -9,7 +9,8 @@ public record RemoteProjection(float tiltDegrees, float pixelScale, float center
     public enum Region {
         WHOLE(15.0F, 1.5F, 14.5F, 0.5F, 15.0F, 7.0F, 13.25F),
         SWITCHES(30.0F, 1.5F, 14.5F, 7.5F, 12.25F, 7.0F, 10.5F),
-        BUTTONS(30.0F, 3.5F, 12.5F, 2.5F, 9.75F, 9.0F, 10.5F);
+        BUTTONS(30.0F, 3.5F, 12.5F, 2.5F, 9.75F, 9.0F, 10.5F),
+        STICKS(5.0F, 1.5F, 14.5F, 3.0F, 10.5F, 7.0F, 13.25F);
 
         final float tiltDegrees;
         final float minX;

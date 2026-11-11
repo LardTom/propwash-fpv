@@ -54,6 +54,15 @@ class JoinTextTest {
     }
 
     @Test
+    void notNeoForgeNamesLoaderVersionAndAddons() {
+        String text = JoinText.notNeoForge("0.6.0", 18, List.of(JMP)).getString();
+        assertTrue(text.startsWith("This server runs NeoForge. Join with NeoForge and Propwash FPV 0.6.0 (network protocol 18)"), text);
+        assertTrue(text.contains("Fabric or an unmodded game can't join here"), text);
+        assertTrue(text.contains("Propwash add-ons on this server: " + JMP.displayName() + " " + JMP.version()), text);
+        assertFalse(JoinText.notNeoForge("0.6.0", 18, List.of()).getString().contains("add-ons on this server"));
+    }
+
+    @Test
     void missingPropwashListsTheServerAddons() {
         String text = JoinText.missingPropwash("0.5.0", 13, List.of(JMP)).getString();
         assertEquals("This server requires Propwash FPV 0.5.0 (network protocol 13). Install exactly this version.\n"

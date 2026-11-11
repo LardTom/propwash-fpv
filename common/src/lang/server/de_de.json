@@ -61,7 +61,7 @@
   "gamerule.propwash.ground_effect": "Bodeneffekt",
   "gamerule.propwash.ground_effect.description": "Mehr Auftrieb dicht über dem Boden.",
   "gamerule.propwash.hardware_limits": "Hardware-Grenzen",
-  "gamerule.propwash.hardware_limits.description": "An: Heiße Motoren drosseln die Leistung und nutzen sich ab, ein ESC brennt beim Scharfschalten durch, wenn der Akku mehr Zellen hat als erlaubt. Aus: keine Hitzedrosselung, kein Hitzeverschleiß, kein durchgebrannter ESC.",
+  "gamerule.propwash.hardware_limits.description": "An: Sehr heiße Motoren verlieren Leistung und nutzen sich ab, ein überhitzter ESC regelt zum Selbstschutz ab, und ein ESC brennt beim Scharfschalten durch, wenn der Akku mehr Zellen hat als erlaubt. Aus: Heiße Motoren behalten ihre volle Leistung und nutzen sich nicht ab, kein ESC regelt ab, kein durchgebrannter ESC.",
   "gamerule.propwash.part_compatibility": "Teile müssen zusammenpassen",
   "gamerule.propwash.part_compatibility.description": "An: Werkbank, Import und Wartung bauen nur Drohnen aus Teilen, die auch in echt zusammenpassen (Halterungen, Propellergröße, Akku zum Rahmen, Zubehör-Halterung). Aus: Jedes Teil passt zu jedem. Die Hinweise bleiben sichtbar, die Drohne fliegt mit den echten Daten ihrer Teile und zählt nicht für Bestenlisten. Überspannung regelt weiter „Hardware-Grenzen“.",
   "gamerule.propwash.wind": "Wind",

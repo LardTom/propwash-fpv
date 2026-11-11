@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.SugarCaneBlock;
 import net.minecraft.world.level.block.VegetationBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
@@ -53,8 +54,8 @@ final class BandoGroundCheck {
     record Site(int terrain, List<String> terrainAt, int raised, List<String> raisedAt, int rooted, List<String> rootedAt, int canopy) {
     }
 
-    record Edge(List<Integer> deltas, int foreign) {
-        static final Edge NONE = new Edge(List.of(), 0);
+    record Edge(List<Integer> deltas, int foreign, int carved) {
+        static final Edge NONE = new Edge(List.of(), 0, 0);
     }
 
     record Report(int blocks, int floating, List<String> floatingAt, int plants, List<String> plantsAt, int crowns, int decaying, int strays, int resting,
@@ -110,6 +111,10 @@ final class BandoGroundCheck {
             }
             if (this.border.foreign() > 0) {
                 text += String.format(Locale.ROOT, ", %d Randspalten in fremden Bauwerken nicht gezählt", this.border.foreign());
+            }
+            if (this.border.carved() > 0) {
+                text += String.format(Locale.ROOT, ", %d Randspalten nach der Platzwahl abgetragen (Höhle, Schlucht, See) nicht gezählt",
+                        this.border.carved());
             }
             return text;
         }
@@ -586,6 +591,7 @@ final class BandoGroundCheck {
         Set<Long> done = new HashSet<>();
         List<Integer> deltas = new ArrayList<>();
         int foreign = 0;
+        int carved = 0;
         for (int z = 0; z < plan.sizeZ(); z++) {
             for (int x = 0; x < plan.sizeX(); x++) {
                 if (!groundRow(plan, ours, x, z)) {
@@ -605,13 +611,20 @@ final class BandoGroundCheck {
                     }
                     if (top != floor && foreignStructure(level, next.getX(), next.getZ(), Math.min(top, floor), Math.max(top, floor))) {
                         foreign++;
+                    } else if (top < floor - 1 && top < noiseFloor(level, next.getX(), next.getZ()) - 1) {
+                        carved++;
                     } else {
                         deltas.add(top - floor);
                     }
                 }
             }
         }
-        return new Edge(deltas, foreign);
+        return new Edge(deltas, foreign, carved);
+    }
+
+    private static int noiseFloor(ServerLevel level, int x, int z) {
+        return level.getChunkSource().getGenerator().getFirstOccupiedHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, level,
+                level.getChunkSource().randomState());
     }
 
     private static boolean foreignStructure(ServerLevel level, int x, int z, int fromY, int toY) {

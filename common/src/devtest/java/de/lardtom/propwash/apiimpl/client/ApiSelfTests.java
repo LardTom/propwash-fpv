@@ -48,6 +48,7 @@ import de.lardtom.propwash.guide.client.screen.SceneScreen;
 import de.lardtom.propwash.guide.scene.Scene;
 import de.lardtom.propwash.guide.scenes.SceneKit;
 import de.lardtom.propwash.osd.OsdConfig;
+import de.lardtom.propwash.osd.OsdLayoutCodec;
 import de.lardtom.propwash.osd.client.OsdClient;
 import de.lardtom.propwash.platform.Services;
 import de.lardtom.propwash.ui.client.ConfiguratorScreen;
@@ -122,6 +123,7 @@ public final class ApiSelfTests {
         SelfTest.clientStep("api: Flugschule über die Halten-Taste auch für Addon-Teile", 600, ApiSelfTests::flightSchoolStep);
         ApiAdditionSelfTests.register();
         ApiClientSelfTests.register();
+        Api17SelfTests.register();
         SelfTest.clientStep("api: Aufräumen", 200, ApiSelfTests::cleanupStep);
     }
 
@@ -129,7 +131,8 @@ public final class ApiSelfTests {
         List<String> errors = new ArrayList<>();
         if (!PropwashApi.isCompatible("1.0") || !PropwashApi.isCompatible("1.1") || !PropwashApi.isCompatible("1.2") || !PropwashApi.isCompatible("1.3")
                 || !PropwashApi.isCompatible("1.4") || !PropwashApi.isCompatible("1.5") || !PropwashApi.isCompatible("1.6")
-                || PropwashApi.isCompatible("1.7") || PropwashApi.isCompatible("2.0") || !"1.6.0".equals(PropwashApi.API_VERSION)) {
+                || !PropwashApi.isCompatible("1.7") || !PropwashApi.isCompatible("1.8") || PropwashApi.isCompatible("1.9")
+                || PropwashApi.isCompatible("2.0") || !"1.8.0".equals(PropwashApi.API_VERSION)) {
             errors.add("Versionsprüfung falsch");
         }
         try {
@@ -410,7 +413,8 @@ public final class ApiSelfTests {
             if (current.version() != OsdLayoutSpec.CURRENT_VERSION || !current.json().contains("\"elements\"")) {
                 errors.add("OSD-Layout ohne Version oder Elemente: " + current);
             }
-            if (!PropwashClientApi.osd().apply(defaults) || !PropwashClientApi.osd().current().json().equals(defaults.json())) {
+            String standard = OsdLayoutCodec.encode(OsdLayoutCodec.decode(defaults.json(), OsdClient.CONFIG.get()));
+            if (!PropwashClientApi.osd().apply(defaults) || !PropwashClientApi.osd().current().json().equals(standard)) {
                 errors.add("Standard-Layout lässt sich nicht übernehmen");
             }
             if (!PropwashClientApi.osd().apply(current) || !PropwashClientApi.osd().current().json().equals(current.json())) {

@@ -7,7 +7,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import de.lardtom.propwash.osd.addon.AddonOsdKeys;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -38,23 +42,46 @@ public final class OsdLayoutCodec {
         root.add("style", style);
         JsonObject elements = new JsonObject();
         for (OsdElement element : OsdElement.values()) {
-            OsdConfig.Slot slot = source.slot(element);
-            JsonObject entry = new JsonObject();
-            entry.addProperty("on", slot.enabled);
-            if (element.movable()) {
-                entry.addProperty("col", slot.col);
-                entry.addProperty("row", slot.row);
-            }
-            if (slot.hasColor()) {
-                entry.addProperty("color", color(slot.color));
-            }
-            if (slot.hasScale()) {
-                entry.addProperty("scale", slot.scale);
-            }
-            elements.add(element.key(), entry);
+            elements.add(element.key(), entry(source.slot(element), element.movable()));
         }
         root.add("elements", elements);
+        int length = GSON.toJson(root).length();
+        for (Map.Entry<String, OsdConfig.Slot> addon : addonSlots(source)) {
+            JsonObject entry = entry(addon.getValue(), true);
+            int added = GSON.toJson(new JsonPrimitive(addon.getKey())).length() + GSON.toJson(entry).length() + 2;
+            if (length + added <= MAX_LENGTH) {
+                elements.add(addon.getKey(), entry);
+                length += added;
+            }
+        }
         return GSON.toJson(root);
+    }
+
+    private static JsonObject entry(OsdConfig.Slot slot, boolean movable) {
+        JsonObject entry = new JsonObject();
+        entry.addProperty("on", slot.enabled);
+        if (movable) {
+            entry.addProperty("col", slot.col);
+            entry.addProperty("row", slot.row);
+        }
+        if (slot.hasColor()) {
+            entry.addProperty("color", color(slot.color));
+        }
+        if (slot.hasScale()) {
+            entry.addProperty("scale", slot.scale);
+        }
+        return entry;
+    }
+
+    private static List<Map.Entry<String, OsdConfig.Slot>> addonSlots(OsdConfig config) {
+        List<Map.Entry<String, OsdConfig.Slot>> out = new ArrayList<>();
+        for (Map.Entry<String, OsdConfig.Slot> entry : config.elements.entrySet()) {
+            if (entry.getValue() != null && AddonOsdKeys.isAddonKey(entry.getKey())) {
+                out.add(Map.entry(entry.getKey(), entry.getValue()));
+            }
+        }
+        out.sort(Comparator.<Map.Entry<String, OsdConfig.Slot>, Boolean>comparing(entry -> !entry.getValue().enabled).thenComparing(Map.Entry::getKey));
+        return out;
     }
 
     public static OsdConfig decode(String json, OsdConfig base) {
@@ -97,12 +124,19 @@ public final class OsdLayoutCodec {
         out.ladderStepDeg = decimal(style, "ladder_step_deg", defaults.ladderStepDeg);
         JsonObject elements = object(root, "elements");
         for (Map.Entry<String, JsonElement> entry : elements.entrySet()) {
+            if (!entry.getValue().isJsonObject()) {
+                continue;
+            }
             OsdElement element = OsdElement.byKey(entry.getKey());
-            if (element == null || !entry.getValue().isJsonObject()) {
+            OsdConfig.Slot slot;
+            if (element != null) {
+                slot = out.slot(element);
+            } else if (AddonOsdKeys.isAddonKey(entry.getKey())) {
+                slot = out.elements.computeIfAbsent(entry.getKey(), key -> new OsdConfig.Slot());
+            } else {
                 continue;
             }
             JsonObject values = entry.getValue().getAsJsonObject();
-            OsdConfig.Slot slot = out.slot(element);
             slot.enabled = bool(values, "on", slot.enabled);
             slot.col = integer(values, "col", slot.col);
             slot.row = integer(values, "row", slot.row);

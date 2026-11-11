@@ -7,6 +7,8 @@ import de.lardtom.propwash.content.paint.PaintItems;
 import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.PilotSession;
+import de.lardtom.propwash.freecam.client.FreecamClient;
+import de.lardtom.propwash.freecam.client.FreecamSession;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.Telemetry;
 import net.minecraft.client.Minecraft;
@@ -20,10 +22,15 @@ public record DroneContext(Source source, @Nullable QuadcopterEntity entity, Ite
     public enum Source {
         PILOTING,
         HELD,
-        NONE
+        NONE,
+        FREECAM
     }
 
     public static DroneContext resolve(Minecraft minecraft) {
+        if (FreecamSession.active()) {
+            FreecamSession freecam = FreecamSession.INSTANCE;
+            return new DroneContext(Source.FREECAM, null, ItemStack.EMPTY, freecam.build(), FreecamClient.title(freecam.preset()), freecam.sim());
+        }
         PilotSession session = PilotSession.INSTANCE;
         QuadcopterEntity drone = session.isActive() ? session.drone() : null;
         if (drone != null) {
@@ -67,6 +74,10 @@ public record DroneContext(Source source, @Nullable QuadcopterEntity entity, Ite
         return this.source != Source.NONE;
     }
 
+    public boolean freecam() {
+        return this.source == Source.FREECAM;
+    }
+
     public @Nullable Telemetry telemetry() {
         return this.sim != null ? this.sim.telemetry() : null;
     }
@@ -77,7 +88,7 @@ public record DroneContext(Source source, @Nullable QuadcopterEntity entity, Ite
         }
         return switch (this.source) {
             case PILOTING -> this.entity == other.entity;
-            case HELD -> this.build.equals(other.build);
+            case HELD, FREECAM -> this.build.equals(other.build);
             case NONE -> true;
         };
     }

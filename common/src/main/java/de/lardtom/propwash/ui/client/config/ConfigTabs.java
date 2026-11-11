@@ -10,7 +10,10 @@ import net.minecraft.client.gui.screens.Screen;
 import org.jspecify.annotations.Nullable;
 
 public final class ConfigTabs {
+    public static final String FREECAM_TAB = "freecam";
     private static final List<Supplier<? extends ConfigTab>> FACTORIES = new ArrayList<>();
+    private static final List<Supplier<? extends ConfigTab>> FREECAM_ONLY = new ArrayList<>();
+    private static final Comparator<ConfigTab> ORDER = Comparator.comparingInt(ConfigTabs::safeOrder).thenComparing(ConfigTabs::safeId);
     private static Opener opener = (parent, tabId) -> {
     };
 
@@ -21,9 +24,31 @@ public final class ConfigTabs {
         FACTORIES.add(factory);
     }
 
+    public static void registerFreecamOnly(Supplier<? extends ConfigTab> factory) {
+        FREECAM_ONLY.add(factory);
+    }
+
     public static List<ConfigTab> create() {
+        return create(FACTORIES);
+    }
+
+    public static List<ConfigTab> create(boolean freecam) {
+        if (!freecam) {
+            return create();
+        }
+        List<ConfigTab> tabs = create(FREECAM_ONLY);
+        for (ConfigTab tab : create()) {
+            if (safeFreecam(tab)) {
+                tabs.add(tab);
+            }
+        }
+        tabs.sort(ORDER);
+        return tabs;
+    }
+
+    private static List<ConfigTab> create(List<Supplier<? extends ConfigTab>> factories) {
         List<ConfigTab> tabs = new ArrayList<>();
-        for (Supplier<? extends ConfigTab> factory : List.copyOf(FACTORIES)) {
+        for (Supplier<? extends ConfigTab> factory : List.copyOf(factories)) {
             try {
                 ConfigTab tab = factory.get();
                 if (tab != null && PartAvailability.activeNamespacedId(safeId(tab))) {
@@ -33,8 +58,16 @@ public final class ConfigTabs {
                 Constants.LOG.error("Konfigurator-Tab konnte nicht erzeugt werden", e);
             }
         }
-        tabs.sort(Comparator.comparingInt(ConfigTabs::safeOrder).thenComparing(ConfigTabs::safeId));
+        tabs.sort(ORDER);
         return tabs;
+    }
+
+    private static boolean safeFreecam(ConfigTab tab) {
+        try {
+            return tab.freecam();
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     public static int registeredCount() {

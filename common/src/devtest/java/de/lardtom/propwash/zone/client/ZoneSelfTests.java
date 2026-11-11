@@ -290,6 +290,16 @@ public final class ZoneSelfTests {
         });
     }
 
+    static @Nullable QuadcopterEntity testDrone(MinecraftServer server) {
+        int id = DRONE.get();
+        for (ServerLevel level : server.getAllLevels()) {
+            if (id >= 0 && level.getEntity(id) instanceof QuadcopterEntity drone) {
+                return drone;
+            }
+        }
+        return null;
+    }
+
     static void discard(MinecraftServer server) {
         int id = DRONE.getAndSet(-1);
         if (id < 0) {

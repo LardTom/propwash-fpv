@@ -3,6 +3,7 @@ package de.lardtom.propwash.server.client;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import de.lardtom.propwash.network.client.ClientNet;
+import de.lardtom.propwash.race.client.RaceStandardSection;
 import de.lardtom.propwash.server.WorldRuleEditC2S;
 import de.lardtom.propwash.server.WorldRulePresetC2S;
 import de.lardtom.propwash.server.WorldRuleText;
@@ -10,8 +11,11 @@ import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.WorldRulesS2C;
 import de.lardtom.propwash.server.rules.RulePreset;
 import de.lardtom.propwash.server.rules.RuleSpec;
+import de.lardtom.propwash.server.rules.RuleTier;
+import de.lardtom.propwash.server.rules.RuleTiers;
 import de.lardtom.propwash.server.rules.RuleValues;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
+import de.lardtom.propwash.ui.client.search.SearchTags;
 import de.lardtom.propwash.ui.client.tab.UiTab;
 import de.lardtom.propwash.ui.client.theme.Metrics;
 import de.lardtom.propwash.ui.client.theme.Palette;
@@ -24,7 +28,7 @@ import de.lardtom.propwash.ui.client.widget.FlatButton;
 import de.lardtom.propwash.ui.client.widget.NumberSpinner;
 import de.lardtom.propwash.ui.client.widget.ScrollPanel;
 import de.lardtom.propwash.ui.client.widget.ValueSlider;
-import de.lardtom.propwash.zone.client.ZoneSection;
+import de.lardtom.propwash.zone.client.ClientZones;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -48,22 +52,24 @@ public final class WorldRulesTab extends UiTab {
     public static final String ID = "world_rules";
     public static final String OTHER_GROUP = "propwash.server.world_rules.group.other";
     private static final int SLIDER_RANGE_LIMIT = 1000;
-    private static final int SPINNER_WIDTH = 90;
     private static final int TOOLTIP_WIDTH = 200;
     private static final int PRESET_TOOLTIP_WIDTH = 250;
+    private static final int TIER_TOOLTIP_WIDTH = 260;
+    private static final int RACE_STANDARD_VIEW = 72;
 
     public record Row(Identifier id, GameRule<?> rule, @Nullable RuleSpec spec, int y, @Nullable AbstractWidget widget, Component label,
-                      Component tooltip) {
+                      Component tooltip, @Nullable RuleTierSwitch tier, int column) {
     }
 
-    private record Section(Component title, int y) {
+    private record Section(Component title, int y, boolean rules, boolean tiers) {
     }
 
     private final Map<Identifier, String> draft = new HashMap<>();
+    private final Map<Identifier, RuleTier> tierDraft = new HashMap<>();
     private final List<Row> rows = new ArrayList<>();
     private final List<Section> sections = new ArrayList<>();
-    private final ZoneSection zones = new ZoneSection();
-    private int zonesY;
+    private final RaceStandardSection raceStandard = new RaceStandardSection();
+    private int raceStandardY;
     private final Map<RulePreset, FlatButton> presetButtons = new EnumMap<>(RulePreset.class);
     private int introY;
     private int presetStatusY;
@@ -72,6 +78,10 @@ public final class WorldRulesTab extends UiTab {
     private int builtVersion = -1;
     private boolean builtEditable;
     private boolean builtKnown;
+    private int builtZones = -1;
+    private int builtTiers = -1;
+    private int tierColumn;
+    private boolean compactTiers;
 
     @Override
     public String id() {
@@ -121,6 +131,10 @@ public final class WorldRulesTab extends UiTab {
         return Map.copyOf(this.draft);
     }
 
+    public Map<Identifier, RuleTier> tierDraft() {
+        return Map.copyOf(this.tierDraft);
+    }
+
     public Optional<Row> row(Identifier id) {
         for (Row row : this.rows) {
             if (row.id().equals(id)) {
@@ -130,8 +144,26 @@ public final class WorldRulesTab extends UiTab {
         return Optional.empty();
     }
 
-    public ZoneSection zones() {
-        return this.zones;
+    public RaceStandardSection raceStandard() {
+        return this.raceStandard;
+    }
+
+    public int raceStandardTop() {
+        return this.top() + this.raceStandardY;
+    }
+
+    public void revealRaceStandard() {
+        ScrollPanel panel = this.scroll;
+        for (int i = 0; panel != null && i < 64; i++) {
+            int y = this.raceStandardTop();
+            if (y >= this.y && y + RACE_STANDARD_VIEW <= this.clipBottom()) {
+                return;
+            }
+            if (!panel.scroll(y < this.y ? 1.0 : -1.0)) {
+                return;
+            }
+            this.scrollOffset = panel.offset();
+        }
     }
 
     public Optional<FlatButton> presetButton(RulePreset preset) {
@@ -144,6 +176,8 @@ public final class WorldRulesTab extends UiTab {
         this.builtVersion = synced.version();
         this.builtEditable = synced.editable();
         this.builtKnown = synced.known();
+        this.builtZones = ClientZones.INSTANCE.version();
+        this.builtTiers = ClientPersonalRules.INSTANCE.version();
         this.rows.clear();
         this.sections.clear();
         this.presetButtons.clear();
@@ -154,11 +188,25 @@ public final class WorldRulesTab extends UiTab {
         this.introY = cy;
         cy += ThemeText.wrappedHeight(font, this.intro(), w - 2 * Metrics.PADDING) + 2 * Metrics.PADDING + Metrics.GAP;
         Map<String, List<GameRule<?>>> groups = groups();
-        int labelWidth = this.labelWidth(groups, w);
+        int narrow = RuleTierSwitch.column(font, true);
+        int full = RuleTierSwitch.column(font, false);
+        Map<String, Integer> columns = new HashMap<>();
+        int widest = narrow;
+        this.compactTiers = false;
+        for (Map.Entry<String, List<GameRule<?>>> group : groups.entrySet()) {
+            boolean tiers = group.getValue().stream().anyMatch(WorldRulesTab::tierable);
+            boolean compact = tiers && this.controlNeed(group.getValue()) + full > w;
+            this.compactTiers |= compact;
+            int column = tiers && !compact ? full : narrow;
+            columns.put(group.getKey(), column);
+            widest = Math.max(widest, column);
+        }
+        this.tierColumn = widest;
+        int labelWidth = this.labelWidth(groups, w - widest);
         this.labelWidth = labelWidth;
         boolean editable = synced.editable();
         panel.stop(cy);
-        this.sections.add(new Section(Component.translatable("propwash.server.world_rules.presets"), cy));
+        this.sections.add(new Section(Component.translatable("propwash.server.world_rules.presets"), cy, false, false));
         cy += Metrics.SECTION_HEIGHT;
         if (editable) {
             RulePreset[] presets = RulePreset.values();
@@ -176,13 +224,16 @@ public final class WorldRulesTab extends UiTab {
         this.presetStatusY = cy;
         cy += Metrics.LINE_HEIGHT + Metrics.SECTION_GAP;
         panel.stop(cy);
-        this.zonesY = cy;
-        this.sections.add(new Section(ZoneSection.title(), cy));
+        this.raceStandardY = cy;
+        this.sections.add(new Section(RaceStandardSection.title(), cy, false, false));
         cy += Metrics.SECTION_HEIGHT;
-        cy = this.zones.build(cy, this.x, this.top(), w, editable, font, widget -> this.add(widget), panel::stop);
+        cy = this.raceStandard.build(cy, this.x, this.top(), w, editable, font, widget -> this.add(widget), panel::stop);
         for (Map.Entry<String, List<GameRule<?>>> group : groups.entrySet()) {
             panel.stop(cy);
-            this.sections.add(new Section(Component.translatable(group.getKey()), cy));
+            boolean tiers = group.getValue().stream().anyMatch(WorldRulesTab::tierable);
+            int tierColumn = columns.getOrDefault(group.getKey(), narrow);
+            boolean compact = tiers && tierColumn == narrow;
+            this.sections.add(new Section(Component.translatable(group.getKey()), cy, true, tiers));
             cy += Metrics.SECTION_HEIGHT;
             boolean first = true;
             for (GameRule<?> rule : group.getValue()) {
@@ -199,11 +250,16 @@ public final class WorldRulesTab extends UiTab {
                 Component tooltip = this.tooltip(id, rule, spec, label, editable);
                 AbstractWidget widget = null;
                 if (editable) {
-                    widget = this.widget(id, rule, spec, label, this.x, this.top() + cy, w, labelWidth);
+                    widget = this.widget(id, rule, spec, label, this.x, this.top() + cy, w - tierColumn, labelWidth);
                     widget.setTooltip(ThemeText.tip(tooltip));
                     this.add(widget);
                 }
-                this.rows.add(new Row(id, rule, spec, cy, widget, label, tooltip));
+                RuleTierSwitch tier = null;
+                if (spec != null && RuleTiers.tierable(spec)) {
+                    tier = this.tierSwitch(spec, label, this.x + w - tierColumn + Metrics.GAP, this.top() + cy, tierColumn - Metrics.GAP, editable, compact);
+                    this.add(tier);
+                }
+                this.rows.add(new Row(id, rule, spec, cy, widget, label, tooltip, tier, tierColumn));
                 cy += ROW;
             }
             cy += Metrics.SECTION_GAP;
@@ -212,6 +268,43 @@ public final class WorldRulesTab extends UiTab {
         panel.stop(cy);
         cy += ThemeText.wrappedHeight(font, Component.translatable("propwash.server.world_rules.command_hint"), w) + 4;
         this.endScroll(cy);
+    }
+
+    private static boolean tierable(GameRule<?> rule) {
+        Identifier id = BuiltInRegistries.GAME_RULE.getKey(rule);
+        return id != null && WorldRuleText.spec(id).filter(RuleTiers::tierable).isPresent();
+    }
+
+    private RuleTierSwitch tierSwitch(RuleSpec spec, Component label, int x, int y, int width, boolean editable, boolean compact) {
+        RuleTierSwitch tier = new RuleTierSwitch(x, y, width, FIELD, Component.translatable(RuleTierSwitch.KEY + "narration", label), editable, compact,
+                () -> this.tier(spec), value -> this.setTier(spec, value));
+        return SearchTags.hide(tier);
+    }
+
+    public static RuleTier synced(RuleSpec spec) {
+        RuleTier tier = ClientPersonalRules.INSTANCE.tier(spec);
+        if (tier.zones() && !ClientZones.INSTANCE.release().released(spec)) {
+            return RuleTier.FIXED;
+        }
+        return tier;
+    }
+
+    public RuleTier tier(RuleSpec spec) {
+        RuleTier pending = this.tierDraft.get(Identifier.parse(spec.id()));
+        return pending != null ? pending : synced(spec);
+    }
+
+    public void setTier(RuleSpec spec, RuleTier tier) {
+        if (!ClientWorldRules.INSTANCE.editable() || !RuleTiers.tierable(spec)) {
+            return;
+        }
+        Identifier id = Identifier.parse(spec.id());
+        if (tier == synced(spec)) {
+            this.tierDraft.remove(id);
+        } else {
+            this.tierDraft.put(id, tier);
+        }
+        this.host.changed();
     }
 
     private static Map<String, List<GameRule<?>>> groups() {
@@ -225,8 +318,42 @@ public final class WorldRulesTab extends UiTab {
             String key = id == null ? OTHER_GROUP : WorldRuleText.spec(id).map(spec -> spec.group().key()).orElse(OTHER_GROUP);
             groups.get(key).add(rule);
         }
+        AddonRuleSections.split(groups);
         groups.values().removeIf(List::isEmpty);
         return groups;
+    }
+
+    public boolean compactTiers() {
+        return this.compactTiers;
+    }
+
+    private int controlNeed(List<GameRule<?>> rules) {
+        Font font = this.font();
+        int need = 0;
+        for (GameRule<?> rule : rules) {
+            Identifier id = BuiltInRegistries.GAME_RULE.getKey(rule);
+            if (id == null) {
+                continue;
+            }
+            RuleSpec spec = WorldRuleText.spec(id).orElse(null);
+            int control;
+            if (rule.gameRuleType() == GameRuleType.BOOL) {
+                control = RuleRowLayout.toggleNeed(Math.max(font.width(WorldRuleText.onOff(true)), font.width(WorldRuleText.onOff(false))));
+            } else if (spec != null && spec.display() == RuleSpec.Display.LEVELS) {
+                int widest = 0;
+                for (int v = spec.min(); v <= spec.max(); v++) {
+                    widest = Math.max(widest, font.width(WorldRuleText.value(spec, v)));
+                }
+                control = RuleRowLayout.cycleNeed(widest);
+            } else {
+                int min = spec != null ? spec.min() : bound(rule.argument(), true);
+                int max = spec != null ? spec.max() : bound(rule.argument(), false);
+                int widest = Math.max(font.width(this.format(id, spec, min)), font.width(this.format(id, spec, max)));
+                control = (long) max - min <= SLIDER_RANGE_LIMIT ? RuleRowLayout.sliderNeed(widest) : RuleRowLayout.spinnerNeed(widest) + Metrics.GAP;
+            }
+            need = Math.max(need, font.width(WorldRuleText.name(id)) + Metrics.LABEL_GAP + control);
+        }
+        return need;
     }
 
     private int labelWidth(Map<String, List<GameRule<?>>> groups, int width) {
@@ -239,7 +366,7 @@ public final class WorldRulesTab extends UiTab {
                 }
             }
         }
-        return Math.max(Metrics.LABEL_MIN, Math.min(widest + Metrics.PADDING + Metrics.LABEL_GAP, width * 5 / 8));
+        return RuleRowLayout.column(widest, width);
     }
 
     public RuleValues displayedValues() {
@@ -311,13 +438,16 @@ public final class WorldRulesTab extends UiTab {
         if (!synced.known()) {
             return Component.translatable("propwash.server.world_rules.unknown");
         }
-        return Component.translatable(synced.editable() ? "propwash.server.world_rules.intro" : "propwash.server.world_rules.read_only");
+        return Component.translatable(synced.editable() ? "propwash.rules.tab.intro" : "propwash.server.world_rules.read_only");
     }
 
     private AbstractWidget widget(Identifier id, GameRule<?> rule, @Nullable RuleSpec spec, Component label, int x, int y, int width,
-                                  int labelWidth) {
+                                  int column) {
+        Font font = this.font();
+        int textWidth = font.width(label);
         if (rule.gameRuleType() == GameRuleType.BOOL) {
-            return ChoiceButton.toggle(x, y, width, FIELD, label, labelWidth,
+            int need = RuleRowLayout.toggleNeed(Math.max(font.width(WorldRuleText.onOff(true)), font.width(WorldRuleText.onOff(false))));
+            return ChoiceButton.toggle(x, y, width, FIELD, label, RuleRowLayout.labelWidth(column, textWidth, width, need),
                     () -> Boolean.parseBoolean(this.current(id, rule)),
                     v -> this.set(id, rule, Boolean.toString(v)),
                     WorldRuleText::onOff,
@@ -325,10 +455,13 @@ public final class WorldRulesTab extends UiTab {
         }
         if (spec != null && spec.display() == RuleSpec.Display.LEVELS) {
             List<Integer> values = new ArrayList<>();
+            int widest = 0;
             for (int v = spec.min(); v <= spec.max(); v++) {
                 values.add(v);
+                widest = Math.max(widest, font.width(WorldRuleText.value(spec, v)));
             }
-            return new ChoiceButton<>(x, y, width, FIELD, label, labelWidth, values,
+            int need = RuleRowLayout.cycleNeed(widest);
+            return new ChoiceButton<>(x, y, width, FIELD, label, RuleRowLayout.labelWidth(column, textWidth, width, need), values,
                     () -> this.intValue(id, rule, spec.defaultValue()),
                     v -> this.set(id, rule, Integer.toString(v)),
                     v -> WorldRuleText.value(spec, v),
@@ -338,14 +471,17 @@ public final class WorldRulesTab extends UiTab {
         int max = spec != null ? spec.max() : bound(rule.argument(), false);
         int step = spec != null ? spec.step() : 1;
         int fallback = parseInt(defaultValue(rule), 0);
+        int widest = Math.max(font.width(this.format(id, spec, min)), font.width(this.format(id, spec, max)));
         if ((long) max - min <= SLIDER_RANGE_LIMIT) {
-            return new ValueSlider(x, y, width, FIELD, label, labelWidth, min, max, step,
+            int need = RuleRowLayout.sliderNeed(widest);
+            return new ValueSlider(x, y, width, FIELD, label, RuleRowLayout.labelWidth(column, textWidth, width, need), min, max, step,
                     () -> this.intValue(id, rule, fallback),
                     v -> this.set(id, rule, Integer.toString((int) Math.max(min, Math.min(max, Math.round(v))))),
                     () -> fallback,
                     v -> this.format(id, spec, (int) Math.round(v))).typed(v -> v, min, max, false);
         }
-        return new NumberSpinner(x + width - SPINNER_WIDTH, y, SPINNER_WIDTH, FIELD, label,
+        int spinnerWidth = RuleRowLayout.spinnerWidth(textWidth, width, RuleRowLayout.spinnerNeed(widest));
+        return new NumberSpinner(x + width - spinnerWidth, y, spinnerWidth, FIELD, label,
                 () -> this.intValue(id, rule, fallback),
                 n -> this.set(id, rule, Integer.toString((int) Math.max(min, Math.min(max, (long) this.intValue(id, rule, fallback) + n)))),
                 v -> this.set(id, rule, Integer.toString((int) Math.max(min, Math.min(max, Math.round(v))))),
@@ -381,14 +517,6 @@ public final class WorldRulesTab extends UiTab {
         }
     }
 
-    public int zonesTop() {
-        return this.top() + this.zonesY;
-    }
-
-    public int screenY(ZoneSection.Entry entry) {
-        return this.top() + entry.y();
-    }
-
     public int viewTop() {
         return this.y;
     }
@@ -416,6 +544,10 @@ public final class WorldRulesTab extends UiTab {
         }
         tip.append("\n").append(ThemeText.muted(facts));
         tip.append("\n").append(ThemeText.muted(Component.translatable("propwash.server.world_rules.tooltip.command", id.toString())));
+        Component racing = RaceStandardSection.ruleNote(id);
+        if (racing != null) {
+            tip.append("\n").append(ThemeText.muted(racing));
+        }
         if (editable) {
             tip.append("\n").append(ThemeText.muted(Component.translatable("propwash.ui.hint.reset")));
         }
@@ -469,15 +601,27 @@ public final class WorldRulesTab extends UiTab {
     @Override
     public void tick() {
         ClientWorldRules synced = ClientWorldRules.INSTANCE;
-        if (synced.editable() != this.builtEditable || synced.known() != this.builtKnown || this.zones.stale()) {
+        if (ClientZones.INSTANCE.version() != this.builtZones || ClientPersonalRules.INSTANCE.version() != this.builtTiers) {
+            this.builtZones = ClientZones.INSTANCE.version();
+            this.builtTiers = ClientPersonalRules.INSTANCE.version();
+            this.dropSyncedTiers();
+        }
+        if (synced.editable() != this.builtEditable || synced.known() != this.builtKnown || this.raceStandard.stale()) {
             if (!synced.editable()) {
                 this.draft.clear();
+                this.tierDraft.clear();
             }
+            this.dropSyncedTiers();
+            this.draft.entrySet().removeIf(entry -> entry.getValue().equals(synced.raw(entry.getKey()).orElse(null)));
             this.host.rebuild();
         } else if (synced.version() != this.builtVersion) {
             this.builtVersion = synced.version();
             this.draft.entrySet().removeIf(entry -> entry.getValue().equals(synced.raw(entry.getKey()).orElse(null)));
         }
+    }
+
+    private void dropSyncedTiers() {
+        this.tierDraft.entrySet().removeIf(entry -> WorldRuleText.spec(entry.getKey()).map(spec -> synced(spec) == entry.getValue()).orElse(true));
     }
 
     @Override
@@ -492,14 +636,21 @@ public final class WorldRulesTab extends UiTab {
         ThemeDraw.notice(g, this.x, introTop, this.x + w, introTop + introHeight, warn ? Palette.WARNING : Palette.ACCENT, 1.0F);
         ThemeText.wrapped(g, font, intro, this.x + Metrics.PADDING, introTop + Metrics.PADDING, w - 2 * Metrics.PADDING,
                 warn ? Palette.WARNING : Palette.TEXT_MUTED);
+        Component column = Component.translatable(RuleTierSwitch.KEY + "column");
+        int columnWidth = font.width(column);
         for (Section section : this.sections) {
-            this.section(g, section.title(), this.x, top + section.y(), section.y() == this.zonesY ? this.zones.headingWidth(w) : w);
+            int width = w;
+            if (section.tiers()) {
+                width = w - columnWidth - Metrics.GAP;
+                ThemeText.textRight(g, font, column, this.x + w, top + section.y(), Palette.TEXT_FAINT);
+            }
+            this.section(g, section.title(), this.x, top + section.y(), width);
         }
         ThemeText.line(g, font, this.presetStatus(), this.x, this.x + w, top + this.presetStatusY + 1, Palette.TEXT_MUTED, ThemeText.Align.LEFT,
                 false);
         Row hovered = null;
         int clip = Math.min(this.y + this.height, this.clipBottom());
-        int valueColumn = this.valueColumn(font, w);
+        int valueColumn = this.valueColumn(font, w - this.tierColumn);
         for (int i = 0; i < this.rows.size(); i++) {
             Row row = this.rows.get(i);
             int rowY = top + row.y();
@@ -507,24 +658,36 @@ public final class WorldRulesTab extends UiTab {
                 g.fill(this.x, rowY - 1, this.x + w, rowY + ROW - 1, Palette.ROW_STRIPE);
             }
             if (row.widget() instanceof NumberSpinner spinner) {
-                int labelWidth = w - spinner.getWidth() - Metrics.GAP;
+                int labelWidth = spinner.getX() - this.x - Metrics.GAP;
                 ThemedWidgets.label(g, font, row.label(), this.x, rowY, FIELD, labelWidth, WidgetState.of(spinner));
             }
             if (row.widget() == null) {
+                int rowWidth = w - row.column();
                 int textY = Metrics.textY(rowY, FIELD);
-                ThemeText.fitted(g, font, row.label(), this.x + Metrics.LABEL_GAP, textY, valueColumn - 2 * Metrics.LABEL_GAP, Palette.TEXT_MUTED);
                 Component value = this.valueText(row);
-                ThemeText.fitted(g, font, value, this.x + valueColumn, textY, w - valueColumn - Metrics.LABEL_GAP, Palette.TEXT);
-                if (mouseX >= this.x && mouseX < this.x + w && mouseY >= rowY && mouseY < rowY + ROW - 1 && mouseY >= this.y && mouseY < clip) {
+                int valueX = RuleRowLayout.valueX(valueColumn, font.width(row.label()), font.width(value), rowWidth);
+                ThemeText.fitted(g, font, row.label(), this.x + Metrics.LABEL_GAP, textY, valueX - 2 * Metrics.LABEL_GAP, Palette.TEXT_MUTED);
+                ThemeText.fitted(g, font, value, this.x + valueX, textY, rowWidth - valueX - Metrics.LABEL_GAP, Palette.TEXT);
+                if (mouseX >= this.x && mouseX < this.x + rowWidth && mouseY >= rowY && mouseY < rowY + ROW - 1 && mouseY >= this.y && mouseY < clip) {
                     hovered = row;
                 }
             }
         }
-        Component zoneTip = this.zones.extract(g, font, this.x, top, w, mouseX, mouseY, this.y, clip);
-        if (hovered != null) {
+        Component raceTip = this.raceStandard.extract(g, font, this.x, top, w, mouseX, mouseY, this.y, clip);
+        Row tierHovered = null;
+        for (Row row : this.rows) {
+            RuleTierSwitch tier = row.tier();
+            if (tier != null && row.spec() != null && tier.visible && tier.isHovered() && mouseY >= this.y && mouseY < clip) {
+                tierHovered = row;
+            }
+        }
+        if (tierHovered != null && tierHovered.tier() != null && tierHovered.spec() != null) {
+            ThemeText.tooltipWrapped(g, font, RuleTierSwitch.tooltip(tierHovered.label(), this.tier(tierHovered.spec()), ClientWorldRules.INSTANCE.editable()),
+                    TIER_TOOLTIP_WIDTH, mouseX, mouseY);
+        } else if (hovered != null) {
             ThemeText.tooltipWrapped(g, font, hovered.tooltip(), TOOLTIP_WIDTH, mouseX, mouseY);
-        } else if (zoneTip != null) {
-            ThemeText.tooltipWrapped(g, font, zoneTip, ZoneSection.TOOLTIP_WIDTH, mouseX, mouseY);
+        } else if (raceTip != null) {
+            ThemeText.tooltipWrapped(g, font, raceTip, RaceStandardSection.TOOLTIP_WIDTH, mouseX, mouseY);
         }
         for (Map.Entry<RulePreset, FlatButton> entry : this.presetButtons.entrySet()) {
             FlatButton button = entry.getValue();
@@ -546,8 +709,7 @@ public final class WorldRulesTab extends UiTab {
                 value = Math.max(value, font.width(this.valueText(row)));
             }
         }
-        int wanted = Math.max(this.labelWidth, label + 2 * Metrics.LABEL_GAP);
-        return Math.max(Metrics.LABEL_MIN, Math.min(wanted, width - value - Metrics.LABEL_GAP));
+        return RuleRowLayout.valueColumn(this.labelWidth, label, value, width);
     }
 
     @Override
@@ -557,17 +719,27 @@ public final class WorldRulesTab extends UiTab {
         }
         for (Row row : this.rows) {
             this.set(row.id(), row.rule(), defaultValue(row.rule()));
+            if (row.spec() != null && row.tier() != null) {
+                this.setTier(row.spec(), RuleTier.DEFAULT);
+            }
         }
     }
 
     @Override
     public void save() {
-        if (this.draft.isEmpty()) {
+        if (this.draft.isEmpty() && this.tierDraft.isEmpty()) {
             return;
         }
         if (!ClientWorldRules.INSTANCE.editable()) {
             this.draft.clear();
+            this.tierDraft.clear();
             return;
+        }
+        if (!this.tierDraft.isEmpty()) {
+            for (Map.Entry<Identifier, RuleTier> entry : new LinkedHashMap<>(this.tierDraft).entrySet()) {
+                WorldRuleText.spec(entry.getKey()).ifPresent(spec -> ClientPersonalRules.INSTANCE.setTier(spec, entry.getValue()));
+            }
+            this.tierDraft.clear();
         }
         List<WorldRulesS2C.Entry> entries = new ArrayList<>();
         for (Map.Entry<Identifier, String> entry : this.draft.entrySet()) {
@@ -583,5 +755,16 @@ public final class WorldRulesTab extends UiTab {
     @Override
     public void discard() {
         this.draft.clear();
+        this.tierDraft.clear();
+    }
+
+    public @Nullable AbstractWidget focusRule(String name) {
+        for (Row row : this.rows) {
+            if (row.id().getPath().equals(name)) {
+                this.reveal(row);
+                return row.widget();
+            }
+        }
+        return null;
     }
 }

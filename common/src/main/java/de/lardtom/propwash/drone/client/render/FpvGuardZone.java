@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class FpvGuardZone {
+public final class FpvGuardZone implements FpvQuadSelector {
     public static final float INNER_FACTOR = 0.97F;
     public static final float OUTER_MARGIN_MM = 6.0F;
     public static final float OUTER_MARGIN_FACTOR = 0.2F;
@@ -43,6 +43,7 @@ public final class FpvGuardZone {
         return new FpvGuardZone(x, z, maxPropMm * 0.5F);
     }
 
+    @Override
     public boolean contains(float[] quad) {
         return this.contains(quad, 0, quad.length / 3);
     }
@@ -59,6 +60,7 @@ public final class FpvGuardZone {
         return false;
     }
 
+    @Override
     public boolean[] select(float[] quads) {
         int count = quads.length / QUAD_FLOATS;
         boolean[] selected = new boolean[count];

@@ -3,6 +3,7 @@ package de.lardtom.propwash.api.accessory;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalDouble;
 
 public interface AccessoryBehavior {
@@ -28,5 +29,13 @@ public interface AccessoryBehavior {
     }
 
     default void tick(AccessoryContext context) {
+    }
+
+    default Optional<String> actionNameKey(int number) {
+        return Optional.empty();
+    }
+
+    default Optional<ItemDisplay> display(int slot) {
+        return Optional.empty();
     }
 }

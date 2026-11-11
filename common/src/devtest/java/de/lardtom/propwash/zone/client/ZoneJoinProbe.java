@@ -10,9 +10,7 @@ import de.lardtom.propwash.race.LapAssist;
 import de.lardtom.propwash.race.client.AssistText;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.zone.Zone;
-import de.lardtom.propwash.zone.ZoneBox;
 import de.lardtom.propwash.zone.ZoneEditC2S;
-import de.lardtom.propwash.zone.ZoneShape;
 import net.minecraft.client.Minecraft;
 import org.jspecify.annotations.Nullable;
 
@@ -24,7 +22,7 @@ public final class ZoneJoinProbe {
     private static final String START = "zones_start";
     private static final String LINES = "zones_lines";
     private static final String STAGE = "zones_stage";
-    private static final String DENIED = "Beitrittstest Gast";
+    private static final int GUEST_PRIORITY = 7;
 
     private ZoneJoinProbe() {
     }
@@ -64,8 +62,8 @@ public final class ZoneJoinProbe {
                 }
                 line(state, "zones_synced=" + ClientZones.INSTANCE.zones().size());
                 line(state, "zones_editable=" + ClientZones.INSTANCE.editable());
-                ClientNet.sendToServer(new ZoneEditC2S(ZoneEditC2S.Action.SAVE, Zone.create(ClientZones.INSTANCE.syncedDimension(), DENIED, ZoneShape.BOX,
-                        ZoneBox.blocks(0, 0, 0, 2, 2, 2))));
+                ClientNet.sendToServer(new ZoneEditC2S(ZoneEditC2S.Action.SAVE, field.withPriority(field.priority() + GUEST_PRIORITY)));
+                state.put("zones_field_priority", field.priority());
                 state.put("zones_sent", tick);
                 state.put(STAGE, 1);
                 return null;
@@ -74,7 +72,9 @@ public final class ZoneJoinProbe {
                 if (tick - (int) state.get("zones_sent") < 40) {
                     return null;
                 }
-                line(state, find(DENIED) == null ? "zones_guest_edit=denied" : "zones_guest_edit=accepted");
+                Zone field = find(ZoneJoinCheck.FIELD);
+                boolean unchanged = field != null && field.priority() == (int) state.get("zones_field_priority");
+                line(state, unchanged ? "zones_guest_edit=denied" : "zones_guest_edit=accepted");
                 state.put(STAGE, 2);
                 return null;
             }

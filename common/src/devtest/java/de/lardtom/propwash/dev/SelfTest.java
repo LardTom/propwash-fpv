@@ -14,6 +14,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class SelfTest {
     public static final String PROPERTY = "propwash.selftest";
@@ -28,6 +30,7 @@ public final class SelfTest {
     private static final boolean SMOKE = !ENABLED && Boolean.getBoolean(SMOKE_PROPERTY);
     private static final boolean LIST = ENABLED && Boolean.getBoolean(LIST_PROPERTY);
     private static final Set<String> HELPER_CLASSES = Set.of("SelfTest", "Screenshots");
+    private static final Pattern RANGE = Pattern.compile("#\\s*(\\d{1,9})\\s*(?:-\\s*(\\d{1,9})\\s*)?");
     private static final List<Step> CLIENT_STEPS = new ArrayList<>();
     private static final List<Step> AFTER_LEAVE_STEPS = new ArrayList<>();
     private static final Set<String> NAMES = new HashSet<>();
@@ -137,6 +140,17 @@ public final class SelfTest {
         return count;
     }
 
+    static List<String> selectedNames(@Nullable String filter) {
+        Selection selection = Selection.of(filter);
+        List<String> names = new ArrayList<>();
+        for (Step step : all()) {
+            if (selection.keeps(step.name())) {
+                names.add(step.name());
+            }
+        }
+        return names;
+    }
+
     public static boolean filterMatchesNothing() {
         Selection selection = Selection.of(filter());
         return selection.active() && !selection.any();
@@ -213,27 +227,41 @@ public final class SelfTest {
         return SETUP.contains(name) || BASE.contains(name) || SWITCHES.containsKey(name);
     }
 
-    private record Selection(List<String> include, List<String> exclude, Set<String> groups, Set<String> switched, boolean any) {
+    private record Selection(List<String> include, List<int[]> includeRanges, List<String> exclude, List<int[]> excludeRanges,
+                             Map<String, Integer> positions, Set<String> groups, Set<String> switched, boolean any) {
         static Selection of(@Nullable String filter) {
             List<String> include = new ArrayList<>();
+            List<int[]> includeRanges = new ArrayList<>();
             List<String> exclude = new ArrayList<>();
+            List<int[]> excludeRanges = new ArrayList<>();
             if (filter != null) {
                 for (String token : filter.split("[,|]")) {
                     String prefix = token.trim();
-                    if (prefix.startsWith("!")) {
+                    boolean excluded = prefix.startsWith("!");
+                    if (excluded) {
                         prefix = prefix.substring(1).trim();
-                        if (!prefix.isEmpty()) {
-                            exclude.add(prefix);
-                        }
-                    } else if (!prefix.isEmpty()) {
-                        include.add(prefix);
+                    }
+                    if (prefix.isEmpty()) {
+                        continue;
+                    }
+                    int[] range = range(prefix);
+                    if (range != null) {
+                        (excluded ? excludeRanges : includeRanges).add(range);
+                    } else {
+                        (excluded ? exclude : include).add(prefix);
                     }
                 }
             }
+            Map<String, Integer> positions = new HashMap<>();
+            List<Step> all = all();
+            for (int i = 0; i < all.size(); i++) {
+                positions.put(all.get(i).name(), i + 1);
+            }
+            Selection probe = new Selection(include, includeRanges, exclude, excludeRanges, positions, Set.of(), Set.of(), false);
             Set<String> groups = new HashSet<>();
             boolean any = false;
-            for (Step step : all()) {
-                if (matches(include, exclude, step.name())) {
+            for (Step step : all) {
+                if (probe.matches(step.name())) {
                     any = true;
                     if (!framing(step.name())) {
                         groups.add(group(step.name()));
@@ -248,13 +276,13 @@ public final class SelfTest {
                     if (until == null) {
                         continue;
                     }
-                    boolean keep = matches(include, exclude, name);
+                    boolean keep = probe.matches(name);
                     for (int j = i + 1; j < steps.size() && !keep; j++) {
                         String other = steps.get(j).name();
                         if (other.equals(until)) {
                             break;
                         }
-                        keep = !framing(other) && matches(include, exclude, other);
+                        keep = !framing(other) && probe.matches(other);
                     }
                     if (keep) {
                         switched.add(name);
@@ -262,18 +290,28 @@ public final class SelfTest {
                     }
                 }
             }
-            return new Selection(include, exclude, groups, switched, any);
+            return new Selection(include, includeRanges, exclude, excludeRanges, positions, groups, switched, any);
+        }
+
+        private static int @Nullable [] range(String token) {
+            Matcher matcher = RANGE.matcher(token);
+            if (!matcher.matches()) {
+                return null;
+            }
+            int from = Integer.parseInt(matcher.group(1));
+            int to = matcher.group(2) == null ? from : Integer.parseInt(matcher.group(2));
+            return new int[]{Math.min(from, to), Math.max(from, to)};
         }
 
         boolean active() {
-            return !include.isEmpty() || !exclude.isEmpty();
+            return !include.isEmpty() || !includeRanges.isEmpty() || !exclude.isEmpty() || !excludeRanges.isEmpty();
         }
 
         boolean keeps(String name) {
-            if (!active() || matches(include, exclude, name)) {
+            if (!active() || matches(name)) {
                 return true;
             }
-            if (exclude.stream().anyMatch(prefix -> startsWith(name, prefix))) {
+            if (excluded(name)) {
                 return false;
             }
             if (switched.contains(name)) {
@@ -285,9 +323,20 @@ public final class SelfTest {
             return SETUP.contains(name) && groups.contains(group(name));
         }
 
-        private static boolean matches(List<String> include, List<String> exclude, String name) {
-            return (include.isEmpty() || include.stream().anyMatch(prefix -> startsWith(name, prefix)))
-                    && exclude.stream().noneMatch(prefix -> startsWith(name, prefix));
+        private boolean matches(String name) {
+            boolean included = include.isEmpty() && includeRanges.isEmpty()
+                    || include.stream().anyMatch(prefix -> startsWith(name, prefix))
+                    || within(includeRanges, name);
+            return included && !excluded(name);
+        }
+
+        private boolean excluded(String name) {
+            return exclude.stream().anyMatch(prefix -> startsWith(name, prefix)) || within(excludeRanges, name);
+        }
+
+        private boolean within(List<int[]> ranges, String name) {
+            Integer position = positions.get(name);
+            return position != null && ranges.stream().anyMatch(range -> position >= range[0] && position <= range[1]);
         }
 
         private static boolean startsWith(String name, String prefix) {

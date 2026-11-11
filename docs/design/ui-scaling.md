@@ -277,9 +277,12 @@ Ende und zurück. Ebenso zieht sie die Leisten der gefüllten Bestenliste, der G
 Konfigurators und drückt dort Bild ab, Ende und Pos1; in der Bestenliste blättert sie durch alle Klassenfilter. Dazu
 kommen vier kurze Konfigurator-Fälle: Drohne in der Hand mit der Funke „Team-BlackSheep TBS Tango 2 Pro Joystick“
 (Tabs „Empfänger“ und „Übersicht“), Drohne mit Maus-Steuerung (Tab „Empfänger“), die Seite „Optionen“ des OSD-Tabs
-und der Tab „Welt-Regeln“ ohne Schreibrecht. Im Tab „Welt-Regeln“ (mit und ohne Schreibrecht) prüft jede Größe
-zusätzlich, dass direkt nach dem Öffnen die Überschrift „Zonen“ und mit Recht der Knopf „Neue Zone hier“ ohne Scrollen
-ganz zu sehen sind (`docs/design/zones.md` §4), sonst Befund `HIDDEN`. Drei weitere öffnen den Konfigurator mit Tastatur und stecken die Funke
+und der Tab „Welt-Regeln“ ohne Schreibrecht. Im Tab „Zonen“ prüft jede Größe zusätzlich, dass direkt nach dem Öffnen
+die Überschrift der Liste und mit Recht der Knopf „Neue Zone hier“ ohne Scrollen ganz zu sehen sind
+(`docs/design/zones.md` §4, `docs/zones-open.md` §3; bis zum Befund OWNP-2 im Tab „Welt-Regeln“), sonst Befund `HIDDEN`. In allen Tabs außer der Übersicht prüft
+jede Größe außerdem die Fußzeile: Der Statustext darf nur umbrechen und die Knöpfe dürfen nur unter ihm stehen, wenn neben den Knöpfen
+des Tabs (Speichern oder Schließen, Standardwerte oder Verwerfen) kein Platz ist, sonst Befund `HIDDEN` „Fußzeile des
+Konfigurators“; nur die Übersicht reserviert zusätzlich Platz für „Freecam starten“ und „Zur Welt-Regel“. Drei weitere öffnen den Konfigurator mit Tastatur und stecken die Funke
 erst danach an (ohne Drohne und mit Drohne die lange Funke, mit Drohne die „Radiomaster Boxer“; Tabs „Empfänger“,
 „Übersicht“ und „OSD“, geprüft 20 Ticks nach dem Anstecken) – die Kopfzeile muss sich dann neu aufteilen. Der Fall
 „Empfänger-Assistent Rückfragen“ löscht den Arm-Schalter und drückt „Fertig“ (Rückfrage statt der Schalterzeilen) und

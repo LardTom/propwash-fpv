@@ -59,6 +59,11 @@ public final class FrameClock {
         return (long) Math.floor((this.elapsedNanos(nanos) + this.phaseNanos) * this.fps / 1.0E9);
     }
 
+    public long nextSlotNanos(long nanos) {
+        long slot = Math.max(this.lastSlot + 1L, this.slotAt(nanos));
+        return slot * 1_000_000_000L / this.fps;
+    }
+
     public boolean due(long nanos) {
         return this.started && !this.paused() && this.slotAt(nanos) > this.lastSlot;
     }

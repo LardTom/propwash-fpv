@@ -38,14 +38,7 @@ public final class MountPoses {
         AccessoryAnchor tilted = type == null ? anchor
                 : new AccessoryAnchor(anchor.x(), anchor.y(), anchor.z(), anchor.tiltFor(type), anchor.lengthMm());
         double[] centerMm = type == null ? new double[]{anchor.x(), anchor.y(), anchor.z()} : anchor.centerOf(type);
-        double[] frontMm;
-        if (type == null) {
-            frontMm = new double[]{anchor.x(), anchor.y(), anchor.z()};
-        } else {
-            double[] min = type.boxMinMm();
-            double[] max = type.boxMaxMm();
-            frontMm = tilted.toFrame((min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0, min[2]);
-        }
+        double[] frontMm = type == null ? new double[]{anchor.x(), anchor.y(), anchor.z()} : tilted.toFrame(type.muzzleMm());
         Quaternionf q = new Quaternionf(orientation);
         Vec3 anchorWorld = toWorld(com, q, p, anchor.x(), anchor.y(), anchor.z());
         return new MountPose(anchorWorld, toWorld(com, q, p, centerMm[0], centerMm[1], centerMm[2]),

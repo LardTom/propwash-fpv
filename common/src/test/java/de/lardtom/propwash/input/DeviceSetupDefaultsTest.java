@@ -142,7 +142,7 @@ class DeviceSetupDefaultsTest {
         SwitchEvaluator evaluator = new SwitchEvaluator();
         boolean[] buttons = new boolean[0];
         float[] axes = {0.0F, 0.0F, -1.0F, 0.0F, -1.0F, -1.0F, -1.0F, -1.0F};
-        int bits = evaluator.evaluate(radio, axes, buttons);
+        long bits = evaluator.evaluate(radio, axes, buttons);
         for (SwitchFunction function : SwitchFunction.values()) {
             assertFalse(SwitchEvaluator.isSet(bits, function), function.name());
         }

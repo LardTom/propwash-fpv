@@ -167,7 +167,7 @@ public final class RaceScene {
                     s.at(0.0F).equip(PILOT, Cue.Slot.HAND, REMOTE);
                     s.at(0.0F).equip(PILOT, Cue.Slot.HEAD, SceneKit.GOGGLES_ANALOG);
                     s.at(0.0F).turn(PILOT, SceneKit.pilotYaw(PILOT_POS, START), 0.0F, 0.0F, 12.0F);
-                    s.at(4.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), START, 0.0F, Cue.Appear.POP, 10.0F);
+                    s.at(4.0F).spawn(DRONE, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), START, 180.0F, Cue.Appear.POP, 10.0F);
                     s.at(0.0F).camera(new ScenePos(-3.6F, 1.9F, 1.4F), 30.0F, 30.0F, 1.7F, 24.0F);
                     for (int i = 0; i < 6; i++) {
                         s.at(24.0F + i * 10.0F).light(GATES[0], true);
@@ -201,7 +201,7 @@ public final class RaceScene {
                 .step("lap", 120.0F, s -> {
                     ScenePos end = LAP.getLast();
                     s.at(0.0F).move(DRONE, 30.0F, Ease.OUT, end.add(0.0F, 0.1F, -0.8F));
-                    s.at(0.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 20.0F);
+                    s.at(0.0F).turn(DRONE, 180.0F, 0.0F, 0.0F, 20.0F);
                     s.at(0.0F).throttle(DRONE, 0.45F, 20.0F);
                     s.at(0.0F).camera(new ScenePos(-2.4F, 2.4F, -0.4F), 30.0F, 32.0F, 1.6F, 30.0F);
                     s.at(4.0F).callout("lap", onDrone, Cue.Side.RIGHT, 0.0F);
@@ -254,7 +254,7 @@ public final class RaceScene {
                             10.0F);
                     s.at(128.0F).callout("hanging", Anchor.at(HANGING_POS.add(0.0F, 3.0F - BEAM_HALF, 0.0F)), Cue.Side.RIGHT, 30.0F);
                     s.at(DIVE_START_TIME - 10.0F).equip(PILOT, Cue.Slot.HAND, REMOTE);
-                    s.at(DIVE_START_TIME - 10.0F).spawn(DIVER, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), DIVE_START, 0.0F, Cue.Appear.POP,
+                    s.at(DIVE_START_TIME - 10.0F).spawn(DIVER, new ActorSpec.Drone(BUILD, true, DRONE_SCALE), DIVE_START, 180.0F, Cue.Appear.POP,
                             8.0F);
                     s.at(DIVE_START_TIME - 6.0F).keys("flight_mode", 28.0F, KeyToken.mapping(SceneKit.KEY_FLIGHT_MODE));
                     s.at(DIVE_START_TIME - 4.0F).arm(DIVER, true);

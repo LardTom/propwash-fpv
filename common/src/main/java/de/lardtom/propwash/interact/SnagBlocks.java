@@ -1,16 +1,21 @@
 package de.lardtom.propwash.interact;
 
 import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.drone.CauldronContent;
+import de.lardtom.propwash.drone.DroneFluids;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.TripWireBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
@@ -18,6 +23,7 @@ public final class SnagBlocks implements SnagSampler.World {
     public static final TagKey<Block> WEB = TagKey.create(Registries.BLOCK, Constants.id("drone_snag_web"));
     public static final TagKey<Block> STRING = TagKey.create(Registries.BLOCK, Constants.id("drone_snag_string"));
     public static final TagKey<Block> FOLIAGE = TagKey.create(Registries.BLOCK, Constants.id("drone_snag_foliage"));
+    public static final TagKey<Block> POWDER_SNOW = TagKey.create(Registries.BLOCK, Constants.id("drone_snag_powder_snow"));
     public static final double STRING_HALF_WIDTH = 1.0 / 32.0;
     public static final double STRING_HEIGHT = 1.5 / 16.0;
 
@@ -33,6 +39,15 @@ public final class SnagBlocks implements SnagSampler.World {
         if (state.isAir()) {
             return null;
         }
+        SnagMaterial tagged = tagged(state);
+        if (tagged != null) {
+            return tagged;
+        }
+        CauldronContent content = DroneFluids.content(state);
+        return content == null ? null : content.snag();
+    }
+
+    private static @Nullable SnagMaterial tagged(BlockState state) {
         if (state.is(WEB)) {
             return SnagMaterial.WEB;
         }
@@ -42,7 +57,26 @@ public final class SnagBlocks implements SnagSampler.World {
         if (state.is(FOLIAGE)) {
             return SnagMaterial.FOLIAGE;
         }
+        if (state.is(POWDER_SNOW)) {
+            return SnagMaterial.POWDER_SNOW;
+        }
         return null;
+    }
+
+    public static VoxelShape shape(BlockGetter level, BlockPos pos, BlockState state) {
+        CauldronContent content = tagged(state) == null ? DroneFluids.content(state) : null;
+        if (content == null) {
+            return state.getShape(level, pos);
+        }
+        if (content.snag() == null) {
+            return Shapes.empty();
+        }
+        double wall = CauldronContent.WALL;
+        return Shapes.box(wall, CauldronContent.FLOOR, wall, 1.0 - wall, content.top(DroneFluids.fillLevel(state)), 1.0 - wall);
+    }
+
+    public static BlockState look(BlockState state) {
+        return tagged(state) == null && DroneFluids.content(state) == CauldronContent.POWDER_SNOW ? Blocks.POWDER_SNOW.defaultBlockState() : state;
     }
 
     public static @Nullable BlockState snagAt(Level level, BlockPos pos) {
@@ -92,7 +126,7 @@ public final class SnagBlocks implements SnagSampler.World {
         if (material == null) {
             return;
         }
-        VoxelShape shape = state.getShape(l, pos);
+        VoxelShape shape = shape(l, pos, state);
         if (shape.isEmpty()) {
             return;
         }

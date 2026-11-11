@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/takeoff",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:milestone",
+      "conditions": {
+        "milestone": "fpv_flight"
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "propwash:goggles_analog"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.fpv_flight.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.fpv_flight.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

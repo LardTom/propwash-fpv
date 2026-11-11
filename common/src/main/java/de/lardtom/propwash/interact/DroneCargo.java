@@ -18,9 +18,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.ClipContext;
@@ -36,6 +38,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -71,13 +74,52 @@ public final class DroneCargo {
         } else {
             hold.disarmedTicks = 0;
         }
-        if (!gripper || !drone.isArmed() || drone.pilot().isEmpty()) {
+        boolean armed = drone.isArmed();
+        if (!gripper || !armed) {
+            hold.closeGrab();
+        }
+        if (!GripperSpec.picksUp(gripper, armed, drone.pilot().isPresent(), hold.grabbing(level.getGameTime()))) {
             return;
         }
         if ((drone.tickCount + drone.getId()) % GripperSpec.PICKUP_INTERVAL_TICKS != 0) {
             return;
         }
         pickUp(level, drone, hold);
+    }
+
+    public static List<ItemStack> cargo(Entity entity) {
+        if (!(entity instanceof QuadcopterEntity drone) || drone.level().isClientSide()) {
+            return List.of();
+        }
+        return drone.cargoHold().stacks().stream().map(ItemStack::copy).toList();
+    }
+
+    public static boolean grab(Entity entity, ServerPlayer actor) {
+        Objects.requireNonNull(actor, "actor");
+        if (!(entity instanceof QuadcopterEntity drone) || drone.isRemoved() || !(drone.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread() || !CargoMass.hasGripper(drone.build()) || !drone.isArmed()) {
+            return false;
+        }
+        Hold hold = drone.cargoHold();
+        hold.openGrab(actor.getUUID(), level.getGameTime());
+        pickUp(level, drone, hold);
+        return true;
+    }
+
+    public static int releaseBy(Entity entity, ServerPlayer actor) {
+        Objects.requireNonNull(actor, "actor");
+        if (!(entity instanceof QuadcopterEntity drone) || drone.isRemoved() || !(drone.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread()) {
+            return 0;
+        }
+        Hold hold = drone.cargoHold();
+        hold.actor = actor.getUUID();
+        hold.closeGrab();
+        int count = hold.itemCount();
+        if (count > 0) {
+            release(drone, CargoReleaseReason.COMMAND);
+        }
+        return count;
     }
 
     public static AABB pickupBox(QuadcopterEntity drone) {
@@ -106,7 +148,8 @@ public final class DroneCargo {
     }
 
     private static double gramsEach(ItemStack stack, int depth) {
-        return ItemWeights.gramsEach(stack.getMaxStackSize(), stack.getItem() instanceof BlockItem, knownGrams(stack)) + contentsGrams(stack, depth);
+        return ItemWeights.gramsEach(stack.getMaxStackSize(), stack.getItem() instanceof BlockItem, stack.getItem() instanceof TridentItem, knownGrams(stack))
+                + contentsGrams(stack, depth);
     }
 
     static double contentsGrams(ItemStack stack, int depth) {
@@ -158,9 +201,10 @@ public final class DroneCargo {
         Set<UUID> present = new HashSet<>();
         List<ItemEntity> items = new ArrayList<>(nearby.size());
         UUID pilot = drone.pilot().orElse(null);
+        UUID actor = hold.grabbing(now) ? hold.actor : null;
         for (ItemEntity item : nearby) {
             present.add(item.getUUID());
-            if (!item.hasPickUpDelay() && GripperSpec.mayTake(((ItemEntityAccessor) item).propwash$target(), pilot)) {
+            if (!item.hasPickUpDelay() && GripperSpec.mayTake(((ItemEntityAccessor) item).propwash$target(), pilot, actor)) {
                 items.add(item);
             }
         }
@@ -196,6 +240,7 @@ public final class DroneCargo {
             last = taken;
         }
         if (picked > 0) {
+            hold.closeGrab();
             sync(drone);
             level.playSound(null, drone.getX(), drone.getY(), drone.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.NEUTRAL, 0.4F, 1.6F);
             notifyPilot(level, drone, Component.translatable(PREFIX + "picked", picked, last.getHoverName(),
@@ -244,6 +289,7 @@ public final class DroneCargo {
         }
         hold.stacks.clear();
         hold.disarmedTicks = 0;
+        hold.closeGrab();
         hold.droppedAt = reason == CargoReleaseReason.REMOVED ? null : drone.position();
         sync(drone);
         if (reason != CargoReleaseReason.REMOVED) {
@@ -289,7 +335,7 @@ public final class DroneCargo {
     }
 
     private static void notifyPilot(ServerLevel level, QuadcopterEntity drone, Component message, ChatFormatting color) {
-        Optional<UUID> pilot = drone.pilot();
+        Optional<UUID> pilot = drone.pilot().or(() -> Optional.ofNullable(drone.cargoHold().actor));
         if (pilot.isEmpty()) {
             return;
         }
@@ -311,6 +357,8 @@ public final class DroneCargo {
         private int disarmedTicks;
         private long fullNoticeTick = Long.MIN_VALUE;
         private @Nullable Vec3 droppedAt;
+        private @Nullable UUID actor;
+        private long grabUntil = Long.MIN_VALUE;
 
         public boolean isEmpty() {
             return this.stacks.isEmpty();
@@ -338,6 +386,23 @@ public final class DroneCargo {
 
         public boolean ignores(UUID item) {
             return this.released.containsKey(item);
+        }
+
+        public @Nullable UUID actor() {
+            return this.actor;
+        }
+
+        boolean grabbing(long now) {
+            return now < this.grabUntil;
+        }
+
+        void openGrab(UUID actor, long now) {
+            this.actor = actor;
+            this.grabUntil = now + GripperSpec.GRAB_TICKS;
+        }
+
+        void closeGrab() {
+            this.grabUntil = Long.MIN_VALUE;
         }
 
         List<CargoPlan.Load> loads(ItemStack offered) {

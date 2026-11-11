@@ -14,14 +14,17 @@ import de.lardtom.propwash.content.paint.PaintItems;
 import de.lardtom.propwash.core.CoreComponents;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomModelData;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.function.Consumer;
@@ -30,6 +33,7 @@ import static de.lardtom.propwash.drone.client.render.DroneVisualScale.MM_TO_UNI
 
 public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRenderer.Look> {
     public static final Identifier TYPE = Constants.id("drone_build");
+    public static final String BLUR = "blur";
     public static final DroneBuild REFERENCE = DroneBuild.FREESTYLE;
     public static final float MIN_FIT = 0.72F;
     public static final float MAX_FIT = 1.0F;
@@ -45,6 +49,7 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
     public static final int ICON_MIN_LUMA = 96;
     private static final int MAX_CACHED = 96;
     private static final Map<Look, Fitted> FITTED = new HashMap<>();
+    private static final Map<Look, Fitted> ICON_FITTED = new HashMap<>();
     private static final Map<Look, Fitted> WALL_FITTED = new HashMap<>();
     private static final Map<Look, Fitted> GROUND_FITTED = new HashMap<>();
     private static int generation = Integer.MIN_VALUE;
@@ -52,24 +57,33 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
     private static @Nullable Reference reference;
     private static boolean warned;
     static @Nullable Look lastSubmitted;
+    static @Nullable Fitted lastFitted;
     static boolean lastWall;
     static boolean lastGround;
+    static boolean lastIcon;
     static int submitted;
+    static final int[] blurredSubmits = new int[Mode.values().length];
 
     private final boolean wall;
     private final boolean ground;
+    private final boolean icon;
 
     public DroneItemRenderer(boolean wall) {
         this(wall, false);
     }
 
     public DroneItemRenderer(boolean wall, boolean ground) {
-        this.wall = wall;
-        this.ground = ground && !wall;
+        this(wall, ground, false);
     }
 
-    public record Look(DroneBuild build, PartWear wear, DronePaint paint, boolean battery) {
-        public static final Look DEFAULT = new Look(DroneBuild.FREESTYLE, PartWear.PRISTINE, DronePaint.DEFAULT, true);
+    public DroneItemRenderer(boolean wall, boolean ground, boolean icon) {
+        this.wall = wall;
+        this.ground = ground && !wall;
+        this.icon = icon && !wall && !this.ground;
+    }
+
+    public record Look(DroneBuild build, PartWear wear, DronePaint paint, boolean battery, boolean blur) {
+        public static final Look DEFAULT = new Look(DroneBuild.FREESTYLE, PartWear.PRISTINE, DronePaint.DEFAULT, true, false);
 
         public Look {
             build = build == null ? DroneBuild.FREESTYLE : build;
@@ -77,12 +91,21 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
             paint = paint == null ? DronePaint.DEFAULT : paint;
         }
 
+        public Look(DroneBuild build, PartWear wear, DronePaint paint, boolean battery) {
+            this(build, wear, paint, battery, false);
+        }
+
         public static Look of(ItemStack stack) {
             DroneBuild build = stack.getOrDefault(CoreComponents.DRONE_BUILD.get(), DroneBuild.FREESTYLE);
             PartWear wear = stack.getOrDefault(CoreComponents.PART_WEAR.get(), PartWear.PRISTINE);
             boolean battery = stack.getOrDefault(CoreComponents.BATTERY_INSTALLED.get(), Boolean.TRUE);
-            return new Look(build, wear, PaintItems.paint(stack), battery);
+            CustomModelData data = stack.get(DataComponents.CUSTOM_MODEL_DATA);
+            return new Look(build, wear, PaintItems.paint(stack), battery, blurRequested(data == null ? null : data.strings()));
         }
+    }
+
+    public static boolean blurRequested(@Nullable List<String> strings) {
+        return strings != null && strings.contains(BLUR);
     }
 
     record Reference(float x, float bottom, float z, float top, float radius, float footprint, float gui) {
@@ -91,7 +114,7 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
     record Fitted(DroneRenderState state, float scale, float fit) {
     }
 
-    private enum Mode { SLOT, WALL, GROUND }
+    enum Mode { SLOT, ICON, WALL, GROUND }
 
     public boolean wall() {
         return this.wall;
@@ -101,12 +124,20 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
         return this.ground;
     }
 
+    public boolean icon() {
+        return this.icon;
+    }
+
+    Mode mode() {
+        return this.wall ? Mode.WALL : this.ground ? Mode.GROUND : this.icon ? Mode.ICON : Mode.SLOT;
+    }
+
     @Override
     public void submit(@Nullable Look argument, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int lightCoords,
                        int overlayCoords, boolean hasFoil, int outlineColor) {
         Look look = argument != null ? argument : Look.DEFAULT;
         try {
-            Fitted fitted = this.wall ? wallFitted(look) : this.ground ? groundFitted(look) : fitted(look);
+            Fitted fitted = this.wall ? wallFitted(look) : this.ground ? groundFitted(look) : this.icon ? iconFitted(look) : fitted(look);
             DroneRenderState state = fitted.state();
             state.lightCoords = lightCoords;
             state.outlineColor = outlineColor;
@@ -120,9 +151,14 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
             DroneVisuals.submit(state, poseStack, submitNodeCollector);
             poseStack.popPose();
             lastSubmitted = look;
+            lastFitted = fitted;
             lastWall = this.wall;
             lastGround = this.ground;
+            lastIcon = this.icon;
             submitted++;
+            if (look.blur()) {
+                blurredSubmits[mode().ordinal()]++;
+            }
         } catch (RuntimeException e) {
             if (!warned) {
                 warned = true;
@@ -212,6 +248,10 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
         return cached(FITTED, look, Mode.SLOT);
     }
 
+    static synchronized Fitted iconFitted(Look look) {
+        return cached(ICON_FITTED, look, Mode.ICON);
+    }
+
     static synchronized Fitted wallFitted(Look look) {
         return cached(WALL_FITTED, look, Mode.WALL);
     }
@@ -226,7 +266,8 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
         Fitted fitted = cache.get(look);
         if (fitted == null) {
             fitted = switch (mode) {
-                case SLOT -> fit(look, res);
+                case SLOT -> fit(look, res, false);
+                case ICON -> fit(look, res, true);
                 case WALL -> fitWall(look, res);
                 case GROUND -> fitGround(look, res);
             };
@@ -261,6 +302,7 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
             config = current;
             reference = null;
             FITTED.clear();
+            ICON_FITTED.clear();
             WALL_FITTED.clear();
             GROUND_FITTED.clear();
         }
@@ -268,7 +310,7 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
 
     private static DroneRenderState preview(Look look) {
         DroneRenderState state = new DroneRenderState();
-        DroneVisuals.fillPreview(state, look.build(), look.wear(), look.paint());
+        DroneVisuals.fillPreview(state, look.build(), look.wear(), look.paint(), look.blur());
         state.batteryMissing = !look.battery();
         state.orientation.identity();
         state.originY = 0.0F;
@@ -277,7 +319,7 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
         return state;
     }
 
-    private static Fitted fit(Look look, DroneRenderResources res) {
+    private static Fitted fit(Look look, DroneRenderResources res, boolean icon) {
         Reference ref = reference();
         DroneRenderState state = preview(look);
         VisualHull hull = res.assembly(look.build()).hull();
@@ -289,7 +331,7 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
         if (gui * scale > ref.gui() && gui > 0.0F) {
             scale = ref.gui() / gui;
         }
-        if (scale < ICON_SHAPES_BELOW) {
+        if (icon && scale < ICON_SHAPES_BELOW) {
             readableShapes(state, look.build(), res);
         }
         state.pivot.set(center.x, hull.min().y(), center.z);
@@ -324,7 +366,7 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
 
     static void readableShapes(DroneRenderState state, DroneBuild build, DroneRenderResources res) {
         DroneLayout layout = res.layout(build.frame());
-        if (state.frame.useItem || !state.frame.solid.isEmpty()) {
+        if (!state.frame.useItem && !state.frame.solid.isEmpty()) {
             iconSlot(state.frame, FallbackShapes.frameIcon(build.frame(), layout));
             paintIcon(state.frame, FallbackShapes.frameIconColor(build.frame()), state.paint, PaintChannel.FRAME, 0);
             if (build.frame().ducted && FallbackShapes.ductColor(build.frame()) != FallbackShapes.frameIconColor(build.frame())) {
@@ -377,15 +419,20 @@ public final class DroneItemRenderer implements SpecialModelRenderer<DroneItemRe
         slot.translucent = Shape.EMPTY;
     }
 
-    public record Unbaked(boolean wall, boolean ground) implements SpecialModelRenderer.Unbaked<Look> {
+    public record Unbaked(boolean wall, boolean ground, boolean icon) implements SpecialModelRenderer.Unbaked<Look> {
         public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.BOOL.optionalFieldOf("wall", false).forGetter(Unbaked::wall),
-                Codec.BOOL.optionalFieldOf("ground", false).forGetter(Unbaked::ground)
+                Codec.BOOL.optionalFieldOf("ground", false).forGetter(Unbaked::ground),
+                Codec.BOOL.optionalFieldOf("icon", false).forGetter(Unbaked::icon)
         ).apply(i, Unbaked::new));
+
+        public Unbaked(boolean wall, boolean ground) {
+            this(wall, ground, false);
+        }
 
         @Override
         public SpecialModelRenderer<Look> bake(SpecialModelRenderer.BakingContext context) {
-            return new DroneItemRenderer(this.wall, this.ground);
+            return new DroneItemRenderer(this.wall, this.ground, this.icon);
         }
 
         @Override

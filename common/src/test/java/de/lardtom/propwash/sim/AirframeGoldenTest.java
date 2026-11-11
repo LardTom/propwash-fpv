@@ -11,11 +11,8 @@ import de.lardtom.propwash.build.StackType;
 import de.lardtom.propwash.build.VideoType;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -25,9 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class AirframeGoldenTest {
     private static final String FILE = "de/lardtom/propwash/sim/airframe_golden.txt";
@@ -123,44 +117,8 @@ class AirframeGoldenTest {
         }
     }
 
-    private static Path file() {
-        for (Path candidate : List.of(Path.of("common/src/test/resources", FILE), Path.of("src/test/resources", FILE))) {
-            if (Files.isDirectory(candidate.getParent())) {
-                return candidate;
-            }
-        }
-        return Path.of("common/src/test/resources", FILE);
-    }
-
     @Test
     void builtinAirframesStayBitIdentical() throws Exception {
-        Map<String, String> actual = groups();
-        Path path = file();
-        if (!Files.exists(path)) {
-            Files.createDirectories(path.getParent());
-            StringBuilder text = new StringBuilder();
-            actual.forEach((key, hash) -> text.append(key).append(' ').append(hash).append('\n'));
-            Files.writeString(path, text.toString(), StandardCharsets.UTF_8);
-            fail("Golden-Datei fehlte und wurde neu geschrieben: " + path + " — nur einchecken, wenn die Änderung gewollt ist");
-        }
-        Map<String, String> expected = new LinkedHashMap<>();
-        try {
-            for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
-                if (!line.isBlank()) {
-                    int space = line.lastIndexOf(' ');
-                    expected.put(line.substring(0, space), line.substring(space + 1));
-                }
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
-        List<String> changed = new ArrayList<>();
-        for (Map.Entry<String, String> entry : expected.entrySet()) {
-            if (!entry.getValue().equals(actual.get(entry.getKey()))) {
-                changed.add(entry.getKey());
-            }
-        }
-        assertEquals(List.of(), changed, "Eingebaute Drohnen fliegen anders als in 0.3.2");
-        assertEquals(expected.keySet(), actual.keySet());
+        GoldenFile.verify(FILE, groups(), "Eingebaute Drohnen fliegen anders als in 0.3.2");
     }
 }

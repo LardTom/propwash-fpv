@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,14 +36,15 @@ class LeaderboardTest {
     }
 
     @Test
-    void rankingIsOrderedAndOverallViewKeepsOneEntryPerPilot() {
+    void rankingIsOrderedAndOverallViewKeepsOneEntryPerPilotAndClass() {
         Leaderboard board = new Leaderboard();
         board.submit(ANNA, "Anna", "race_5", 20 * S, 10L);
         board.submit(BEN, "Ben", "race_5", 20 * S, 5L);
         board.submit(BEN, "Ben", "whoop_65", 25 * S, 6L);
         board.submit(CARL, "Carl", "whoop_65", 24 * S, 7L);
         List<Leaderboard.Entry> overall = board.top(null, 10);
-        assertEquals(List.of("Ben", "Anna", "Carl"), overall.stream().map(Leaderboard.Entry::name).toList());
+        assertEquals(List.of("Ben", "Anna", "Carl", "Ben"), overall.stream().map(Leaderboard.Entry::name).toList());
+        assertEquals(List.of("race_5", "race_5", "whoop_65", "whoop_65"), overall.stream().map(Leaderboard.Entry::frame).toList());
         assertEquals(List.of("Carl", "Ben"), board.top("whoop_65", 10).stream().map(Leaderboard.Entry::name).toList());
         assertEquals(1, board.rank(BEN, null));
         assertEquals(2, board.rank(ANNA, null));
@@ -55,30 +57,38 @@ class LeaderboardTest {
     }
 
     @Test
-    void viewContainsTopTenPerClassAndTheViewer() {
+    void rankingListsEveryPilotWithClassAndOverallPlace() {
         Leaderboard board = new Leaderboard();
         for (int i = 0; i < 15; i++) {
             UUID player = new UUID(1L, i);
             board.submit(player, "P" + i, "race_5", (30 + i) * S, i);
         }
         UUID slow = new UUID(1L, 14);
-        List<Leaderboard.Entry> view = board.view(slow, Leaderboard.TOP);
-        assertEquals(11, view.size());
-        assertTrue(view.stream().anyMatch(e -> e.player().equals(slow)));
+        board.submit(slow, "P14", "whoop_65", 60 * S, 99L);
+        List<Leaderboard.Ranked> ranked = board.ranked(false);
+        assertEquals(16, ranked.size());
         assertEquals(15, board.rank(slow, null));
-        assertFalse(board.view(null, Leaderboard.TOP).stream().anyMatch(e -> e.player().equals(slow)));
+        Leaderboard.Ranked best = ranked.stream().filter(r -> r.entry().player().equals(slow) && r.entry().frame().equals("race_5")).findFirst()
+                .orElseThrow();
+        Leaderboard.Ranked other = ranked.stream().filter(r -> r.entry().frame().equals("whoop_65")).findFirst().orElseThrow();
+        assertEquals(15, best.classRank());
+        assertEquals(15, best.overallRank());
+        assertEquals(1, other.classRank());
+        assertEquals(16, other.overallRank());
+        assertEquals(IntStream.rangeClosed(1, 16).boxed().toList(), ranked.stream().map(Leaderboard.Ranked::overallRank).toList());
     }
 
     @Test
-    void classesAreTrimmed() {
+    void classesKeepEveryPilot() {
         Leaderboard board = new Leaderboard();
-        for (int i = 0; i < Leaderboard.MAX_PER_CLASS + 10; i++) {
+        for (int i = 0; i < 60; i++) {
             board.submit(new UUID(2L, i), "P" + i, "race_5", (100 - i) * S, i);
         }
         board.submit(ANNA, "Anna", "whoop_65", 500 * S, 0L);
-        assertEquals(Leaderboard.MAX_PER_CLASS, board.top("race_5", Integer.MAX_VALUE).size());
+        assertEquals(60, board.top("race_5", Integer.MAX_VALUE).size());
         assertEquals(1, board.top("whoop_65", Integer.MAX_VALUE).size());
         assertEquals(41 * S, board.top("race_5", 1).getFirst().nanos());
+        assertEquals(100 * S, board.top("race_5", Integer.MAX_VALUE).getLast().nanos());
     }
 
     @Test

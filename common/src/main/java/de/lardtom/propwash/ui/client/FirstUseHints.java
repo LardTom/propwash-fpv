@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public final class FirstUseHints {
     public static final String NAME = "hints";
+    public static final String FREECAM_INTRO = "freecam_intro";
     public static final JsonConfig<HintMemory.Seen> CONFIG = JsonConfig.create(NAME, HintMemory.Seen.class, HintMemory.Seen::new,
             HintMemory::sanitize);
 

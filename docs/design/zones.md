@@ -29,7 +29,10 @@ sonst könnte die Liste das Sync-Paket sprengen). Zonen gehören zur Welt (Weltd
 - **Je Einstellung die höchste Priorität:** Für jede Regel gilt die Zone mit der höchsten Priorität, die den Punkt
   enthält und die Regel setzt; bei gleicher Priorität die neuere (höhere Nummer). Setzt keine Zone die Regel, gilt
   die Welt-Regel. So kann ein Rennkurs als große Zone „Akku unendlich“ setzen und eine kleine Passage darin mit höherer
-  Priorität nur die Schwerkraft auf 0 % – die Passage erbt den Akku vom Kurs.
+  Priorität nur die Schwerkraft auf 0 % – die Passage erbt den Akku vom Kurs. Seit 0.6.0 (Befund PATTY-1) setzt eine
+  Zone eine Regel mit eigenem Wert oder mit „Weltwert erzwingen“; „wie darunter“ (nicht gesetzt) erbt von der Zone
+  darunter oder der Welt. So hebt eine Passage mit „Weltwert erzwingen“ die Schwerelosigkeit des Kurses auf
+  (`docs/zones-open.md` §9.1).
 - **Rand:** Ein Punkt auf dem Rand zählt als drinnen. Maßgeblich ist der Schwerpunkt der Drohne (Position der
   Entity), am Client wie am Server.
 - **Übergang:** Schwerkraft und Wind gleiten über die Übergangszeit der Zone (lineares Gewicht je Zone, mehrere Zonen
@@ -64,15 +67,15 @@ die Nummer der Zone; der Text sucht den Namen (Server: Weltdaten, Client: synchr
 
 ## 4. Bedienung
 
-- **Tab „Welt-Regeln“**, Abschnitt „Zonen“ oben direkt unter den Voreinstellungen und vor den Regel-Gruppen (ohne
-  Scrollen sichtbar, auch bei größter GUI-Skala und in der kleinsten GUI-Fläche 320 × 240, etwa Fenster 640 × 480 mit
-  GUI-Skala 2; vorher stand er unter rund 30 Regeln ganz unten und wurde im Spieltest nicht gefunden): „Neue Zone hier“
-  (mit Recht) rechts in der Zeile der Überschrift, deren Trennlinie davor endet – so braucht der Knopf keine eigene
-  Zeile, und Überschrift und Knopf passen auch auf Deutsch in 320 × 240 (die Ansicht endet immer an einem Scroll-Stopp;
-  der Abschnitt setzt Stopps an der Überschrift, vor und nach jeder Zone und nach dem Hinweis ohne Zonen). Darunter alle
-  Zonen der Dimension mit Farbe, Name, Art (rennfrei / zählt als Flughilfe / Physik wie Welt), Form, Größe, Lage,
-  Priorität und Werten, Tooltip mit allen Angaben, „Bearbeiten“ je Zone (mit Recht), darunter die Erklärung; ohne Recht nur lesbar. Die Einstellungssuche
-  findet „Neue Zone hier“ mit „Zone“ und „Zonen“ und jede Zone über ihren Namen („Zone „…“ bearbeiten“).
+- **Tab „Zonen“** im K-Menü (seit 0.6.0, Owner-Playtest 23.10., Befund OWNP-2; vorher Abschnitt „Zonen“ oben im Tab
+  „Welt-Regeln“, davor ganz unten unter rund 30 Regeln): oben ein Hinweis je Recht, darunter die Überschrift („Alle
+  Zonen“ für Operatoren, „Deine Zonen“ für Spieler) mit „Neue Zone hier“ rechts in derselben Zeile (wer Zonen anlegen
+  darf), dann die Zonen der Dimension mit Farbe, Name, Art (rennfrei / zählt als Flughilfe / Physik wie Welt), Form,
+  Größe, Lage, Priorität und Werten, beim Operator mit Besitzer, je Zone die Knöpfe „Zeigen“, „Hinspringen“ (wer `/tp`
+  darf), „Bearbeiten“ und „Löschen“, darunter die Erklärung. Spieler sehen nur ihre eigenen Zonen. Überschrift und Knopf
+  stehen ohne Scrollen im Bild, auch in 320 × 240 auf Deutsch. Die Einstellungssuche findet „Neue Zone hier“ mit „Zone“
+  und „Zonen“ und jede gelistete Zone über ihren Namen („Zone „…“ bearbeiten“). Einzelheiten: `docs/zones-open.md` §3.
+  Im Tab „Welt-Regeln“ bleibt je Regel nur das Häkchen „Zonen“ (darf von Zonen geändert werden).
 - **Editor wie „Gate anpassen“:** Panel links, die Zone als grüner Entwurf in der Welt, die alte Form ausgeblendet.
   Mausrad ändert den Wert der gewählten Zeile, Umschalt + Mausrad wählt die Zeile, Strg fein, Pfeiltasten gehen auch,
   Entf/Rücktaste setzt eine Zeile zurück (Werte zurück auf „Welt“), Enter oder Rechtsklick übernimmt, Esc bricht ab.
@@ -81,7 +84,9 @@ die Nummer der Zone; der Text sucht den Namen (Server: Weltdaten, Client: synchr
   „Löschen“ (zweimal klicken). Laufen geht weiter. Schritte: Lage 1 Block (Strg ½), Größe 2 Blöcke – ein Block je
   Seite, die Mitte bleibt – (Strg 1), Prozentwerte 10 (Strg die Schrittweite der Regel), Schalter Welt → an → aus.
   Neue Zonen: 16 × 8 × 16 um den Spieler, Name „Zone n“. Der Client prüft vor dem Senden (Name frei, Größe), der
-  Server noch einmal.
+  Server noch einmal. Seit 0.6.0 (Befund PATTY-1) scrollt mit Mauszeiger das Mausrad über dem Menü die Liste (rechts ein
+  Scrollbalken), und Entf bzw. Rechtsklick wechselt bei Regeln zwischen „wie darunter“ und „Weltwert erzwingen“
+  (`docs/zones-open.md` §9.1 und §9.2).
 - **Befehle** `/propwash zone`: `list` und `info <name>` für alle; mit Recht `create <name> box <von> <bis>`,
   `create <name> cylinder <mitte> <radius> <höhe>`, `set <name> <regel> <wert>`, `reset <name> <regel>`,
   `priority`, `racelegal`, `transition <sekunden>`, `rename`, `move <name> <von> <bis>`, `delete`. Namen mit
@@ -95,12 +100,16 @@ die Nummer der Zone; der Text sucht den Namen (Server: Weltdaten, Client: synchr
   Kanten, Zylinder: zwei Kreise und acht Stäbe) bis 160 Blöcke, eine kaum sichtbare Fläche innerhalb von 24 Blöcken
   und ein Blockraster auf der nahen Wand in einem Kreis von 7 Blöcken um den Betrachter, das mit dem Abstand zur Wand
   (bis 14 Blöcke) ausblendet. Farben: rennfrei türkis, Flughilfe bernstein, ohne Physik-Änderung grau, Entwurf grün.
-  Mit ausgeblendetem HUD (F1) unsichtbar.
+  Mit ausgeblendetem HUD (F1) unsichtbar. Seit 0.6.0 (Befunde PATTY-1 und FB1-8) nur, solange man den Zonen-Markierer
+  oder das Kurs-Werkzeug hält oder eine Drohne fliegt, FPV und Sichtflug (Einstellung „Zonen anzeigen: Nur mit Werkzeug /
+  Mit Werkzeug oder im Flug / Immer“, Standard „Mit Werkzeug oder im Flug“), überlappende Zonen nur mit Kanten, die Zone
+  der Kamera hervorgehoben (`docs/zones-open.md` §9.3).
 - **Hinweis beim Ein- und Ausfliegen** (`ZoneHud`): im FPV als OSD-Text ab Zeile 5 („ZONE ÜBUNGSPLATZ“, darunter Werte
   und „ZÄHLT ALS FLUGHILFE“/„RENNFREI“), im Sichtflug als Hinweis-Kasten im Propwash-Stil; 3,5 s, blendet aus. Lange
   Zeilen brechen um (im FPV innerhalb des OSD-Rasters ohne die äußeren Spalten, im Sichtflug innerhalb des Fensters),
   damit bei vielen Werten nichts über den Rand läuft und die Art der Zone immer zu lesen ist.
-  Beim Verlassen „Zone … verlassen – Welt-Regeln gelten wieder“, beim Wechsel in eine andere Zone deren Name.
+  Beim Verlassen „Zone … verlassen – Welt-Regeln gelten wieder“, beim Wechsel in eine andere Zone deren Name. Seit
+  0.6.0 nennt der Hinweis je Wert die Zone, aus der er kommt („aus „Kurs“: …“, erzwungene Weltwerte mit „(Welt)“).
 
 ## 6. Technik
 
@@ -113,7 +122,7 @@ die Nummer der Zone; der Text sucht den Namen (Server: Weltdaten, Client: synchr
 | `zone.ZoneData` | Weltdaten (`SavedData`, server-weit, Zonen je Dimension) |
 | `zone.ZoneServer`, `ZoneCommands`, `ZoneModule` | Sync, Änderungen mit Rechteprüfung, Befehle |
 | `zone.ZonesS2C`, `ZoneEditC2S`, `ZoneWire` | Netz: `propwash:zones` (Liste der Dimension und Recht), `propwash:zone_edit` (Speichern/Löschen) |
-| `zone.client.*` | Liste am Client, Rand, Hinweis, Editor (HUD, Fenster), Abschnitt im Tab |
+| `zone.client.*` | Liste am Client, Rand, Hinweis, Editor (HUD, Fenster), Tab „Zonen“ (`ZonesTab`, `ZoneSection`, `ZoneFocus`) |
 | `mixin.zone.client` | Mausrad, Tasten und Benutzen/Angreifen während des Editors (wie beim Gate-Editor) |
 | `drone.client.PilotSession` | rechnet je Bild `ZoneField` an der Drohne, setzt die Sim-Regeln bei Änderung |
 | `rescue.ServerReturnFlight` | autonomer Heimflug rechnet mit denselben Zonen je Tick |
@@ -163,7 +172,7 @@ Sim Bit für Bit wie bisher (JUnit `ZoneFieldTest`, Bewegungs-Goldens und Kalibr
   Sim, sauber/Flughilfe mit Zonennamen und die Rückkehr zur Welt-Physik. Erwartung:
   `joined|zones_synced=2|zones_editable=false|zones_guest_edit=denied|zone_gravity=0|zone_race_legal_assist=clean|zone_assist=named|zone_left=world|zone_after_assist=clean`.
 - Bildschirmfotos (Fabric, englisch und deutsch): `zones_border`, `zones_editor_hud`, `zones_editor_cursor`,
-  `configurator_world_rules_zones`, `zones_fpv_notice`.
+  `configurator_zones` (bis 0.5.2 `configurator_world_rules_zones`), `zones_fpv_notice`.
 
 Stand 14.10.2026: JUnit vollständig grün (2849 Tests, davon 31 für Zonen und Akku), Selbsttest `zonen:` auf Fabric und
 NeoForge grün, Bildschirmfotos englisch und deutsch, Server-Rauchtest Fabric und NeoForge grün, Beitrittstest mit

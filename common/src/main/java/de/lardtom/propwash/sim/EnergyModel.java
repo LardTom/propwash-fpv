@@ -30,8 +30,6 @@ public final class EnergyModel {
     static final double BLADE_INTERFERENCE_MM = 45.0;
     static final double BLADE_INTERFERENCE_FADE_MM = 10.0;
     static final double WHOOP_SMALL_PROP_M = 0.035;
-    static final double AIRFLOW_COOLING = 0.6;
-    static final double AIRFLOW_REFERENCE_MS = 10.0;
 
     private EnergyModel() {
     }
@@ -286,14 +284,17 @@ public final class EnergyModel {
         double motion;
         double calm;
         double heat;
+        double escHeat;
         private double idlePack = Double.NaN;
         private double idleMotion;
         private double idleHeat;
+        private double idleEscHeat;
 
         private void add(double weight, double packCurrent) {
             this.pack += weight * packCurrent;
             this.motion += weight * this.scratch.batteryCurrent;
             this.heat += weight * motorHeat(this.p, this.scratch);
+            this.escHeat += weight * Thermal.escLoss(this.p, this.scratch.phaseCurrent, this.scratch.busVoltage);
         }
 
         void evaluate(Profile profile, double soc) {
@@ -305,17 +306,20 @@ public final class EnergyModel {
             double motion = this.motion;
             double calm = this.calm;
             double heat = this.heat;
+            double escHeat = this.escHeat;
             this.evaluate(Profile.values()[profile.ordinal() - 1], soc);
             this.pack = Math.max(pack, this.pack);
             this.motion = Math.max(motion, this.motion);
             this.calm = Math.max(calm, this.calm);
             this.heat = Math.max(heat, this.heat);
+            this.escHeat = Math.max(escHeat, this.escHeat);
         }
 
         void single(Profile profile, double soc) {
             this.pack = 0.0;
             this.motion = 0.0;
             this.heat = 0.0;
+            this.escHeat = 0.0;
             switch (profile) {
                 case HOVER -> {
                     this.add(1.0, this.hover(soc));
@@ -339,10 +343,12 @@ public final class EnergyModel {
                             this.idlePack = this.idle(IDLE_SOC);
                             this.idleMotion = this.scratch.batteryCurrent;
                             this.idleHeat = motorHeat(this.p, this.scratch);
+                            this.idleEscHeat = Thermal.escLoss(this.p, this.scratch.phaseCurrent, this.scratch.busVoltage);
                         }
                         this.pack += m.idle() * this.idlePack;
                         this.motion += m.idle() * this.idleMotion;
                         this.heat += m.idle() * this.idleHeat;
+                        this.escHeat += m.idle() * this.idleEscHeat;
                     }
                 }
             }
@@ -358,13 +364,12 @@ public final class EnergyModel {
                 }
             };
             double speed = profile == Profile.HOVER ? 0.0 : this.cruiseSpeed;
-            double airflow = 1.0 + AIRFLOW_COOLING * StrictMath.sqrt(speed / AIRFLOW_REFERENCE_MS);
-            return (this.p.motorCoolingBase + this.p.motorCoolingPerOmega * omega) * this.p.motorCoolingScale * airflow;
+            return Thermal.motorCooling(this.p, omega) * Thermal.airflow(speed);
         }
     }
 
     static double motorHeat(AirframeSpec p, OperatingPoints.Point pt) {
-        return pt.phaseCurrent * pt.phaseCurrent * p.motorResistance + p.kt * p.idleCurrent * pt.omega;
+        return Thermal.motorLoss(p, pt.phaseCurrent, pt.omega, p.motorResistance);
     }
 
     record Flight(double minutes, double averageCurrent, double landingCellVoltage, double motorTempC) {
@@ -419,7 +424,7 @@ public final class EnergyModel {
         return SimMath.clamp01((start - limit) / Math.max(start - end, 1e-9));
     }
 
-    record Heat(double minute, double sustained) {
+    record Heat(double minute, double sustained, double escSustained) {
     }
 
     static Heat fullThrottleMotorTemp(AirframeSpec p, double ambient, double windowSeconds) {
@@ -427,6 +432,9 @@ public final class EnergyModel {
         double capacity = p.capacityMah;
         double temp = ambient;
         double max = ambient;
+        double esc = ambient;
+        double escMax = ambient;
+        double escC = Thermal.escHeatCapacity(p);
         double minute = Double.NaN;
         double seconds = 0.0;
         double step = capacity / HEAT_STEPS;
@@ -436,19 +444,23 @@ public final class EnergyModel {
             double current = Math.max(packCurrent(p, pt), 1e-3);
             double dt = step * 3.6 / current;
             double power = motorHeat(p, pt);
-            double g = (p.motorCoolingBase + p.motorCoolingPerOmega * pt.omega) * p.motorCoolingScale;
+            double g = Thermal.motorCooling(p, pt.omega);
             double inf = ambient + power / g;
             if (Double.isNaN(minute) && seconds + dt >= windowSeconds) {
                 double partial = inf + (temp - inf) * StrictMath.exp(-(windowSeconds - seconds) * g / p.motorHeatCapacity);
                 minute = Math.max(max, partial);
             }
             temp = inf + (temp - inf) * StrictMath.exp(-dt * g / p.motorHeatCapacity);
-            if (!Double.isFinite(temp)) {
-                return new Heat(Double.NaN, Double.NaN);
+            double ge = Thermal.escCooling(p, pt.omega);
+            double infE = ambient + Thermal.escLoss(p, pt.phaseCurrent, pt.busVoltage) / ge;
+            esc = infE + (esc - infE) * StrictMath.exp(-dt * ge / escC);
+            if (!Double.isFinite(temp + esc)) {
+                return new Heat(Double.NaN, Double.NaN, Double.NaN);
             }
             max = Math.max(max, temp);
+            escMax = Math.max(escMax, esc);
             seconds += dt;
         }
-        return new Heat(Double.isNaN(minute) ? max : minute, max);
+        return new Heat(Double.isNaN(minute) ? max : minute, max, escMax);
     }
 }

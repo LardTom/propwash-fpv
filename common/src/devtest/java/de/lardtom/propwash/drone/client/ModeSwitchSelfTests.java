@@ -606,7 +606,7 @@ final class ModeSwitchSelfTests {
             RadioState radio = RadioState.INSTANCE;
             PilotSession session = PilotSession.INSTANCE;
             Minecraft mc = Minecraft.getInstance();
-            return "Quelle " + radio.source() + " " + radio.deviceGuid() + ", Schalter " + Integer.toBinaryString(radio.activeSwitches())
+            return "Quelle " + radio.source() + " " + radio.deviceGuid() + ", Schalter " + Long.toBinaryString(radio.activeSwitches())
                     + ", Sitzung " + session.isActive() + ", Modus " + session.flightMode() + " (" + session.flightModeSource() + ")"
                     + ", Bildschirm " + (mc.gui.screen() == null ? "keiner" : mc.gui.screen().getClass().getSimpleName()) + ", pausiert " + mc.isPaused();
         }

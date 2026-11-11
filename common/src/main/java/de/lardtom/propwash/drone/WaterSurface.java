@@ -21,9 +21,16 @@ public final class WaterSurface {
             return Double.NEGATIVE_INFINITY;
         }
         if (!water(level.getFluidState(pos))) {
+            double cauldron = DroneFluids.cauldronWaterSurface(level.getBlockState(pos), pos, x, y, z);
+            if (cauldron > Double.NEGATIVE_INFINITY) {
+                return cauldron;
+            }
             BlockPos below = pos.below();
             FluidState under = level.getFluidState(below);
-            return water(under) ? below.getY() + under.getHeight(level, below) - y : Double.NEGATIVE_INFINITY;
+            if (water(under)) {
+                return below.getY() + under.getHeight(level, below) - y;
+            }
+            return DroneFluids.cauldronWaterSurface(level.getBlockState(below), below, x, y, z);
         }
         BlockPos.MutableBlockPos cursor = pos.mutable();
         for (int i = 0; i < MAX_SCAN; i++) {

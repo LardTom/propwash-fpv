@@ -26,7 +26,7 @@ public final class FlightModeSelector {
         return this.lastSwitch;
     }
 
-    public static @Nullable StabMode fromSwitches(int active, int readable) {
+    public static @Nullable StabMode fromSwitches(long active, long readable) {
         if (!SwitchEvaluator.isSet(readable, SwitchFunction.ANGLE) && !SwitchEvaluator.isSet(readable, SwitchFunction.HORIZON)) {
             return null;
         }
@@ -44,7 +44,7 @@ public final class FlightModeSelector {
         };
     }
 
-    public boolean observe(boolean device, int active, int readable) {
+    public boolean observe(boolean device, long active, long readable) {
         if (!device) {
             return false;
         }
@@ -59,7 +59,7 @@ public final class FlightModeSelector {
         return this.source == Source.SWITCH && this.set(StabMode.ACRO, Source.DEFAULT);
     }
 
-    public StabMode preview(boolean device, int active, int readable) {
+    public StabMode preview(boolean device, long active, long readable) {
         if (!device) {
             return this.mode;
         }
@@ -87,7 +87,7 @@ public final class FlightModeSelector {
         this.lastSwitch = null;
     }
 
-    public boolean keyOverridesSwitch(boolean device, int active, int readable) {
+    public boolean keyOverridesSwitch(boolean device, long active, long readable) {
         StabMode fromSwitches = device ? fromSwitches(active, readable) : null;
         return this.source == Source.KEY && fromSwitches != null && fromSwitches == this.lastSwitch && fromSwitches != this.mode;
     }

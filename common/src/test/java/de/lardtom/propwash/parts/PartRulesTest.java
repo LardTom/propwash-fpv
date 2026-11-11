@@ -106,7 +106,7 @@ class PartRulesTest {
         }
         assertEquals(List.of("MOTOR_MOUNT", "PROP_TOO_LARGE", "STACK_MOUNT", "MOTOR_OVERVOLTAGE", "MOTOR_UNDERVOLTAGE", "STACK_VOLTAGE",
                 "ESC_UNDERSIZED", "BATTERY_WEAK", "BATTERY_FRAME", "BATTERY_UNDERSIZED", "ACCESSORY_MOUNT", "MISSING_PART", "PROP_TOO_SMALL",
-                "PROP_MOUNT"), names);
+                "PROP_MOUNT", "ACCESSORY_FRAME"), names);
     }
 
     @Test

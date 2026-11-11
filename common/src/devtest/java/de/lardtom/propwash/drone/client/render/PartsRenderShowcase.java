@@ -16,6 +16,8 @@ import de.lardtom.propwash.content.ContentIds;
 import de.lardtom.propwash.content.ContentTab;
 import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.core.FlightTune;
+import de.lardtom.propwash.creative.CreativeParam;
+import de.lardtom.propwash.creative.CreativeSpec;
 import de.lardtom.propwash.dev.SelfTest;
 import de.lardtom.propwash.dev.SelfTest.StepResult;
 import de.lardtom.propwash.dev.client.Screenshots;
@@ -32,6 +34,7 @@ import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.rescue.client.RescueController;
 import de.lardtom.propwash.sim.DroneSim;
 import de.lardtom.propwash.sim.StabMode;
+import de.lardtom.propwash.video.FovMath;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -98,6 +101,8 @@ final class PartsRenderShowcase {
     private static final Identifier JMP_CINEWHOOP_25 = Identifier.fromNamespaceAndPath("justmoreparts", "cw_25_duct");
     private static final Identifier JMP_CINEWHOOP_35 = Identifier.fromNamespaceAndPath("justmoreparts", "cw_35_duct");
     private static final Identifier JMP_RACE_SLIM = Identifier.fromNamespaceAndPath("justmoreparts", "race_5_stretched");
+    private static final Identifier JMP_DEADCAT = Identifier.fromNamespaceAndPath("justmoreparts", "deadcat_5");
+    private static final Identifier JMP_H_FRAME = Identifier.fromNamespaceAndPath("justmoreparts", "hframe_5");
     private static final AtomicReference<BlockPos> BASE = new AtomicReference<>();
     private static final AtomicInteger DRONE = new AtomicInteger(-1);
     private static int savedFov = -1;
@@ -159,6 +164,14 @@ final class PartsRenderShowcase {
         Screenshots.step("bildschirmfotos: Race-Preset – True-X von oben", "race_preset_top", 25,
                 new CloseUpScene(() -> Optional.of(DroneBuild.RACER), "Race 5 Zoll", () -> DronePaint.DEFAULT, 62.0, 2, 180.0F, 0.85));
         Screenshots.step("bildschirmfotos: Inventar mit Teilen des Beispiel-Addons", "inventory_addon_parts", 30, new InventoryScene());
+        armShots("Race 5 Zoll", "fpv_arms_race_5", () -> Optional.of(DroneBuild.RACER), () -> DronePaint.DEFAULT);
+        armShots("Freestyle 5 Zoll", "fpv_arms_freestyle_5", () -> Optional.of(DroneBuild.FREESTYLE), () -> DronePaint.DEFAULT);
+        armShots("Long Range 7 Zoll", "fpv_arms_long_range_7", () -> Optional.of(DroneBuild.LONG_RANGE), () -> DronePaint.DEFAULT);
+        armShots("Cinewhoop 3 Zoll", "fpv_arms_cinewhoop_3", () -> Optional.of(DroneBuild.CINEWHOOP), () -> DronePaint.DEFAULT);
+        armShots("Whoop 65 mm", "fpv_arms_whoop_65", () -> Optional.of(DroneBuild.WHOOP), () -> DronePaint.DEFAULT);
+        armShots("Race 5 Zoll (Slim) aus Just More Parts", "fpv_arms_jmp_race_slim", () -> addonPreset(JMP_RACE_SLIM), () -> addonPaint(JMP_RACE_SLIM));
+        armShots("Deadcat aus Just More Parts", "fpv_arms_jmp_deadcat", () -> addonPreset(JMP_DEADCAT), () -> addonPaint(JMP_DEADCAT));
+        armShots("H-Rahmen aus Just More Parts", "fpv_arms_jmp_h_frame", () -> addonPreset(JMP_H_FRAME), () -> addonPaint(JMP_H_FRAME));
         SelfTest.setupStep("bildschirmfotos: Nahaufnahmen und FPV-Bilder – aufräumen", 200, PartsRenderShowcase::cleanupStep);
     }
 
@@ -173,6 +186,20 @@ final class PartsRenderShowcase {
             Screenshots.optionalStep("bildschirmfotos: Guards im FPV-Bild – " + label + " bei " + degrees + "°", file + "_" + degrees, 20,
                     () -> build.get().isPresent(), new FpvPropsScene(false, creative, tilt, paint));
         }
+    }
+
+    private static void armShots(String label, String file, Supplier<Optional<DroneBuild>> build, Supplier<DronePaint> paint) {
+        Supplier<DroneBuild> creative = () -> FpvGuardSelfTests.withCreativeFc(build.get().orElseThrow());
+        Supplier<DroneBuild> wide = () -> creative.get().withCreative(CreativeSpec.EMPTY.with(CreativeParam.CAMERA_FOV, FovMath.MAX_HORIZONTAL_DEGREES));
+        Supplier<Float> standard = () -> CameraMount.defaultUptilt(build.get().orElseThrow().frame());
+        armShot("Arme im FPV-Bild – " + label + ", eigener Kamerawinkel", file, build, creative, standard, paint);
+        armShot("Arme im FPV-Bild – " + label + ", 160°", file + "_160", build, wide, standard, paint);
+        armShot("Arme im FPV-Bild – " + label + ", 160° und 0°", file + "_160_0", build, wide, () -> 0.0F, paint);
+    }
+
+    private static void armShot(String label, String file, Supplier<Optional<DroneBuild>> available, Supplier<DroneBuild> build, Supplier<Float> tilt,
+                                Supplier<DronePaint> paint) {
+        Screenshots.optionalStep("bildschirmfotos: " + label, file, 20, () -> available.get().isPresent(), new FpvPropsScene(false, build, tilt, paint));
     }
 
     private static void closeUp(String label, String file, Supplier<Optional<DroneBuild>> build, Supplier<DronePaint> paint) {
@@ -548,7 +575,7 @@ final class PartsRenderShowcase {
     private static final class FpvPropsScene implements Screenshots.Scene {
         private final boolean overWater;
         private final Supplier<DroneBuild> build;
-        private final float tilt;
+        private final Supplier<Float> tilt;
         private final Supplier<DronePaint> paint;
 
         private FpvPropsScene(boolean overWater) {
@@ -560,6 +587,10 @@ final class PartsRenderShowcase {
         }
 
         private FpvPropsScene(boolean overWater, Supplier<DroneBuild> build, float tilt, Supplier<DronePaint> paint) {
+            this(overWater, build, () -> tilt, paint);
+        }
+
+        private FpvPropsScene(boolean overWater, Supplier<DroneBuild> build, Supplier<Float> tilt, Supplier<DronePaint> paint) {
             this.overWater = overWater;
             this.build = build;
             this.tilt = tilt;
@@ -590,8 +621,9 @@ final class PartsRenderShowcase {
                     place(player, base.getX() + 0.5, base.getY(), base.getZ() - 1.5, 0.0F, 10.0F);
                     DroneBuild shown = this.build.get();
                     QuadcopterEntity drone = spawnDrone(level, new Vec3(base.getX() + 0.5, base.getY() + 0.1, base.getZ() + 1.5), 0.0F, shown);
-                    if (Float.isFinite(this.tilt)) {
-                        drone.setTune(new FlightTune(CameraMount.withUptilt(drone.tune().values(), shown, this.tilt)));
+                    float tilt = this.tilt.get();
+                    if (Float.isFinite(tilt)) {
+                        drone.setTune(new FlightTune(CameraMount.withUptilt(drone.tune().values(), shown, tilt)));
                     }
                     drone.setPaint(this.paint.get());
                     ItemStack remote = new ItemStack(DroneModule.REMOTE.get());
@@ -617,8 +649,9 @@ final class PartsRenderShowcase {
                 return ctx.tick() > 200 ? StepResult.fail("keine FPV-Sitzung") : StepResult.pending();
             }
             QuadcopterEntity flown = session.drone();
-            if (Float.isFinite(this.tilt) && (flown == null || Math.abs(FpvProps.cameraTilt(flown) - this.tilt) > 0.01F)) {
-                return ctx.tick() > 200 ? StepResult.fail("Kamerawinkel " + this.tilt + "° nicht übernommen") : StepResult.pending();
+            float tilt = this.tilt.get();
+            if (Float.isFinite(tilt) && (flown == null || Math.abs(FpvProps.cameraTilt(flown) - tilt) > 0.01F)) {
+                return ctx.tick() > 200 ? StepResult.fail("Kamerawinkel " + tilt + "° nicht übernommen") : StepResult.pending();
             }
             DroneSim sim = session.sim();
             if (sim == null) {

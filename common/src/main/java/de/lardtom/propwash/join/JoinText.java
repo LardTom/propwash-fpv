@@ -196,8 +196,16 @@ public final class JoinText {
     }
 
     public static Component missingPropwash(String version, int protocol, List<AddonInfo> addons) {
-        MutableComponent text = t("missing_propwash", "This server requires Propwash FPV %s (network protocol %s). Install exactly this version.",
-                version, String.valueOf(protocol));
+        return withAddons(t("missing_propwash", "This server requires Propwash FPV %s (network protocol %s). Install exactly this version.",
+                version, String.valueOf(protocol)), addons);
+    }
+
+    public static Component notNeoForge(String version, int protocol, List<AddonInfo> addons) {
+        return withAddons(t("not_neoforge", "This server runs NeoForge. Join with NeoForge and Propwash FPV %s (network protocol %s) – Fabric or an unmodded game can't join here.",
+                version, String.valueOf(protocol)), addons);
+    }
+
+    private static Component withAddons(MutableComponent text, List<AddonInfo> addons) {
         if (!addons.isEmpty()) {
             List<String> names = new ArrayList<>();
             for (AddonInfo addon : addons) {
@@ -206,6 +214,18 @@ public final class JoinText {
             text.append("\n").append(t("missing_propwash.addons", "Propwash add-ons on this server: %s", String.join(", ", names)));
         }
         return text;
+    }
+
+    public static Component fabricSyncFailed(String detail) {
+        return t("fabric_sync.failed", "Could not match this Fabric server's content: %s", detail);
+    }
+
+    public static Component fabricSyncUnknownEntries(String namespaces) {
+        return t("fabric_sync.unknown_entries", "This Fabric server has content your game doesn't have (from: %s). Install the same mods as the server.", namespaces);
+    }
+
+    public static Component fabricSyncUnknownRegistries(String registries) {
+        return t("fabric_sync.unknown_registries", "This Fabric server uses content types your game doesn't know: %s", registries);
     }
 
     public static Component disconnect(JoinReport report) {

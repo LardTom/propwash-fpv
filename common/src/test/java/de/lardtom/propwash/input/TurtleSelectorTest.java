@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TurtleSelectorTest {
-    private static final int TURTLE = SwitchEvaluator.bit(SwitchFunction.TURTLE);
+    private static final long TURTLE = SwitchEvaluator.bit(SwitchFunction.TURTLE);
 
     @Test
     void switchDecidesWhenItIsBound() {

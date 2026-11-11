@@ -27,16 +27,17 @@ public final class AssistJoinCheck {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             int joined = JOINED.computeIfAbsent(player.getUUID(), id -> tick);
             if (tick - joined == CHANGE_AFTER_TICKS) {
-                WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, GRAVITY);
-                WorldRules.set(server, WorldRuleSpecs.CRASH_TOLERANCE, CRASH_TOLERANCE);
                 WorldRules.set(server, WorldRuleSpecs.DRONE_TRAILS, 1);
-                Constants.LOG.info("[Beitrittstest] Flughilfe: Welt-Regeln für {} gesetzt (Schwerkraft {} %, Crash-Toleranz {} %, Drohnen-Trails an)",
+                PersonalRulesDev.personal(server, player.getUUID(), Map.of(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY, WorldRuleSpecs.CRASH_TOLERANCE,
+                        CRASH_TOLERANCE));
+                Constants.LOG.info("[Beitrittstest] Flughilfe: persönliche Regeln für {} gesetzt (Schwerkraft {} %, Crash-Toleranz {} %, Drohnen-Trails an)",
                         player.getPlainTextName(), GRAVITY, CRASH_TOLERANCE);
             } else if (tick - joined == RESET_AFTER_TICKS) {
                 for (RuleSpec spec : RULES) {
                     WorldRules.set(server, spec, spec.defaultValue());
                 }
-                Constants.LOG.info("[Beitrittstest] Flughilfe: Welt-Regeln für {} zurückgesetzt", player.getPlainTextName());
+                PersonalRulesDev.clear(server);
+                Constants.LOG.info("[Beitrittstest] Flughilfe: persönliche Regeln und Welt-Regeln für {} zurückgesetzt", player.getPlainTextName());
             }
         }
     }

@@ -6,6 +6,7 @@ import de.lardtom.propwash.Constants;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +83,24 @@ public final class RaceRecords extends SavedData {
         return board == null ? List.of() : List.copyOf(board.archive);
     }
 
+    public @Nullable Archived archived(int course, int layout) {
+        CourseBoard board = this.boards.get(course);
+        if (board == null) {
+            return null;
+        }
+        for (Archived archived : board.archive) {
+            if (archived.layout() == layout) {
+                return archived;
+            }
+        }
+        return null;
+    }
+
+    public @Nullable Leaderboard current(int course) {
+        CourseBoard board = this.boards.get(course);
+        return board == null ? null : board.board;
+    }
+
     private CourseBoard courseBoard(int course) {
         return this.boards.computeIfAbsent(course, id -> new CourseBoard(id, new Leaderboard(), List.of()));
     }
@@ -98,7 +117,7 @@ public final class RaceRecords extends SavedData {
 
     public boolean archiveCurrent(int course, int layout, int gates, long now) {
         CourseBoard board = this.boards.get(course);
-        if (board == null || board.board.times() == 0) {
+        if (board == null || board.board.stored() == 0) {
             return false;
         }
         CourseBoard fresh = new CourseBoard(course, new Leaderboard(), board.archive);

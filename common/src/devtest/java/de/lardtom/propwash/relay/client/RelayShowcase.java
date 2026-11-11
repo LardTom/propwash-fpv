@@ -16,11 +16,14 @@ import de.lardtom.propwash.input.StickPositions;
 import de.lardtom.propwash.relay.RelayModule;
 import de.lardtom.propwash.relay.RepeaterIndex;
 import de.lardtom.propwash.relay.SignalRepeaterBlock;
+import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import de.lardtom.propwash.video.client.VideoState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -67,6 +70,12 @@ public final class RelayShowcase {
         Screenshots.step("bildschirmfotos: Signal-Repeater – FPV im Betonbau fünf Etagen über dem Piloten, ohne Repeater", "signal_repeater_fpv_without", 30,
                 new FpvScene(false));
         Screenshots.step("bildschirmfotos: Signal-Repeater – FPV im Betonbau über zwei Repeater, RPT im OSD", "signal_repeater_fpv_with", 30, new FpvScene(true));
+        Screenshots.step("bildschirmfotos: Signal-Repeater – Raum hinter Betonwand, FPV über den Repeater unter dem Türsturz, RPT1 im OSD",
+                "signal_repeater_room_fpv", 30, new IndoorFpvScene(false));
+        Screenshots.step("bildschirmfotos: Signal-Repeater – U-Gang aus Beton, FPV über zwei Repeater um die Ecken, RPT2 im OSD",
+                "signal_repeater_corner_fpv", 30, new IndoorFpvScene(true));
+        Screenshots.step("bildschirmfotos: Signal-Repeater – Balken am Block und Signalmesser in der Hand", "signal_repeater_signal_bars", 40,
+                new SignalScene());
         SelfTest.clientStep("bildschirmfotos: Signal-Repeater aufräumen", 600, RelayShowcase::cleanupStep);
     }
 
@@ -156,6 +165,70 @@ public final class RelayShowcase {
         if (result != DronePiloting.StartResult.STARTED) {
             throw new IllegalStateException("FPV-Start verweigert: " + result);
         }
+    }
+
+    private static void indoorFpv(MinecraftServer server, boolean corner) {
+        ServerPlayer player = RelaySelfTests.player(server);
+        ServerLevel level = player.level();
+        RelaySelfTests.save(player);
+        DronePiloting.pilotedBy(player.getUUID()).ifPresent(DronePiloting::release);
+        BlockPos o = RelayFieldSelfTests.indoor(player);
+        RelayFieldSelfTests.buildIndoor(level, o);
+        WorldRules.set(server, WorldRuleSpecs.SIGNAL_REPEATERS, 4);
+        for (BlockPos mount : List.of(RelayFieldSelfTests.ROOM_CEILING, RelayFieldSelfTests.ROOM_JAMB, RelayFieldSelfTests.U_FIRST,
+                RelayFieldSelfTests.U_SECOND, RelayFieldSelfTests.METER_A, RelayFieldSelfTests.METER_B)) {
+            RelayFieldSelfTests.unmount(level, mount);
+        }
+        if (corner) {
+            RelayFieldSelfTests.mount(level, RelayFieldSelfTests.U_FIRST, AttachFace.CEILING, Direction.NORTH);
+            RelayFieldSelfTests.mount(level, RelayFieldSelfTests.U_SECOND, AttachFace.WALL, Direction.WEST);
+        } else {
+            RelayFieldSelfTests.mount(level, RelayFieldSelfTests.ROOM_CEILING, AttachFace.CEILING, Direction.NORTH);
+        }
+        Vec3 pilot = corner ? RelayFieldSelfTests.U_PILOT : RelayFieldSelfTests.ROOM_PILOT;
+        Vec3 feet = corner ? new Vec3(53.5, 0.02, 63.5) : new Vec3(4.5, 0.02, 7.5);
+        RelaySelfTests.teleport(player, Vec3.atLowerCornerOf(o).add(pilot), corner ? 180.0F : 0.0F, 0.0F);
+        if (level.getEntity(RelaySelfTests.DRONE.get()) instanceof QuadcopterEntity old) {
+            old.discard();
+        }
+        QuadcopterEntity drone = DroneModule.DRONE.get().create(level, EntitySpawnReason.COMMAND);
+        if (drone == null) {
+            throw new IllegalStateException("Drohne nicht erzeugt");
+        }
+        Vec3 at = Vec3.atLowerCornerOf(o).add(feet);
+        drone.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+        drone.setBuild(DroneBuild.RACER);
+        drone.setBatteryCharge(1.0F);
+        if (!level.addFreshEntity(drone)) {
+            throw new IllegalStateException("Drohne nicht in die Welt gesetzt");
+        }
+        drone.resetTo(at, new Quaternionf().rotationY((float) Math.toRadians(corner ? -90.0 : 180.0)));
+        RelaySelfTests.DRONE.set(drone.getId());
+        ItemStack goggles = ContentIds.item(ContentIds.GOGGLES_ANALOG).map(ItemStack::new).orElse(ItemStack.EMPTY);
+        goggles.set(CoreComponents.BOUND_DRONE.get(), DroneInteractions.binding(drone));
+        player.setItemSlot(EquipmentSlot.HEAD, goggles);
+        ItemStack remote = new ItemStack(DroneModule.REMOTE.get());
+        remote.set(CoreComponents.BOUND_DRONE.get(), DroneInteractions.binding(drone));
+        player.setItemSlot(EquipmentSlot.MAINHAND, remote);
+        DronePiloting.StartResult result = DronePiloting.tryStart(player, drone, PilotMode.FPV);
+        if (result != DronePiloting.StartResult.STARTED) {
+            throw new IllegalStateException("FPV-Start verweigert: " + result);
+        }
+    }
+
+    private static void signals(MinecraftServer server) {
+        ServerPlayer player = RelaySelfTests.player(server);
+        ServerLevel level = player.level();
+        RelaySelfTests.save(player);
+        DronePiloting.pilotedBy(player.getUUID()).ifPresent(DronePiloting::release);
+        BlockPos o = RelayFieldSelfTests.indoor(player);
+        RelayFieldSelfTests.buildIndoor(level, o);
+        WorldRules.set(server, WorldRuleSpecs.SIGNAL_REPEATERS, 4);
+        mountAt(level, o.offset(RelayFieldSelfTests.METER_A), AttachFace.FLOOR, Direction.SOUTH);
+        mountAt(level, o.offset(RelayFieldSelfTests.METER_B), AttachFace.FLOOR, Direction.SOUTH);
+        player.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
+        player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(RelayModule.SIGNAL_REPEATER.item().get()));
+        RelaySelfTests.teleport(player, Vec3.atBottomCenterOf(o.offset(RelayFieldSelfTests.METER_A).offset(0, 0, -2)), 0.0F, 48.0F);
     }
 
     private static StepResult cleanupStep(SelfTest.StepContext ctx) {
@@ -278,6 +351,91 @@ public final class RelayShowcase {
         @Override
         public void hold(SelfTest.StepContext ctx) {
             PilotSession.INSTANCE.setTestInput(StickPositions.IDLE, false, null);
+        }
+    }
+
+    private record IndoorFpvScene(boolean corner) implements Screenshots.Scene {
+        @Override
+        public StepResult prepare(SelfTest.StepContext ctx) {
+            Map<String, Object> state = ctx.state();
+            if (!state.containsKey(FUTURE)) {
+                boolean corner = this.corner;
+                state.put(FUTURE, ctx.onServer(server -> {
+                    indoorFpv(server, corner);
+                    setTime(server, ClockTimeMarkers.NOON);
+                }));
+                state.put(SINCE, ctx.tick());
+                return StepResult.pending();
+            }
+            StepResult waiting = waitFuture(ctx);
+            if (waiting != null) {
+                return waiting;
+            }
+            PilotSession session = PilotSession.INSTANCE;
+            session.setTestInput(StickPositions.IDLE, false, null);
+            VideoState video = VideoState.INSTANCE;
+            QuadcopterEntity drone = session.drone();
+            int hops = this.corner ? 2 : 1;
+            boolean ready = session.isFpv() && drone != null && drone.getId() == RelaySelfTests.DRONE.get()
+                    && video.status() == VideoState.LinkStatus.CONNECTED && video.relay().settled() && video.relayHops() == hops
+                    && video.signalQuality() > 0.9F;
+            if (!ready) {
+                return (int) state.get(SINCE) + 600 < ctx.tick() ? StepResult.fail("FPV über " + hops + " Repeater kommt nicht zustande (FPV "
+                        + session.isFpv() + ", Video " + video.status() + ", Bild " + video.signalQuality() + ", " + video.relayHops() + " Repeater)")
+                        : StepResult.pending();
+            }
+            ctx.log("FPV über Repeater: Bild " + video.signalQuality() + ", " + video.relayHops() + " Repeater im Weg, direkt " + video.directQuality());
+            return StepResult.pass();
+        }
+
+        @Override
+        public void hold(SelfTest.StepContext ctx) {
+            PilotSession.INSTANCE.setTestInput(StickPositions.IDLE, false, null);
+        }
+    }
+
+    private record SignalScene() implements Screenshots.Scene {
+        @Override
+        public StepResult prepare(SelfTest.StepContext ctx) {
+            Minecraft mc = Minecraft.getInstance();
+            Map<String, Object> state = ctx.state();
+            if (!state.containsKey(FUTURE)) {
+                state.put(FUTURE, ctx.onServer(server -> {
+                    PilotSession.INSTANCE.clearTestInput();
+                    signals(server);
+                    setTime(server, ClockTimeMarkers.NOON);
+                }));
+                state.put(SINCE, ctx.tick());
+                return StepResult.pending();
+            }
+            StepResult waiting = waitFuture(ctx);
+            if (waiting != null) {
+                return waiting;
+            }
+            BlockPos o = RelayFieldSelfTests.INDOOR.get();
+            RepeaterIndex index = RepeaterIndex.existing(mc.level);
+            if (o == null || index == null || mc.player == null) {
+                return StepResult.pending();
+            }
+            BlockPos a = o.offset(RelayFieldSelfTests.METER_A);
+            int bars = RepeaterSignals.INSTANCE.bars(a);
+            boolean ready = index.contains(a) && index.contains(o.offset(RelayFieldSelfTests.METER_B)) && RepeaterSignals.INSTANCE.holding() && bars == 4
+                    && !PilotSession.INSTANCE.isActive();
+            if (!ready) {
+                return (int) state.get(SINCE) + 400 < ctx.tick() ? StepResult.fail("Balken-Szene kommt nicht an (Balken " + bars + ", in der Hand "
+                        + RepeaterSignals.INSTANCE.holding() + ")") : StepResult.pending();
+            }
+            Component text = RepeaterSignals.INSTANCE.meterText();
+            ctx.log("Balken am Repeater " + bars + ", Signalmesser „" + (text == null ? "-" : text.getString()) + "“");
+            return StepResult.pass();
+        }
+
+        @Override
+        public void hold(SelfTest.StepContext ctx) {
+            BlockPos o = RelayFieldSelfTests.INDOOR.get();
+            if (o != null) {
+                RepeaterSignals.INSTANCE.bars(o.offset(RelayFieldSelfTests.METER_A));
+            }
         }
     }
 }

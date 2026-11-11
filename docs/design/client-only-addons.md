@@ -67,7 +67,7 @@ Der Server entscheidet damit, ob er trennt, der Spieler, was er abschaltet – b
     leer gemeldet, ein Toast sagt „… gibt es auf diesem Server nicht – Propwash hat es aus deinem Inventar
     herausgehalten“.
   - `PropwashClientApi.sendImport`/`sendCreateDrone` antworten lokal mit `UNKNOWN_PARTS` und den Ids, ohne zu senden.
-  - Der Drohnen-Code `PWD1-` im Drohnen-Editor nennt die Teile („Dieser Code nutzt Teile, die es auf diesem Server
+  - Der Teilen-Code im Drohnen-Editor (PW3 mit Kreativ-Werten oder alter `PWD1-`) nennt die Teile („Dieser Code nutzt Teile, die es auf diesem Server
     nicht gibt: …“) und übernimmt nichts.
 - **Items aus einer anderen Welt:** Ein Teil-Item zeigt „Auf diesem Server nicht verfügbar“, eine Drohne „Auf diesem
   Server nicht verfügbare Teile: …“; nichts stürzt ab.

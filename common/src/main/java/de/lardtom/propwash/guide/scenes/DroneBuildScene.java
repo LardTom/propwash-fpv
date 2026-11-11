@@ -13,6 +13,8 @@ import de.lardtom.propwash.guide.scene.Scene;
 import de.lardtom.propwash.guide.scene.SceneBuilder;
 import de.lardtom.propwash.guide.scene.ScenePos;
 
+import java.util.List;
+
 public final class DroneBuildScene {
     public static final String ID = "drone_build";
     public static final String WORKBENCH = "propwash:drone_workbench";
@@ -148,9 +150,9 @@ public final class DroneBuildScene {
                     s.at(12.0F).throttle(DRONE, 0.6F, 8.0F);
                     s.at(14.0F).move(DRONE, 24.0F, Ease.IN_OUT, hover);
                     s.at(14.0F).look(PILOT, -12.0F, 24.0F);
-                    s.at(50.0F).move(DRONE, 46.0F, Ease.IN_OUT, LANDING.add(0.7F, 1.3F, -0.9F), LANDING.add(-0.5F, 1.4F, -1.3F), hover);
-                    s.at(50.0F).turn(DRONE, 120.0F, 6.0F, 10.0F, 22.0F);
-                    s.at(72.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 24.0F);
+                    SceneKit.fly(s, DRONE, hover, List.of(LANDING.add(0.7F, 1.3F, -0.9F), LANDING.add(-0.5F, 1.4F, -1.3F), hover), Ease.IN_OUT, 50.0F,
+                            46.0F, 24, 12.0F);
+                    s.at(96.0F).turn(DRONE, 0.0F, 0.0F, 0.0F, 10.0F);
                     s.at(100.0F).throttle(DRONE, 0.3F, 12.0F);
                     s.at(100.0F).move(DRONE, 26.0F, Ease.IN_OUT, LANDING);
                     s.at(100.0F).look(PILOT, 8.0F, 26.0F);

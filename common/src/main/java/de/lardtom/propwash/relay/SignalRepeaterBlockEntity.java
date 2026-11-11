@@ -27,7 +27,12 @@ public final class SignalRepeaterBlockEntity extends BlockEntity {
         super.setRemoved();
         Level level = this.getLevel();
         if (this.indexed && level != null) {
-            RepeaterIndex.of(level).remove(this.getBlockPos(), this);
+            BlockPos pos = this.getBlockPos();
+            if (RepeaterIndex.placed(level, pos)) {
+                RepeaterIndex.of(level).keep(pos, this);
+            } else {
+                RepeaterIndex.of(level).remove(pos, this);
+            }
         }
         this.indexed = false;
     }

@@ -33,6 +33,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.function.IntFunction;
 
 public final class SceneScreen extends Screen implements ThemedScreen {
     private static final int MAX_WIDTH = 760;
@@ -52,11 +53,18 @@ public final class SceneScreen extends Screen implements ThemedScreen {
     private static final float MAX_USER_ZOOM = 4.0F;
     private static final float SMOOTHING = 0.35F;
     private static final float JUMP_TICKS = 12.0F;
+    public static final float SLOW_MOTION = 0.5F;
+    private static final int STICK_CAM_MAX_WIDTH = 170;
+    private static final int STICK_CAM_MARGIN = 6;
 
     private static @Nullable SceneScreen active;
 
     private final @Nullable Screen parent;
     private final Scene scene;
+    private final Options options;
+    private final StickCamView stickCam = new StickCamView();
+    private boolean stickCamShown = true;
+    private @Nullable ScreenRectangle stickCamBox;
     private final ScenePlayback playback;
     private final SceneView view = new SceneView();
     private final SceneFraming framing;
@@ -96,11 +104,68 @@ public final class SceneScreen extends Screen implements ThemedScreen {
     private @Nullable GuideButton resetViewButton;
 
     public SceneScreen(Scene scene, @Nullable Screen parent) {
-        super(Component.translatable(scene.titleKey()));
+        this(scene, parent, Options.DEFAULT);
+    }
+
+    public SceneScreen(Scene scene, @Nullable Screen parent, Options options) {
+        this(scene, parent, options, SceneFraming.of(scene));
+    }
+
+    public SceneScreen(Scene scene, @Nullable Screen parent, Options options, SceneFraming framing) {
+        super(options.title() != null ? options.title() : Component.translatable(scene.titleKey()));
         this.scene = scene;
         this.parent = parent;
+        this.options = options;
         this.playback = new ScenePlayback(scene);
-        this.framing = SceneFraming.of(scene);
+        this.framing = framing;
+    }
+
+    public record Options(@Nullable Component title, @Nullable Component header, @Nullable IntFunction<String> stepTitles,
+                          @Nullable IntFunction<String> stepTexts, @Nullable String stickActor) {
+        public static final Options DEFAULT = new Options(null, null, null, null, null);
+    }
+
+    public Options options() {
+        return this.options;
+    }
+
+    public String stepTitleKey(int step) {
+        return this.options.stepTitles() != null ? this.options.stepTitles().apply(step) : this.scene.stepTitleKey(step);
+    }
+
+    public String stepTextKey(int step) {
+        return this.options.stepTexts() != null ? this.options.stepTexts().apply(step) : this.scene.stepTextKey(step);
+    }
+
+    public boolean slowMotion() {
+        return this.playback.speed() < 1.0F;
+    }
+
+    public void toggleSlowMotion() {
+        this.playback.speed(this.slowMotion() ? 1.0F : SLOW_MOTION);
+    }
+
+    public boolean stickCamAvailable() {
+        return this.options.stickActor() != null;
+    }
+
+    public boolean stickCamShown() {
+        return this.stickCamAvailable() && this.stickCamShown;
+    }
+
+    public void toggleStickCam() {
+        if (this.stickCamAvailable()) {
+            this.stickCamShown = !this.stickCamShown;
+            this.stickCam.reset();
+        }
+    }
+
+    public StickCamView stickCam() {
+        return this.stickCam;
+    }
+
+    public @Nullable ScreenRectangle stickCamBox() {
+        return this.stickCamBox;
     }
 
     public static @Nullable SceneScreen active() {
@@ -222,7 +287,21 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         x += BUTTON_WIDTH + 3;
         this.addRenderableWidget(new GuideButton(x, by, BUTTON_WIDTH, buttonHeight, () -> GuideDraw.Icon.REPLAY,
                 () -> Component.translatable("propwash.guide.player.replay"), false, this::replay));
-        x += BUTTON_WIDTH + 10;
+        x += BUTTON_WIDTH + 3;
+        int speedWidth = Math.max(BUTTON_WIDTH, Math.max(this.font.width(Component.translatable("propwash.guide.player.speed.half")),
+                this.font.width(Component.translatable("propwash.guide.player.speed.full"))) + 8);
+        this.addRenderableWidget(GuideButton.textToggle(x, by, speedWidth, buttonHeight,
+                () -> Component.translatable(this.slowMotion() ? "propwash.guide.player.speed.half" : "propwash.guide.player.speed.full"),
+                () -> Component.translatable(this.slowMotion() ? "propwash.guide.player.speed.normal" : "propwash.guide.player.speed.slow"),
+                this::slowMotion, this::toggleSlowMotion));
+        x += speedWidth + 3;
+        if (this.stickCamAvailable()) {
+            this.addRenderableWidget(GuideButton.toggle(x, by, BUTTON_WIDTH + 4, buttonHeight, () -> GuideDraw.Icon.STICKS,
+                    () -> Component.translatable(this.stickCamShown ? "propwash.guide.player.stick_cam.hide" : "propwash.guide.player.stick_cam.show"),
+                    this::stickCamShown, this::toggleStickCam));
+            x += BUTTON_WIDTH + 4 + 3;
+        }
+        x += 7;
         int right = this.windowRight - Metrics.PADDING;
         Component viewCaption = Component.translatable("propwash.guide.player.view");
         int viewWidth = GuideButton.width(this.font, viewCaption);
@@ -318,6 +397,17 @@ public final class SceneScreen extends Screen implements ThemedScreen {
             }
             case InputConstants.KEY_HOME -> {
                 this.replay();
+                return true;
+            }
+            case InputConstants.KEY_S -> {
+                this.toggleSlowMotion();
+                return true;
+            }
+            case InputConstants.KEY_C -> {
+                if (!this.stickCamAvailable()) {
+                    return super.keyPressed(event);
+                }
+                this.toggleStickCam();
                 return true;
             }
             default -> {
@@ -447,6 +537,7 @@ public final class SceneScreen extends Screen implements ThemedScreen {
             this.lastCallouts = this.lastPlaced.size();
             this.lastKeyHints = SceneOverlay.drawKeyHints(g, this.font, this.lastHints);
             this.extractViewportBadges(g);
+            this.extractStickCam(g, state);
         } finally {
             g.disableScissor();
         }
@@ -468,6 +559,28 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         access.propwash$renderState().addPicturesInPictureState(new SceneRenderState(frame, vp.left(), vp.top(), vp.right(), vp.bottom(),
                 projection.pixelsPerBlock(), access.propwash$scissor()));
         return true;
+    }
+
+    private void extractStickCam(GuiGraphicsExtractor g, SceneState state) {
+        this.stickCamBox = null;
+        String actorId = this.options.stickActor();
+        if (actorId == null || !this.stickCamShown) {
+            return;
+        }
+        var actor = state.actor(actorId);
+        if (actor == null) {
+            return;
+        }
+        ScreenRectangle vp = this.viewport;
+        int width = Math.min(STICK_CAM_MAX_WIDTH * this.textScale, Math.max(StickCamView.MIN_WIDTH, vp.width() * 3 / 10));
+        int height = Math.max(StickCamView.MIN_HEIGHT, width * 5 / 8);
+        if (width > vp.width() - 2 * STICK_CAM_MARGIN || height > vp.height() - 2 * STICK_CAM_MARGIN) {
+            return;
+        }
+        int x1 = vp.right() - STICK_CAM_MARGIN;
+        int y1 = vp.bottom() - STICK_CAM_MARGIN;
+        this.stickCamBox = new ScreenRectangle(x1 - width, y1 - height, width, height);
+        this.stickCam.extract(g, this.font, actor, state.time(), x1 - width, y1 - height, x1, y1);
     }
 
     private void extractStage(GuiGraphicsExtractor g) {
@@ -550,7 +663,7 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         int textY = Metrics.textY(y0, HEADER - 1);
         int left = ThemeDraw.brand(g, this.font, x0 + 8, textY) + 10;
         ThemeDraw.verticalSeparator(g, left - 5, y0 + 5, y0 + HEADER - 6);
-        Component school = Component.translatable("propwash.guide.title");
+        Component school = this.options.header() != null ? this.options.header() : Component.translatable("propwash.guide.title");
         int schoolRight = left + this.font.width(school);
         int right = x1 - Metrics.PADDING - Metrics.CONTROL_HEIGHT - 8;
         int titleX = left;
@@ -579,7 +692,7 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         int width = this.captionWidth(windowWidth);
         int lines = CAPTION_LINES;
         for (int step = 0; step < this.scene.stepCount(); step++) {
-            lines = Math.max(lines, ThemeText.balanced(this.font, StickModes.translatable(this.scene.stepTextKey(step)), width).size());
+            lines = Math.max(lines, ThemeText.balanced(this.font, StickModes.translatable(this.stepTextKey(step)), width).size());
         }
         int fit = (room - MIN_STAGE) / this.textScale - CAPTION_HEAD - 2;
         return Math.max(CAPTION_LINES, Math.min(lines, fit / CAPTION_LINE));
@@ -612,9 +725,9 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         int step = state.step();
         Component counter = Component.translatable("propwash.guide.player.step", step + 1, this.scene.stepCount());
         int badgeWidth = ThemeDraw.badge(g, this.font, counter, x0, y0 + 1, y0 + 13, Palette.ACCENT, Palette.ACCENT_TEXT);
-        Component title = Component.translatable(this.scene.stepTitleKey(step)).withStyle(ChatFormatting.BOLD);
+        Component title = Component.translatable(this.stepTitleKey(step)).withStyle(ChatFormatting.BOLD);
         ThemeText.fitted(g, this.font, title, x0 + badgeWidth + 6, y0 + 3, x1 - x0 - badgeWidth - 8, Palette.ACCENT);
-        Component text = StickModes.translatable(this.scene.stepTextKey(step));
+        Component text = StickModes.translatable(this.stepTextKey(step));
         List<FormattedCharSequence> lines = ThemeText.balanced(this.font, text, Math.max(40, x1 - x0));
         int shown = ThemeText.shownLines(text, lines.size(), this.captionLines);
         int ty = y0 + CAPTION_HEAD;
@@ -666,7 +779,7 @@ public final class SceneScreen extends Screen implements ThemedScreen {
         String clock = clock(time) + " / " + clock(total);
         ThemeText.text(g, this.font, clock, right + 8, Metrics.textY(y0, FOOTER), Palette.TEXT_MUTED);
         if (hovered >= 0 && !this.scrubbing) {
-            ThemeText.tooltip(g, this.font, Component.translatable(this.scene.stepTitleKey(hovered)), mouseX, mouseY);
+            ThemeText.tooltip(g, this.font, Component.translatable(this.stepTitleKey(hovered)), mouseX, mouseY);
         }
     }
 

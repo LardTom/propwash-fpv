@@ -115,13 +115,14 @@ final class MeshProbe {
         ItemStackRenderState item = part.item();
         Vector3fc hub = part.position();
         if (item == null || item.isEmpty()) {
-            Shape shape = !part.solid().isEmpty() ? part.solid() : part.translucent();
             Vector3f vertex = new Vector3f();
-            for (int v = 0; v < shape.vertexCount(); v++) {
-                shape.position(v, vertex);
-                float x = vertex.x * MM;
-                float z = vertex.z * MM;
-                out.add(new float[]{hub.x(), hub.y(), hub.z(), square ? Math.max(Math.abs(x), Math.abs(z)) : (float) Math.sqrt(x * x + z * z), vertex.y * MM});
+            for (Shape shape : List.of(part.solid(), part.translucent())) {
+                for (int v = 0; v < shape.vertexCount(); v++) {
+                    shape.position(v, vertex);
+                    float x = vertex.x * MM;
+                    float z = vertex.z * MM;
+                    out.add(new float[]{hub.x(), hub.y(), hub.z(), square ? Math.max(Math.abs(x), Math.abs(z)) : (float) Math.sqrt(x * x + z * z), vertex.y * MM});
+                }
             }
             return out;
         }

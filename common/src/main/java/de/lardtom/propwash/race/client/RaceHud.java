@@ -1,5 +1,6 @@
 package de.lardtom.propwash.race.client;
 
+import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.client.PilotSession;
 import de.lardtom.propwash.osd.OsdGrid;
 import de.lardtom.propwash.osd.client.OsdHud;
@@ -10,6 +11,8 @@ import de.lardtom.propwash.race.StartLights;
 import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.ui.client.theme.ThemeText;
+import de.lardtom.propwash.video.PilotFeed;
+import de.lardtom.propwash.video.client.WatchedPilot;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -97,16 +100,21 @@ public final class RaceHud {
 
     private static void extractLights(GuiGraphicsExtractor graphics, int centerX, int top) {
         ClientRaceTracker tracker = ClientRaceTracker.INSTANCE;
-        long remaining = tracker.tracker().countdownRemainingNanos(tracker.now());
-        long total = tracker.countdownTotalNanos();
+        PilotFeed watched = WatchedPilot.feed();
+        long age = WatchedPilot.ageNanos();
+        long remaining = watched != null ? watched.countdownRemainingNanos(age) : tracker.tracker().countdownRemainingNanos(tracker.now());
+        long total = watched != null ? watched.countdownTotalNanos() : tracker.countdownTotalNanos();
+        boolean racing = watched != null ? watched.racing() : tracker.tracker().racing();
+        long sinceGo = watched != null ? watched.sinceGoNanos(age) : tracker.sinceGoNanos();
+        boolean falseStarted = watched != null ? watched.falseStarted() : tracker.tracker().falseStarted();
         boolean countdown = remaining >= 0L;
-        boolean go = !countdown && tracker.tracker().racing() && tracker.sinceGoNanos() < ClientRaceTracker.GO_LIGHT_NANOS;
+        boolean go = !countdown && racing && sinceGo < ClientRaceTracker.GO_LIGHT_NANOS;
         if (!countdown && !go) {
             return;
         }
         int lamps = StartLights.lamps(total);
         int lit = countdown ? StartLights.lit(total, remaining) : lamps;
-        int color = go ? LAMP_GREEN : tracker.tracker().falseStarted() ? LAMP_AMBER : LAMP_RED;
+        int color = go ? LAMP_GREEN : falseStarted ? LAMP_AMBER : LAMP_RED;
         int width = lamps * LAMP_SIZE + (lamps - 1) * LAMP_GAP + 2 * LAMP_PAD;
         int left = centerX - width / 2;
         ThemeDraw.framedBox(graphics, left, top, left + width, top + LAMP_SIZE + 2 * LAMP_PAD, Palette.BACKGROUND, Palette.BORDER_STRONG);
@@ -152,7 +160,8 @@ public final class RaceHud {
         }
         long now = Util.getNanos();
         Font font = minecraft.font;
-        boolean osd = PilotSession.INSTANCE.isFpv();
+        PilotFeed watched = WatchedPilot.feed();
+        boolean osd = PilotSession.INSTANCE.isFpv() || FpvView.spectating();
         if (osd) {
             graphics.nextStratum();
         }
@@ -164,11 +173,12 @@ public final class RaceHud {
         extractLobby(graphics, font, centerX, osd);
         Component bigText = null;
         int bigRgb = bigColor;
-        long countdown = ClientRaceTracker.INSTANCE.tracker().countdownRemainingNanos(ClientRaceTracker.INSTANCE.now());
+        long countdown = watched != null ? watched.countdownRemainingNanos(WatchedPilot.ageNanos())
+                : ClientRaceTracker.INSTANCE.tracker().countdownRemainingNanos(ClientRaceTracker.INSTANCE.now());
         if (countdown >= 0L) {
             long seconds = (countdown + 999_999_999L) / 1_000_000_000L;
             bigText = Component.literal(Long.toString(Math.max(1L, seconds)));
-            bigRgb = ClientRaceTracker.INSTANCE.tracker().falseStarted() ? RED : YELLOW;
+            bigRgb = (watched != null ? watched.falseStarted() : ClientRaceTracker.INSTANCE.tracker().falseStarted()) ? RED : YELLOW;
         } else if (big != null && now < bigUntil) {
             bigText = big;
         }

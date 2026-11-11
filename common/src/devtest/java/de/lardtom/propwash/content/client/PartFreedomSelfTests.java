@@ -22,7 +22,6 @@ import de.lardtom.propwash.content.ContentItems;
 import de.lardtom.propwash.content.DroneAssembly;
 import de.lardtom.propwash.content.DroneWorkbenchMenu;
 import de.lardtom.propwash.content.ImportService;
-import de.lardtom.propwash.content.WorkbenchLayout;
 import de.lardtom.propwash.core.CoreComponents;
 import de.lardtom.propwash.core.FlightTune;
 import de.lardtom.propwash.dev.SelfTest;
@@ -662,8 +661,8 @@ public final class PartFreedomSelfTests {
                 return;
             }
             Slot result = screen.getMenu().getSlot(DroneWorkbenchMenu.RESULT_SLOT);
-            double guiX = (screen.width - WorkbenchLayout.WIDTH) / 2 + result.x + 8;
-            double guiY = (screen.height - WorkbenchLayout.HEIGHT) / 2 + result.y + 8;
+            double guiX = screen.panelLeft() + result.x + 8;
+            double guiY = screen.panelTop() + result.y + 8;
             double x = guiX * mc.getWindow().getScreenWidth() / mc.getWindow().getGuiScaledWidth();
             double y = guiY * mc.getWindow().getScreenHeight() / mc.getWindow().getGuiScaledHeight();
             mc.mouseHandler.onMove(mc.getWindow().handle(), x, y, 0.0, 0.0);

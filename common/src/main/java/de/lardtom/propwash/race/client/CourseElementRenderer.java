@@ -40,8 +40,6 @@ public final class CourseElementRenderer {
     private static final float CHEVRON_LENGTH = 0.28F;
     private static final float CHEVRON_THICKNESS = 0.18F;
     private static final float LIFT = 0.035F;
-    private static final float WAVE = 0.05F;
-    private static final float MIN_GLOW = 0.35F;
     private static final float CROSS = 0.32F;
     private static final float CROSS_WIDTH = 0.07F;
     private static final float HALO = 0.22F;
@@ -248,43 +246,58 @@ public final class CourseElementRenderer {
     }
 
     static void arrowFrame(GateRenderState state, PoseStack poseStack) {
-        float sign = state.variant == CourseElement.LEFT ? 1.0F : -1.0F;
-        switch (state.kind) {
+        float sign = markSide(state) == CourseElement.LEFT ? 1.0F : -1.0F;
+        switch (markKind(state)) {
             case CUBE -> poseStack.rotateDegrees(Axis.YP, exitYaw(state.variant));
             case POLE -> poseStack.translate(sign * lineRadius(state), 0.0F, 0.0F);
             case FLAG -> poseStack.translate(-sign * lineRadius(state), 0.0F, 0.0F);
-            case GATE, FREEFORM -> {
+            case GATE, FREEFORM, GATE_POLE -> {
             }
         }
     }
 
+    static CourseElement markKind(GateRenderState state) {
+        return state.kind == CourseElement.GATE_POLE ? state.scoringKind : state.kind;
+    }
+
+    static int markSide(GateRenderState state) {
+        return state.kind == CourseElement.GATE_POLE ? state.scoreSide : state.variant;
+    }
+
+    static float markWidth(GateRenderState state) {
+        return state.kind == CourseElement.GATE_POLE ? state.scoreWidth : state.width;
+    }
+
     static float lineRadius(GateRenderState state) {
         float t = state.elementFrame * 0.5F;
-        if (state.kind == CourseElement.FLAG) {
-            return t + Math.max(1.0F, Math.min(2.2F, state.width * 0.35F));
+        if (markKind(state) == CourseElement.FLAG) {
+            return t + Math.max(1.0F, Math.min(2.2F, markWidth(state) * 0.35F));
         }
-        return t + Math.max(0.8F, Math.min(2.0F, state.width * 0.35F));
+        return t + Math.max(0.8F, Math.min(2.0F, markWidth(state) * 0.35F));
     }
 
     void submitMarkings(GateRenderer renderer, GateRenderState state, PoseStack poseStack, SubmitNodeCollector collector) {
-        int color = state.lightColor;
+        int color = state.kind == CourseElement.GATE_POLE ? state.markColor : state.lightColor;
         float age = state.ageInTicks;
         poseStack.pushPose();
         GateRenderer.toFrame(state, poseStack);
-        switch (state.kind) {
+        if (state.markTurned) {
+            poseStack.rotateDegrees(Axis.YP, 180.0F);
+        }
+        switch (markKind(state)) {
             case POLE -> {
-                float sign = state.variant == CourseElement.LEFT ? 1.0F : -1.0F;
+                float sign = markSide(state) == CourseElement.LEFT ? 1.0F : -1.0F;
                 float side = sign * lineRadius(state);
                 collector.order(1).submitCustomGeometry(poseStack, GateRenderer.glowType(), (pose, buffer) -> {
                     for (int i = 0; i < GateRenderer.CHEVRONS; i++) {
                         float z = -(0.9F + 0.85F * i);
-                        chevron(pose, buffer, side, LIFT, z, 0.0F, 1.0F, ARGB.color(brightness(GateRenderer.CHEVRONS - 1 - i, age), color));
+                        chevron(pose, buffer, side, LIFT, z, 0.0F, 1.0F, ARGB.color(brightness(ChevronWave.approach(i), age), color));
                     }
                     cross(pose, buffer, -side, LIFT, 0.0F);
                 });
             }
             case FLAG -> {
-                float sign = state.variant == CourseElement.LEFT ? 1.0F : -1.0F;
+                float sign = markSide(state) == CourseElement.LEFT ? 1.0F : -1.0F;
                 float radius = lineRadius(state);
                 collector.order(1).submitCustomGeometry(poseStack, GateRenderer.glowType(), (pose, buffer) -> {
                     for (int i = 0; i < ARC_CHEVRONS; i++) {
@@ -294,9 +307,9 @@ public final class CourseElementRenderer {
                         float z = (float) (radius * Math.sin(phi));
                         float dx = (float) (sign * Math.sin(phi));
                         float dz = (float) (-Math.cos(phi));
-                        chevron(pose, buffer, x, LIFT, z, dx, dz, ARGB.color(brightness(ARC_CHEVRONS - 1 - i, age), color));
+                        chevron(pose, buffer, x, LIFT, z, dx, dz, ARGB.color(brightness(ChevronWave.leaving(i + 1, ARC_CHEVRONS + 1), age), color));
                     }
-                    chevron(pose, buffer, -sign * radius, LIFT, -0.9F, 0.0F, 1.0F, ARGB.color(brightness(ARC_CHEVRONS, age), color));
+                    chevron(pose, buffer, -sign * radius, LIFT, -0.9F, 0.0F, 1.0F, ARGB.color(brightness(ChevronWave.leaving(0, ARC_CHEVRONS + 1), age), color));
                     cross(pose, buffer, sign * radius, LIFT, -0.9F);
                 });
             }
@@ -315,23 +328,23 @@ public final class CourseElementRenderer {
                     GateRenderer.frameBand(pose, buffer, -inner, bar, inner, height - bar, HALO, face - bar - 2.0F * GAP, outer, fade);
                     for (int i = 0; i < GateRenderer.CHEVRONS; i++) {
                         float z = half + 0.7F + 0.85F * i;
-                        chevron(pose, buffer, 0.0F, LIFT, z, 0.0F, 1.0F, ARGB.color(brightness(GateRenderer.CHEVRONS - 1 - i, age), color));
+                        chevron(pose, buffer, 0.0F, LIFT, z, 0.0F, 1.0F, ARGB.color(brightness(ChevronWave.leaving(i, GateRenderer.CHEVRONS), age), color));
                     }
                 });
                 poseStack.popPose();
                 collector.order(1).submitCustomGeometry(poseStack, GateRenderer.glowType(), (pose, buffer) -> {
                     for (int i = 0; i < 2; i++) {
                         float y = height + 1.3F - 0.45F * i;
-                        int shade = ARGB.color(brightness(1 - i, age), color);
+                        int shade = ARGB.color(brightness(ChevronWave.leaving(i, 2), age), color);
                         dive(pose, buffer, y, shade, false);
                         dive(pose, buffer, y, shade, true);
                     }
                 });
             }
-            case GATE, FREEFORM -> {
+            case GATE, FREEFORM, GATE_POLE -> {
             }
         }
-        if (state.marking != GateRenderer.Marking.NONE && state.label != null && state.labelWidth > 0) {
+        if (state.markPlate && state.marking != GateRenderer.Marking.NONE && state.label != null && state.labelWidth > 0) {
             this.plate(renderer, state, poseStack, collector);
         }
         poseStack.popPose();
@@ -350,7 +363,7 @@ public final class CourseElementRenderer {
         float plateHalf = PLATE_WIDTH * 0.5F;
         float top = bottom + PLATE_HEIGHT;
         int light = state.lightCoords;
-        int color = state.lightColor;
+        int color = state.kind == CourseElement.GATE_POLE ? state.markColor : state.lightColor;
         float z = centerZ;
         collector.submitCustomGeometry(poseStack, GateRenderer.solidType(), (pose, buffer) -> BoxDraw.box(pose, buffer, centerX - plateHalf, bottom,
                 z - PLATE_DEPTH * 0.5F, centerX + plateHalf, top, z + PLATE_DEPTH * 0.5F, GateRenderer.FRAME_COLOR, light));
@@ -365,11 +378,8 @@ public final class CourseElementRenderer {
                 GateRenderer.EXIT_TEXT_COLOR);
     }
 
-    static float brightness(int fromFar, float age) {
-        float wave = age * WAVE + fromFar / (float) GateRenderer.CHEVRONS;
-        wave -= (float) Math.floor(wave);
-        float fall = 1.0F - wave;
-        return MIN_GLOW + (1.0F - MIN_GLOW) * fall * fall;
+    static float brightness(int stepsLeft, float age) {
+        return ChevronWave.brightness(stepsLeft, age);
     }
 
     static void chevron(PoseStack.Pose pose, VertexConsumer buffer, float cx, float y, float cz, float dx, float dz, int color) {

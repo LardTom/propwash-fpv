@@ -166,6 +166,9 @@ public final class DroneSelfTests {
         ModeSwitchSelfTests.register();
         Mode3dSelfTests.register();
         WaterproofTurtleSelfTests.register();
+        SurfaceSelfTests.register();
+        MotorHeatSelfTests.register();
+        TeleportRotationSelfTests.register();
         SelfTest.afterLeaveStep("drone: keine Sitzung nach dem Verlassen", 20,
                 ctx -> StepResult.check(!PilotSession.INSTANCE.isActive(), "PilotSession nach dem Verlassen noch aktiv"));
     }

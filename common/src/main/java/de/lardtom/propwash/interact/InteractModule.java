@@ -34,17 +34,20 @@ public final class InteractModule {
         PropwashNet.registerC2S(SnagWearC2S.TYPE, SnagWearC2S.CODEC, DroneSnags::onWear);
         PropwashNet.registerC2S(DroneBellC2S.TYPE, DroneBellC2S.CODEC, DroneBells::onBell);
         ServerBus.STARTED.register(server -> {
+            DroneBosses.reset();
             DroneStrikes.reset();
             DroneBreaks.reset();
             DroneSnags.reset();
             DroneBells.reset();
         });
         ServerBus.STOPPED.register(server -> {
+            DroneBosses.reset();
             DroneStrikes.reset();
             DroneBreaks.reset();
             DroneSnags.reset();
             DroneBells.reset();
         });
+        ServerBus.TICK_END.register(DroneBosses::serverTick);
         QuadcopterEntity.SERVER_MOVED.register((drone, pilot, from, to) -> DroneStrikes.onMoved(drone));
         QuadcopterEntity.HOME_RESET.register((drone, pilot) -> DroneCargo.release(drone, CargoReleaseReason.COMMAND));
     }

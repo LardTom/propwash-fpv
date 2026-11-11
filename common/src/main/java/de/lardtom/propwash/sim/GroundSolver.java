@@ -26,6 +26,7 @@ final class GroundSolver {
     private final double[] massZ = new double[POINTS];
     private final boolean[] active = new boolean[POINTS];
     final boolean[] touching = new boolean[POINTS];
+    final double[] depth = new double[POINTS];
     private final boolean[] wasTouching = new boolean[POINTS];
     private final double[] warmN = new double[POINTS];
     private final double[] warmX = new double[POINTS];
@@ -118,12 +119,21 @@ final class GroundSolver {
         return k < AirframeSpec.HULL_POINTS && k != 8 && k != 9 && k != 11;
     }
 
+    static boolean absorbs(int k) {
+        return k >= AirframeSpec.ACCESSORY_GROUND;
+    }
+
     static boolean soft(int k) {
         return k == 8 || k == 9 || (k >= AirframeSpec.HULL_POINTS && k < AirframeSpec.HULL_POINTS + 4);
     }
 
     boolean solve(AirframeSpec p, RigidBody b, double plane, double h, double mu, double bounce, double softBounce, double crashSpeed,
                   boolean substep, double vx0, double vy0, double vz0, double lx0, double ly0, double lz0) {
+        return this.solve(p, b, plane, null, h, mu, bounce, softBounce, crashSpeed, substep, vx0, vy0, vz0, lx0, ly0, lz0);
+    }
+
+    boolean solve(AirframeSpec p, RigidBody b, double plane, double[] planes, double h, double mu, double bounce, double softBounce,
+                  double crashSpeed, boolean substep, double vx0, double vy0, double vz0, double lx0, double ly0, double lz0) {
         this.vx = vx0;
         this.vy = vy0;
         this.vz = vz0;
@@ -144,6 +154,7 @@ final class GroundSolver {
             this.lambda[k] = 0.0;
             this.frictionX[k] = 0.0;
             this.frictionZ[k] = 0.0;
+            this.depth[k] = Double.NEGATIVE_INFINITY;
         }
         for (int k = 0; k < count; k++) {
             if (!p.groundUsed(k)) {
@@ -152,7 +163,8 @@ final class GroundSolver {
             double x = b.r00 * p.groundX(k) + b.r01 * p.groundY(k) + b.r02 * p.groundZ(k);
             double y = b.r10 * p.groundX(k) + b.r11 * p.groundY(k) + b.r12 * p.groundZ(k);
             double z = b.r20 * p.groundX(k) + b.r21 * p.groundY(k) + b.r22 * p.groundZ(k);
-            double depth = plane - (b.py + y);
+            double depth = (planes == null ? plane : planes[k]) - (b.py + y);
+            this.depth[k] = depth;
             if (!(depth > -REACH)) {
                 continue;
             }
@@ -176,7 +188,7 @@ final class GroundSolver {
             } else {
                 goal = 0.0;
             }
-            double base = soft(k) ? softBounce : bounce;
+            double base = absorbs(k) ? 0.0 : soft(k) ? softBounce : bounce;
             if (!this.wasTouching[k]) {
                 this.grip[k] = 1.0;
             }

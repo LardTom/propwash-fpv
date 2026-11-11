@@ -411,6 +411,8 @@ def check_items():
         png(ASSETS / "textures" / "item" / f"gate_{size}.png", (16, 16))
     check_item_definition("course_tool")
     png(ASSETS / "textures" / "item" / "course_tool.png", (16, 16))
+    check_item_definition("zone_marker")
+    png(ASSETS / "textures" / "item" / "zone_marker.png", (16, 16))
     check_item_definition("waterproof_spray")
     png(ASSETS / "textures" / "item" / "waterproof_spray.png", (16, 16))
     for name in materials.MATERIALS:
@@ -800,10 +802,11 @@ def check_icons():
 def check_owned_json():
     owned = [
         *(ASSETS / "items").glob("goggles_*.json"), *(ASSETS / "items").glob("gate_*.json"),
-        ASSETS / "items" / "course_tool.json", ASSETS / "items" / "drone_workbench.json",
+        ASSETS / "items" / "course_tool.json", ASSETS / "items" / "zone_marker.json", ASSETS / "items" / "drone_workbench.json",
         *(ASSETS / "models" / "gate").glob("*.json"), *(ASSETS / "models" / "gate" / "piece").glob("*.json"),
         *(ASSETS / "items" / "race").glob("gate_piece_*.json"), *(ASSETS / "models" / "item").glob("goggles_*.json"),
         *(ASSETS / "models" / "item").glob("gate_*.json"), ASSETS / "models" / "item" / "course_tool.json",
+        ASSETS / "models" / "item" / "zone_marker.json",
         ASSETS / "models" / "block" / "drone_workbench.json", ASSETS / "blockstates" / "drone_workbench.json",
         ASSETS / "items" / "remote.json", ASSETS / "items" / "battery_charger.json", ASSETS / "blockstates" / "battery_charger.json",
         ASSETS / "models" / "item" / "battery_charger.json",

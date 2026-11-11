@@ -563,7 +563,19 @@
         "base": "#141619"
       }
     ],
+    "stack/aio_20_mounted": [
+      {
+        "channel": "stack",
+        "base": "#141619"
+      }
+    ],
     "stack/aio_whoop": [
+      {
+        "channel": "stack",
+        "base": "#141619"
+      }
+    ],
+    "stack/aio_whoop_mounted": [
       {
         "channel": "stack",
         "base": "#141619"
@@ -575,7 +587,19 @@
         "base": "#141619"
       }
     ],
+    "stack/creative_fc_mounted": [
+      {
+        "channel": "stack",
+        "base": "#141619"
+      }
+    ],
     "stack/stack_30": [
+      {
+        "channel": "stack",
+        "base": "#141619"
+      }
+    ],
+    "stack/stack_30_mounted": [
       {
         "channel": "stack",
         "base": "#141619"
@@ -599,10 +623,6 @@
       {
         "channel": "camera",
         "base": "#1d1e21"
-      },
-      {
-        "channel": "antenna",
-        "base": "#c0392b"
       }
     ],
     "video/digital_hd": [
@@ -613,10 +633,6 @@
       {
         "channel": "camera",
         "base": "#1d1e21"
-      },
-      {
-        "channel": "antenna",
-        "base": "#c0392b"
       }
     ],
     "video/digital_lite": [
@@ -627,10 +643,6 @@
       {
         "channel": "camera",
         "base": "#1d1e21"
-      },
-      {
-        "channel": "antenna",
-        "base": "#e6e6e6"
       }
     ]
   }

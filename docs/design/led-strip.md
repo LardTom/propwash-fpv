@@ -70,6 +70,32 @@ Hat die gewählte Drohne keinen LED-Streifen, zeigt der LED-Tab sie ohne Streife
 dunkel umrandet (keine leuchtenden LEDs, die es nicht gibt); nur ohne Drohne (Vorlage) steckt die Vorschau einen
 Streifen an, damit die Entwurfswerte sichtbar werden.
 
+## LED-Pfad (ab 0.6.0, Parts-API 1.7 in Arbeit)
+
+Ein Zubehör kann statt der geraden Leiste eine Linie angeben, an der seine LEDs sitzen (`led_path`,
+`AccessoryDefinition#ledPathMm`, 2–256 Punkte in mm im Koordinatensystem des Zubehörs, jede Koordinate ±500 mm,
+Länge > 0, nur mit LEDs). Kein eingebautes Teil nutzt das bisher; Beispiel im Entwicklungslauf:
+`propwash_example:led_ring` (20 LEDs auf einem Ring mit 20 mm Radius, oben).
+
+- **Plätze** (`AccessoryType#ledMm`): LED *i* sitzt bei (*i* + 0,5)/`leds` der Gesamtlänge, linear zwischen den
+  Punkten; Abschnitte der Länge 0 werden übersprungen. Ein geschlossener Ring (letzter Punkt = erster) hat so überall
+  denselben Abstand, auch über die Naht. Ohne Pfad gilt die bisherige Rechnung (gleichmäßig entlang X auf der Unterseite,
+  Streifenlänge des Rahmens), bitgleich.
+- **Formen** (`FallbackShapes`): je LED ein leuchtender Quader 3 × 1,6 × 3 mm mittig auf dem Pfad und ein Leuchthof
+  mit festem Radius 7 mm (`STRIP_HALO_MM`); ohne eigenes Modell statt des Quaders `size_mm` eine Leiterplatte
+  2,6 × 1 mm entlang jedes Abschnitts (an den Enden um die halbe Breite verlängert, damit Ecken geschlossen sind) mit den
+  LEDs (2,4 × 1,4 × 2,4 mm) darauf. Die Leiste liegt flach, solange der Abschnitt waagrecht ist.
+- **Keine Streckung**: `AccessoryAnchor#stretch` ist für Zubehör mit Pfad 1 – der Pfad ist die Form; unten gestreckt
+  wird weiter nur der gerade Streifen.
+- **Modi, Farben, „LEDs aus“, Scheinwerfer, LambDynamicLights** laufen unverändert über `LedAnimator` mit Index und
+  Anzahl der LEDs; der Regenbogen verteilt die Farbtöne entlang des Pfads.
+- **Bis 64 LEDs**: `DroneRenderState.MAX_STRIP_LEDS` = `AccessoryDefinition.MAX_LEDS` (vorher 16). Bis 0.5.2 zeigte ein
+  Zubehör mit mehr als 16 LEDs nur die ersten 16 Plätze, also nur einen Teil der Leiste.
+- **Tests**: JUnit `parts.LedPathTest` (Prüfregeln, Lesen, alter Konstruktor, Codec, Plätze, Streckung, Hash) und
+  `drone.client.render.LedPathShapesTest` (Leuchtformen auf dem Pfad, 64 LEDs, Leiterplatte statt Quader, gerader
+  Streifen unverändert); Selbsttest „drone-render: LED-Pfad – …“ (beide Loader) und Bildschirmfoto
+  `drone_closeup_led_path` (Fabric, Regenbogen).
+
 ## FPV-Scheinwerfer (video)
 
 Aktiv, solange das FPV-Bild läuft (`VideoState`), die Drohne einen LED-Streifen hat, `led.headlight` an ist, die LEDs

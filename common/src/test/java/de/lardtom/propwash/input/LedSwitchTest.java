@@ -183,7 +183,7 @@ class LedSwitchTest {
         for (int i = 4; i < AUX; i++) {
             axes[i] = -1.0F;
         }
-        int bits = evaluator.evaluate(profile, axes, new boolean[0]);
+        long bits = evaluator.evaluate(profile, axes, new boolean[0]);
         assertEquals(SwitchEvaluator.bit(LEDS), bits);
     }
 }

@@ -1,15 +1,18 @@
 package de.lardtom.propwash.drone.client.render;
 
 import de.lardtom.propwash.api.part.AirframeGeometry;
+import de.lardtom.propwash.api.part.AnchorSpec;
 import de.lardtom.propwash.api.part.FrameDefinition;
 import de.lardtom.propwash.api.part.MotorArm;
 import de.lardtom.propwash.build.AccessoryAnchor;
 import de.lardtom.propwash.build.AccessoryMount;
+import de.lardtom.propwash.build.AntennaRules;
 import de.lardtom.propwash.build.FrameType;
 import de.lardtom.propwash.build.MotorType;
 import de.lardtom.propwash.sim.FpvRig;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,6 +41,7 @@ public final class DroneLayout {
     private final boolean fromFile;
     private final boolean batteryUnder;
     private final Map<AccessoryMount, AccessoryAnchor> accessories;
+    private final @Nullable Vector3fc antenna;
 
     public DroneLayout(Vector3fc[] motors, boolean[] counterClockwise, float propHeight, Vector3fc stack, Vector3fc battery,
                        Vector3fc video, float cameraTiltDegrees, boolean fromFile) {
@@ -52,6 +56,12 @@ public final class DroneLayout {
     public DroneLayout(Vector3fc[] motors, boolean[] counterClockwise, float propHeight, Vector3fc stack, Vector3fc battery,
                        Vector3fc video, float cameraTiltDegrees, boolean fromFile, Map<AccessoryMount, AccessoryAnchor> accessories,
                        boolean batteryUnder) {
+        this(motors, counterClockwise, propHeight, stack, battery, video, cameraTiltDegrees, fromFile, accessories, batteryUnder, null);
+    }
+
+    public DroneLayout(Vector3fc[] motors, boolean[] counterClockwise, float propHeight, Vector3fc stack, Vector3fc battery,
+                       Vector3fc video, float cameraTiltDegrees, boolean fromFile, Map<AccessoryMount, AccessoryAnchor> accessories,
+                       boolean batteryUnder, @Nullable Vector3fc antenna) {
         if (motors.length != SLOTS || counterClockwise.length != SLOTS) {
             throw new IllegalArgumentException("Layout braucht genau " + SLOTS + " Motoren");
         }
@@ -70,6 +80,7 @@ public final class DroneLayout {
         Map<AccessoryMount, AccessoryAnchor> copy = new EnumMap<>(AccessoryMount.class);
         copy.putAll(accessories);
         this.accessories = Collections.unmodifiableMap(copy);
+        this.antenna = antenna == null ? null : new Vector3f(antenna);
     }
 
     public static int slotForMotor(int motorIndex) {
@@ -137,6 +148,23 @@ public final class DroneLayout {
         return this.accessories;
     }
 
+    public Optional<Vector3fc> antenna() {
+        return Optional.ofNullable(this.antenna);
+    }
+
+    public Vector3fc antenna(FrameType frame) {
+        return this.antenna != null ? this.antenna : defaultAntenna(frame);
+    }
+
+    public static Vector3f defaultAntenna(FrameType frame) {
+        AnchorSpec anchor = AntennaRules.anchor(frame.definition());
+        return new Vector3f((float) anchor.x(), (float) anchor.y(), (float) anchor.z());
+    }
+
+    public static float antennaTilt(FrameType frame) {
+        return (float) AntennaRules.anchor(frame.definition()).tiltDeg();
+    }
+
     public static Map<AccessoryMount, AccessoryAnchor> defaultAccessories(FrameType frame) {
         Map<AccessoryMount, AccessoryAnchor> anchors = new EnumMap<>(AccessoryMount.class);
         for (AccessoryMount mount : frame.accessoryMounts) {
@@ -195,7 +223,7 @@ public final class DroneLayout {
                 .orElseGet(() -> new Vector3f(0.0F, electronicsHeight(frame), -0.21F * wheelbase));
         float propHeight = frame.builtin() ? defaultPropHeight(typicalMotor(frame)) : Float.NaN;
         return new DroneLayout(motors, spins, propHeight, new Vector3f(0.0F, stackY, 0.0F), battery, video,
-                defaultCameraTilt(frame), false, defaultAccessories(frame), !geometry.batteryOnTop());
+                defaultCameraTilt(frame), false, defaultAccessories(frame), !geometry.batteryOnTop(), null);
     }
 
     public static float motorMountHeight(FrameType frame) {

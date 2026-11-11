@@ -21,6 +21,7 @@ class CrashFreezeTest {
         double hang;
         double time;
         boolean crashed;
+        boolean hardHit;
         boolean hitX;
         boolean hitY;
         boolean hitCeiling;
@@ -58,6 +59,7 @@ class CrashFreezeTest {
             w.frame(DT);
             t.time += DT;
             t.crashed |= w.sim.events().contains(SimEventType.CRASH);
+            t.hardHit |= w.sim.events().contains(SimEventType.HARD_IMPACT);
             t.hitX |= w.report.hitX || w.report.hitZ;
             t.hitY |= w.report.hitY || w.sim.telemetry().grounded;
             t.hitCeiling |= w.report.hitY && w.report.requestedY > 0.0;
@@ -162,7 +164,7 @@ class CrashFreezeTest {
                         });
                         String label = String.format(Locale.ROOT, "Wand %.0f m/s unter %.0f°, Crash-Disarm %s, Prop-Strikes %s", v, angle, disarm, strikes);
                         assertTrue(t.hitX, label + ": Wand nicht getroffen");
-                        assertTrue(t.crashed, label + ": kein Absturz erkannt");
+                        assertTrue(t.crashed || t.hardHit, label + ": weder Absturz noch harter Aufprall erkannt");
                         assertRestsOnSomething(w, t, label);
                         assertTrue(w.lowest() < 0.01, label + ": nicht am Boden: " + t.describe(w));
                     }

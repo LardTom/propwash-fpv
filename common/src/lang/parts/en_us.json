@@ -19,7 +19,7 @@
   "propwash.parts.tooltip.shape.custom": "custom geometry",
   "propwash.parts.tooltip.prop_mount": "Prop mount: %s",
   "propwash.parts.tooltip.thermal": "Heat limits: %s",
-  "propwash.parts.tooltip.thermal_limits": "throttles from %s °C, at most %s °C",
+  "propwash.parts.tooltip.thermal_limits": "loses power from %s °C, at most %s °C",
   "propwash.parts.tooltip.material": "Material: %s",
   "propwash.parts.tooltip.material.polycarbonate": "Polycarbonate",
   "propwash.parts.tooltip.material.glass_fiber_nylon": "Glass-fiber nylon",

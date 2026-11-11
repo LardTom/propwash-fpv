@@ -13,7 +13,9 @@ import org.jspecify.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BooleanSupplier;
 
@@ -29,6 +31,10 @@ public final class Screenshots {
     private static final String SIZE = "shot_size";
     private static final String RELOAD = "language_reload";
     private static final int STEP_TICKS = 1200;
+    private static final String INVALID_CHARS = "<>:\"\\|?*";
+    private static final Set<String> RESERVED_NAMES = Set.of("con", "prn", "aux", "nul",
+            "com0", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9", "com¹", "com²", "com³",
+            "lpt0", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9", "lpt¹", "lpt²", "lpt³");
     private static boolean suppressMarker;
     private static int @Nullable [] savedWindow;
     private static @Nullable String savedLanguage;
@@ -41,7 +47,7 @@ public final class Screenshots {
     }
 
     public static boolean markerHidden() {
-        return suppressMarker;
+        return suppressMarker || enabled();
     }
 
     public static void hideMarker(boolean hidden) {
@@ -72,9 +78,37 @@ public final class Screenshots {
         return 1;
     }
 
+    public static String fileName(String name) {
+        String[] segments = name.split("/", -1);
+        for (int i = 0; i < segments.length; i++) {
+            segments[i] = segment(segments[i]);
+        }
+        return String.join("/", segments);
+    }
+
+    private static String segment(String segment) {
+        if (segment.equals(".") || segment.equals("..")) {
+            return segment;
+        }
+        StringBuilder out = new StringBuilder(segment.length() + 1);
+        for (int i = 0; i < segment.length(); i++) {
+            char c = segment.charAt(i);
+            out.append(c < 32 || INVALID_CHARS.indexOf(c) >= 0 ? '_' : c);
+        }
+        for (int end = out.length() - 1; end >= 0 && (out.charAt(end) == '.' || out.charAt(end) == ' '); end--) {
+            out.setCharAt(end, '_');
+        }
+        int dot = out.indexOf(".");
+        int baseEnd = dot < 0 ? out.length() : dot;
+        if (RESERVED_NAMES.contains(out.substring(0, baseEnd).toLowerCase(Locale.ROOT))) {
+            out.insert(baseEnd, '_');
+        }
+        return out.toString();
+    }
+
     public static CompletableFuture<String> capture(String name) {
         CompletableFuture<String> done = new CompletableFuture<>();
-        Path file = dir().resolve(name + ".png").normalize();
+        Path file = dir().resolve(fileName(name) + ".png").normalize();
         try {
             Files.createDirectories(file.getParent());
         } catch (IOException e) {
@@ -149,7 +183,7 @@ public final class Screenshots {
             return StepResult.fail("Bildschirmfoto " + file + ": " + shot.exceptionNow());
         }
         state.put(SIZE, shot.join());
-        ctx.log("Bildschirmfoto " + dir().resolve(file + ".png") + " (" + shot.join() + ")");
+        ctx.log("Bildschirmfoto " + dir().resolve(fileName(file) + ".png") + " (" + shot.join() + ")");
         return StepResult.pass();
     }
 

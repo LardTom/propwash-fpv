@@ -83,7 +83,7 @@ class ItemFrameDisplayTest {
         assertEquals("minecraft:select", select.get("type").getAsString());
         assertEquals("minecraft:display_context", select.get("property").getAsString());
         JsonArray cases = select.getAsJsonArray("cases");
-        assertEquals(2, cases.size());
+        assertEquals(3, cases.size());
         JsonObject fixed = cases.get(0).getAsJsonObject();
         assertEquals("fixed", fixed.get("when").getAsString());
         JsonObject wall = fixed.getAsJsonObject("model").getAsJsonObject("model");
@@ -94,10 +94,14 @@ class ItemFrameDisplayTest {
         assertEquals("ground", ground.get("when").getAsString());
         assertTrue(ground.getAsJsonObject("model").getAsJsonObject("model").get("ground").getAsBoolean());
         assertFalse(ground.getAsJsonObject("model").getAsJsonObject("model").has("wall"));
+        JsonObject gui = cases.get(2).getAsJsonObject();
+        assertEquals("gui", gui.get("when").getAsString());
+        assertTrue(gui.getAsJsonObject("model").getAsJsonObject("model").get("icon").getAsBoolean());
         JsonObject plain = select.getAsJsonObject("fallback").getAsJsonObject("model");
         assertEquals("propwash:drone_build", plain.get("type").getAsString());
         assertFalse(plain.has("wall"));
         assertFalse(plain.has("ground"));
+        assertFalse(plain.has("icon"));
         for (String model : List.of("models/item/drone.json", "models/item/drone_paint.json")) {
             JsonObject display = read(assets().resolve(model)).getAsJsonObject("display");
             JsonObject frame = display.getAsJsonObject("fixed");

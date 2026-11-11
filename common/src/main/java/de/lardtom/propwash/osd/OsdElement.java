@@ -52,7 +52,9 @@ public enum OsdElement {
     RELAY(1, 8, Align.LEFT, true, true, Group.LINK),
     TRICKS(15, 13, Align.CENTER, true, true, Group.STATUS),
     FLASHBACK_BUDGET(28, 3, Align.RIGHT, true, true, Group.STATUS),
-    VTX_POWER(8, 6, Align.LEFT, true, true, Group.LINK);
+    VTX_POWER(8, 6, Align.LEFT, true, true, Group.LINK),
+    FLIGHT_PATH_MARKER(15, 8, Align.CENTER, false, false, Group.FLIGHT),
+    SPECTATORS(28, 0, Align.RIGHT, true, true, Group.STATUS);
 
     private final int baseCol;
     private final int baseRow;
@@ -97,7 +99,7 @@ public enum OsdElement {
     }
 
     public boolean usesLineOpacity() {
-        return this == CROSSHAIR || this == ARTIFICIAL_HORIZON || this == HORIZON_SIDEBARS;
+        return this == CROSSHAIR || this == ARTIFICIAL_HORIZON || this == HORIZON_SIDEBARS || this == FLIGHT_PATH_MARKER;
     }
 
     public String key() {

@@ -1,7 +1,9 @@
 package de.lardtom.propwash.osd.client;
 
+import de.lardtom.propwash.api.client.osd.OsdTone;
 import de.lardtom.propwash.input.InputConfig;
 import de.lardtom.propwash.input.StickMode;
+import de.lardtom.propwash.osd.FlightPathMarker;
 import de.lardtom.propwash.osd.FlightStats;
 import de.lardtom.propwash.osd.OsdColors;
 import de.lardtom.propwash.osd.OsdCondition;
@@ -14,7 +16,10 @@ import de.lardtom.propwash.osd.OsdInterference;
 import de.lardtom.propwash.osd.OsdProjection;
 import de.lardtom.propwash.osd.OsdStatsLayout;
 import de.lardtom.propwash.osd.OsdWarnings;
+import de.lardtom.propwash.osd.SpectatorCount;
 import de.lardtom.propwash.osd.VoltageDisplay;
+import de.lardtom.propwash.osd.addon.AddonOsdKeys;
+import de.lardtom.propwash.osd.addon.client.AddonOsdLayer;
 import de.lardtom.propwash.video.record.path.FlashbackBudget;
 import de.lardtom.propwash.sim.BatteryState;
 import de.lardtom.propwash.sim.HoldMode;
@@ -41,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.LongFunction;
 
 public final class OsdRenderer {
@@ -50,6 +56,8 @@ public final class OsdRenderer {
     public static final double ARMED_VISIBLE_SECONDS = 2.0;
     public static final float PREVIEW_FOV = 90.0F;
     public static final float PREVIEW_UPTILT = 25.0F;
+    public static final double PREVIEW_SPEED = 18.0;
+    public static final double PREVIEW_SINK = 1.0;
     private static final float COMPASS_RANGE_DEG = 60.0F;
     private static final String[] COMPASS_KEYS = prefixed("propwash.osd.compass.", "n", "ne", "e", "se", "s", "sw", "w", "nw");
     private static final float NOISE_OPACITY_LIFT = 1.4F;
@@ -69,6 +77,7 @@ public final class OsdRenderer {
     private static final String LABEL_XYZ = "propwash.osd.label.xyz";
     private static final String LABEL_ON = "propwash.osd.label.on";
     private static final String LABEL_LAP = "propwash.osd.label.lap";
+    private static final String LABEL_FINISH = "propwash.osd.label.finish";
     private static final String LABEL_LAST = "propwash.osd.label.last";
     private static final String LABEL_BEST = "propwash.osd.label.best";
     private static final String LABEL_THROTTLE = "propwash.osd.label.throttle";
@@ -86,6 +95,12 @@ public final class OsdRenderer {
     private static final long SAVING_KEY = 1L << 40;
     private static final int REC_MARK = 5;
     private static final int REC_GAP = 3;
+    private static final int EYE_WIDTH = 9;
+    private static final int EYE_HEIGHT = 5;
+    private static final int[] EYE_SHAPE = {
+            2, 0, 7, 1, 2, 4, 7, 5, 3, 1, 6, 4,
+            1, 1, 2, 2, 1, 3, 2, 4, 7, 1, 8, 2, 7, 3, 8, 4,
+            0, 2, 1, 3, 8, 2, 9, 3};
     private static final double REC_BLINK_PERIOD = 1.0;
     private static final double REC_BLINK_ON = 0.6;
     private static final String LABEL_TIME = "propwash.osd.label.time";
@@ -108,9 +123,20 @@ public final class OsdRenderer {
     static final String CHAIN_MORE = ".. ";
     private static final String[] TRICK_KEYS = enumKeys("propwash.osd.trick.type.", TrickType.values());
     private static final OsdElement[] STATS_COMPANIONS = {OsdElement.ARMED_STATUS, OsdElement.WARNINGS, OsdElement.CRAFT_NAME};
+    private static final int[] FLIGHT_PATH_SHAPE = {
+            -1, -3, 2, -2, -1, 3, 2, 4, -3, -1, -2, 2, 3, -1, 4, 2,
+            -2, -2, -1, -1, 2, -2, 3, -1, -2, 2, -1, 3, 2, 2, 3, 3,
+            -8, 0, -3, 1, 4, 0, 9, 1, 0, -6, 1, -3};
+    private static final int[] FLIGHT_PATH_EDGE_SHAPE = {
+            -1, -3, 0, -2, 1, -3, 2, -2, -1, 3, 0, 4, 1, 3, 2, 4,
+            -3, -1, -2, 0, -3, 1, -2, 2, 3, -1, 4, 0, 3, 1, 4, 2,
+            -8, 0, -7, 1, -6, 0, -5, 1, -4, 0, -3, 1, 4, 0, 5, 1, 6, 0, 7, 1, 8, 0, 9, 1,
+            0, -6, 1, -5, 0, -4, 1, -3};
 
     private final OsdProjection projection = new OsdProjection();
     private final OsdProjection.Horizon horizon = new OsdProjection.Horizon();
+    private final FlightPathMarker flightPath = new FlightPathMarker();
+    private final FlightPathMarker.State flightPathState = new FlightPathMarker.State();
     private final Vector2f point = new Vector2f();
     private final Vector3f azimuth = new Vector3f();
     private final Quaternionf synthetic = new Quaternionf();
@@ -133,6 +159,8 @@ public final class OsdRenderer {
     private final @Nullable String[] statsText = new String[STAT_COUNT];
     private @Nullable Language language;
     private SpeedUnit unit = SpeedUnit.KMH;
+    private @Nullable SpeedUnit pilotUnit;
+    private @Nullable StickMode pilotStickMode;
     private @Nullable String craftNameSource;
     private String craftNameText = "";
     private @Nullable String coordinatesText;
@@ -151,6 +179,7 @@ public final class OsdRenderer {
     private @Nullable String warningPhase;
     private String warningText = "";
     private final OsdDraw draw = new OsdDraw();
+    private final AddonOsdLayer addons;
 
     private GuiGraphicsExtractor graphics;
     private Font font;
@@ -171,6 +200,11 @@ public final class OsdRenderer {
     private double viewZ;
 
     public OsdRenderer() {
+        this(new AddonOsdLayer());
+    }
+
+    public OsdRenderer(AddonOsdLayer addons) {
+        this.addons = Objects.requireNonNull(addons, "addons");
         for (OsdElement element : OsdElement.values()) {
             this.bounds.put(element, new float[4]);
         }
@@ -203,6 +237,11 @@ public final class OsdRenderer {
         this.pixelScale = pixelsPerUnit;
     }
 
+    public void setPilotUnits(@Nullable SpeedUnit unit, @Nullable StickMode stickMode) {
+        this.pilotUnit = unit;
+        this.pilotStickMode = stickMode;
+    }
+
     public void render(GuiGraphicsExtractor graphics, Font font, OsdData data, OsdConfig config, OsdGrid grid, float textScale,
                        @Nullable View view, boolean editor) {
         this.graphics = graphics;
@@ -220,6 +259,7 @@ public final class OsdRenderer {
         this.draw.begin(graphics, font, config.outline, config.background, this.pixelScale);
         this.setupView(view);
         OsdWarnings.collect(data, this.warnings);
+        this.addons.collect(data, config, editor);
         this.statsMode = !editor && data.showStats && data.stats.hasData();
         if (this.statsMode) {
             this.layoutStats();
@@ -253,8 +293,75 @@ public final class OsdRenderer {
                 this.drawElement(element, slot);
             }
         }
+        this.addonOsd(jitter, shared, !editor);
         this.draw.end();
         this.graphics = null;
+    }
+
+    public boolean hasAddonElements() {
+        return !this.addons.specs().isEmpty();
+    }
+
+    public void renderAddons(GuiGraphicsExtractor graphics, Font font, OsdData data, OsdConfig config, OsdGrid grid, float textScale) {
+        this.graphics = graphics;
+        this.font = font;
+        this.data = data;
+        this.config = config;
+        this.grid = grid;
+        this.baseScale = textScale;
+        this.scale = textScale;
+        this.editor = false;
+        this.statsMode = false;
+        this.draw.begin(graphics, font, config.outline, config.background, this.pixelScale);
+        this.addons.collectElements(data, config);
+        this.addonOsd(0.0F, 0.0F, false);
+        this.draw.end();
+        this.graphics = null;
+    }
+
+    private void addonOsd(float jitter, float shared, boolean noise) {
+        if (this.statsMode) {
+            return;
+        }
+        List<AddonOsdLayer.Shown> shown = this.addons.shown();
+        for (int i = 0; i < shown.size(); i++) {
+            AddonOsdLayer.Shown entry = shown.get(i);
+            OsdConfig.Slot slot = entry.slot();
+            this.alpha = this.config.opacityFraction();
+            if (noise && this.data.videoNoise > 0.0) {
+                this.alpha += (1.0F - this.alpha) * (float) Math.min(1.0, this.data.videoNoise * NOISE_OPACITY_LIFT);
+            }
+            int primary = this.config.primaryRgb();
+            this.color = OsdColors.withAlpha(slot.hasColor() ? OsdColors.rgbOr(slot.color, primary) : primary, this.alpha);
+            float elementScale = slot.hasScale() ? slot.scale : this.config.scale;
+            float scaled = this.baseScale * elementScale / this.config.scale;
+            this.scale = elementScale == this.config.scale ? this.baseScale : this.editor ? scaled : OsdGrid.snapToPixels(scaled, this.pixelScale);
+            String text = entry.text();
+            float width = this.draw.width(text, this.scale);
+            float anchorX = this.grid.anchorX(slot.col, entry.align());
+            float x = this.snap(switch (entry.align()) {
+                case LEFT -> anchorX;
+                case CENTER -> anchorX - width * 0.5F;
+                case RIGHT -> anchorX - width;
+            });
+            float y = this.snap(this.textTop(slot.row));
+            int textColor = AddonOsdLayer.color(entry.tone(), this.color, this.good(), this.caution(), this.critical());
+            boolean shifted = jitter > 0.0F || shared != 0.0F;
+            if (shifted) {
+                float offset = shared + (float) (OsdInterference.noise(this.textKeys.length + i + 97, this.frame / 3L) * 2.0 - 1.0) * jitter;
+                this.graphics.pose().pushMatrix();
+                this.graphics.pose().translate(offset, 0.0F);
+            }
+            try {
+                this.textBox(x, y, width);
+                this.draw.text(text, x, y, this.scale, textColor);
+            } finally {
+                if (shifted) {
+                    this.graphics.pose().popMatrix();
+                }
+            }
+            entry.record(x - this.scale, y - this.scale, x + width, y + (OsdDraw.GLYPH_HEIGHT + 2) * this.scale);
+        }
     }
 
     private void prepare(OsdElement element) {
@@ -372,15 +479,29 @@ public final class OsdRenderer {
             this.hasView = this.projection.valid();
             return;
         }
-        double compass = Double.isFinite(this.data.compassDeg) ? this.data.compassDeg : 0.0;
-        double pitch = Double.isFinite(this.data.pitchDeg) ? this.data.pitchDeg : 0.0;
-        double roll = Double.isFinite(this.data.rollDeg) ? this.data.rollDeg : 0.0;
-        OsdProjection.cameraRotation(compass - 180.0, pitch - PREVIEW_UPTILT, roll, this.synthetic);
+        previewRotation(this.data, this.synthetic);
         this.projection.setup(this.synthetic, PREVIEW_FOV, centerX, centerY, this.grid.height());
         this.viewX = this.data.x;
         this.viewY = this.data.y;
         this.viewZ = this.data.z;
         this.hasView = true;
+    }
+
+    public static Quaternionf previewRotation(OsdData d, Quaternionf dest) {
+        double compass = Double.isFinite(d.compassDeg) ? d.compassDeg : 0.0;
+        double pitch = Double.isFinite(d.pitchDeg) ? d.pitchDeg : 0.0;
+        double roll = Double.isFinite(d.rollDeg) ? d.rollDeg : 0.0;
+        return OsdProjection.cameraRotation(compass - 180.0, pitch - PREVIEW_UPTILT, roll, dest);
+    }
+
+    public static void previewVelocity(OsdData d) {
+        double tilt = Math.toRadians(PREVIEW_UPTILT);
+        Vector3f velocity = new Vector3f(0.0F, (float) (-PREVIEW_SPEED * Math.sin(tilt) - PREVIEW_SINK * Math.cos(tilt)),
+                (float) (-PREVIEW_SPEED * Math.cos(tilt) + PREVIEW_SINK * Math.sin(tilt)));
+        previewRotation(d, new Quaternionf()).transform(velocity);
+        d.velocityX = velocity.x;
+        d.velocityY = velocity.y;
+        d.velocityZ = velocity.z;
     }
 
     private boolean visible(OsdElement element) {
@@ -392,8 +513,11 @@ public final class OsdRenderer {
             return element == OsdElement.POST_FLIGHT_STATS || element == OsdElement.WARNINGS || element == OsdElement.ARMED_STATUS
                     || element == OsdElement.CRAFT_NAME;
         }
+        if (d.freecam && (element.group() == OsdElement.Group.BATTERY || element.group() == OsdElement.Group.LINK)) {
+            return false;
+        }
         if (d.videoLost && (element == OsdElement.CROSSHAIR || element == OsdElement.ARTIFICIAL_HORIZON
-                || element == OsdElement.HORIZON_SIDEBARS || element == OsdElement.HOME_MARKER)) {
+                || element == OsdElement.HORIZON_SIDEBARS || element == OsdElement.HOME_MARKER || element == OsdElement.FLIGHT_PATH_MARKER)) {
             return false;
         }
         return switch (element) {
@@ -406,6 +530,7 @@ public final class OsdRenderer {
             case COORDINATES -> d.hasPosition;
             case ARMED_STATUS -> !d.armed || d.armedSeconds < ARMED_VISIBLE_SECONDS;
             case ARTIFICIAL_HORIZON -> this.hasView;
+            case FLIGHT_PATH_MARKER -> this.hasView && d.hasVelocity();
             case RECORDING -> d.recording != OsdData.REC_OFF;
             case FLASHBACK_BUDGET -> Double.isFinite(d.flashbackFill);
             case LEDS_OFF -> d.ledsOff;
@@ -413,6 +538,7 @@ public final class OsdRenderer {
             case VTX_CHANNEL -> !d.vtxChannel.isEmpty();
             case VTX_POWER -> d.vtxPowerMw > 0;
             case RELAY -> d.relayHops > 0;
+            case SPECTATORS -> d.spectators > 0;
             case TRICKS -> d.tricksOn && d.trickType != null && d.trickPopup != OsdData.TRICK_NONE
                     && d.trickAgeSeconds < (d.trickPopup == OsdData.TRICK_LOST ? TRICK_LOST_SECONDS : TRICK_VISIBLE_SECONDS);
             default -> true;
@@ -455,7 +581,13 @@ public final class OsdRenderer {
             case VIDEO_SYSTEM -> this.text(element, slot, this.videoSystemText(d), this.color);
             case CLOCK -> this.keyed(element, slot, null, OsdFormat.clockKey(d.clockHour, d.clockMinute), OsdFormat::clockText, this.color);
             case ON_TIME -> this.keyed(element, slot, LABEL_ON, OsdFormat.durationKey(d.onSeconds), OsdFormat::durationText, this.color);
-            case LAP -> this.keyed(element, slot, LABEL_LAP, Math.max(0, d.lap), Long::toString, this.color);
+            case LAP -> {
+                if (d.pointToPoint) {
+                    this.text(element, slot, this.tr(LABEL_FINISH), this.color);
+                } else {
+                    this.keyed(element, slot, LABEL_LAP, Math.max(0, d.lap), Long::toString, this.color);
+                }
+            }
             case LAP_TIME -> this.keyed(element, slot, LABEL_TIME, OsdFormat.lapKey(d.racing ? d.currentLapNanos : -1L), OsdFormat::lapText, this.color);
             case LAST_LAP -> this.keyed(element, slot, LABEL_LAST, OsdFormat.lapKey(d.lastLapNanos), OsdFormat::lapText, this.color);
             case BEST_LAP -> this.keyed(element, slot, LABEL_BEST, OsdFormat.lapKey(d.bestLapNanos), OsdFormat::lapText, this.color);
@@ -482,12 +614,14 @@ public final class OsdRenderer {
             case RELAY -> this.text(element, slot, this.relayText(d), this.qualityColor(weakestRelayHop(d)));
             case TRICKS -> this.tricks(slot);
             case FLASHBACK_BUDGET -> this.flashbackBudget(slot);
+            case FLIGHT_PATH_MARKER -> this.flightPathMarker();
+            case SPECTATORS -> this.spectators(slot);
         }
     }
 
     private void refreshCaches() {
         Language current = Language.getInstance();
-        SpeedUnit currentUnit = UiConfig.speedUnit();
+        SpeedUnit currentUnit = this.pilotUnit != null ? this.pilotUnit : UiConfig.speedUnit();
         if (current == this.language && currentUnit == this.unit) {
             return;
         }
@@ -791,6 +925,28 @@ public final class OsdRenderer {
         this.record(OsdElement.RECORDING, x - this.scale, y - this.scale, x + width, y + (OsdDraw.GLYPH_HEIGHT + 2) * this.scale);
     }
 
+    private void spectators(OsdConfig.Slot slot) {
+        String text = this.cachedText(OsdElement.SPECTATORS, null, SpectatorCount.clamp(this.data.spectators), Long::toString);
+        float textWidth = this.draw.width(text, this.scale);
+        float mark = (EYE_WIDTH + REC_GAP) * this.scale;
+        float width = mark + textWidth;
+        float anchor = this.grid.anchorX(slot.col, OsdElement.SPECTATORS.align());
+        float x = switch (OsdElement.SPECTATORS.align()) {
+            case LEFT -> anchor;
+            case CENTER -> anchor - width * 0.5F;
+            case RIGHT -> anchor - width;
+        };
+        x = this.snap(x);
+        float y = this.snap(this.textTop(slot.row));
+        this.textBox(x, y, width);
+        float markY = this.snap(y + (OsdDraw.GLYPH_HEIGHT - EYE_HEIGHT) * 0.5F * this.scale);
+        this.draw.push(x, markY, 0.0F, this.scale);
+        this.draw.rects(this.color, EYE_SHAPE);
+        this.draw.pop();
+        this.draw.text(text, x + mark, y, this.scale, this.color);
+        this.record(OsdElement.SPECTATORS, x - this.scale, y - this.scale, x + width, y + (OsdDraw.GLYPH_HEIGHT + 2) * this.scale);
+    }
+
     private void flashbackBudget(OsdConfig.Slot slot) {
         OsdData d = this.data;
         double fill = Math.max(0.0, d.flashbackFill);
@@ -1058,6 +1214,33 @@ public final class OsdRenderer {
                 x + Math.max(5 * this.scale, textWidth * 0.5F), y + 4 * this.scale + 8 * smallScale);
     }
 
+    private void flightPathMarker() {
+        if (!this.hasView) {
+            return;
+        }
+        float margin = this.grid.cellHeight() * 1.5F;
+        float left = this.grid.left() + margin;
+        float right = this.grid.left() + this.grid.width() - margin;
+        float top = this.grid.top() + margin;
+        float bottom = this.grid.top() + this.grid.height() - margin;
+        FlightPathMarker.State state = this.flightPath.compute(this.data.velocityX, this.data.velocityY, this.data.velocityZ, this.projection,
+                left, top, right, bottom, this.flightPathState);
+        if (!state.visible) {
+            return;
+        }
+        float x = this.snap(state.x);
+        float y = this.snap(state.y);
+        int shade = OsdColors.withAlpha(this.config.elementRgb(OsdElement.FLIGHT_PATH_MARKER), this.alpha * state.alpha);
+        this.draw.push(x, y, 0.0F, this.scale);
+        this.draw.rects(shade, state.inView ? FLIGHT_PATH_SHAPE : FLIGHT_PATH_EDGE_SHAPE);
+        this.draw.pop();
+        this.record(OsdElement.FLIGHT_PATH_MARKER, x - 8 * this.scale, y - 6 * this.scale, x + 9 * this.scale, y + 4 * this.scale);
+    }
+
+    public FlightPathMarker.State flightPathState() {
+        return this.flightPathState;
+    }
+
     private void arrowShape() {
         this.draw.rects(this.color,
                 0, -4, 1, 4, -1, -3, 2, -2, -2, -2, 3, -1, -3, -1, 4, 0);
@@ -1143,7 +1326,7 @@ public final class OsdRenderer {
         this.draw.push(x, y, 0.0F, this.scale);
         this.draw.frame(-19, -8, -3, 8, this.color);
         this.draw.frame(3, -8, 19, 8, this.color);
-        int[] dots = stickDots(d, InputConfig.get().stickMode());
+        int[] dots = stickDots(d, this.pilotStickMode != null ? this.pilotStickMode : InputConfig.get().stickMode());
         System.arraycopy(dots, 0, this.shownSticks, 0, dots.length);
         int leftX = dots[0];
         int leftY = dots[1];
@@ -1173,7 +1356,14 @@ public final class OsdRenderer {
 
     private void warning(OsdConfig.Slot slot) {
         OsdWarnings.Warning shown;
-        int index = OsdWarnings.visibleIndex(this.warnings, this.data.blinkSeconds);
+        int index = AddonOsdKeys.visibleWarning(this.warnings, this.addons.warningCount(), this.data.blinkSeconds);
+        int addon = index - this.warnings.size();
+        if (addon >= 0) {
+            OsdTone tone = this.addons.warningTone(addon);
+            this.text(OsdElement.WARNINGS, slot, this.addons.showWarning(addon), AddonOsdLayer.color(tone, this.color, this.good(), this.caution(),
+                    this.critical()));
+            return;
+        }
         if (index >= 0) {
             shown = this.warnings.get(index);
         } else if (this.editor) {

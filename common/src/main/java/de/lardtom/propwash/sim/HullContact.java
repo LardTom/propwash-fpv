@@ -34,7 +34,19 @@ final class HullContact {
         return low;
     }
 
+    static double deepest(AirframeSpec p, RigidBody b, double[] planes) {
+        double deep = Double.NEGATIVE_INFINITY;
+        for (int k = 0; k < AirframeSpec.HULL_POINTS; k++) {
+            deep = Math.max(deep, planes[k] - (b.py + b.r10 * p.hullX(k) + b.r11 * p.hullY(k) + b.r12 * p.hullZ(k)));
+        }
+        return deep;
+    }
+
     void solve(AirframeSpec p, RigidBody b, double groundY, double mu, double gravity) {
+        this.solve(p, b, groundY, null, mu, gravity);
+    }
+
+    void solve(AirframeSpec p, RigidBody b, double groundY, double[] planes, double mu, double gravity) {
         this.clear();
         double m = p.massKg;
         double k = m * gravity / STATIC_SINK;
@@ -46,7 +58,7 @@ final class HullContact {
             double rx = b.r00 * hx + b.r01 * hy + b.r02 * hz;
             double ry = b.r10 * hx + b.r11 * hy + b.r12 * hz;
             double rz = b.r20 * hx + b.r21 * hy + b.r22 * hz;
-            double depth = groundY - (b.py + ry);
+            double depth = (planes == null ? groundY : planes[i]) - (b.py + ry);
             if (depth <= 0.0) {
                 continue;
             }

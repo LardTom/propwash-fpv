@@ -2,9 +2,13 @@ package de.lardtom.propwash.relay;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -18,6 +22,7 @@ public final class RepeaterIndex {
 
     private final Long2ObjectOpenHashMap<Entry> byPos = new Long2ObjectOpenHashMap<>();
     private final Long2ObjectOpenHashMap<LongArrayList> byCell = new Long2ObjectOpenHashMap<>();
+    private final LongOpenHashSet remembered = new LongOpenHashSet();
     private int version;
 
     public static RepeaterIndex of(Level level) {
@@ -32,6 +37,7 @@ public final class RepeaterIndex {
         long key = pos.asLong();
         Vec3 antenna = SignalRepeaterBlock.antenna(pos, state);
         Entry previous = this.byPos.put(key, new Entry(key, owner, antenna.x, antenna.y, antenna.z));
+        this.remembered.remove(key);
         if (previous == null) {
             this.byCell.computeIfAbsent(cell(pos.getX(), pos.getZ()), k -> new LongArrayList(4)).add(key);
         }
@@ -39,12 +45,59 @@ public final class RepeaterIndex {
     }
 
     public synchronized void remove(BlockPos pos, Object owner) {
+        Entry entry = this.byPos.get(pos.asLong());
+        if (entry == null || entry.owner != owner) {
+            return;
+        }
+        this.drop(pos.asLong());
+    }
+
+    public synchronized void keep(BlockPos pos, Object owner) {
         long key = pos.asLong();
         Entry entry = this.byPos.get(key);
         if (entry == null || entry.owner != owner) {
             return;
         }
-        this.byPos.remove(key);
+        this.byPos.put(key, new Entry(key, null, entry.x, entry.y, entry.z));
+        this.remembered.add(key);
+    }
+
+    public synchronized int prune(Level level) {
+        if (this.remembered.isEmpty()) {
+            return 0;
+        }
+        int dropped = 0;
+        LongIterator it = this.remembered.iterator();
+        while (it.hasNext()) {
+            long key = it.nextLong();
+            if (!placed(level, BlockPos.of(key))) {
+                it.remove();
+                this.drop(key);
+                dropped++;
+            }
+        }
+        return dropped;
+    }
+
+    public synchronized int remembered() {
+        return this.remembered.size();
+    }
+
+    public synchronized boolean remembers(BlockPos pos) {
+        return this.remembered.contains(pos.asLong());
+    }
+
+    public static boolean placed(Level level, BlockPos pos) {
+        LevelChunk chunk = level.getChunkSource().getChunkNow(SectionPos.blockToSectionCoord(pos.getX()), SectionPos.blockToSectionCoord(pos.getZ()));
+        return chunk == null || chunk.getBlockState(pos).getBlock() instanceof SignalRepeaterBlock;
+    }
+
+    private void drop(long key) {
+        if (this.byPos.remove(key) == null) {
+            return;
+        }
+        this.remembered.remove(key);
+        BlockPos pos = BlockPos.of(key);
         long cell = cell(pos.getX(), pos.getZ());
         LongArrayList list = this.byCell.get(cell);
         if (list != null) {
@@ -125,6 +178,6 @@ public final class RepeaterIndex {
         void accept(long pos, double x, double y, double z);
     }
 
-    private record Entry(long pos, Object owner, double x, double y, double z) {
+    private record Entry(long pos, @Nullable Object owner, double x, double y, double z) {
     }
 }

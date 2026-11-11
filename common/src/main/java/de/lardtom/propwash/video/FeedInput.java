@@ -13,6 +13,7 @@ public final class FeedInput {
     public float extraNoise;
     public float cameraCondition = 1.0F;
     public float multipath;
+    public float darkness;
 
     public FeedInput set(FeedLook look, boolean connected, float quality, long baseLatencyNanos) {
         this.look = look;

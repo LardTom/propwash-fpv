@@ -105,4 +105,81 @@ class LapVerifierTest {
         verifier.prune(LapVerifier.MAX_CROSSINGS);
         assertEquals(100, verifier.size());
     }
+
+    @Test
+    void firstMissingNamesTheCheckpointThatBreaksTheChain() {
+        LapVerifier verifier = new LapVerifier();
+        verifier.record(COURSE, 0, S);
+        verifier.record(COURSE, 1, 2 * S);
+        verifier.record(COURSE, 3, 3 * S);
+        verifier.record(COURSE, 0, 4 * S);
+        assertEquals(2, verifier.firstMissing(COURSE, 4, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE, false), "Prüfpunkt 2 fehlt");
+    }
+
+    @Test
+    void firstMissingAtTheStartAndAtTheEnd() {
+        LapVerifier verifier = new LapVerifier();
+        assertEquals(0, verifier.firstMissing(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE, false), "Ohne Start-Durchflug fehlt der Start");
+        verifier.record(COURSE, 0, S);
+        verifier.record(COURSE, 1, 2 * S);
+        verifier.record(COURSE, 2, 3 * S);
+        assertEquals(0, verifier.firstMissing(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE, false), "Ohne Ziel-Durchflug fehlt wieder Prüfpunkt 0");
+        verifier.record(COURSE, 0, 4 * S);
+        assertEquals(LapVerifier.NOTHING_MISSING, verifier.firstMissing(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE, false));
+        assertNotNull(verifier.find(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE));
+    }
+
+    @Test
+    void firstMissingOnPointToPointEndsAtTheLastCheckpoint() {
+        LapVerifier verifier = new LapVerifier();
+        verifier.record(COURSE, 0, S);
+        verifier.record(COURSE, 1, 2 * S);
+        assertEquals(2, verifier.firstMissing(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE, true));
+        verifier.record(COURSE, 2, 3 * S);
+        assertEquals(LapVerifier.NOTHING_MISSING, verifier.firstMissing(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE, true));
+    }
+
+    @Test
+    void firstMissingKeepsTwinCrossingsApart() {
+        LapVerifier verifier = new LapVerifier();
+        verifier.record(COURSE, 0, S, 100L);
+        verifier.record(COURSE, 2, S, 100L);
+        verifier.record(COURSE, 1, 2 * S, 101L);
+        verifier.record(COURSE, 0, 3 * S, 102L);
+        verifier.record(COURSE, 2, 3 * S, 102L);
+        assertEquals(0, verifier.firstMissing(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE, false), "Rundenende braucht einen eigenen Durchflug");
+    }
+
+    @Test
+    void restartMakesTheLastFinishPassTheNextStart() {
+        LapVerifier verifier = new LapVerifier();
+        verifier.record(COURSE, 0, S);
+        verifier.record(COURSE, 2, 2 * S);
+        verifier.record(COURSE, 0, 3 * S);
+        assertNull(verifier.find(COURSE, 3, LapVerifier.NO_SEQUENCE, Long.MIN_VALUE), "Prüfpunkt 1 fehlt: Runde 1 zählt nicht");
+        long restart = verifier.restart(COURSE, 0);
+        assertEquals(verifier.lastSequence(), restart, "Der letzte Durchflug durch Start/Ziel");
+        verifier.record(COURSE, 1, 4 * S);
+        verifier.record(COURSE, 2, 5 * S);
+        verifier.record(COURSE, 0, 6 * S);
+        LapVerifier.VerifiedLap next = verifier.find(COURSE, 3, restart, Long.MIN_VALUE);
+        assertNotNull(next, "Runde 2 zählt wieder");
+        assertEquals(3 * S, next.startNanos());
+        assertEquals(6 * S, next.endNanos());
+    }
+
+    @Test
+    void restartWithoutFinishPassWaitsForTheNextOne() {
+        LapVerifier verifier = new LapVerifier();
+        verifier.record(COURSE, 1, S);
+        long restart = verifier.restart(COURSE, 0);
+        assertEquals(verifier.lastSequence(), restart);
+        verifier.record(COURSE, 2, 2 * S);
+        verifier.record(COURSE, 0, 3 * S);
+        assertNull(verifier.find(COURSE, 3, restart, Long.MIN_VALUE), "Runde 2 hat keinen Start");
+        verifier.record(COURSE, 1, 4 * S);
+        verifier.record(COURSE, 2, 5 * S);
+        verifier.record(COURSE, 0, 6 * S);
+        assertNotNull(verifier.find(COURSE, 3, restart, Long.MIN_VALUE), "Runde 3 setzt am nächsten Start-Durchflug an");
+    }
 }

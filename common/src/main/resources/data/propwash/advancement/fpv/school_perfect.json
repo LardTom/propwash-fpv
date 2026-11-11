@@ -1,0 +1,28 @@
+{
+  "parent": "propwash:fpv/school_chapter",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:flight_school",
+      "conditions": {
+        "perfect": true
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:nether_star"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.school_perfect.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.school_perfect.description"
+    },
+    "frame": "challenge"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

@@ -56,8 +56,8 @@ class AssistedLapsTest {
         assertEquals(24 * S, board.bestAssisted(ANNA, "race_5").nanos());
         assertEquals(PHYSICS, board.bestAssisted(ANNA, "race_5").assist());
         assertEquals(HOLD | PHYSICS, board.bestAssisted(ANNA, "whoop_65").assist());
-        assertEquals(2, board.assistedView(ANNA, Leaderboard.TOP).size());
-        assertEquals(1, board.view(ANNA, Leaderboard.TOP).size());
+        assertEquals(2, board.ranked(true).size());
+        assertEquals(1, board.ranked(false).size());
         assertFalse(board.submitAssisted(ANNA, "Anna", "race_5", -1L, 6L, HOLD));
     }
 
@@ -83,12 +83,12 @@ class AssistedLapsTest {
     }
 
     @Test
-    void assistedClassesAreTrimmedLikeTheRanking() {
+    void assistedClassesKeepEveryPilotLikeTheRanking() {
         Leaderboard board = new Leaderboard();
-        for (int i = 0; i < Leaderboard.MAX_PER_CLASS + 7; i++) {
+        for (int i = 0; i < 57; i++) {
             board.submitAssisted(new UUID(3L, i), "P" + i, "race_5", (100 - i) * S, i, HOLD);
         }
-        assertEquals(Leaderboard.MAX_PER_CLASS, board.assistedTop("race_5", Integer.MAX_VALUE).size());
+        assertEquals(57, board.assistedTop("race_5", Integer.MAX_VALUE).size());
         assertEquals(44 * S, board.assistedTop("race_5", 1).getFirst().nanos());
     }
 

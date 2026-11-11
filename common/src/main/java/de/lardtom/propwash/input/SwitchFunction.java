@@ -43,8 +43,12 @@ public enum SwitchFunction {
         return "propwash.input.switch." + this.name().toLowerCase(Locale.ROOT);
     }
 
+    public boolean builtIn() {
+        return this.ordinal() < COMMAND_1.ordinal() + COMMAND_COUNT;
+    }
+
     public boolean command() {
-        return this.ordinal() >= COMMAND_1.ordinal();
+        return this.ordinal() >= COMMAND_1.ordinal() && this.builtIn();
     }
 
     public int commandIndex() {
@@ -97,6 +101,7 @@ public enum SwitchFunction {
             case FLIP_OVER, SET_HOME, RESET, CARGO_DROP, VTX_POWER -> false;
             case ACCESSORY_1, ACCESSORY_2, ACCESSORY_3, ACCESSORY_4 -> false;
             case COMMAND_1, COMMAND_2, COMMAND_3, COMMAND_4, COMMAND_5, COMMAND_6, COMMAND_7, COMMAND_8 -> true;
+            default -> false;
         };
     }
 

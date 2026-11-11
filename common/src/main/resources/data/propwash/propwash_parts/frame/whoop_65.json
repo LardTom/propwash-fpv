@@ -14,6 +14,7 @@
   "accessory_anchors": {
     "bottom": {"pos": [0.0, 0.5, -25.6], "tilt_deg": 90.0, "length_mm": 10.0}
   },
+  "antenna_anchor": {"pos": [0.0, 23.2, 11.5], "tilt_deg": 45.0},
   "aero": {"frontal_area_m2": 0.0035, "drag_coefficient": 1.1, "top_area_m2": 0.0041},
   "duct": {},
   "impact_tolerance": 14.0,

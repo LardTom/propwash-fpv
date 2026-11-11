@@ -4,6 +4,7 @@ import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.api.part.AccessoryDefinition;
 import de.lardtom.propwash.api.part.PartBasics;
 import de.lardtom.propwash.api.part.PartKind;
+import de.lardtom.propwash.api.part.Vec3Mm;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class AccessoryType implements PartInfo {
@@ -34,9 +36,13 @@ public final class AccessoryType implements PartInfo {
     public final double widthMm;
     public final double heightMm;
     public final double depthMm;
+    public final double recessMm;
+    public final double dropMm;
     public final double flightBatteryWatts;
     public final double frontalAreaM2;
     public final int ledCount;
+    private final List<Vec3Mm> ledPath;
+    private final double[] ledPathLength;
     private final @Nullable ActionCamSpec camera;
     private final double lensX;
     public final double lensLengthMm;
@@ -62,9 +68,13 @@ public final class AccessoryType implements PartInfo {
         this.widthMm = definition.widthMm();
         this.heightMm = definition.heightMm();
         this.depthMm = definition.depthMm();
+        this.recessMm = definition.recessMm();
+        this.dropMm = definition.dropMm();
         this.flightBatteryWatts = definition.flightBatteryWatts();
         this.frontalAreaM2 = definition.frontalAreaM2();
         this.ledCount = definition.ledCount();
+        this.ledPath = definition.ledPathMm();
+        this.ledPathLength = cumulative(this.ledPath);
         this.camera = definition.actionCam().map(ActionCamSpec::of).orElse(null);
         this.lensX = definition.lensXMm();
         this.lensLengthMm = definition.lensLengthMm();
@@ -96,12 +106,24 @@ public final class AccessoryType implements PartInfo {
         return this.mount == mount;
     }
 
+    public boolean fitsFrame(PartInfo frame) {
+        return this.definition.frames().isEmpty() || this.definition.frames().contains(frame.id());
+    }
+
+    public Set<Identifier> frames() {
+        return this.definition.frames();
+    }
+
     public boolean isGripper() {
         return GRIPPER_ID.equals(this.id());
     }
 
     public boolean hangsStraight() {
-        return this.isGripper();
+        return hangsStraight(this.definition);
+    }
+
+    public static boolean hangsStraight(AccessoryDefinition definition) {
+        return GRIPPER_ID.equals(definition.id()) || definition.hangsStraight();
     }
 
     public AccessoryType unladen() {
@@ -121,7 +143,7 @@ public final class AccessoryType implements PartInfo {
             AccessoryDefinition d = base.definition;
             AccessoryDefinition heavier = new AccessoryDefinition(d.id(), PartBasics.withMass(d.basics(), base.massGrams + grams), d.slot(),
                     d.widthMm(), d.heightMm(), d.depthMm(), d.flightBatteryWatts(), d.frontalAreaM2(), d.ledCount(), d.actionCam(),
-                    d.lensXMm(), d.lensLengthMm());
+                    d.lensXMm(), d.lensLengthMm(), d.ledPathMm(), d.hangsStraight(), d.muzzleMm(), d.frames(), d.recessMm(), d.dropMm());
             return new AccessoryType(heavier, base.name, base.missing, base);
         });
     }
@@ -143,6 +165,21 @@ public final class AccessoryType implements PartInfo {
     }
 
     public double[] boxMinMm() {
+        return this.recessed(this.modelBoxMinMm());
+    }
+
+    public double[] boxMaxMm() {
+        return this.recessed(this.modelBoxMaxMm());
+    }
+
+    private double[] recessed(double[] local) {
+        if (this.recessMm == 0.0 && this.dropMm == 0.0) {
+            return local;
+        }
+        return new double[]{local[0], local[1] - this.dropMm, local[2] + this.recessMm};
+    }
+
+    public double[] modelBoxMinMm() {
         return switch (this.mount) {
             case TOP -> new double[]{-this.widthMm / 2.0, HINGE_CLEARANCE_MM, -this.depthMm / 2.0};
             case BOTTOM -> new double[]{-this.widthMm / 2.0, -this.heightMm, -this.depthMm / 2.0};
@@ -150,7 +187,7 @@ public final class AccessoryType implements PartInfo {
         };
     }
 
-    public double[] boxMaxMm() {
+    public double[] modelBoxMaxMm() {
         return switch (this.mount) {
             case TOP -> new double[]{this.widthMm / 2.0, HINGE_CLEARANCE_MM + this.heightMm, this.depthMm / 2.0};
             case BOTTOM -> new double[]{this.widthMm / 2.0, 0.0, this.depthMm / 2.0};
@@ -164,14 +201,70 @@ public final class AccessoryType implements PartInfo {
         return new double[]{(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0, (min[2] + max[2]) / 2.0};
     }
 
+    public double[] muzzleMm() {
+        double[] min = this.boxMinMm();
+        double[] max = this.boxMaxMm();
+        Vec3Mm offset = this.definition.muzzleMm().orElse(Vec3Mm.ZERO);
+        return new double[]{(min[0] + max[0]) / 2.0 + offset.x(), (min[1] + max[1]) / 2.0 + offset.y(), min[2] + offset.z()};
+    }
+
     public double[] lensMm() {
+        return this.recessed(this.modelLensMm());
+    }
+
+    public double[] modelLensMm() {
         if (!this.isCamera()) {
-            return this.centerMm();
+            double[] min = this.modelBoxMinMm();
+            double[] max = this.modelBoxMaxMm();
+            return new double[]{(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0, (min[2] + max[2]) / 2.0};
         }
         return new double[]{this.lensX, HINGE_CLEARANCE_MM + this.heightMm / 2.0, -this.depthMm / 2.0 - this.lensLengthMm};
     }
 
+    public boolean hasLedPath() {
+        return !this.ledPath.isEmpty();
+    }
+
+    public List<Vec3Mm> ledPath() {
+        return this.ledPath;
+    }
+
+    private static double[] cumulative(List<Vec3Mm> path) {
+        double[] out = new double[path.size()];
+        for (int i = 1; i < path.size(); i++) {
+            Vec3Mm a = path.get(i - 1);
+            Vec3Mm b = path.get(i);
+            double dx = b.x() - a.x();
+            double dy = b.y() - a.y();
+            double dz = b.z() - a.z();
+            out[i] = out[i - 1] + Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+        return out;
+    }
+
+    private double[] ledOnPath(int index) {
+        int count = Math.max(1, this.ledCount);
+        int last = this.ledPathLength.length - 1;
+        double at = this.ledPathLength[last] * (index + 0.5) / count;
+        int segment = 1;
+        while (segment < last && this.ledPathLength[segment] < at) {
+            segment++;
+        }
+        double length = this.ledPathLength[segment] - this.ledPathLength[segment - 1];
+        double t = length <= 0.0 ? 0.0 : Math.clamp((at - this.ledPathLength[segment - 1]) / length, 0.0, 1.0);
+        Vec3Mm a = this.ledPath.get(segment - 1);
+        Vec3Mm b = this.ledPath.get(segment);
+        return new double[]{a.x() + (b.x() - a.x()) * t, a.y() + (b.y() - a.y()) * t, a.z() + (b.z() - a.z()) * t};
+    }
+
     public double[] ledMm(int index, double stripLengthMm) {
+        return this.recessed(this.modelLedMm(index, stripLengthMm));
+    }
+
+    public double[] modelLedMm(int index, double stripLengthMm) {
+        if (this.hasLedPath()) {
+            return this.ledOnPath(index);
+        }
         int count = Math.max(1, this.ledCount);
         double spacing = stripLengthMm / count;
         return new double[]{-stripLengthMm / 2.0 + spacing * (index + 0.5), -this.heightMm, 0.0};

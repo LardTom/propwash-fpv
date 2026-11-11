@@ -52,6 +52,29 @@ def corner_pads(half, size, color="#d9a33a", n=3):
     return pads
 
 
+MOUNTED_SUFFIX = "_mounted"
+PLUG_ELEMENTS = ("connector", "connector_grip", "bt_connector")
+POWER_LEAD = "wire"
+PIGTAIL = "pigtail"
+
+
+def has_plug(model):
+    return any(el.name in PLUG_ELEMENTS for el in model.elements)
+
+
+def mounted(model):
+    leads = [el for el in model.elements if el.name == POWER_LEAD]
+    if len(leads) != 2:
+        raise RuntimeError(f"{model.key}: {len(leads)} power leads, expected 2")
+    out = kit.Model(model.category, model.key + MOUNTED_SUFFIX, tex=model.tex, density=model.density, gui=model.gui,
+                    gui_fill=model.gui_fill, translucent=model.translucent, seed=model.seed)
+    out.elements = [kit.Element(PIGTAIL if el.name == POWER_LEAD else el.name, el.frm, el.to, el.faces, el.rotation)
+                    for el in model.elements if el.name not in PLUG_ELEMENTS]
+    out.extra_textures = dict(model.texture_map())
+    out.image = model.image
+    return out
+
+
 def grommet(m, x, z, y0, y1, d, color="rubber"):
     m.box(x - d / 2, y0, z - d / 2, x + d / 2, y1, z + d / 2, color, name="grommet", skip=("down",))
 

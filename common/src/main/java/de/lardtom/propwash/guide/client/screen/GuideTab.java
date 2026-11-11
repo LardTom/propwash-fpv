@@ -3,21 +3,28 @@ package de.lardtom.propwash.guide.client.screen;
 import de.lardtom.propwash.guide.GuideScenes;
 import de.lardtom.propwash.guide.client.GuideKeys;
 import de.lardtom.propwash.guide.client.GuideOpener;
+import de.lardtom.propwash.race.client.GatePlaceHint;
+import de.lardtom.propwash.ui.client.ConfiguratorScreen;
 import de.lardtom.propwash.ui.client.config.ConfigTab;
 import de.lardtom.propwash.ui.client.theme.Metrics;
+import de.lardtom.propwash.ui.client.theme.Palette;
 import de.lardtom.propwash.ui.client.theme.ThemeDraw;
 import de.lardtom.propwash.ui.client.theme.ThemeText;
 import de.lardtom.propwash.ui.client.widget.FlatButton;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 public final class GuideTab extends ConfigTab {
     public static final String ID = "flight_school";
     public static final int ORDER = 110;
+    public static final String RESET_HINTS = "propwash.guide.hints.reset";
 
     private final SceneList list = new SceneList(scene -> GuideOpener.openScene(scene, this.host != null ? this.host.screen() : null));
     private int listTop;
+    private @Nullable FlatButton resetHints;
 
     @Override
     public String id() {
@@ -58,8 +65,38 @@ public final class GuideTab extends ConfigTab {
         Component intro = Component.translatable("propwash.guide.tab.intro", GuideKeys.label());
         int introHeight = ThemeText.wrappedHeight(this.host.font(), intro, this.width);
         this.listTop = this.y + Metrics.SECTION_HEIGHT + Metrics.SECTION_GAP + introHeight + Metrics.GAP;
+        this.listTop = this.addResetHints(trainingWidth, this.listTop);
         this.list.layout(this.x, this.listTop, this.width, Math.max(SceneList.CARD_HEIGHT, this.y + this.height - this.listTop));
         this.list.layout(this.x, this.listTop, this.width, Math.max(this.list.cardHeight(), this.y + this.height - this.listTop));
+    }
+
+    public @Nullable FlatButton resetHintsButton() {
+        return this.resetHints;
+    }
+
+    private int addResetHints(int trainingWidth, int rowTop) {
+        Component reset = Component.translatable(RESET_HINTS);
+        int width = Math.min(this.host.font().width(reset) + 14, this.width);
+        int titleRight = this.x + this.host.font().width(Component.translatable("propwash.guide.tab.section")) + Metrics.GAP;
+        int x = this.x + this.width - trainingWidth - Metrics.GAP - width;
+        int y = this.y;
+        int below = rowTop;
+        if (x < titleRight) {
+            x = this.x + this.width - width;
+            y = rowTop;
+            below = rowTop + Metrics.CONTROL_HEIGHT + Metrics.GAP;
+        }
+        FlatButton button = new FlatButton(x, y, width, Metrics.CONTROL_HEIGHT, reset, FlatButton.Style.NORMAL, this::resetHints);
+        button.setTooltip(Tooltip.create(Component.translatable(RESET_HINTS + ".tooltip")));
+        this.resetHints = this.host.addWidget(button);
+        return below;
+    }
+
+    private void resetHints() {
+        boolean changed = GatePlaceHint.resetHints();
+        if (this.host != null && this.host.screen() instanceof ConfiguratorScreen screen) {
+            screen.flash(Component.translatable(RESET_HINTS + (changed ? ".done" : ".none")), changed ? Palette.SUCCESS : Palette.TEXT_MUTED);
+        }
     }
 
     @Override

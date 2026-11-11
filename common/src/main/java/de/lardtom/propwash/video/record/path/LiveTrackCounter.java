@@ -30,16 +30,10 @@ public final class LiveTrackCounter {
         }
         double last = buffer.lastTick();
         boolean added = false;
-        while (this.nextTick <= last) {
+        while (this.nextTick + PathResampler.ANTI_ALIAS_TICKS <= last) {
             int tick = this.nextTick;
-            while (this.segment + 2 < n && buffer.tick(this.segment + 1) < tick) {
-                this.segment++;
-            }
-            PathSample a = buffer.get(this.segment);
-            PathSample b = buffer.get(this.segment + 1);
-            double span = b.tick() - a.tick();
-            double alpha = span > 0.0 ? (tick - a.tick()) / span : 0.0;
-            TickPose pose = PathResampler.pose(tick, a, b, Math.max(0.0, Math.min(1.0, alpha)));
+            this.segment = PathResampler.segment(buffer, this.segment, tick);
+            TickPose pose = PathResampler.tickPose(buffer, tick, this.segment);
             if (!this.frames.add(pose)) {
                 break;
             }

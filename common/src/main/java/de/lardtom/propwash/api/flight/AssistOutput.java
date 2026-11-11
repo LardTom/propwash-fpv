@@ -26,4 +26,7 @@ public interface AssistOutput {
     void label(String text);
 
     void requestReturnHome();
+
+    default void land() {
+    }
 }

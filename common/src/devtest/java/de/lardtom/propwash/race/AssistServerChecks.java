@@ -5,6 +5,7 @@ import de.lardtom.propwash.build.DroneBuild;
 import de.lardtom.propwash.build.FrameType;
 import de.lardtom.propwash.build.PropType;
 import de.lardtom.propwash.build.StackType;
+import de.lardtom.propwash.dev.PersonalRulesDev;
 import de.lardtom.propwash.drone.DroneModule;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.server.WorldRules;
@@ -21,6 +22,7 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -28,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -76,7 +79,8 @@ public final class AssistServerChecks {
                 case PARTS -> AssistReasons.of(List.of(AssistDetail.issue("prop_too_large")));
                 case CLIENT_AIDS -> AssistReasons.of(List.of(AssistDetail.hold(HoldMode.ALTHOLD), AssistDetail.goggles(10, 25)));
             };
-            return lap == PHYSICS_LAP ? own.plus(AssistReasons.of(List.of(AssistDetail.rule(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY)))) : own;
+            return lap == PHYSICS_LAP ? own.plus(AssistReasons.of(List.of(AssistDetail.personal(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY,
+                    WorldRuleSpecs.GRAVITY_SCALE.defaultValue())))) : own;
         }
     }
 
@@ -94,18 +98,54 @@ public final class AssistServerChecks {
         return player;
     }
 
-    public static void forceChunks(MinecraftServer server, boolean forced) {
-        ServerLevel level = server.overworld();
-        BlockPos spawn = level.getRespawnData().pos();
-        int chunkX = spawn.getX() >> 4;
-        int chunkZ = spawn.getZ() >> 4;
+    public static ChunkPos spawnChunk(MinecraftServer server) {
+        BlockPos spawn = server.overworld().getRespawnData().pos();
+        return new ChunkPos(spawn.getX() >> 4, spawn.getZ() >> 4);
+    }
+
+    public static List<ChunkPos> area(MinecraftServer server) {
+        ChunkPos spawn = spawnChunk(server);
+        List<ChunkPos> area = new ArrayList<>();
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -2; dz <= 1; dz++) {
-                if (dx != 0 || dz != 0) {
-                    level.setChunkForced(chunkX + dx, chunkZ + dz, forced);
-                }
+                area.add(new ChunkPos(spawn.x() + dx, spawn.z() + dz));
             }
         }
+        return area;
+    }
+
+    public static void forceChunks(MinecraftServer server, boolean forced) {
+        ServerLevel level = server.overworld();
+        ChunkPos spawn = spawnChunk(server);
+        for (ChunkPos pos : area(server)) {
+            if (!pos.equals(spawn)) {
+                level.setChunkForced(pos.x(), pos.z(), forced);
+            }
+        }
+    }
+
+    public static boolean holdArea(MinecraftServer server) {
+        forceChunks(server, true);
+        ChunkPos spawn = spawnChunk(server);
+        return server.overworld().setChunkForced(spawn.x(), spawn.z(), true);
+    }
+
+    public static void releaseArea(MinecraftServer server, boolean spawnForced) {
+        forceChunks(server, false);
+        if (spawnForced) {
+            ChunkPos spawn = spawnChunk(server);
+            server.overworld().setChunkForced(spawn.x(), spawn.z(), false);
+        }
+    }
+
+    public static boolean areaLoaded(MinecraftServer server) {
+        ServerLevel level = server.overworld();
+        for (ChunkPos pos : area(server)) {
+            if (!level.areEntitiesActuallyLoadedAndTicking(pos)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static @Nullable String check(MinecraftServer server) {
@@ -170,6 +210,7 @@ public final class AssistServerChecks {
         } finally {
             WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, savedGravity);
             WorldRules.set(server, WorldRuleSpecs.SAVE_ASSISTED_LAPS, savedRule);
+            PersonalRulesDev.clear(server);
             for (Pilot pilot : pilots) {
                 pilot.drone().setPilot(null);
                 pilot.drone().discard();
@@ -205,13 +246,15 @@ public final class AssistServerChecks {
             long lapNanos = base - (lap - 1) * 300L * MS;
             long end = lapStart + lapNanos;
             if (lap == PHYSICS_LAP) {
-                WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, GRAVITY);
+                for (Pilot pilot : pilots) {
+                    PersonalRulesDev.personal(server, pilot.player().getUUID(), Map.of(WorldRuleSpecs.GRAVITY_SCALE, GRAVITY));
+                }
             }
             crossAll(pilots, geometry.getFirst(), lapStart);
             boolean reset = false;
             for (long now = lapStart + TICK; now < end - 400L * MS; now += TICK) {
                 if (lap == PHYSICS_LAP && !reset && now >= end - 1_000L * MS) {
-                    WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.GRAVITY_SCALE.defaultValue());
+                    PersonalRulesDev.clear(server);
                     reset = true;
                 }
                 for (int i = 0; i < pilots.size(); i++) {
@@ -223,6 +266,7 @@ public final class AssistServerChecks {
                 }
             }
             WorldRules.set(server, WorldRuleSpecs.GRAVITY_SCALE, WorldRuleSpecs.GRAVITY_SCALE.defaultValue());
+            PersonalRulesDev.clear(server);
             crossAll(pilots, geometry.getFirst(), end);
             for (Pilot pilot : pilots) {
                 RaceServer.Verdict verdict = RaceServer.handle(report(RacePayloads.ReportKind.LAP, course.id, lap, lapNanos, pilot.setup().client(lap)),

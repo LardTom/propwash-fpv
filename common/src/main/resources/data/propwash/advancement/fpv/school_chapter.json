@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/root",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:flight_school",
+      "conditions": {
+        "chapters": {
+          "min": 1
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:book"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.school_chapter.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.school_chapter.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

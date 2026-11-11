@@ -1,5 +1,6 @@
 package de.lardtom.propwash.race;
 
+import de.lardtom.propwash.barrier.DroneBarriers;
 import de.lardtom.propwash.server.WorldRules;
 import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import net.minecraft.core.BlockPos;
@@ -9,7 +10,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.CollisionContext;
 import org.jspecify.annotations.Nullable;
 
 public final class FreeformBlocks {
@@ -37,7 +37,7 @@ public final class FreeformBlocks {
         if (!state.getFluidState().isEmpty()) {
             return false;
         }
-        return state.getCollisionShape(level, pos, CollisionContext.empty()).isEmpty();
+        return state.getCollisionShape(level, pos, DroneBarriers.COURSE).isEmpty();
     }
 
     public static int limit(Level level) {
@@ -51,16 +51,26 @@ public final class FreeformBlocks {
     }
 
     public static FreeformFill.Result fill(Level level, FreeformFill.Aim aim) {
-        return FreeformFill.fill(probe(level), aim.axis(), aim.seedX(), aim.seedY(), aim.seedZ(), limit(level));
+        return fill(level, aim, false);
+    }
+
+    public static FreeformFill.Result fill(Level level, FreeformFill.Aim aim, boolean lenient) {
+        return lenient ? FreeformFill.lenient(probe(level), aim.axis(), aim.seedX(), aim.seedY(), aim.seedZ(), limit(level))
+                : FreeformFill.fill(probe(level), aim.axis(), aim.seedX(), aim.seedY(), aim.seedZ(), limit(level));
     }
 
     public static FreeformFill.Result rescan(Level level, GateGeometry geometry) {
+        return rescan(level, geometry, geometry.score().open());
+    }
+
+    public static FreeformFill.Result rescan(Level level, GateGeometry geometry, boolean lenient) {
         FreeformRegion region = geometry.region();
         if (region == null) {
             return new FreeformFill.Result(FreeformFill.Status.START_BLOCKED, null, FreeformRegion.AXIS_Z, 0, 0, 0, 1, 1, limit(level));
         }
         int[] seed = seed(geometry);
-        return FreeformFill.fill(probe(level), region.axis(), seed[0], seed[1], seed[2], limit(level));
+        return lenient ? FreeformFill.lenient(probe(level), region.axis(), seed[0], seed[1], seed[2], limit(level))
+                : FreeformFill.fill(probe(level), region.axis(), seed[0], seed[1], seed[2], limit(level));
     }
 
     public static int plane(GateGeometry geometry) {
@@ -110,7 +120,8 @@ public final class FreeformBlocks {
         if (region == null) {
             return FreeformFill.Integrity.INTACT;
         }
-        return FreeformFill.check(probe(level), region, plane(geometry), minA(geometry), minB(geometry));
+        FreeformFill.Integrity integrity = FreeformFill.check(probe(level), region, plane(geometry), minA(geometry), minB(geometry));
+        return geometry.score().open() ? integrity.ignoringGaps() : integrity;
     }
 
     public static boolean covers(GateGeometry geometry, int x, int y, int z) {

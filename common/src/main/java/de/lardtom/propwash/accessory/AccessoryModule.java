@@ -31,6 +31,7 @@ public final class AccessoryModule {
         QuadcopterEntity.SERVER_TICK.register(AccessoryHost::tick);
         QuadcopterEntity.PILOT_CHANGED.register((drone, previous, current) -> AccessoryHost.onPilotChanged(drone));
         QuadcopterEntity.setDamageFilter(AddonEvents::damage);
+        QuadcopterEntity.SERVER_MOVED.register(DroneMotion::pilotMoved);
         ServerBus.STARTED.register(server -> {
             AccessoryHost.clear();
             DroneMotion.clear();

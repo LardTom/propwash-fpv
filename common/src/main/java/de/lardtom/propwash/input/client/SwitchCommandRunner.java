@@ -96,8 +96,8 @@ public final class SwitchCommandRunner {
             this.trigger.reset();
         }
         CommandTrigger.Gate gate = gate(minecraft);
-        int active = radio.activeSwitches();
-        int readable = radio.readableSwitches();
+        long active = radio.activeSwitches();
+        long readable = radio.readableSwitches();
         int states = 0;
         int readableSlots = 0;
         int withOn = 0;

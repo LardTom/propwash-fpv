@@ -13,4 +13,16 @@ public interface GimbalContext {
     double deltaSeconds();
 
     boolean spectating();
+
+    default double axis(String id) {
+        return 0.0;
+    }
+
+    default double operatorAxis(int index) {
+        return 0.0;
+    }
+
+    default boolean operatorAction(int number) {
+        return false;
+    }
 }

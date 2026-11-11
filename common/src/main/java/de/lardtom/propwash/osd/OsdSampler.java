@@ -92,6 +92,7 @@ public final class OsdSampler {
         d.active = true;
         this.clearLiveValues(d);
         source.fill(d);
+        boolean remote = source.remoteClock();
         this.voltage.apply(d, dt);
         d.onSeconds = (nowNanos - this.sessionStartNanos) / NANOS;
         d.blinkSeconds = d.onSeconds;
@@ -100,7 +101,7 @@ public final class OsdSampler {
         d.clockMinute = time.getMinute();
         this.updateAltitude(d);
         this.updateSplit(d, nowNanos);
-        this.updateArming(d, nowNanos, dt, clockDt);
+        this.updateArming(d, nowNanos, dt, clockDt, remote);
         return d;
     }
 
@@ -147,6 +148,7 @@ public final class OsdSampler {
         d.pitchDeg = Double.NaN;
         d.compassDeg = Double.NaN;
         d.armBlockers = 0;
+        d.autoArmPending = false;
         d.failsafeStage = 0;
         d.batteryState = BatteryState.OK;
         d.hasPosition = false;
@@ -170,7 +172,7 @@ public final class OsdSampler {
         d.splitAgeSeconds = (nowNanos - this.splitChangedNanos) / NANOS;
     }
 
-    private void updateArming(OsdData d, long nowNanos, double dt, double clockDt) {
+    private void updateArming(OsdData d, long nowNanos, double dt, double clockDt, boolean remote) {
         if (d.armed && !this.wasArmed) {
             this.armedAtNanos = nowNanos;
             d.stats.reset();
@@ -184,10 +186,12 @@ public final class OsdSampler {
         this.wasArmed = d.armed;
         d.stats.trackCrashes(d);
         if (d.armed) {
-            d.flightSeconds += clockDt;
-            d.armedSeconds = (nowNanos - this.armedAtNanos) / NANOS;
+            if (!remote) {
+                d.flightSeconds += clockDt;
+                d.armedSeconds = (nowNanos - this.armedAtNanos) / NANOS;
+            }
             d.stats.accumulate(d, dt);
-        } else {
+        } else if (!remote) {
             d.armedSeconds = 0.0;
         }
         if (d.showStats) {
@@ -203,6 +207,10 @@ public final class OsdSampler {
         boolean active();
 
         void fill(OsdData data);
+
+        default boolean remoteClock() {
+            return false;
+        }
     }
 
     public static BatteryState batteryStateFor(double chargeFraction) {

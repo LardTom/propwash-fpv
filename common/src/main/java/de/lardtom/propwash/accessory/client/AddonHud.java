@@ -4,6 +4,7 @@ import de.lardtom.propwash.Constants;
 import de.lardtom.propwash.api.client.hud.FlightTelemetry;
 import de.lardtom.propwash.api.client.hud.HudContext;
 import de.lardtom.propwash.api.client.hud.HudElement;
+import de.lardtom.propwash.apiimpl.NamespaceRules;
 import de.lardtom.propwash.drone.QuadcopterEntity;
 import de.lardtom.propwash.drone.client.FpvView;
 import de.lardtom.propwash.drone.client.PilotSession;
@@ -45,7 +46,7 @@ public final class AddonHud {
     public static synchronized void register(String id, HudElement element) {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(element, "element");
-        if (!ELEMENT_ID.matcher(id).matches() || id.startsWith(Constants.MOD_ID + ":")) {
+        if (!ELEMENT_ID.matcher(NamespaceRules.requireForeign(id, "hud element")).matches()) {
             throw new IllegalArgumentException("HUD-Element braucht einen eigenen Namensraum: " + id);
         }
         if (ELEMENTS.putIfAbsent(id, element) != null) {

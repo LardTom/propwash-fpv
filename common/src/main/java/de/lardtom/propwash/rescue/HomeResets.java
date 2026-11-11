@@ -22,7 +22,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -116,21 +115,17 @@ public final class HomeResets {
     }
 
     private static HomeResetRules.Outcome place(ServerLevel level, ServerPlayer player, QuadcopterEntity drone, HomeResetRules.Target target) {
-        double x = target.x();
-        double z = target.z();
-        AABB box = drone.getBoundingBox();
-        Vec3 from = drone.position();
-        double y = HomeResetRules.clearY(target.y(),
-                candidate -> level.noBlockCollision(drone, box.move(x - from.x, candidate - from.y, z - from.z)));
-        if (Double.isNaN(y)) {
+        HomeResetRules.Spot spot = HomeResetRules.spot(target.x(), target.y(), target.z(),
+                new HomeSpace(level, drone, pos -> !ServerRules.forbiddenSpawnArea(player, level, pos)));
+        if (spot == null) {
             return HomeResetRules.Outcome.BLOCKED;
         }
         drone.markHomeReset(level.getGameTime());
         QuadcopterEntity.HOME_RESET.fire(listener -> listener.accept(drone, player));
         drone.setArmed(false);
         drone.setMotorOutputsPacked(0);
-        drone.resetTo(new Vec3(x, y, z), HomeResetRules.level(drone.orientation()), true);
-        return target.outcome();
+        drone.resetTo(new Vec3(spot.x(), spot.y(), spot.z()), HomeResetRules.level(drone.orientation()), true);
+        return spot.nearby() ? HomeResetRules.Outcome.NEARBY : target.outcome();
     }
 
     private static void tick(MinecraftServer server) {
@@ -160,8 +155,9 @@ public final class HomeResets {
 
     private static void tell(ServerPlayer player, HomeResetRules.Outcome outcome) {
         if (!outcome.silent()) {
-            player.sendOverlayMessage(Component.translatable(outcome.messageKey())
-                    .withStyle(outcome.moves() ? ChatFormatting.AQUA : ChatFormatting.RED));
+            ChatFormatting color = outcome == HomeResetRules.Outcome.NEARBY ? ChatFormatting.GOLD
+                    : outcome.moves() ? ChatFormatting.AQUA : ChatFormatting.RED;
+            player.sendOverlayMessage(Component.translatable(outcome.messageKey()).withStyle(color));
         }
     }
 

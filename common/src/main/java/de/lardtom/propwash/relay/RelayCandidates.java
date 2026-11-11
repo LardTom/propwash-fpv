@@ -6,8 +6,8 @@ public final class RelayCandidates {
     private double[] detours = new double[32];
     private Integer[] order = new Integer[32];
 
-    public int select(double ax, double ay, double az, double bx, double by, double bz, double[] positions, int count, int relays, int max,
-                      int[] out) {
+    public int select(double ax, double ay, double az, double bx, double by, double bz, double[] positions, int count, int relays,
+                      double hopReach, int max, int[] out) {
         int limit = Math.min(max, out.length);
         if (count <= 0 || limit <= 0 || RelayRules.clampRelays(relays) <= 0) {
             return 0;
@@ -17,7 +17,7 @@ public final class RelayCandidates {
             this.detours = new double[size];
             this.order = new Integer[size];
         }
-        double span = RelayRules.span(relays);
+        double span = RelayRules.span(relays, hopReach);
         int kept = 0;
         for (int i = 0; i < count; i++) {
             double x = positions[3 * i];

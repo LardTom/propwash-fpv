@@ -16,6 +16,7 @@ import de.lardtom.propwash.race.GateMount;
 import de.lardtom.propwash.race.GateMounting;
 import de.lardtom.propwash.race.GatePlacement;
 import de.lardtom.propwash.race.GateSize;
+import de.lardtom.propwash.race.GateTilt;
 import de.lardtom.propwash.race.LapTracker;
 import de.lardtom.propwash.race.RaceModule;
 import de.lardtom.propwash.race.RacePayloads;
@@ -440,9 +441,11 @@ public final class GateMountSelfTests {
                 if (top == standing || GateMounting.rotate(player, top, true) != GateMounting.Result.STACK_LOCKED) {
                     return "Lagewechsel im Stapel nicht gesperrt";
                 }
-                float before = top.facingYaw();
-                if (GateMounting.rotate(player, top, false) != GateMounting.Result.ROTATED || top.facingYaw() != GateGeometry.snapYaw(before + 180.0F)) {
-                    return "gestapeltes Gate nicht um 180° gedreht: " + top.facingYaw();
+                float before = top.geometry().heading();
+                if (GateMounting.rotate(player, top, false) != GateMounting.Result.ROTATED
+                        || Math.abs(GateTilt.wrap(top.geometry().heading() - before - GatePlacement.QUARTER)) > 0.05F
+                        || Math.abs(top.getY() - (standing.getY() + standing.height())) > 1.0E-4) {
+                    return "gestapeltes Gate nicht wie am Boden um 90° gedreht und quer obenauf: " + top.geometry().heading() + "°, " + top.getY();
                 }
             } finally {
                 top.discard();

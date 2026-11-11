@@ -3,16 +3,18 @@ package de.lardtom.propwash.input.client;
 import de.lardtom.propwash.input.ChannelMath;
 import de.lardtom.propwash.input.DeviceProfile;
 import de.lardtom.propwash.input.InputConfig;
+import de.lardtom.propwash.input.ProfileDefaults;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 public final class SimulatedRadio {
     private final String guid;
     private final String name;
     private final DeviceProfile profile;
-    private final float[] axes;
-    private final boolean[] buttons;
-    private final DeviceInfo device;
+    private float[] axes;
+    private boolean[] buttons;
+    private volatile DeviceInfo device;
     private volatile boolean savedProfile;
 
     public SimulatedRadio(String guid, String name, DeviceProfile profile, int axisCount, int buttonCount) {
@@ -28,10 +30,20 @@ public final class SimulatedRadio {
         return this.device;
     }
 
-    public RawInput raw() {
+    public synchronized SimulatedRadio asGamepad() {
+        this.axes = Arrays.copyOf(this.axes, Math.max(this.axes.length, ProfileDefaults.PAD_AXES));
+        this.buttons = Arrays.copyOf(this.buttons, Math.max(this.buttons.length, ProfileDefaults.PAD_BUTTONS));
+        this.device = new DeviceInfo(-1, this.name, this.guid, true, 0, 0);
+        return this;
+    }
+
+    public synchronized RawInput raw() {
         float[] axes = this.axes();
         boolean[] buttons = this.buttons();
-        return new RawInput(this.device, axes.length, buttons.length, 0, axes, buttons, null, null);
+        DeviceInfo device = this.device;
+        boolean pad = device.gamepad();
+        return new RawInput(device, axes.length, buttons.length, 0, axes, buttons,
+                pad ? Arrays.copyOf(axes, ProfileDefaults.PAD_AXES) : null, pad ? Arrays.copyOf(buttons, ProfileDefaults.PAD_BUTTONS) : null);
     }
 
     public String guid() {

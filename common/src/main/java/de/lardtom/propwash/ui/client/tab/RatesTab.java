@@ -50,6 +50,11 @@ public final class RatesTab extends UiTab {
     }
 
     @Override
+    public boolean freecam() {
+        return true;
+    }
+
+    @Override
     public Component title() {
         return Component.translatable("propwash.ui.tab.rates");
     }

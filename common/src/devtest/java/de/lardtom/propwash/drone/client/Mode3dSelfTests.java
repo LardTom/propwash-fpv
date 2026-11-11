@@ -405,7 +405,7 @@ public final class Mode3dSelfTests {
         PilotSession session = PilotSession.INSTANCE;
         RadioState radio = RadioState.INSTANCE;
         return "gewählt " + session.mode3dSelected() + " (" + session.mode3dSource() + "), Sperre " + session.mode3dBlock() + ", Quelle "
-                + radio.source() + ", Schalter " + Integer.toBinaryString(radio.activeSwitches());
+                + radio.source() + ", Schalter " + Long.toBinaryString(radio.activeSwitches());
     }
 
     static SimulatedRadio radio(String name) {

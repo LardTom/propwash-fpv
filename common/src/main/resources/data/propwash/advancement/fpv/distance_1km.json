@@ -1,0 +1,30 @@
+{
+  "parent": "propwash:fpv/takeoff",
+  "criteria": {
+    "done": {
+      "trigger": "propwash:flight",
+      "conditions": {
+        "distance": {
+          "min": 1000
+        }
+      }
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "minecraft:map"
+    },
+    "title": {
+      "translate": "advancements.propwash.fpv.distance_1km.title"
+    },
+    "description": {
+      "translate": "advancements.propwash.fpv.distance_1km.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ]
+}

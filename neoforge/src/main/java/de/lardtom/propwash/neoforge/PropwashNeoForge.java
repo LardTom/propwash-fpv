@@ -7,6 +7,11 @@ import de.lardtom.propwash.core.event.ServerBus;
 import de.lardtom.propwash.join.JoinCheck;
 import de.lardtom.propwash.join.JoinClientState;
 import de.lardtom.propwash.mixin.join.ServerConfigurationPacketListenerImplAccessor;
+import de.lardtom.propwash.neoforge.fabricsync.FabricMenuBridge;
+import de.lardtom.propwash.neoforge.fabricsync.FabricRegistryBridge;
+import de.lardtom.propwash.network.fabricsync.FabricOpenScreenPayload;
+import de.lardtom.propwash.network.fabricsync.FabricRegistrySyncPayload;
+import de.lardtom.propwash.network.fabricsync.FabricSyncCompletePayload;
 import de.lardtom.propwash.network.JoinInfoPayload;
 import de.lardtom.propwash.network.PartsManifestPayload;
 import de.lardtom.propwash.network.PropwashNet;
@@ -17,6 +22,7 @@ import de.lardtom.propwash.parts.PartsHandshake;
 import de.lardtom.propwash.parts.PartsModule;
 import de.lardtom.propwash.registry.PropwashRegistries;
 import de.lardtom.propwash.registry.RegList;
+import de.lardtom.propwash.server.AddonWorldRules;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -49,6 +55,8 @@ import java.util.function.Consumer;
 
 @Mod(Constants.MOD_ID)
 public final class PropwashNeoForge {
+    private static final String FABRIC_SYNC_VERSION = "1";
+
     public PropwashNeoForge(IEventBus modBus, ModContainer container) {
         PropwashCommon.init();
         modBus.addListener(RegisterEvent.class, PropwashNeoForge::onRegister);
@@ -65,6 +73,7 @@ public final class PropwashNeoForge {
         }
         event.register(Registries.ITEM, helper -> AddonItems.INSTANCE.flush(helper::register, false));
         event.register(Registries.CREATIVE_MODE_TAB, helper -> ExtensionTabs.INSTANCE.flush(helper::register, false));
+        event.register(Registries.GAME_RULE, helper -> AddonWorldRules.flush(helper::register, false));
         event.register(NeoForgeRegistries.Keys.ENTITY_DATA_SERIALIZERS, helper -> {
             for (PropwashRegistries.SerializerEntry entry : PropwashRegistries.flushEntityDataSerializers()) {
                 helper.register(entry.id(), entry.serializer());
@@ -77,7 +86,7 @@ public final class PropwashNeoForge {
     }
 
     private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Integer.toString(ProtocolVersionPayload.localProtocol()));
+        PayloadRegistrar registrar = event.registrar(Integer.toString(ProtocolVersionPayload.localProtocol())).optional();
         for (PropwashNet.C2S<?> c2s : PropwashNet.freezeC2S()) {
             registerC2S(registrar, c2s);
         }
@@ -100,10 +109,23 @@ public final class PropwashNeoForge {
                 context.disconnect(reject);
             }
         }, (payload, context) -> context.reply(JoinClientState.onServerParts(payload)));
+        if (FabricRegistryBridge.enabled()) {
+            PayloadRegistrar fabricSync = event.registrar(FABRIC_SYNC_VERSION).optional();
+            fabricSync.configurationToClient(FabricRegistrySyncPayload.TYPE, FabricRegistrySyncPayload.CODEC, FabricRegistryBridge::handle);
+            fabricSync.configurationToServer(FabricSyncCompletePayload.TYPE, FabricSyncCompletePayload.CODEC, (payload, context) -> {
+            });
+        }
+        if (FabricMenuBridge.enabled()) {
+            event.registrar(FABRIC_SYNC_VERSION).optional().playToClient(FabricOpenScreenPayload.TYPE, FabricOpenScreenPayload.CODEC);
+        }
     }
 
     private static void onConfigurationTasks(RegisterConfigurationTasksEvent event) {
         ServerConfigurationPacketListener listener = event.getListener();
+        if (listener.getConnectionType().isOther()) {
+            listener.disconnect(JoinCheck.notNeoForge());
+            return;
+        }
         List<ConfigurationTask> early = new ArrayList<>();
         if (listener.hasChannel(JoinInfoPayload.TYPE)) {
             early.add(new JoinInfoTask());
@@ -112,6 +134,7 @@ public final class PropwashNeoForge {
             early.add(new PartsCheckTask());
         }
         if (early.isEmpty()) {
+            listener.disconnect(JoinCheck.missingPropwash());
             return;
         }
         if (listener instanceof ServerConfigurationPacketListenerImplAccessor accessor) {

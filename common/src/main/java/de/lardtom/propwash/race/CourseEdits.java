@@ -1,7 +1,11 @@
 package de.lardtom.propwash.race;
 
+import de.lardtom.propwash.Constants;
+import de.lardtom.propwash.api.race.CourseMode;
 import de.lardtom.propwash.network.ServerPayloadContext;
 import de.lardtom.propwash.server.ServerRules;
+import de.lardtom.propwash.server.WorldRules;
+import de.lardtom.propwash.server.rules.WorldRuleSpecs;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,7 +31,10 @@ public final class CourseEdits {
         START,
         REMOVE,
         DELETE,
-        BIND_TOOL;
+        BIND_TOOL,
+        REVERSE,
+        MODE,
+        RACE_LINE;
 
         private static final Action[] VALUES = values();
 
@@ -51,11 +58,13 @@ public final class CourseEdits {
     static void clear() {
         DEFAULT_LAPS.clear();
         RATE.clear();
+        CourseToolItem.clear();
     }
 
     static void forget(ServerPlayer player) {
         DEFAULT_LAPS.remove(player.getUUID());
         RATE.remove(player.getUUID());
+        CourseToolItem.forget(player.getUUID());
     }
 
     public static int defaultLaps(UUID player) {
@@ -91,6 +100,42 @@ public final class CourseEdits {
         }
     }
 
+    static void onCreativeFc(RacePayloads.CourseCreativeFcC2S payload, ServerPayloadContext context) {
+        ServerPlayer player = context.player();
+        if (!allow(player.getUUID(), System.nanoTime())) {
+            return;
+        }
+        CourseRegistry registry = CourseRegistry.get();
+        CourseRegistry.Course course = registry == null ? null : registry.course(payload.courseId());
+        boolean admin = WorldRules.rule(WorldRuleSpecs.CREATIVE_FC_RACE_LEGAL).map(rule -> WorldRules.maySet(player, rule)).orElse(false);
+        Result result = registry == null ? Result.NO_COURSE : creativeFc(registry, course, payload.rule(), admin);
+        Component label = course == null ? Component.empty() : CourseRegistry.label(course);
+        if (result == Result.DONE) {
+            Constants.LOG.info("Kurs {}: Kreativ-FC im Rennen „{}“, gestellt von {}", payload.courseId(), payload.rule().key(),
+                    player.getGameProfile().name());
+        }
+        Component message = switch (result) {
+            case DENIED -> denied(CourseAccess.creativeFc(admin), label, CourseRegistry.ownerName(course));
+            case NO_COURSE -> Component.translatable("propwash.race.command.unknown_course", payload.courseId()).withStyle(ChatFormatting.RED);
+            case DONE -> Component.translatable(CreativeFcRule.KEY + "changed", label, Component.translatable(payload.rule().translationKey()))
+                    .withStyle(ChatFormatting.GREEN);
+            default -> null;
+        };
+        if (message != null) {
+            player.sendOverlayMessage(message);
+        }
+    }
+
+    public static Result creativeFc(CourseRegistry registry, CourseRegistry.@Nullable Course course, CreativeFcRule rule, boolean admin) {
+        if (course == null) {
+            return Result.NO_COURSE;
+        }
+        if (!CourseAccess.creativeFc(admin).allowed()) {
+            return Result.DENIED;
+        }
+        return done(registry.setCreativeFc(course, rule));
+    }
+
     static boolean allow(UUID player, long now) {
         long[] window = RATE.computeIfAbsent(player, uuid -> new long[]{now, 0L});
         if (now - window[0] > WINDOW_NANOS) {
@@ -117,6 +162,10 @@ public final class CourseEdits {
             case REMOVE -> remove(registry, course, payload.first());
             case DELETE -> done(registry.deleteCourse(course.id));
             case BIND_TOOL -> bind(player, course);
+            case REVERSE -> CourseOrder.inside(course.gates.size(), payload.first()) ? done(registry.reversePass(course, payload.first()))
+                    : Result.UNCHANGED;
+            case MODE -> done(registry.setMode(course, CourseMode.byOrdinal(payload.first())));
+            case RACE_LINE -> done(registry.setRaceLine(course, payload.first() != 0));
         };
         if (result == Result.DONE && payload.action() == Action.DELETE) {
             registry.save();
@@ -132,20 +181,11 @@ public final class CourseEdits {
             return CourseAccess.delete(build, sameDimension, owner, CourseRegistry.isGamemaster(player) || ServerRules.isHost(player),
                     !course.worldCourse.isEmpty());
         }
-        return CourseAccess.edit(build, sameDimension, course.owner.isEmpty(), owner, CourseRegistry.isGamemaster(player), near(player, course));
+        return CourseAccess.edit(build, sameDimension, course.owner.isEmpty(), owner, CourseRegistry.isOperator(player));
     }
 
     public static boolean mayEdit(ServerPlayer player, CourseRegistry.Course course, Action action) {
         return access(player, course, action).allowed();
-    }
-
-    private static boolean near(ServerPlayer player, CourseRegistry.Course course) {
-        for (CourseRegistry.GateRecord gate : course.gates) {
-            if (CourseAccess.near(player.distanceToSqr(gate.x, gate.y, gate.z), RaceCommands.NEAREST_COURSE_RANGE)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static Result done(boolean changed) {

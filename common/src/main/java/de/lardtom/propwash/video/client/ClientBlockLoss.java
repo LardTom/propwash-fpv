@@ -5,6 +5,7 @@ import de.lardtom.propwash.video.Multipath;
 import de.lardtom.propwash.video.link.Medium;
 import de.lardtom.propwash.video.link.ObstructionTracer;
 import de.lardtom.propwash.video.link.RfMaterial;
+import de.lardtom.propwash.video.link.TerrainColumns;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -62,6 +63,7 @@ final class ClientBlockLoss implements ObstructionTracer.World, Multipath.Reflec
     private final Reference2ObjectOpenHashMap<BlockState, Medium> cache = new Reference2ObjectOpenHashMap<>();
     private @Nullable Level level;
     private @Nullable LevelChunk chunk;
+    private @Nullable TerrainColumns columns;
     private int chunkX = Integer.MIN_VALUE;
     private int chunkZ = Integer.MIN_VALUE;
 
@@ -78,6 +80,7 @@ final class ClientBlockLoss implements ObstructionTracer.World, Multipath.Reflec
 
     void forgetChunk() {
         this.chunk = null;
+        this.columns = null;
         this.chunkX = Integer.MIN_VALUE;
         this.chunkZ = Integer.MIN_VALUE;
     }
@@ -92,14 +95,20 @@ final class ClientBlockLoss implements ObstructionTracer.World, Multipath.Reflec
         int cz = z >> 4;
         if (cx != this.chunkX || cz != this.chunkZ) {
             this.chunk = current.getChunkSource().getChunkNow(cx, cz);
+            this.columns = this.chunk == null ? TerrainMemory.INSTANCE.columns(current, cx, cz) : null;
             this.chunkX = cx;
             this.chunkZ = cz;
         }
         LevelChunk c = this.chunk;
         if (c == null) {
-            return Medium.AIR;
+            TerrainColumns remembered = this.columns;
+            return remembered == null ? Medium.AIR : remembered.medium(x & 15, y, z & 15);
         }
-        int index = current.getSectionIndex(y);
+        return this.inChunk(c, x, y, z);
+    }
+
+    Medium inChunk(LevelChunk c, int x, int y, int z) {
+        int index = c.getSectionIndex(y);
         LevelChunkSection[] sections = c.getSections();
         if (index < 0 || index >= sections.length) {
             return Medium.AIR;

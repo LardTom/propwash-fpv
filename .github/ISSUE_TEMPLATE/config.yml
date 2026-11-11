@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Rules for add-ons
+    url: https://github.com/LardTom/propwash-fpv/blob/main/ADDONS.md
+    about: Namespace, stable API, naming and licensing for add-on authors.
+  - name: Discord
+    url: https://discord.gg/bNhkSXYSgZ
+    about: Questions, ideas and help with your setup.

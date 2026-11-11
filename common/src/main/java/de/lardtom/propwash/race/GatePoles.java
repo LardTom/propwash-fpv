@@ -15,6 +15,8 @@ public final class GatePoles {
     public static final double EPSILON = 1.0E-3;
     public static final int WHITE = 0;
     public static final int BLACK = 15;
+    public static final int CENTER_SEAT = 0;
+    public static final int CUBE_SEAT = 10;
     private static final String[] COLOR_KEYS = {"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray",
             "cyan", "purple", "blue", "brown", "green", "red", "black"};
     private static final int[] LED_COLORS = {0xFFFFFF, 0xFF8A1F, 0xFF3DF0, 0x5AC8FF, 0xFFE81F, 0x9DFF2E, 0xFF8AC8, 0x8A8A8A, 0xC8C8C8,
@@ -56,6 +58,17 @@ public final class GatePoles {
         return pole(geometry) && geometry.mount() == GateMount.STANDING && geometry.upY() > 1.0 - 1.0E-9;
     }
 
+    public static boolean seatable(CourseElement kind) {
+        return kind == CourseElement.GATE_POLE || kind == CourseElement.FLAG || kind == CourseElement.POLE;
+    }
+
+    public static boolean seated(GateGeometry geometry) {
+        if (pole(geometry)) {
+            return standing(geometry);
+        }
+        return seatable(geometry.kind()) && geometry.mount() == GateMount.STANDING && geometry.upY() > 1.0 - 1.0E-9;
+    }
+
     public static GateStacking.Base base(GateMount mount, boolean supported) {
         if (mount == GateMount.STANDING) {
             return supported ? GateStacking.Base.STACKED : GateStacking.Base.BAR;
@@ -70,6 +83,9 @@ public final class GatePoles {
         if (pole(geometry)) {
             return standing(geometry);
         }
+        if (geometry.kind() == CourseElement.CUBE) {
+            return geometry.upY() > 1.0 - 1.0E-9;
+        }
         return geometry.gate() && geometry.upright() && geometry.mount() != GateMount.HANGING && geometry.upY() > 1.0 - 1.0E-9;
     }
 
@@ -82,13 +98,28 @@ public final class GatePoles {
         if (pole(geometry)) {
             return List.of(new Seat(geometry.x(), geometry.y() + geometry.height(), geometry.z(), yaw, fine, 0));
         }
-        double post = geometry.postOffset();
         double top = geometry.height();
-        List<Seat> seats = new ArrayList<>(2);
+        if (geometry.kind() == CourseElement.CUBE) {
+            double post = geometry.width() * 0.5 - geometry.frame() * 0.5;
+            List<Seat> seats = new ArrayList<>(8);
+            int corner = CUBE_SEAT;
+            for (int a = -1; a <= 1; a++) {
+                for (int b = -1; b <= 1; b++) {
+                    if (a != 0 || b != 0) {
+                        seats.add(new Seat(geometry.worldX(a * post, top, b * post), geometry.worldY(a * post, top, b * post),
+                                geometry.worldZ(a * post, top, b * post), yaw, fine, corner++));
+                    }
+                }
+            }
+            return List.copyOf(seats);
+        }
+        double post = geometry.postOffset();
+        List<Seat> seats = new ArrayList<>(3);
         for (int corner = -1; corner <= 1; corner += 2) {
             seats.add(new Seat(geometry.worldX(corner * post, top, 0.0), geometry.worldY(corner * post, top, 0.0),
                     geometry.worldZ(corner * post, top, 0.0), yaw, fine, corner));
         }
+        seats.add(new Seat(geometry.worldX(0.0, top, 0.0), geometry.worldY(0.0, top, 0.0), geometry.worldZ(0.0, top, 0.0), yaw, fine, CENTER_SEAT));
         return List.copyOf(seats);
     }
 
@@ -97,7 +128,7 @@ public final class GatePoles {
     }
 
     public static boolean restsOn(GateGeometry pole, GateGeometry support) {
-        if (!standing(pole)) {
+        if (!seated(pole)) {
             return false;
         }
         for (Seat seat : seats(support)) {
@@ -127,6 +158,11 @@ public final class GatePoles {
     public static GateGeometry onSeat(Seat seat, int variant, double length) {
         return GateGeometry.element(seat.x(), seat.y(), seat.z(), seat.yaw(), CourseElement.GATE_POLE, variant, THICKNESS, snapLength(length),
                 new GateTilt(seat.fine(), 0.0F, 0.0F), GateMount.STANDING);
+    }
+
+    public static GateGeometry elementOnSeat(Seat seat, CourseElement kind, int variant, float yaw, float fine) {
+        return GateGeometry.element(seat.x(), seat.y(), seat.z(), GateGeometry.snapYaw(yaw), kind, variant, kind.outerWidth(kind.defaultWidth()),
+                kind.outerHeight(kind.defaultHeight()), new GateTilt(fine, 0.0F, 0.0F));
     }
 
     public static Refusal check(int chain) {

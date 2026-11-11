@@ -1,17 +1,12 @@
 package de.lardtom.propwash.video.record.path;
 
+import de.lardtom.propwash.testutil.TestPaths;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FlashbackSplineTest {
@@ -65,41 +60,30 @@ class FlashbackSplineTest {
     }
 
     @Test
-    void matchesValuesFromFlashbacksCatmullRom() throws IOException {
-        Path file = null;
-        for (Path candidate : List.of(Path.of("common/src/test/resources/flashback/catmull_rom_golden.txt"),
-                Path.of("src/test/resources/flashback/catmull_rom_golden.txt"))) {
-            if (Files.isRegularFile(candidate)) {
-                file = candidate;
-            }
-        }
-        assertNotNull(file);
+    void matchesValuesFromFlashbacksCatmullRom() {
         int cases = 0;
-        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) {
-                    continue;
-                }
-                String[] f = line.trim().split(" ");
-                assertEquals(24, f.length, line);
-                Vector3d[] p = new Vector3d[4];
-                for (int k = 0; k < 4; k++) {
-                    p[k] = new Vector3d(Double.parseDouble(f[k * 3]), Double.parseDouble(f[k * 3 + 1]), Double.parseDouble(f[k * 3 + 2]));
-                }
-                float t1 = Float.parseFloat(f[12]);
-                float t2 = Float.parseFloat(f[13]);
-                float t3 = Float.parseFloat(f[14]);
-                float amount = Float.parseFloat(f[15]);
-                Vector3d position = FlashbackSpline.position(p[0], p[1], p[2], p[3], t1, t2, t3, amount);
-                assertEquals(Double.parseDouble(f[16]), position.x, 1.0E-12, line);
-                assertEquals(Double.parseDouble(f[17]), position.y, 1.0E-12, line);
-                assertEquals(Double.parseDouble(f[18]), position.z, 1.0E-12, line);
-                float angle = FlashbackSpline.degrees(Float.parseFloat(f[19]), Float.parseFloat(f[20]), Float.parseFloat(f[21]), Float.parseFloat(f[22]),
-                        t1, t2, t3, amount);
-                assertEquals(Float.parseFloat(f[23]), angle, 0.0F, line);
-                cases++;
+        for (String line : TestPaths.requireLines("flashback/catmull_rom_golden.txt")) {
+            if (line.isBlank()) {
+                continue;
             }
+            String[] f = line.trim().split(" ");
+            assertEquals(24, f.length, line);
+            Vector3d[] p = new Vector3d[4];
+            for (int k = 0; k < 4; k++) {
+                p[k] = new Vector3d(Double.parseDouble(f[k * 3]), Double.parseDouble(f[k * 3 + 1]), Double.parseDouble(f[k * 3 + 2]));
+            }
+            float t1 = Float.parseFloat(f[12]);
+            float t2 = Float.parseFloat(f[13]);
+            float t3 = Float.parseFloat(f[14]);
+            float amount = Float.parseFloat(f[15]);
+            Vector3d position = FlashbackSpline.position(p[0], p[1], p[2], p[3], t1, t2, t3, amount);
+            assertEquals(Double.parseDouble(f[16]), position.x, 1.0E-12, line);
+            assertEquals(Double.parseDouble(f[17]), position.y, 1.0E-12, line);
+            assertEquals(Double.parseDouble(f[18]), position.z, 1.0E-12, line);
+            float angle = FlashbackSpline.degrees(Float.parseFloat(f[19]), Float.parseFloat(f[20]), Float.parseFloat(f[21]), Float.parseFloat(f[22]),
+                    t1, t2, t3, amount);
+            assertEquals(Float.parseFloat(f[23]), angle, 0.0F, line);
+            cases++;
         }
         assertTrue(cases >= 100, "Fälle " + cases);
     }

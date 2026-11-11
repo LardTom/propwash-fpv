@@ -26,9 +26,7 @@ public final class ApiExtensions {
 
     public static synchronized DronePreset registerPreset(DronePreset preset) {
         Objects.requireNonNull(preset, "preset");
-        if (Constants.MOD_ID.equals(preset.id().getNamespace())) {
-            throw new IllegalArgumentException("Der Namensraum propwash gehört den eingebauten Presets: " + preset.id());
-        }
+        NamespaceRules.requireForeign(preset.id().toString(), "preset");
         if (PRESETS.putIfAbsent(preset.id(), preset) != null) {
             throw new IllegalArgumentException("Preset doppelt angemeldet: " + preset.id());
         }

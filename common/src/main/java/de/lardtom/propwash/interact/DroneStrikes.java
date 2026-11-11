@@ -16,10 +16,12 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enderman;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -33,6 +35,8 @@ public final class DroneStrikes {
     public static final ResourceKey<DamageType> DRONE_STRIKE = ResourceKey.create(Registries.DAMAGE_TYPE, Constants.id("drone_strike"));
     public static final Event<StrikeListener> STRUCK = new Event<>("drone_struck");
     public static final int PEAK_WINDOW_TICKS = 20;
+    public static final int DODGE_TRIES = 64;
+    public static final double DODGE_RANGE = 64.0;
 
     private static final Map<QuadcopterEntity, Tracker> TRACKERS = new WeakHashMap<>();
     private static boolean missingTypeLogged;
@@ -113,6 +117,11 @@ public final class DroneStrikes {
             return;
         }
         tracker.mark(target.getId(), now);
+        if (dodges(target)) {
+            StrikeMath.Strike dodged = strike;
+            STRUCK.fire(listener -> listener.onStruck(drone, target, dodged, false));
+            return;
+        }
         boolean hurt = target.hurtServer(level, source.get(), strike.damage());
         if (hurt) {
             double hx = relative.x;
@@ -125,6 +134,22 @@ public final class DroneStrikes {
         }
         StrikeMath.Strike landed = strike;
         STRUCK.fire(listener -> listener.onStruck(drone, target, landed, hurt));
+    }
+
+    public static boolean dodges(LivingEntity target) {
+        if (!(target instanceof Enderman enderman) || enderman.isPassenger()) {
+            return false;
+        }
+        RandomSource random = enderman.getRandom();
+        for (int i = 0; i < DODGE_TRIES; i++) {
+            double x = enderman.getX() + (random.nextDouble() - 0.5) * DODGE_RANGE;
+            double y = enderman.getY() + (random.nextInt((int) DODGE_RANGE) - DODGE_RANGE / 2.0);
+            double z = enderman.getZ() + (random.nextDouble() - 0.5) * DODGE_RANGE;
+            if (enderman.teleport(x, y, z)) {
+                break;
+            }
+        }
+        return true;
     }
 
     public static Optional<DamageSource> damageSource(ServerLevel level, QuadcopterEntity drone, Entity pilot) {

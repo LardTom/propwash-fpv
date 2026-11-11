@@ -1,0 +1,7 @@
+{
+  "propwash.osd.group.addon": "Add-ons",
+  "propwash.osd.editor.addon_source": "Add-on: %s",
+  "propwash.osd.editor.addon_failed": "Switched off for this session after an error – see the log.",
+  "propwash.osd.element.spectators": "Spectators",
+  "propwash.osd.element.spectators.description": "How many players besides the pilot are watching this drone’s video right now: spectating with F7 or with goggles on its channel. A gimbal operator doesn’t count. Shown only while someone is watching."
+}

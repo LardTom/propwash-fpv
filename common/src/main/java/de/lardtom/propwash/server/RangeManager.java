@@ -89,6 +89,10 @@ public final class RangeManager {
         TICKETS.want(level, ServerModule.DRONE_TICKET.get(), center, AnchorRules.DRONE_TICKET_RADIUS);
     }
 
+    public static void keepAhead(ServerLevel level, ChunkPos center, int radius) {
+        TICKETS.want(level, ServerModule.DRONE_LOOKAHEAD_TICKET.get(), center, radius);
+    }
+
     public static boolean isIdle() {
         return LINKS.isEmpty() && TICKETS.size() == 0 && ViewAnchors.size() == 0 && GENERATED.isEmpty() && SpectatorLinks.size() == 0;
     }

@@ -55,6 +55,9 @@ public final class RescueAutopilot {
     private static final int GROUND_SCAN_DEPTH = 96;
     private static final int MAX_UNKNOWN_RAISES = 4;
     private static final double LANDING_SPOT_MARGIN = 0.4;
+    private static final double HOME_SPOT_MARGIN = 0.2;
+    private static final double TARGET_MARGIN = 0.05;
+    private static final double FLAT_STEP = 0.25;
     private static final double LANDING_SPOT_RADIUS = 12.0;
     private static final int LANDING_SPOT_DIRECTIONS = 16;
     private static final double LAND_HERE_RADIUS = 8.0;
@@ -456,10 +459,11 @@ public final class RescueAutopilot {
         this.landX = this.homeX;
         this.landZ = this.homeZ;
         double half = this.halfWidth + LANDING_SPOT_MARGIN;
-        double homeTop = WorldProbe.maxSurface(world, this.homeX, this.homeZ, half);
-        boolean covered = homeTop > this.homeY + 1.0 && this.bottom >= homeTop;
-        int homeQuality = covered ? SPOT_BAD : spotQuality(world, this.homeX, this.homeZ, half, this.bottom);
-        if (homeQuality == SPOT_GOOD) {
+        boolean covered = this.homeCovered(world, half);
+        int around = spotQuality(world, this.homeX, this.homeZ, half, this.bottom);
+        int homeQuality = covered ? SPOT_BAD : around;
+        if (homeQuality == SPOT_GOOD || (around != SPOT_BAD && (this.homeFits(world)
+                || this.targetFits(world, this.homeX, this.homeZ, this.homeY + 1.0)))) {
             return;
         }
         double[] poor = {Double.NaN, Double.NaN};
@@ -473,6 +477,50 @@ public final class RescueAutopilot {
             this.landX = poor[0];
             this.landZ = poor[1];
         }
+    }
+
+    private boolean homeCovered(RescueWorld world, double half) {
+        double top = WorldProbe.maxSurface(world, this.homeX, this.homeZ, half);
+        return top > this.homeY + 1.0 && this.bottom >= top;
+    }
+
+    private boolean homeFits(RescueWorld world) {
+        double half = this.halfWidth + HOME_SPOT_MARGIN;
+        return !this.homeCovered(world, half) && spotQuality(world, this.homeX, this.homeZ, half, this.bottom) == SPOT_GOOD;
+    }
+
+    private boolean targetFits(RescueWorld world, double px, double pz, double maxTop) {
+        double half = this.halfWidth + TARGET_MARGIN;
+        int x0 = WorldProbe.floor(px - half + 1e-7);
+        int x1 = WorldProbe.floor(px + half - 1e-7);
+        int z0 = WorldProbe.floor(pz - half + 1e-7);
+        int z1 = WorldProbe.floor(pz + half - 1e-7);
+        int start = WorldProbe.floor(this.bottom - 1e-4);
+        int end = Math.max(world.minY(), start - GROUND_SCAN_DEPTH);
+        double low = Double.POSITIVE_INFINITY;
+        double high = Double.NEGATIVE_INFINITY;
+        for (int cx = x0; cx <= x1; cx++) {
+            for (int cz = z0; cz <= z1; cz++) {
+                double top = Double.NaN;
+                for (int y = start; y >= end; y--) {
+                    Ground kind = world.ground(cx, y, cz);
+                    if (kind == Ground.NONE) {
+                        continue;
+                    }
+                    if (!kind.landable()) {
+                        return false;
+                    }
+                    top = y + world.groundTop(cx, y, cz);
+                    break;
+                }
+                if (!(top <= this.bottom + 1e-3) || top > maxTop) {
+                    return false;
+                }
+                low = Math.min(low, top);
+                high = Math.max(high, top);
+            }
+        }
+        return high - low <= FLAT_STEP;
     }
 
     private boolean searchSpot(RescueWorld world, double half, double below, double[] poor) {
@@ -510,7 +558,7 @@ public final class RescueAutopilot {
         this.landZ = this.z;
         double half = this.halfWidth + LANDING_SPOT_MARGIN;
         int below = spotQuality(world, this.x, this.z, half, this.bottom);
-        if (below == SPOT_GOOD) {
+        if (below == SPOT_GOOD || (below != SPOT_BAD && this.targetFits(world, this.x, this.z, Double.POSITIVE_INFINITY))) {
             return;
         }
         double dx = this.homeX - this.x;

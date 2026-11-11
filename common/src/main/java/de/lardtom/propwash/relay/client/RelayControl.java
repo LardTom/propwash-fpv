@@ -37,13 +37,52 @@ public final class RelayControl {
 
     public float quality(@Nullable Level level, Vec3 pilot, Vec3 drone, float direct, double serverLimit, boolean freeRange, double creativeRange,
                          int relayLimit) {
+        return this.quality(level, pilot, drone, direct, serverLimit, freeRange, creativeRange, relayLimit, null);
+    }
+
+    public float quality(@Nullable Level level, Vec3 pilot, Vec3 drone, float direct, double serverLimit, boolean freeRange, double creativeRange,
+                         int relayLimit, @Nullable RelayVideo video) {
         this.relays = 0;
         int limit = RelayRules.clampRelays(relayLimit);
         RepeaterIndex index = RepeaterIndex.existing(level);
-        if (index == null || index.size() == 0 || limit == 0 || direct >= 1.0F) {
+        double hopReach = RelayLinks.controlHopReach(freeRange, creativeRange);
+        if (index == null || index.size() == 0 || limit == 0 || direct >= 1.0F || Double.isInfinite(hopReach)) {
             return direct;
         }
-        double half = RelayRules.span(limit) * 0.5;
+        int count = video != null && video.nodeCount() > RelayPaths.FIRST_RELAY ? this.fromVideo(video, hopReach, freeRange, creativeRange)
+                : this.fromIndex(index, pilot, drone, limit, hopReach, freeRange, creativeRange);
+        if (count <= RelayPaths.FIRST_RELAY) {
+            return direct;
+        }
+        double relayed = this.paths.solve(limit, RelayPaths.Combine.WEAKEST) ? this.paths.value() : Double.NaN;
+        float quality = RelayLinks.controlQuality(direct, relayed, pilot.distanceTo(drone), serverLimit);
+        if (!Double.isNaN(relayed) && relayed > direct && quality > direct) {
+            this.relays = this.paths.relays();
+        }
+        return quality;
+    }
+
+    private int fromVideo(RelayVideo video, double hopReach, boolean freeRange, double creativeRange) {
+        int count = video.nodeCount();
+        this.paths.reset(count);
+        for (int i = 0; i < count; i++) {
+            for (int j = Math.max(i + 1, RelayPaths.FIRST_RELAY); j < count; j++) {
+                double distance = RelayCandidates.distance(video.nodeX(i), video.nodeY(i), video.nodeZ(i), video.nodeX(j), video.nodeY(j), video.nodeZ(j));
+                if (!RelayRules.inReach(distance, hopReach)) {
+                    continue;
+                }
+                double loss = video.edgeLossDb(i, j);
+                double hop = RelayLinks.controlHopQuality(distance, freeRange, creativeRange, Double.isNaN(loss) ? 0.0 : loss);
+                if (!Double.isNaN(hop)) {
+                    this.paths.hop(i, j, hop);
+                }
+            }
+        }
+        return count;
+    }
+
+    private int fromIndex(RepeaterIndex index, Vec3 pilot, Vec3 drone, int limit, double hopReach, boolean freeRange, double creativeRange) {
+        double half = RelayRules.span(limit, hopReach) * 0.5;
         double mx = (pilot.x + drone.x) * 0.5;
         double mz = (pilot.z + drone.z) * 0.5;
         this.foundCount = 0;
@@ -56,10 +95,10 @@ public final class RelayControl {
             this.found[3 * this.foundCount + 2] = z;
             this.foundCount++;
         });
-        int n = this.selector.select(pilot.x, pilot.y, pilot.z, drone.x, drone.y, drone.z, this.found, this.foundCount, limit,
+        int n = this.selector.select(pilot.x, pilot.y, pilot.z, drone.x, drone.y, drone.z, this.found, this.foundCount, limit, hopReach,
                 RelayRules.MAX_CANDIDATES, this.chosen);
         if (n == 0) {
-            return direct;
+            return 0;
         }
         this.node(RelayPaths.RECEIVER, pilot.x, pilot.y, pilot.z);
         this.node(RelayPaths.TRANSMITTER, drone.x, drone.y, drone.z);
@@ -71,19 +110,17 @@ public final class RelayControl {
         this.paths.reset(count);
         for (int i = 0; i < count; i++) {
             for (int j = Math.max(i + 1, RelayPaths.FIRST_RELAY); j < count; j++) {
-                double hop = RelayLinks.controlHopQuality(this.distance(i, j), freeRange, creativeRange);
+                double distance = this.distance(i, j);
+                if (!RelayRules.inReach(distance, hopReach)) {
+                    continue;
+                }
+                double hop = RelayLinks.controlHopQuality(distance, freeRange, creativeRange);
                 if (!Double.isNaN(hop)) {
                     this.paths.hop(i, j, hop);
                 }
             }
         }
-        double relayed = this.paths.solve(limit, RelayPaths.Combine.WEAKEST) ? this.paths.value() : Double.NaN;
-        double directDistance = pilot.distanceTo(drone);
-        float quality = RelayLinks.controlQuality(direct, relayed, directDistance, serverLimit);
-        if (!Double.isNaN(relayed) && relayed > direct && quality > direct) {
-            this.relays = this.paths.relays();
-        }
-        return quality;
+        return count;
     }
 
     private void node(int index, double x, double y, double z) {
